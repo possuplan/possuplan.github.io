@@ -1,14 +1,14 @@
 {
   "files": {
-    "main.css": "/piggyplan/static/css/main.aa33a951.css",
-    "main.js": "/piggyplan/static/js/main.253dbc72.js",
-    "static/media/logo1-512x.webp": "/piggyplan/static/media/logo1-512x.74ba2fb525ba484945c5.webp",
-    "index.html": "/piggyplan/index.html",
-    "main.aa33a951.css.map": "/piggyplan/static/css/main.aa33a951.css.map",
-    "main.253dbc72.js.map": "/piggyplan/static/js/main.253dbc72.js.map"
+    "main.css": "/static/css/main.aa33a951.css",
+    "main.js": "/static/js/main.96df643e.js",
+    "static/media/logo1-512x.webp": "/static/media/logo1-512x.74ba2fb525ba484945c5.webp",
+    "index.html": "/index.html",
+    "main.aa33a951.css.map": "/static/css/main.aa33a951.css.map",
+    "main.96df643e.js.map": "/static/js/main.96df643e.js.map"
   },
   "entrypoints": [
     "static/css/main.aa33a951.css",
-    "static/js/main.253dbc72.js"
+    "static/js/main.96df643e.js"
   ]
 }
