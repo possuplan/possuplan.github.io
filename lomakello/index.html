@@ -96,7 +96,8 @@ function findNextWorkingDayIndex(workingDays) {
 
 function getDaysLeft(){
   let nextIndex = findNextWorkingDayIndex(workingDays);
-  return workingDays.length-nextIndex-1;
+  let dayAdd = (findTodayIndex(workingDays) != -1) ? 1 : 0;
+  return (workingDays.length-nextIndex-1)+dayAdd;
 }
 
 
