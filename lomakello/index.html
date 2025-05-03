@@ -48,25 +48,6 @@ html, body {
   font-style: normal;
 }
 
-#timer {
-  font-family: 'Digital', monospace;
-  font-size: 64px;
-  color: #00ff00;
-  
-  background-color:black;
-  border-radius:5px;
-  
-  display:inline-block;
-  padding-bottom:40px;
-}
-
-
-.content {
-  display: flex;
-  justify-content: center; /* horizontal centering */
-  align-items: center;     /* vertical centering */
-  height: 100vh;           /* full viewport height */
-}
 
 </style>
 
@@ -111,6 +92,11 @@ function findNextWorkingDayIndex(workingDays) {
     const hasHours = day.start && day.end;
     return day.date > today && hasHours;
   });
+}
+
+function getDaysLeft(){
+  let nextIndex = findNextWorkingDayIndex(workingDays);
+  return workingDays.length-nextIndex-1;
 }
 
 
@@ -181,19 +167,30 @@ $(document).ready(function(){
   function myRepeatingFunction(){
     let nextIndex = findNextWorkingDayIndex(workingDays);
     let todayIndex = findTodayIndex(workingDays);
+    let todayRemaining = 0;
 
     hoursRemaining = getWorkingHoursBetween(workingDays, nextIndex, workingDays.length-1);
 
     if(todayIndex != -1){
-      hoursRemaining += remainingHours(workingDays[todayIndex]);
+      todayRemaining = remainingHours(workingDays[todayIndex]);
+      hoursRemaining += todayRemaining;
     }
     
-    let remaining = convertDecimalHours(hoursRemaining);
+    let remainingAll = convertDecimalHours(hoursRemaining);
     
-    $("#timerHour").text(remaining.hours);
-    $("#timerMin").text(pad2(remaining.minutes));
-    $("#timerSec").text(pad2(remaining.seconds));
+    $(".timer-all-hours .timerHour").text((remainingAll.hours));
+    $(".timer-all-hours .timerMin").text(pad2(remainingAll.minutes));
+    $(".timer-all-hours .timerSec").text(pad2(remainingAll.seconds));
     
+    
+    let remainingToday = convertDecimalHours(todayRemaining);
+    
+    $(".timer-this-day .timerHour").text((remainingToday.hours));
+    $(".timer-this-day .timerMin").text(pad2(remainingToday.minutes));
+    $(".timer-this-day .timerSec").text(pad2(remainingToday.seconds));
+    
+    let daysLeft = getDaysLeft();
+    $(".timer-days-left .timerDay").text(daysLeft);
   }
 
   console.log(findTodayIndex(workingDays));
@@ -212,9 +209,82 @@ $(document).ready(function(){
 
 
 
+<style>
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;   /* Align children to the right */
+  justify-content: center;
+  height: 100vh;
+  width: 290px;            /* Set a fixed width or max-width */
+  margin: 0 auto;          /* Center the .content itself horizontally */
+  gap: 20px;
+  --border:1px solid blue;
+}
+
+
+.timer {
+display: inline-block;   /* Let the timer shrink to fit content */
+  font-family: 'Digital', monospace;
+  font-size: 64px;
+  color: #00ff00;
+  
+  background-color:#000011;
+  border-radius:5px;
+  
+  border:1px solid #222222;
+  padding:0 10px 0 10px;
+}
+
+.t {
+
+  display:inline-block;
+}
+
+
+.timer-wrap {
+display:block;
+  text-align: right; /* Align all text inside to the right */
+  --width: 100%;        /* Ensure it stretches to container width */
+  font:12px verdana;
+  color:#666666;
+}
+
+.title {
+  
+}
+
+.timer-all-hours {
+
+}
+
+.timer-this-day {
+
+}
+
+.timer-days-left {
+
+}
+</style>
+
 <div class="content">
-  <div id="timer">
-    <span id="timerHour"></span>:<span id="timerMin"></span>:<span id="timerSec"></span>
+  <div class="timer-wrap">
+    <div class="title">Aikaa lomaan</div>
+    <div class="timer timer-all-hours">
+      <span class="t timerHour"></span>:<span class="t timerMin"></span>:<span class="t timerSec"></span>
+    </div>
+  </div>
+  <div class="timer-wrap">
+    <div class="title">Päivästä jäljellä</div>
+    <div class="timer timer-this-day">
+      <span class="t timerHour"></span>:<span class="t timerMin"></span>:<span class="t timerSec"></span>
+    </div>
+  </div>
+  <div class="timer-wrap">
+    <div class="title">Työpäiviä jäljellä</div>
+    <div class="timer timer-days-left">
+      <span class="t timerDay"></span>
+    </div>
   </div>
 </div>
 
