@@ -224,7 +224,7 @@ $(document).ready(function(){
 
 
 .timer {
-display: inline-block;   /* Let the timer shrink to fit content */
+  display: inline-block;   /* Let the timer shrink to fit content */
   font-family: 'Digital', monospace;
   font-size: 64px;
   color: #00ff00;
@@ -235,7 +235,11 @@ display: inline-block;   /* Let the timer shrink to fit content */
   border:1px solid #222222;
   padding:0 10px 0 10px;
   
-  line-height: 1;
+  
+  line-height: 1;               /* Prevent vertical overflow from large font */
+  vertical-align: middle;       /* Better alignment inside container */
+  
+
 }
 
 .t {
@@ -253,7 +257,7 @@ display:block;
 }
 
 .title {
-  
+  padding-bottom:3px;
 }
 
 .timer-all-hours {
