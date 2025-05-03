@@ -94,9 +94,15 @@ function findNextWorkingDayIndex(workingDays) {
   });
 }
 
-function getDaysLeft(){
+function getDaysLeft(workingDays){
   let nextIndex = findNextWorkingDayIndex(workingDays);
-  let dayAdd = (findTodayIndex(workingDays) != -1) ? 1 : 0;
+  let dayIndex = findTodayIndex(workingDays);
+  let dayAdd = 0;
+  if(dayIndex != -1){
+    if(remainingHours(workingDays[todayIndex]) > 0){
+      dayAdd = 1;
+    }
+  }
   return (workingDays.length-nextIndex-1)+dayAdd;
 }
 
@@ -190,7 +196,7 @@ $(document).ready(function(){
     $(".timer-this-day .timerMin").text(pad2(remainingToday.minutes));
     $(".timer-this-day .timerSec").text(pad2(remainingToday.seconds));
     
-    let daysLeft = getDaysLeft();
+    let daysLeft = getDaysLeft(workingDays);
     $(".timer-days-left .timerDay").text(daysLeft);
   }
 
