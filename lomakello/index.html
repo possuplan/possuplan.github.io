@@ -94,17 +94,18 @@ function findNextWorkingDayIndex(workingDays) {
   });
 }
 
-function getDaysLeft(workingDays){
+function getDaysLeft(){
   let nextIndex = findNextWorkingDayIndex(workingDays);
-  let dayIndex = findTodayIndex(workingDays);
+  let todayIndex = findTodayIndex(workingDays);
   let dayAdd = 0;
-  if(dayIndex != -1){
+  if(todayIndex != -1){
     if(remainingHours(workingDays[todayIndex]) > 0){
       dayAdd = 1;
     }
   }
   return (workingDays.length-nextIndex-1)+dayAdd;
 }
+
 
 
 function getWorkingHoursBetween(workingDays, a, b) {
@@ -196,7 +197,7 @@ $(document).ready(function(){
     $(".timer-this-day .timerMin").text(pad2(remainingToday.minutes));
     $(".timer-this-day .timerSec").text(pad2(remainingToday.seconds));
     
-    let daysLeft = getDaysLeft(workingDays);
+    let daysLeft = getDaysLeft();
     $(".timer-days-left .timerDay").text(daysLeft);
   }
 
