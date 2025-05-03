@@ -224,7 +224,11 @@ $(document).ready(function(){
 
 
 .timer {
-  display: inline-block;   /* Let the timer shrink to fit content */
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
   font-family: 'Digital', monospace;
   font-size: 64px;
   color: #00ff00;
@@ -249,7 +253,7 @@ $(document).ready(function(){
 
 
 .timer-wrap {
-display:block;
+  display:block;
   text-align: right; /* Align all text inside to the right */
   --width: 100%;        /* Ensure it stretches to container width */
   font:12px verdana;
