@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PossuPlan - Money Management</title>
+    <title>PossuPlan - Rahankäytön Seuranta</title>
     <style>
         /* --- Global Styles & Dark Mode --- */
         :root {
             --bg-color: #1e1e1e;
             --text-color: #e0e0e0;
             --primary-color: #4CAF50; /* Green for highlights */
-            --secondary-color: #2a2a2a; /* Slightly lighter than bg for elements */
-            --tertiary-color: #333333; /* For borders or less prominent elements */
+            --secondary-color: #2a2a2a;
+            --tertiary-color: #333333;
             --input-bg: #2c2c2c;
             --border-color: #444444;
             --hover-color: #57a05a;
@@ -27,6 +27,7 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+            font-size: 16px; /* Base font size */
         }
 
         h1, h2, h3 {
@@ -64,7 +65,7 @@
             padding: 8px 10px;
             border-radius: 4px;
             box-sizing: border-box;
-            font-size: 1em;
+            font-size: 0.95em; /* Slightly smaller for compactness */
         }
         input:focus, select:focus {
             outline: none;
@@ -81,7 +82,7 @@
         /* --- App Header & Navigation --- */
         .app-header {
             background-color: var(--secondary-color);
-            padding: 0 15px; /* Adjust padding */
+            padding: 0 10px; /* Reduced padding */
             height: 55px;
             display: flex;
             align-items: center;
@@ -92,6 +93,12 @@
             z-index: 1000;
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
+        .app-logo {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
 
         .nav-toggle {
             font-size: 1.8em;
@@ -99,28 +106,37 @@
             border: none;
             color: var(--text-color);
             cursor: pointer;
-            padding: 5px 10px;
-            margin-right: 15px; /* Space between toggle and name */
+            padding: 5px 8px; /* Reduced padding */
+            margin-right: 10px; /* Space between toggle and logo/name */
+            flex-shrink: 0;
+        }
+
+        .app-name-container {
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center PossuPlan relative to its available space */
+            flex-grow: 1;
+            overflow: hidden; /* Prevent app name from pushing things around */
+             margin-right: 40px; /* Space for nav-toggle approx width */
         }
 
         .app-name {
-            font-size: 1.5em;
+            font-size: 1.4em; /* Slightly reduced */
             font-weight: bold;
             color: var(--primary-color);
             text-align: center;
-            flex-grow: 1;
-             /* Ensure it doesn't push toggle button too far if name is long */
-            margin-right: 50px; /* Approximate width of toggle button + its margin */
+            white-space: nowrap;
         }
+
 
         .nav-bar {
             position: fixed;
             top: 0;
-            left: -250px; /* Hidden by default */
+            left: -250px;
             width: 230px;
             height: 100vh;
             background-color: var(--secondary-color);
-            padding-top: 60px; /* Space for header */
+            padding-top: 60px;
             transition: left 0.3s ease-in-out;
             z-index: 999;
             border-right: 1px solid var(--border-color);
@@ -147,11 +163,10 @@
 
         /* --- Main Content Area --- */
         .main-content {
-            padding-top: 75px; /* Space for fixed header + a bit more */
-            padding-left: 20px;
-            padding-right: 20px;
+            padding-top: 70px;
+            padding-left: 15px; /* Reduced padding */
+            padding-right: 15px; /* Reduced padding */
             padding-bottom: 20px;
-            /* transition: margin-left 0.3s ease-in-out; Not shifting content for simplicity */
         }
 
         .page {
@@ -173,24 +188,25 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap; /* Allow wrapping on small screens */
+            margin-bottom: 15px; /* Reduced margin */
+            flex-wrap: wrap;
         }
          .purchases-header h2 {
             margin-right: 10px;
+            font-size: 1.3em;
         }
 
 
         #current-date-btn {
-            font-size: 1.1em;
-            padding: 8px 12px;
+            font-size: 1em; /* Reduced font size */
+            padding: 8px 10px; /* Reduced padding */
             background-color: var(--tertiary-color);
         }
         #current-date-btn:hover {
             background-color: var(--primary-color);
         }
 
-        .calendar-popup-wrapper { /* For positioning */
+        .calendar-popup-wrapper {
             position: relative;
         }
         .calendar-popup {
@@ -199,36 +215,37 @@
             background-color: var(--secondary-color);
             border: 1px solid var(--border-color);
             border-radius: 5px;
-            padding: 15px;
+            padding: 10px; /* Reduced padding */
             z-index: 1001;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            width: 300px; /* Fixed width for better layout */
-            top: 100%; /* Position below the button */
-            right: 0; /* Align to the right of the button or container */
+            width: 280px; /* Adjusted width */
+            top: 100%;
+            right: 0;
         }
 
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
+            gap: 3px; /* Reduced gap */
             text-align: center;
         }
         .calendar-grid div {
-            padding: 8px;
+            padding: 6px; /* Reduced padding */
             cursor: pointer;
             border-radius: 3px;
-            font-size: 0.9em;
+            font-size: 0.85em; /* Reduced font size */
         }
         .calendar-grid .day-name {
             font-weight: bold;
             color: var(--primary-color);
             cursor: default;
+            font-size: 0.8em;
         }
         .calendar-grid .day:hover {
             background-color: var(--tertiary-color);
         }
         .calendar-grid .day.has-purchase {
-            background-color: var(--primary-color) !important; /* Ensure override */
+            background-color: var(--primary-color) !important;
             color: white;
         }
         .calendar-grid .day.selected-day {
@@ -243,40 +260,46 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px; /* Reduced margin */
         }
         .calendar-header button {
             background: none;
             border: none;
             color: var(--text-color);
-            font-size: 1.5em; /* Larger arrows */
+            font-size: 1.4em;
             padding: 0 5px;
         }
         .calendar-header h3 {
-            font-size: 1.1em;
+            font-size: 1em; /* Reduced font size */
             color: var(--text-color);
         }
 
-
+        /* Compact Purchase Item Row */
         .purchase-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 0;
+            gap: 5px; /* Reduced gap */
+            padding: 8px 0; /* Reduced padding */
             border-bottom: 1px solid var(--border-color);
         }
         .purchase-item:last-child {
             border-bottom: none;
         }
-        .purchase-item input[type="number"] {
-            width: 100px;
+        .purchase-item input[type="number"] { /* Value */
+            flex: 0 1 70px; /* grow 0, shrink 1, basis 70px */
+            min-width: 60px; /* Minimum width before it gets too small */
+            padding: 6px 8px; /* Reduced padding */
         }
-        .purchase-item input[list="category-list-input-datalist"] { /* Ensure unique ID if multiple */
-            flex-grow: 1;
+        .purchase-item input[list="category-list-input-datalist"] { /* Category */
+            flex: 1 1 100px; /* grow 1, shrink 1, basis 100px */
+            min-width: 80px; /* Minimum width */
+            padding: 6px 8px;
         }
         .purchase-item .delete-item-btn {
+            flex: 0 0 auto; /* Don't grow, don't shrink */
             background-color: var(--danger-color);
-            padding: 8px 12px;
+            padding: 7px 10px; /* Adjusted padding */
+            font-size: 0.9em;
         }
          .purchase-item .delete-item-btn:hover {
             background-color: var(--danger-hover-color);
@@ -284,25 +307,28 @@
 
         #purchase-list-container {
             background-color: var(--secondary-color);
-            padding: 15px;
+            padding: 10px; /* Reduced padding */
             border-radius: 5px;
-            margin-bottom: 20px;
-            min-height: 50px; /* So it doesn't collapse completely */
+            margin-bottom: 15px;
+            min-height: 40px;
         }
         .no-items-message {
             color: var(--disabled-color);
             text-align: center;
             padding: 10px 0;
+            font-size: 0.9em;
         }
 
         .purchases-actions {
-            margin-top: 20px;
+            margin-top: 15px;
             display: flex;
             justify-content: space-between;
             gap: 10px;
         }
         .purchases-actions button {
             flex-grow: 1;
+            font-size: 0.95em; /* Slightly smaller button text */
+            padding: 8px 12px;
         }
         #add-purchase-item-btn {
             background-color: var(--tertiary-color);
@@ -314,194 +340,105 @@
 
         /* --- Categories Page --- */
         .category-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            margin-bottom: 10px;
-            background-color: var(--secondary-color);
-        }
-        .category-list-item.hidden-category {
-            background-color: var(--tertiary-color);
-        }
-        .category-list-item.hidden-category input[type="text"] {
-            color: #aaa;
-            text-decoration: line-through;
+            padding: 10px 12px; /* Reduced padding */
+            font-size: 0.95em;
         }
         .category-list-item input[type="text"] {
-            flex-grow: 1;
-            margin-right: 10px;
-            background-color: transparent;
-            border: none;
-            border-bottom: 1px dashed var(--border-color); /* Subtle edit indicator */
-            padding: 5px 0;
-        }
-        .category-list-item input[type="text"]:focus {
-            border-bottom: 1px solid var(--primary-color);
-            box-shadow: none;
+            padding: 4px 0;
         }
         .category-list-item button {
-            padding: 6px 10px;
-            font-size: 0.9em;
+            padding: 5px 8px; /* Reduced padding */
+            font-size: 0.85em;
         }
 
         .category-add-form {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 25px;
-            padding: 15px;
-            background-color: var(--secondary-color);
-            border-radius: 5px;
-        }
-        .category-add-form input {
-            flex-grow: 1;
+            padding: 12px; /* Reduced padding */
+            margin-bottom: 20px;
         }
 
         /* --- Stats Page --- */
         .stats-nav {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .stats-nav button {
-            margin-right: 10px;
-            background-color: var(--tertiary-color);
-        }
-        .stats-nav button.active {
-            background-color: var(--primary-color);
-        }
-        .stats-content {
-            margin-top: 20px;
-            background-color: var(--secondary-color);
-            padding: 15px;
-            border-radius: 5px;
-        }
-        .category-stat-item {
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
+            margin-right: 8px;
             font-size: 0.95em;
         }
-        .category-stat-name {
-            width: 150px; /* Increased width */
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            padding-right: 10px;
+        .stats-content {
+            padding: 12px; /* Reduced padding */
         }
-        .percentage-bar-container {
-            flex-grow: 1;
-            background-color: var(--input-bg);
-            border-radius: 5px; /* Rounded bar */
-            height: 22px;
-            margin: 0 10px;
-            position: relative;
-            overflow: hidden; /* Ensure bar stays within container */
-        }
-        .percentage-bar {
-            background-color: var(--primary-color);
-            height: 100%;
-            border-radius: 5px; /* Match container */
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 8px;
-            color: white;
-            font-size: 0.8em;
-            font-weight: bold;
-            transition: width 0.5s ease-out;
-        }
-        .category-stat-total {
-            width: 100px;
-            text-align: right;
-            font-weight: bold;
-        }
-        .time-filter {
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .time-filter label {
+        .category-stat-item {
+            margin-bottom: 10px;
             font-size: 0.9em;
         }
+        .category-stat-name {
+            width: 120px; /* Adjusted width */
+        }
+        .percentage-bar-container {
+            height: 20px; /* Adjusted height */
+        }
+        .percentage-bar {
+            font-size: 0.75em; /* Reduced font size */
+        }
+        .category-stat-total {
+            width: 85px; /* Adjusted width */
+            font-size: 0.95em;
+        }
+        .time-filter {
+            margin-bottom: 15px;
+            gap: 8px;
+        }
+        .time-filter label, .time-filter select {
+            font-size: 0.9em;
+        }
+        #stats-content h3 {
+            font-size: 1.15em;
+        }
+
 
         #pie-chart-container {
-            width: 100%;
-            max-width: 350px; /* Max size for pie chart */
-            height: 350px;
-            margin: 20px auto;
-            position: relative;
-        }
-        #pie-chart-container svg {
-            display: block; /* Remove extra space below SVG */
-        }
-        #pie-chart-container text { /* Style for text within SVG */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            fill: var(--text-color);
-        }
-        .pie-tooltip { /* For custom tooltips if needed, SVG title is simpler */
-            position: absolute;
-            background-color: rgba(0,0,0,0.8);
-            color: white;
-            padding: 5px 8px;
-            border-radius: 3px;
-            font-size: 0.85em;
-            pointer-events: none; /* So it doesn't interfere with mouse events on slices */
-            display: none; /* Hidden by default */
-            z-index: 1010;
+            max-width: 300px; /* Reduced max size */
+            height: 300px;
         }
 
         /* --- Main Calendar Page --- */
         #main-calendar-page-container .calendar-grid {
-            height: calc(100vh - 200px); /* Example height, adjust as needed */
-            overflow-y: auto;
-            background-color: var(--secondary-color);
-            padding: 10px;
-            border-radius: 5px;
-        }
-         #main-calendar-page-container .calendar-header {
-            margin-bottom: 15px;
+            height: calc(100vh - 180px); /* Adjusted height */
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
+        /* Further Mobile Compactness (overriding general responsive if any) */
+        @media (max-width: 400px) { /* Stricter rules for very small screens */
             .app-name {
                 font-size: 1.2em;
-                margin-right: 40px; /* Adjust for smaller screens */
             }
-            .purchase-item {
-                flex-direction: column;
-                align-items: stretch;
+            .app-logo {
+                width: 24px;
+                height: 24px;
             }
-            .purchase-item input[type="number"],
-            .purchase-item input[list="category-list-input-datalist"],
-            .purchase-item button {
-                width: 100%;
-                margin-bottom: 5px;
+            .nav-toggle {
+                 margin-right: 5px;
             }
-            .purchases-actions {
-                flex-direction: column;
+            .app-name-container {
+                margin-right: 30px; /* Reduce further for very small screens */
             }
-            .purchases-actions button {
-                margin-bottom: 10px;
+            .purchases-header h2 {
+                font-size: 1.15em;
             }
-            .category-add-form {
-                flex-direction: column;
+            #current-date-btn {
+                font-size: 0.9em;
             }
-            .calendar-popup {
-                width: calc(100vw - 40px); /* Make popup calendar responsive */
-                left: 50%;
-                transform: translateX(-50%);
+            .purchase-item input[type="number"] {
+                flex-basis: 60px;
+                min-width: 50px;
             }
-            .category-stat-name {
-                 width: 100px;
+            .purchase-item input[list="category-list-input-datalist"] {
+                flex-basis: 80px;
+                min-width: 70px;
             }
-            .category-stat-total {
-                 width: 80px;
-                 font-size: 0.9em;
+             .main-content {
+                padding-left: 10px;
+                padding-right: 10px;
             }
-
         }
 
     </style>
@@ -509,29 +446,35 @@
 <body>
 
     <header class="app-header">
-        <button class="nav-toggle" id="navToggleBtn" aria-label="Toggle navigation">&#9776;</button>
-        <div class="app-name" id="appTitle">PossuPlan</div>
+        <button class="nav-toggle" id="navToggleBtn" aria-label="Vaihda navigointia">&#9776;</button>
+        <div class="app-name-container">
+            <svg class="app-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" rx="20" ry="20" fill="#4CAF50"/>
+                <text x="50" y="65" font-size="50" fill="white" text-anchor="middle" font-family="Arial, sans-serif">P</text>
+            </svg>
+            <div class="app-name" id="appTitle">PossuPlan</div>
+        </div>
     </header>
 
     <nav class="nav-bar" id="navBar">
         <ul>
-            <li><a href="#" class="nav-link active" data-page="purchases">Purchases</a></li>
-            <li><a href="#" class="nav-link" data-page="calendar">Calendar</a></li>
-            <li><a href="#" class="nav-link" data-page="categories">Categories</a></li>
-            <li><a href="#" class="nav-link" data-page="stats">Stats</a></li>
+            <li><a href="#" class="nav-link active" data-page="purchases">Ostokset</a></li>
+            <li><a href="#" class="nav-link" data-page="calendar">Kalenteri</a></li>
+            <li><a href="#" class="nav-link" data-page="categories">Kategoriat</a></li>
+            <li><a href="#" class="nav-link" data-page="stats">Tilastot</a></li>
         </ul>
     </nav>
 
     <main class="main-content" id="mainContent">
         <section id="purchases" class="page active">
             <div class="purchases-header">
-                <h2 id="purchases-page-title">Today's Purchases</h2>
+                <h2 id="purchases-page-title">Tämän päivän ostokset</h2>
                 <div class="calendar-popup-wrapper">
-                    <button id="current-date-btn">May 8, 2025</button>
+                    <button id="current-date-btn">8. toukokuuta 2025</button>
                     <div id="calendar-popup" class="calendar-popup">
                         <div class="calendar-header">
                             <button id="popup-prev-month-btn">&lt;</button>
-                            <h3 id="popup-current-month-year">May 2025</h3>
+                            <h3 id="popup-current-month-year">Toukokuu 2025</h3>
                             <button id="popup-next-month-btn">&gt;</button>
                         </div>
                         <div class="calendar-grid" id="popup-calendar-grid">
@@ -546,17 +489,17 @@
                 </datalist>
 
             <div class="purchases-actions">
-                <button id="save-purchases-btn">Save Purchases</button>
-                <button id="add-purchase-item-btn">Add Item</button>
+                <button id="save-purchases-btn">Tallenna ostokset</button>
+                <button id="add-purchase-item-btn">Lisää rivi</button>
             </div>
         </section>
 
         <section id="calendar" class="page">
             <div id="main-calendar-page-container">
-                <h2>Full Calendar View</h2>
+                <h2>Kalenterinäkymä</h2>
                 <div class="calendar-header">
                     <button id="main-prev-month-btn">&lt;</button>
-                    <h3 id="main-current-month-year">May 2025</h3>
+                    <h3 id="main-current-month-year">Toukokuu 2025</h3>
                     <button id="main-next-month-btn">&gt;</button>
                 </div>
                 <div class="calendar-grid" id="main-calendar-grid">
@@ -565,40 +508,40 @@
         </section>
 
         <section id="categories" class="page">
-            <h2>Manage Categories</h2>
+            <h2>Hallitse kategorioita</h2>
             <div class="category-add-form">
-                <input type="text" id="new-category-name-input" placeholder="Type new category or search existing" list="category-suggestions-list-datalist">
+                <input type="text" id="new-category-name-input" placeholder="Kirjoita uusi kategoria tai etsi" list="category-suggestions-list-datalist">
                 <datalist id="category-suggestions-list-datalist">
                     </datalist>
-                <button id="add-new-category-btn">Add/Select Category</button>
+                <button id="add-new-category-btn">Lisää/Valitse kategoria</button>
             </div>
             <ul id="category-manager-list">
                 </ul>
         </section>
 
         <section id="stats" class="page">
-            <h2>Statistics</h2>
+            <h2>Tilastot</h2>
             <div class="stats-nav">
-                <button id="stats-categories-btn" class="active" data-view="categories">Categories</button>
-                <button id="stats-graph-btn" data-view="graph">Graph</button>
+                <button id="stats-categories-btn" class="active" data-view="categories">Kategoriat</button>
+                <button id="stats-graph-btn" data-view="graph">Kaavio</button>
             </div>
             <div class="stats-content">
                 <div class="time-filter">
-                     <label for="stats-time-filter">Period:</label>
+                     <label for="stats-time-filter">Ajanjakso:</label>
                     <select id="stats-time-filter">
-                        <option value="week" selected>This Week</option>
-                        <option value="month">This Month</option>
-                        <option value="year">This Year</option>
-                        <option value="all">All Time</option>
+                        <option value="week" selected>Tämä viikko</option>
+                        <option value="month">Tämä kuukausi</option>
+                        <option value="year">Tämä vuosi</option>
+                        <option value="all">Kaikki ajat</option>
                     </select>
                 </div>
                 <div id="stats-categories-view">
-                    <h3 style="margin-bottom: 15px;">Top Categories by Spending</h3>
+                    <h3 style="margin-bottom: 15px;">Suosituimmat kategoriat (kulutus)</h3>
                     <div id="top-categories-list">
                         </div>
                 </div>
                 <div id="stats-graph-view" style="display: none;">
-                    <h3 style="margin-bottom: 15px; text-align:center;">Spending Distribution</h3>
+                    <h3 style="margin-bottom: 15px; text-align:center;">Kulujakauma</h3>
                      <div id="pie-chart-container">
                         </div>
                 </div>
@@ -623,10 +566,14 @@
             return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
         }
 
+        function formatCurrency(value) {
+            return value.toLocaleString('fi-FI', { style: 'currency', currency: 'EUR' });
+        }
+
         const ELS = { // Global DOM Elements Object
             navToggleBtn: document.getElementById('navToggleBtn'),
             navBar: document.getElementById('navBar'),
-            appTitle: document.getElementById('appTitle'),
+            appTitleDisplay: document.getElementById('appTitle'), // Changed from appTitle to avoid conflict
             navLinks: document.querySelectorAll('.nav-link'),
             pages: document.querySelectorAll('.page'),
 
@@ -666,19 +613,42 @@
             pieTooltip: document.getElementById('pieTooltip'),
         };
 
-        // --- App State ---
-        let state = {
-            currentViewDate: new Date(),    // Date for which purchases are being viewed/edited
-            popupCalendarDate: new Date(),  // Month/Year shown in the popup calendar
-            mainCalendarDate: new Date(),   // Month/Year shown in the main calendar page
-            purchases: [], // { id, date: 'YYYY-MM-DD', value: number, categoryId: string }
-            categories: [], // { id: string, name: string, isHidden: boolean }
+        const FINNISH_TEXTS = {
+            purchases: "Ostokset",
+            calendar: "Kalenteri",
+            categories: "Kategoriat",
+            stats: "Tilastot",
+            defaultCategories: [
+                { name: 'Ruokaostokset' }, { name: 'Liikenne' }, { name: 'Viihde' },
+                { name: 'Laskut' }, { name: 'Asuminen' }, { name: 'Terveys' }
+            ],
+            dayNamesShort: ['Ma', 'Ti', 'Ke', 'To', 'Pe', 'La', 'Su'],
+            alertCategoryExists: (name) => `Kategoria "${name}" on jo olemassa.`,
+            alertPurchasesSaved: "Ostokset tallennettu!",
+            noPurchasesMessage: "Ei ostoksia tälle päivälle. Lisää uusi!",
+            noStatsDataMessage: "Ei kulutustietoja valitulle ajanjaksolle.",
+            placeholderCategory: "Valitse/kirjoita kategoria",
+            deleteButtonText: "Poista",
+            todayPurchasesTitle: "Tämän päivän ostokset",
+            purchasesForDateTitle: (dateStr) => `Ostokset päivälle ${dateStr}`,
         };
 
-        const DB_PURCHASES_KEY = 'possuPlanPurchases_v1';
-        const DB_CATEGORIES_KEY = 'possuPlanCategories_v1';
-        const DATE_OPTIONS_LONG = { year: 'numeric', month: 'long', day: 'numeric' };
-        const DATE_OPTIONS_SHORT = { month: 'long', year: 'numeric' };
+
+        // --- App State ---
+        let state = {
+            currentViewDate: new Date(2025, 4, 8), // May 8, 2025 - Month is 0-indexed
+            popupCalendarDate: new Date(2025, 4, 8),
+            mainCalendarDate: new Date(2025, 4, 8),
+            purchases: [],
+            categories: [],
+        };
+
+        const DB_PURCHASES_KEY = 'possuPlanPurchases_v2_fi'; // new key for lang version
+        const DB_CATEGORIES_KEY = 'possuPlanCategories_v2_fi';
+        const DATE_OPTIONS_FI_LONG = { year: 'numeric', month: 'long', day: 'numeric', locale: 'fi-FI' };
+        const DATE_OPTIONS_FI_NUMERIC = { year: 'numeric', month: 'numeric', day: 'numeric', locale: 'fi-FI' };
+        const DATE_OPTIONS_FI_MONTH_YEAR = { month: 'long', year: 'numeric', locale: 'fi-FI' };
+
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -690,14 +660,13 @@
             renderCalendar(ELS.popupCalendarGrid, state.popupCalendarDate, ELS.popupCurrentMonthYear, handlePopupDayClick, true);
             renderCalendar(ELS.mainCalendarGrid, state.mainCalendarDate, ELS.mainCurrentMonthYear, handleMainCalendarDayClick, false);
             setupEventListeners();
-            updateStats(); // Initial render for stats
+            updateStats();
         });
 
         function setupEventListeners() {
             ELS.navToggleBtn.addEventListener('click', toggleNav);
             ELS.navLinks.forEach(link => link.addEventListener('click', handleNavClick));
 
-            // Purchases
             ELS.currentDateBtn.addEventListener('click', toggleCalendarPopup);
             document.addEventListener('click', closePopupIfClickedOutside);
             ELS.popupPrevMonthBtn.addEventListener('click', () => changeCalendarMonth(-1, 'popup'));
@@ -705,15 +674,12 @@
             ELS.addPurchaseItemBtn.addEventListener('click', () => addPurchaseRowToDOM(null, true));
             ELS.savePurchasesBtn.addEventListener('click', saveCurrentDayPurchases);
 
-            // Main Calendar
             ELS.mainPrevMonthBtn.addEventListener('click', () => changeCalendarMonth(-1, 'main'));
             ELS.mainNextMonthBtn.addEventListener('click', () => changeCalendarMonth(1, 'main'));
 
-            // Categories
             ELS.newCategoryNameInput.addEventListener('input', populateCategorySuggestions);
             ELS.addNewCategoryBtn.addEventListener('click', handleAddOrSelectCategory);
 
-            // Stats
             ELS.statsCategoriesBtn.addEventListener('click', () => switchStatsView('categories'));
             ELS.statsGraphBtn.addEventListener('click', () => switchStatsView('graph'));
             ELS.statsTimeFilter.addEventListener('change', updateStats);
@@ -728,23 +694,13 @@
             if (storedCategories) {
                 state.categories = JSON.parse(storedCategories);
             } else {
-                // Default categories
-                state.categories = [
-                    { id: generateId(), name: 'Groceries', isHidden: false },
-                    { id: generateId(), name: 'Transport', isHidden: false },
-                    { id: generateId(), name: 'Entertainment', isHidden: false },
-                    { id: generateId(), name: 'Utilities', isHidden: false },
-                    { id: generateId(), name: 'Housing', isHidden: false },
-                    { id: generateId(), name: 'Health', isHidden: false },
-                ];
+                state.categories = FINNISH_TEXTS.defaultCategories.map(cat => ({
+                    id: generateId(), name: cat.name, isHidden: false
+                }));
                 saveCategories();
             }
         }
 
-        function saveAllData() { // General save if multiple things change
-            localStorage.setItem(DB_PURCHASES_KEY, JSON.stringify(state.purchases));
-            localStorage.setItem(DB_CATEGORIES_KEY, JSON.stringify(state.categories));
-        }
         function savePurchases() {
             localStorage.setItem(DB_PURCHASES_KEY, JSON.stringify(state.purchases));
         }
@@ -752,7 +708,7 @@
             localStorage.setItem(DB_CATEGORIES_KEY, JSON.stringify(state.categories));
             updateCategoryDatalists();
             renderCategoryManagerList();
-            updateStats(); // Categories affect stats
+            updateStats();
         }
 
         // --- Navigation ---
@@ -765,43 +721,46 @@
             activatePage(targetPageId);
             ELS.navLinks.forEach(nav => nav.classList.remove('active'));
             e.target.classList.add('active');
-            ELS.appTitle.textContent = `PossuPlan - ${e.target.textContent}`;
+            // App title is static "PossuPlan"
             if (ELS.navBar.classList.contains('open')) {
-                toggleNav(); // Close nav on selection
+                toggleNav();
             }
         }
         function activatePage(pageId) {
             ELS.pages.forEach(page => page.classList.toggle('active', page.id === pageId));
-            // Page-specific refresh logic
             if (pageId === 'categories') renderCategoryManagerList();
             if (pageId === 'calendar') {
-                state.mainCalendarDate = new Date(); // Reset to current month
+                state.mainCalendarDate = new Date(state.currentViewDate);
                 renderCalendar(ELS.mainCalendarGrid, state.mainCalendarDate, ELS.mainCurrentMonthYear, handleMainCalendarDayClick, false);
             }
             if (pageId === 'stats') updateStats();
-            if (pageId === 'purchases') { // Ensure purchase list is for the currentViewDate
+            if (pageId === 'purchases') {
                 renderPurchasesForDate(state.currentViewDate.yyyymmdd());
             }
         }
 
         // --- Purchases Page ---
         function updatePurchasesPageDateElements(date) {
-            ELS.currentDateBtn.textContent = date.toLocaleDateString(undefined, DATE_OPTIONS_LONG);
+            ELS.currentDateBtn.textContent = date.toLocaleDateString('fi-FI', DATE_OPTIONS_FI_LONG);
             const today = new Date();
-            if (date.yyyymmdd() === today.yyyymmdd()) {
-                ELS.purchasesPageTitle.textContent = "Today's Purchases";
+            today.setHours(0,0,0,0); // Normalize today for comparison
+            const viewDateNormalized = new Date(date);
+            viewDateNormalized.setHours(0,0,0,0);
+
+            if (viewDateNormalized.getTime() === today.getTime()) {
+                ELS.purchasesPageTitle.textContent = FINNISH_TEXTS.todayPurchasesTitle;
             } else {
-                ELS.purchasesPageTitle.textContent = `Purchases for ${date.toLocaleDateString(undefined, DATE_OPTIONS_LONG)}`;
+                ELS.purchasesPageTitle.textContent = FINNISH_TEXTS.purchasesForDateTitle(date.toLocaleDateString('fi-FI', DATE_OPTIONS_FI_NUMERIC));
             }
         }
 
         function toggleCalendarPopup(event) {
-            event.stopPropagation(); // Prevent document click from closing it immediately
+            event.stopPropagation();
             const isVisible = ELS.calendarPopup.style.display === 'block';
             if (isVisible) {
                 ELS.calendarPopup.style.display = 'none';
             } else {
-                state.popupCalendarDate = new Date(state.currentViewDate); // Sync with current view
+                state.popupCalendarDate = new Date(state.currentViewDate);
                 renderCalendar(ELS.popupCalendarGrid, state.popupCalendarDate, ELS.popupCurrentMonthYear, handlePopupDayClick, true);
                 ELS.calendarPopup.style.display = 'block';
             }
@@ -816,47 +775,44 @@
         }
 
         function changeCalendarMonth(monthOffset, calendarType) {
+            const targetDate = calendarType === 'popup' ? state.popupCalendarDate : state.mainCalendarDate;
+            targetDate.setMonth(targetDate.getMonth() + monthOffset);
             if (calendarType === 'popup') {
-                state.popupCalendarDate.setMonth(state.popupCalendarDate.getMonth() + monthOffset);
-                renderCalendar(ELS.popupCalendarGrid, state.popupCalendarDate, ELS.popupCurrentMonthYear, handlePopupDayClick, true);
-            } else if (calendarType === 'main') {
-                state.mainCalendarDate.setMonth(state.mainCalendarDate.getMonth() + monthOffset);
-                renderCalendar(ELS.mainCalendarGrid, state.mainCalendarDate, ELS.mainCurrentMonthYear, handleMainCalendarDayClick, false);
+                renderCalendar(ELS.popupCalendarGrid, targetDate, ELS.popupCurrentMonthYear, handlePopupDayClick, true);
+            } else {
+                renderCalendar(ELS.mainCalendarGrid, targetDate, ELS.mainCurrentMonthYear, handleMainCalendarDayClick, false);
             }
         }
 
         function renderCalendar(gridElement, dateToDisplay, monthYearElement, dayClickHandler, isPopup) {
             gridElement.innerHTML = '';
-            monthYearElement.textContent = dateToDisplay.toLocaleDateString(undefined, DATE_OPTIONS_SHORT);
+            monthYearElement.textContent = dateToDisplay.toLocaleDateString('fi-FI', DATE_OPTIONS_FI_MONTH_YEAR);
 
             const year = dateToDisplay.getFullYear();
             const month = dateToDisplay.getMonth();
-            const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun, 1=Mon
+            const firstDayOfMonthDate = new Date(year, month, 1);
+            // Adjust for Monday start: getDay() returns 0 for Sun, 1 for Mon. We want Mon=0, Tue=1 .. Sun=6
+            const firstDayOfMonthIndex = (firstDayOfMonthDate.getDay() === 0) ? 6 : firstDayOfMonthDate.getDay() - 1;
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const daysInPrevMonth = new Date(year, month, 0).getDate();
 
-
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            dayNames.forEach(name => {
+            FINNISH_TEXTS.dayNamesShort.forEach(name => {
                 const dayNameEl = document.createElement('div');
                 dayNameEl.classList.add('day-name');
                 dayNameEl.textContent = name;
                 gridElement.appendChild(dayNameEl);
             });
 
-            const purchasesByDate = {}; // YYYY-MM-DD: true
+            const purchasesByDate = {};
             state.purchases.forEach(p => purchasesByDate[p.date] = true);
 
-            // Days from previous month
-            const startDayIndex = (firstDayOfMonth === 0) ? 6 : firstDayOfMonth - 1; // Adjust if week starts Monday
-            for (let i = 0; i < startDayIndex; i++) {
+            for (let i = 0; i < firstDayOfMonthIndex; i++) {
                 const dayEl = document.createElement('div');
                 dayEl.classList.add('day', 'other-month');
-                dayEl.textContent = daysInPrevMonth - startDayIndex + 1 + i;
+                dayEl.textContent = daysInPrevMonth - firstDayOfMonthIndex + 1 + i;
                 gridElement.appendChild(dayEl);
             }
 
-            // Days of current month
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayEl = document.createElement('div');
                 dayEl.classList.add('day');
@@ -871,14 +827,12 @@
                 if (isPopup && dateString === state.currentViewDate.yyyymmdd()) {
                     dayEl.classList.add('selected-day');
                 }
-
                 dayEl.addEventListener('click', () => dayClickHandler(currentDate));
                 gridElement.appendChild(dayEl);
             }
 
-            // Days from next month to fill grid
-            const totalCells = startDayIndex + daysInMonth;
-            const remainingCells = (totalCells % 7 === 0) ? 0 : 7 - (totalCells % 7) ;
+            const totalCells = firstDayOfMonthIndex + daysInMonth;
+            const remainingCells = (totalCells % 7 === 0) ? 0 : 7 - (totalCells % 7);
             for (let i = 1; i <= remainingCells; i++) {
                 const dayEl = document.createElement('div');
                 dayEl.classList.add('day', 'other-month');
@@ -892,24 +846,21 @@
             updatePurchasesPageDateElements(date);
             renderPurchasesForDate(date.yyyymmdd());
             ELS.calendarPopup.style.display = 'none';
-            // Re-render popup calendar to update selected day highlighting
             renderCalendar(ELS.popupCalendarGrid, state.popupCalendarDate, ELS.popupCurrentMonthYear, handlePopupDayClick, true);
         }
 
         function renderPurchasesForDate(dateString) {
-            ELS.purchaseListContainer.innerHTML = ''; // Clear existing
+            ELS.purchaseListContainer.innerHTML = '';
             const itemsForDate = state.purchases.filter(p => p.date === dateString);
-
             if (itemsForDate.length === 0) {
-                ELS.purchaseListContainer.innerHTML = '<p class="no-items-message">No purchases recorded for this day. Add one!</p>';
+                ELS.purchaseListContainer.innerHTML = `<p class="no-items-message">${FINNISH_TEXTS.noPurchasesMessage}</p>`;
             } else {
                 itemsForDate.forEach(item => addPurchaseRowToDOM(item, false));
             }
-            updateCategoryDatalists(); // Ensure datalist is fresh
+            updateCategoryDatalists();
         }
 
         function addPurchaseRowToDOM(itemData, isNew) {
-            // Remove "no items" message if it exists
             const noItemsMsg = ELS.purchaseListContainer.querySelector('.no-items-message');
             if (noItemsMsg) noItemsMsg.remove();
 
@@ -920,131 +871,109 @@
 
             const valueInput = document.createElement('input');
             valueInput.type = 'number';
-            valueInput.placeholder = '0.00';
+            valueInput.placeholder = '0,00'; // Finnish placeholder
             valueInput.min = "0.01";
             valueInput.step = "0.01";
             valueInput.value = itemData ? itemData.value : '';
-            valueInput.setAttribute('aria-label', 'Purchase Value');
+            valueInput.setAttribute('aria-label', 'Summa');
 
             const categoryInput = document.createElement('input');
             categoryInput.type = 'text';
             categoryInput.setAttribute('list', ELS.categoryDatalist.id);
-            categoryInput.placeholder = 'Choose/type category';
+            categoryInput.placeholder = FINNISH_TEXTS.placeholderCategory;
             const categoryName = itemData?.categoryId ? (state.categories.find(c => c.id === itemData.categoryId)?.name || '') : '';
             categoryInput.value = categoryName;
-            categoryInput.dataset.categoryId = itemData?.categoryId || ''; // Store the ID
+            categoryInput.dataset.categoryId = itemData?.categoryId || '';
 
-            categoryInput.addEventListener('input', (e) => { // Dynamically update suggestions
+            categoryInput.addEventListener('input', (e) => {
                 const inputValue = e.target.value.toLowerCase();
-                updateCategoryDatalists(inputValue); // Filter suggestions
-                // Try to match ID on input
+                updateCategoryDatalists(inputValue);
                 const matchedOption = Array.from(ELS.categoryDatalist.options).find(opt => opt.value.toLowerCase() === inputValue);
-                if (matchedOption) {
-                    e.target.dataset.categoryId = matchedOption.dataset.id;
-                } else {
-                    e.target.dataset.categoryId = ''; // Clear if no exact match from list
-                }
+                e.target.dataset.categoryId = matchedOption ? matchedOption.dataset.id : '';
             });
-             categoryInput.addEventListener('change', (e) => { // On blur or selection from datalist
+             categoryInput.addEventListener('change', (e) => {
                 const chosenOption = Array.from(ELS.categoryDatalist.options).find(opt => opt.value === e.target.value);
                 if (chosenOption) {
                     e.target.dataset.categoryId = chosenOption.dataset.id;
-                } else {
-                     // If it's not from datalist, ID remains empty, will be handled on save.
                 }
-                updateCategoryDatalists(); // Reset datalist to full non-hidden list
+                updateCategoryDatalists();
             });
 
-
             const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = 'Del'; // Shorter text
+            deleteBtn.textContent = FINNISH_TEXTS.deleteButtonText;
             deleteBtn.classList.add('delete-item-btn');
             deleteBtn.onclick = () => {
                 itemDiv.remove();
                 if (ELS.purchaseListContainer.children.length === 0) {
-                    ELS.purchaseListContainer.innerHTML = '<p class="no-items-message">No purchases recorded for this day. Add one!</p>';
+                    ELS.purchaseListContainer.innerHTML = `<p class="no-items-message">${FINNISH_TEXTS.noPurchasesMessage}</p>`;
                 }
-                // Note: Actual removal from `state.purchases` happens on "Save"
             };
 
             itemDiv.appendChild(valueInput);
             itemDiv.appendChild(categoryInput);
             itemDiv.appendChild(deleteBtn);
             ELS.purchaseListContainer.appendChild(itemDiv);
-
             if (isNew) valueInput.focus();
         }
 
         function saveCurrentDayPurchases() {
             const dateString = state.currentViewDate.yyyymmdd();
-            // Remove all existing purchases for this specific date from the main array
             state.purchases = state.purchases.filter(p => p.date !== dateString);
-
-            const purchaseItemElements = ELS.purchaseListContainer.querySelectorAll('.purchase-item');
             let newCategoriesAdded = false;
 
-            purchaseItemElements.forEach(itemEl => {
-                const value = parseFloat(itemEl.querySelector('input[type="number"]').value);
+            ELS.purchaseListContainer.querySelectorAll('.purchase-item').forEach(itemEl => {
+                const valueStr = itemEl.querySelector('input[type="number"]').value.replace(',', '.'); // Handle , as decimal for input
+                const value = parseFloat(valueStr);
                 const categoryInputEl = itemEl.querySelector('input[list="' + ELS.categoryDatalist.id + '"]');
                 const categoryName = categoryInputEl.value.trim();
                 let categoryId = categoryInputEl.dataset.categoryId;
 
                 if (!isNaN(value) && value > 0 && categoryName) {
-                    if (!categoryId) { // If no ID, it's either new or typed without selecting
+                    if (!categoryId) {
                         let existingCategory = state.categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
                         if (existingCategory) {
                             categoryId = existingCategory.id;
-                        } else { // Create new category
+                        } else {
                             const newCategory = { id: generateId(), name: categoryName, isHidden: false };
                             state.categories.push(newCategory);
                             categoryId = newCategory.id;
                             newCategoriesAdded = true;
                         }
                     }
-
                     state.purchases.push({
-                        id: itemEl.dataset.itemId,
-                        date: dateString,
-                        value: value,
-                        categoryId: categoryId
+                        id: itemEl.dataset.itemId, date: dateString, value: value, categoryId: categoryId
                     });
                 }
             });
 
             savePurchases();
-            if (newCategoriesAdded) saveCategories(); // Also save categories if new ones were made
-
-            alert('Purchases saved!');
-            renderPurchasesForDate(dateString); // Re-render to reflect saved state & ensure IDs are correct
-            // Update calendars to show 'has-purchase' indicator
+            if (newCategoriesAdded) saveCategories();
+            //alert(FINNISH_TEXTS.alertPurchasesSaved);
+            renderPurchasesForDate(dateString);
             renderCalendar(ELS.popupCalendarGrid, state.popupCalendarDate, ELS.popupCurrentMonthYear, handlePopupDayClick, true);
             renderCalendar(ELS.mainCalendarGrid, state.mainCalendarDate, ELS.mainCurrentMonthYear, handleMainCalendarDayClick, false);
             updateStats();
         }
 
         function updateCategoryDatalists(filterText = '') {
-            ELS.categoryDatalist.innerHTML = ''; // For purchases page
-            ELS.categorySuggestionsDatalist.innerHTML = ''; // For categories page
-
+            ELS.categoryDatalist.innerHTML = '';
+            ELS.categorySuggestionsDatalist.innerHTML = '';
             const lcFilter = filterText.toLowerCase();
             const relevantCategories = state.categories.filter(cat => !cat.isHidden && (filterText === '' || cat.name.toLowerCase().includes(lcFilter)));
-
             relevantCategories.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.name;
-                option.dataset.id = cat.id; // Store ID here
-
+                option.dataset.id = cat.id;
                 ELS.categoryDatalist.appendChild(option.cloneNode(true));
                 ELS.categorySuggestionsDatalist.appendChild(option);
             });
         }
 
-
         // --- Main Calendar Page ---
         function handleMainCalendarDayClick(date) {
             state.currentViewDate = date;
             updatePurchasesPageDateElements(date);
-            activatePage('purchases'); // Switch to purchases page
+            activatePage('purchases');
         }
 
         // --- Categories Page ---
@@ -1065,35 +994,28 @@
         function handleAddOrSelectCategory() {
             const newName = ELS.newCategoryNameInput.value.trim();
             if (!newName) return;
-
             const existingOption = Array.from(ELS.categorySuggestionsDatalist.options).find(opt => opt.value === newName);
             if (existingOption) {
-                // If user selected an existing category from suggestions, do nothing here,
-                // just clear the input. The main purpose is adding NEW ones.
-                // Or, you could highlight it in the list below. For now, just clear.
                 ELS.newCategoryNameInput.value = '';
                 ELS.categorySuggestionsDatalist.innerHTML = '';
-                // Potentially scroll to and highlight the category in the manager list
                 const listItem = ELS.categoryManagerList.querySelector(`li[data-category-id="${existingOption.dataset.id}"]`);
                 if(listItem) listItem.scrollIntoView({behavior: "smooth", block: "center"});
                 return;
             }
-
-            // If it's not an existing option, try to add as new
             if (state.categories.some(c => c.name.toLowerCase() === newName.toLowerCase())) {
-                alert(`Category "${newName}" already exists.`);
+                alert(FINNISH_TEXTS.alertCategoryExists(newName));
                 return;
             }
             const newCategory = { id: generateId(), name: newName, isHidden: false };
             state.categories.push(newCategory);
-            saveCategories(); // This will re-render the list and datalists
+            saveCategories();
             ELS.newCategoryNameInput.value = '';
             ELS.categorySuggestionsDatalist.innerHTML = '';
         }
 
         function renderCategoryManagerList() {
             ELS.categoryManagerList.innerHTML = '';
-            state.categories.sort((a,b) => a.name.localeCompare(b.name)).forEach(cat => {
+            state.categories.sort((a,b) => a.name.localeCompare(b.name, 'fi')).forEach(cat => {
                 const li = document.createElement('li');
                 li.classList.add('category-list-item');
                 li.classList.toggle('hidden-category', cat.isHidden);
@@ -1102,30 +1024,29 @@
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
                 nameInput.value = cat.name;
-                nameInput.setAttribute('aria-label', `Category name: ${cat.name}`);
+                nameInput.setAttribute('aria-label', `Kategorian nimi: ${cat.name}`);
                 nameInput.addEventListener('change', () => {
                     const updatedName = nameInput.value.trim();
                     if (updatedName && updatedName !== cat.name) {
                         if (state.categories.some(c => c.name.toLowerCase() === updatedName.toLowerCase() && c.id !== cat.id)) {
-                            alert(`Category "${updatedName}" already exists. Please choose a different name.`);
-                            nameInput.value = cat.name; // Revert
+                            alert(FINNISH_TEXTS.alertCategoryExists(updatedName));
+                            nameInput.value = cat.name;
                             return;
                         }
                         cat.name = updatedName;
                         saveCategories();
                     } else if (!updatedName) {
-                        nameInput.value = cat.name; // Revert if empty
+                        nameInput.value = cat.name;
                     }
                 });
 
                 const hideBtn = document.createElement('button');
-                hideBtn.textContent = cat.isHidden ? 'Unhide' : 'Hide';
-                hideBtn.setAttribute('aria-label', `${cat.isHidden ? 'Unhide' : 'Hide'} category ${cat.name}`);
+                hideBtn.textContent = cat.isHidden ? 'Näytä' : 'Piilota';
+                hideBtn.setAttribute('aria-label', `${cat.isHidden ? 'Näytä' : 'Piilota'} kategoria ${cat.name}`);
                 hideBtn.onclick = () => {
                     cat.isHidden = !cat.isHidden;
-                    saveCategories(); // Re-renders the list and updates datalists
+                    saveCategories();
                 };
-
                 li.appendChild(nameInput);
                 li.appendChild(hideBtn);
                 ELS.categoryManagerList.appendChild(li);
@@ -1138,19 +1059,19 @@
             ELS.statsGraphView.style.display = (view === 'graph') ? 'block' : 'none';
             ELS.statsCategoriesBtn.classList.toggle('active', view === 'categories');
             ELS.statsGraphBtn.classList.toggle('active', view === 'graph');
-            updateStats(); // Re-calculate and render based on current view
+            updateStats();
         }
 
         function getFilteredPurchasesForStats() {
             const timeFilter = ELS.statsTimeFilter.value;
             const now = new Date();
-            let startDate;
+            let startDate = new Date(now); // Clone 'now'
 
             switch (timeFilter) {
                 case 'week':
-                    const currentDay = now.getDay(); // 0 (Sun) to 6 (Sat)
-                    const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust to Monday
-                    startDate = new Date(now.setDate(diff));
+                    const currentDay = startDate.getDay(); // 0 (Sun) to 6 (Sat)
+                    const diff = startDate.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust to Monday
+                    startDate.setDate(diff);
                     startDate.setHours(0, 0, 0, 0);
                     break;
                 case 'month':
@@ -1161,15 +1082,13 @@
                     break;
                 case 'all':
                 default:
-                    return state.purchases; // Return all purchases
+                    return state.purchases;
             }
-            return state.purchases.filter(p => new Date(p.date + "T00:00:00") >= startDate); // Ensure proper date comparison
+            return state.purchases.filter(p => new Date(p.date + "T00:00:00") >= startDate);
         }
 
         function updateStats() {
-            // Only run if stats page is active
             if (!document.getElementById('stats').classList.contains('active')) return;
-
             const filteredPurchases = getFilteredPurchasesForStats();
             const categoryTotals = {};
             let grandTotalSpent = 0;
@@ -1177,7 +1096,7 @@
             filteredPurchases.forEach(p => {
                 if (!p.categoryId) return;
                 const category = state.categories.find(c => c.id === p.categoryId);
-                if (category && !category.isHidden) { // Only include non-hidden categories
+                if (category && !category.isHidden) {
                     categoryTotals[p.categoryId] = (categoryTotals[p.categoryId] || 0) + p.value;
                     grandTotalSpent += p.value;
                 }
@@ -1186,7 +1105,7 @@
             const sortedCategories = Object.entries(categoryTotals)
                 .map(([categoryId, total]) => ({
                     id: categoryId,
-                    name: state.categories.find(c => c.id === categoryId)?.name || 'Unknown Category',
+                    name: state.categories.find(c => c.id === categoryId)?.name || 'Tuntematon kategoria',
                     total: total,
                 }))
                 .sort((a, b) => b.total - a.total);
@@ -1202,39 +1121,26 @@
         function renderStatsCategoryList(topCategoriesData, overallTotal) {
             ELS.topCategoriesList.innerHTML = '';
             if (topCategoriesData.length === 0) {
-                ELS.topCategoriesList.innerHTML = '<p class="no-items-message">No spending data for the selected period.</p>';
+                ELS.topCategoriesList.innerHTML = `<p class="no-items-message">${FINNISH_TEXTS.noStatsDataMessage}</p>`;
                 return;
             }
-
-            // Calculate total of top N categories for percentage calculation if overallTotal is not desired for bar %
-            const totalOfTopCategories = topCategoriesData.reduce((sum, cat) => sum + cat.total, 0);
-
-
             topCategoriesData.forEach(cat => {
                 const itemEl = document.createElement('div');
                 itemEl.classList.add('category-stat-item');
-
                 const nameEl = document.createElement('div');
                 nameEl.classList.add('category-stat-name');
                 nameEl.textContent = cat.name;
-                nameEl.title = cat.name; // Tooltip for long names
-
+                nameEl.title = cat.name;
                 const barContainer = document.createElement('div');
                 barContainer.classList.add('percentage-bar-container');
-
                 const percentage = overallTotal > 0 ? (cat.total / overallTotal) * 100 : 0;
-                // const percentage = totalOfTopCategories > 0 ? (cat.total / totalOfTopCategories) * 100 : 0; // Alt: % of top N sum
-
                 const barEl = document.createElement('div');
                 barEl.classList.add('percentage-bar');
-                // Use requestAnimationFrame for smoother initial animation if desired
                 setTimeout(() => { barEl.style.width = `${Math.max(0, Math.min(100, percentage))}%`; }, 10);
                 barEl.textContent = `${percentage.toFixed(1)}%`;
-
                 const totalEl = document.createElement('div');
                 totalEl.classList.add('category-stat-total');
-                totalEl.textContent = `€${cat.total.toFixed(2)}`; // Example currency
-
+                totalEl.textContent = formatCurrency(cat.total);
                 barContainer.appendChild(barEl);
                 itemEl.appendChild(nameEl);
                 itemEl.appendChild(barContainer);
@@ -1245,96 +1151,63 @@
         const PIE_COLORS = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8CD17D', '#F0A3A3', '#A3C2F0', '#787878', '#C1A0C1'];
 
         function renderPieChart(allCategoryData, grandTotal) {
-            ELS.pieChartContainer.innerHTML = ''; // Clear previous
+            ELS.pieChartContainer.innerHTML = '';
             ELS.pieTooltip.style.display = 'none';
-
             if (grandTotal === 0 || allCategoryData.length === 0) {
-                ELS.pieChartContainer.innerHTML = '<p class="no-items-message" style="text-align:center; padding-top:50px;">No data for pie chart.</p>';
+                ELS.pieChartContainer.innerHTML = `<p class="no-items-message" style="text-align:center; padding-top:50px;">${FINNISH_TEXTS.noStatsDataMessage}</p>`;
                 return;
             }
-
             const chartData = [];
             let otherTotal = 0;
             if (allCategoryData.length > 10) {
-                for(let i=0; i < 9; i++) chartData.push(allCategoryData[i]); // Top 9
+                for(let i=0; i < 9; i++) chartData.push(allCategoryData[i]);
                 for(let i=9; i < allCategoryData.length; i++) otherTotal += allCategoryData[i].total;
-                if (otherTotal > 0) chartData.push({ name: 'Other', total: otherTotal });
+                if (otherTotal > 0) chartData.push({ name: 'Muut', total: otherTotal });
             } else {
                 chartData.push(...allCategoryData);
             }
 
-
             const radius = Math.min(ELS.pieChartContainer.offsetWidth, ELS.pieChartContainer.offsetHeight) / 2 * 0.85;
             const centerX = ELS.pieChartContainer.offsetWidth / 2;
             const centerY = ELS.pieChartContainer.offsetHeight / 2;
-
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, "svg");
             svg.setAttribute("width", ELS.pieChartContainer.offsetWidth);
             svg.setAttribute("height", ELS.pieChartContainer.offsetHeight);
             svg.setAttribute("viewBox", `0 0 ${ELS.pieChartContainer.offsetWidth} ${ELS.pieChartContainer.offsetHeight}`);
             ELS.pieChartContainer.appendChild(svg);
-
-            let currentAngle = -90; // Start at the top
+            let currentAngle = -90;
 
             chartData.forEach((slice, index) => {
                 const percentage = slice.total / grandTotal;
                 const angle = percentage * 360;
-
                 const path = document.createElementNS(svgNS, "path");
                 const x1 = centerX + radius * Math.cos(currentAngle * Math.PI / 180);
                 const y1 = centerY + radius * Math.sin(currentAngle * Math.PI / 180);
-
                 currentAngle += angle;
-
                 const x2 = centerX + radius * Math.cos(currentAngle * Math.PI / 180);
                 const y2 = centerY + radius * Math.sin(currentAngle * Math.PI / 180);
-
                 const largeArcFlag = angle > 180 ? 1 : 0;
-
-                const d = [
-                    `M ${centerX},${centerY}`,
-                    `L ${x1},${y1}`,
-                    `A ${radius},${radius} 0 ${largeArcFlag} 1 ${x2},${y2}`,
-                    "Z"
-                ].join(" ");
-
+                const d = [`M ${centerX},${centerY}`, `L ${x1},${y1}`, `A ${radius},${radius} 0 ${largeArcFlag} 1 ${x2},${y2}`, "Z"].join(" ");
                 path.setAttribute("d", d);
                 path.setAttribute("fill", PIE_COLORS[index % PIE_COLORS.length]);
-                path.setAttribute("stroke", getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim()); // Slice border
+                path.setAttribute("stroke", getComputedStyle(document.documentElement).getPropertyValue('--secondary-color').trim());
                 path.setAttribute("stroke-width", "2");
-
-                const title = document.createElementNS(svgNS, "title"); // Simple tooltip
-                title.textContent = `${slice.name}: €${slice.total.toFixed(2)} (${(percentage * 100).toFixed(1)}%)`;
+                const title = document.createElementNS(svgNS, "title");
+                title.textContent = `${slice.name}: ${formatCurrency(slice.total)} (${(percentage * 100).toFixed(1)}%)`;
                 path.appendChild(title);
-
-                // Optional: Add mouseover for custom tooltip (more complex)
                 path.addEventListener('mousemove', (e) => {
                     ELS.pieTooltip.style.display = 'block';
-                    ELS.pieTooltip.innerHTML = `${slice.name}: €${slice.total.toFixed(2)} (${(percentage*100).toFixed(1)}%)`;
-                    // Position tooltip near mouse, ensuring it's within viewport
-                    let x = e.clientX + 15;
-                    let y = e.clientY + 15;
-                    if (x + ELS.pieTooltip.offsetWidth > window.innerWidth) {
-                        x = e.clientX - ELS.pieTooltip.offsetWidth - 15;
-                    }
-                    if (y + ELS.pieTooltip.offsetHeight > window.innerHeight) {
-                        y = e.clientY - ELS.pieTooltip.offsetHeight - 15;
-                    }
-                    ELS.pieTooltip.style.left = x + 'px';
-                    ELS.pieTooltip.style.top = y + 'px';
+                    ELS.pieTooltip.innerHTML = title.textContent;
+                    let x = e.clientX + 15; let y = e.clientY + 15;
+                    if (x + ELS.pieTooltip.offsetWidth > window.innerWidth) x = e.clientX - ELS.pieTooltip.offsetWidth - 15;
+                    if (y + ELS.pieTooltip.offsetHeight > window.innerHeight) y = e.clientY - ELS.pieTooltip.offsetHeight - 15;
+                    ELS.pieTooltip.style.left = x + 'px'; ELS.pieTooltip.style.top = y + 'px';
                 });
-                path.addEventListener('mouseout', () => {
-                    ELS.pieTooltip.style.display = 'none';
-                });
-
-
+                path.addEventListener('mouseout', () => { ELS.pieTooltip.style.display = 'none'; });
                 svg.appendChild(path);
             });
-             // If there's very little data or one dominant category, the pie chart might look odd.
-            // Could add labels or a legend if needed for more complex charts.
         }
-
     </script>
 </body>
 </html>
