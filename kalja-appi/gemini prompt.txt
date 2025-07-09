@@ -1,0 +1,40 @@
+make me a javascript/html single page app that calculates the most cheap beer when you take into account the value the beer cans are when returned. translate the visible texts into finnish as you make the program.
+
+the app should have numeric input of beer can size (default 0.5) and then return value of the can (default 0.15)
+
+then there is numeric inputs for count of those beers, and a price of one beer and percentage of alcohol as last input in the row.
+
+then there is a copy of that row again, to input another beer can size and price and percentage.
+
+the program should calculate which one of the beers is more affordable to buy after you return the cans.
+
+so, example program would be:
+beer size: 0.5l (0.15e pantti)
+beer count: 8
+beer price: 3.55e
+beer alcohol: 8.0%
+
+beer size: 0.33l (0.15e pantti)
+beer count: 24
+beer price: 1.09e
+beer alcohol: 4.2%
+
+and then it would calculate for each row the price per 100% alcohol after you returned the cans.
+
+for example:
+beer size: 0.5l (0.15e pantti)
+beer count: 8
+beer price: 3.55e
+beer alcohol: 8.0%
+price per 100%: 135e
+
+beer size: 0.33l (0.15e pantti)
+beer count: 24
+beer price: 1.09e
+beer alcohol: 4.2%
+price per 100%: 115e
+
+then it will highlight the row with green which is the most affordable.
+also for each row it will calculate the total amount of alcohol in litres for that row beers.
+
+so the point is to calculate the most efficient means to get drunk.

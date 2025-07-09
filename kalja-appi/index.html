@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Olutlaskuri</title>
+    <!--<script src="https://cdn.tailwindcss.com"></script>-->
+	<script src="tailwindcss.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+        }
+        .input-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .input-field {
+            flex: 1 1 150px; /* Allows fields to grow and shrink, with a minimum width */
+            display: flex;
+            flex-direction: column;
+        }
+        .input-field label {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .input-field input {
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            background-color: #f8fafc;
+        }
+        .input-field input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        .results-section {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .result-box {
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .result-box.highlight {
+            background-color: #dcfce7; /* Green-100 */
+            border-color: #22c55e; /* Green-500 */
+        }
+        .result-box h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #1e293b;
+        }
+        .result-box p {
+            margin-bottom: 5px;
+            color: #475569;
+        }
+        .result-box p strong {
+            color: #1e293b;
+        }
+        @media (max-width: 768px) {
+            .input-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .input-field {
+                width: 100%;
+                flex: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Olutlaskuri</h1>
+
+        <!-- Olut 1 syöttökentät -->
+        <div class="input-group">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Olut 1</h2>
+            <div class="input-row">
+                <div class="input-field">
+                    <label for="size1">Tölkin koko (litraa):</label>
+                    <input type="number" id="size1" value="0.5" step="0.01" min="0.01">
+                </div>
+                <div class="input-field">
+                    <label for="return1">Pantti (euroa):</label>
+                    <input type="number" id="return1" value="0.15" step="0.01" min="0">
+                </div>
+                <div class="input-field">
+                    <label for="count1">Määrä (kpl):</label>
+                    <input type="number" id="count1" value="1" step="1" min="1">
+                </div>
+                <div class="input-field">
+                    <label for="price1">Hinta per tölkki (euroa):</label>
+                    <input type="number" id="price1" value="2.00" step="0.01" min="0.01">
+                </div>
+                <div class="input-field">
+                    <label for="alcohol1">Alkoholi (%):</label>
+                    <input type="number" id="alcohol1" value="4.7" step="0.1" min="0.1" max="100">
+                </div>
+            </div>
+        </div>
+
+        <!-- Olut 2 syöttökentät -->
+        <div class="input-group">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Olut 2</h2>
+            <div class="input-row">
+                <div class="input-field">
+                    <label for="size2">Tölkin koko (litraa):</label>
+                    <input type="number" id="size2" value="0.5" step="0.01" min="0.01">
+                </div>
+                <div class="input-field">
+                    <label for="return2">Pantti (euroa):</label>
+                    <input type="number" id="return2" value="0.15" step="0.01" min="0">
+                </div>
+                <div class="input-field">
+                    <label for="count2">Määrä (kpl):</label>
+                    <input type="number" id="count2" value="1" step="1" min="1">
+                </div>
+                <div class="input-field">
+                    <label for="price2">Hinta per tölkki (euroa):</label>
+                    <input type="number" id="price2" value="2.00" step="0.01" min="0.01">
+                </div>
+                <div class="input-field">
+                    <label for="alcohol2">Alkoholi (%):</label>
+                    <input type="number" id="alcohol2" value="4.7" step="0.1" min="0.1" max="100">
+                </div>
+            </div>
+        </div>
+
+        <!-- Tulokset -->
+        <div class="results-section">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Tulokset</h2>
+            <div id="result1" class="result-box">
+                <h3>Olut 1 Tulokset</h3>
+                <p><strong>Hinta per 100% alkoholia:</strong> <span id="pricePerAlcohol1">0.00</span> €</p>
+                <p><strong>Alkoholin kokonaismäärä:</strong> <span id="totalAlcohol1">0.00</span> litraa</p>
+            </div>
+            <div id="result2" class="result-box">
+                <h3>Olut 2 Tulokset</h3>
+                <p><strong>Hinta per 100% alkoholia:</strong> <span id="pricePerAlcohol2">0.00</span> €</p>
+                <p><strong>Alkoholin kokonaismäärä:</strong> <span id="totalAlcohol2">0.00</span> litraa</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Funktio laskee oluen tehokkuuden
+        function calculateBeerEfficiency(size, returnValue, count, price, alcohol) {
+            // Muunnetaan syötteet numeroiksi ja varmistetaan, että ne ovat kelvollisia
+            size = parseFloat(size);
+            returnValue = parseFloat(returnValue);
+            count = parseInt(count);
+            price = parseFloat(price);
+            alcohol = parseFloat(alcohol);
+
+            // Tarkista, ovatko syötteet kelvollisia numeroita
+            if (isNaN(size) || isNaN(returnValue) || isNaN(count) || isNaN(price) || isNaN(alcohol)) {
+                return {
+                    pricePerAlcohol: NaN,
+                    totalAlcohol: NaN
+                };
+            }
+
+            // Lasketaan kokonaiskustannukset ilman panttia
+            const totalCost = count * price;
+            // Lasketaan panttien kokonaisarvo
+            const totalReturn = count * returnValue;
+            // Lasketaan nettokustannukset panttien palautuksen jälkeen
+            const netCost = totalCost - totalReturn;
+
+            // Lasketaan oluen kokonaistilavuus litroina
+            const totalVolume = count * size;
+            // Lasketaan puhtaan alkoholin kokonaistilavuus litroina
+            // Alkoholiprosentti jaetaan 100:lla, jotta saadaan desimaaliluku
+            const totalPureAlcoholVolume = totalVolume * (alcohol / 100);
+
+            let pricePerAlcohol = NaN;
+            // Estetään jakaminen nollalla, jos alkoholia ei ole
+            if (totalPureAlcoholVolume > 0) {
+                // Lasketaan hinta per 100% alkoholia (eli hinta per litra puhdasta alkoholia)
+                pricePerAlcohol = netCost / totalPureAlcoholVolume;
+            }
+
+            return {
+                pricePerAlcohol: pricePerAlcohol,
+                totalAlcohol: totalPureAlcoholVolume
+            };
+        }
+
+        // Funktio päivittää tulokset ja korostaa edullisimman
+        function updateResults() {
+            // Haetaan syöttöarvot olut 1:lle
+            const size1 = document.getElementById('size1').value;
+            const return1 = document.getElementById('return1').value;
+            const count1 = document.getElementById('count1').value;
+            const price1 = document.getElementById('price1').value;
+            const alcohol1 = document.getElementById('alcohol1').value;
+
+            // Haetaan syöttöarvot olut 2:lle
+            const size2 = document.getElementById('size2').value;
+            const return2 = document.getElementById('return2').value;
+            const count2 = document.getElementById('count2').value;
+            const price2 = document.getElementById('price2').value;
+            const alcohol2 = document.getElementById('alcohol2').value;
+
+            // Lasketaan tulokset olut 1:lle
+            const resultBeer1 = calculateBeerEfficiency(size1, return1, count1, price1, alcohol1);
+            // Lasketaan tulokset olut 2:lle
+            const resultBeer2 = calculateBeerEfficiency(size2, return2, count2, price2, alcohol2);
+
+            // Päivitetään olut 1:n tulokset käyttöliittymään
+            document.getElementById('pricePerAlcohol1').textContent = resultBeer1.pricePerAlcohol.toFixed(2);
+            document.getElementById('totalAlcohol1').textContent = resultBeer1.totalAlcohol.toFixed(2);
+
+            // Päivitetään olut 2:n tulokset käyttöliittymään
+            document.getElementById('pricePerAlcohol2').textContent = resultBeer2.pricePerAlcohol.toFixed(2);
+            document.getElementById('totalAlcohol2').textContent = resultBeer2.totalAlcohol.toFixed(2);
+
+            // Poistetaan edelliset korostukset
+            document.getElementById('result1').classList.remove('highlight');
+            document.getElementById('result2').classList.remove('highlight');
+
+            // Korostetaan edullisin vaihtoehto
+            // Tarkistetaan, että molemmat tulokset ovat kelvollisia numeroita ennen vertailua
+            const price1Valid = !isNaN(resultBeer1.pricePerAlcohol);
+            const price2Valid = !isNaN(resultBeer2.pricePerAlcohol);
+
+            if (price1Valid && price2Valid) {
+                if (resultBeer1.pricePerAlcohol < resultBeer2.pricePerAlcohol) {
+                    document.getElementById('result1').classList.add('highlight');
+                } else if (resultBeer2.pricePerAlcohol < resultBeer1.pricePerAlcohol) {
+                    document.getElementById('result2').classList.add('highlight');
+                } else {
+                    // Jos hinnat ovat samat, ei korosteta kumpaakaan tai voidaan korostaa molemmat
+                    // Tässä tapauksessa ei korosteta kumpaakaan, jos ne ovat tasan samat.
+                }
+            } else if (price1Valid) {
+                // Jos vain olut 1:n hinta on kelvollinen, korostetaan se
+                document.getElementById('result1').classList.add('highlight');
+            } else if (price2Valid) {
+                // Jos vain olut 2:n hinta on kelvollinen, korostetaan se
+                document.getElementById('result2').classList.add('highlight');
+            }
+        }
+
+        // Lisätään tapahtumakuuntelijat kaikille syöttökentille
+        // Kun jokin syöttökenttä muuttuu, päivitetään tulokset
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', updateResults);
+        });
+
+        // Päivitetään tulokset heti sivun latauduttua oletusarvoilla
+        updateResults();
+    </script>
+</body>
+</html>
