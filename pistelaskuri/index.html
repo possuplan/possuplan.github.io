@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pistelaskuri</title>
+    <style>
+        :root {
+            --background-color-dark: #121212;
+            --surface-color-dark: #1e1e1e;
+            --text-color-dark: #e0e0e0;
+            --primary-color: #4CAF50; /* Green */
+            --secondary-color: rgb(122,122,255,0.5); /* Blue */
+            --accent-color: #FFC107; /* Yellow */
+            --danger-color: #F44336; /* Red */
+            --grey-color: #555;
+            --light-grey-color: #888;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: var(--background-color-dark);
+            color: var(--text-color-dark);
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            -webkit-text-size-adjust: 100%; /* Prevent font scaling on orientation change */
+        }
+
+        /* Prevent text wrapping */
+        input, button, .no-wrap {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .container {
+            padding: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Header/Menu */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: var(--surface-color-dark);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .menu-icon {
+            cursor: pointer;
+            font-size: 30px;
+            padding: 5px 10px;
+            margin-right: 15px;
+            line-height: 0.8; /* Adjust line height to make icon compact */
+        }
+
+        .app-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .side-menu {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 1001;
+            top: 0;
+            left: 0;
+            background-color: var(--surface-color-dark);
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+        }
+
+        .side-menu a {
+            padding: 15px 25px;
+            text-decoration: none;
+            font-size: 20px;
+            color: var(--text-color-dark);
+            display: block;
+            transition: 0.3s;
+        }
+
+        .side-menu a:hover {
+            background-color: var(--grey-color);
+        }
+
+        .side-menu .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
+        }
+
+        /* Buttons */
+        .button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px 0;
+            color: var(--text-color-dark);
+            text-align: center;
+        }
+
+        .button.primary { background-color: var(--primary-color); }
+        .button.secondary { background-color: var(--secondary-color); }
+        .button.accent { background-color: var(--accent-color); }
+        .button.danger { background-color: var(--danger-color); }
+        .button.toggle { background-color: rgb(0,255,0,0.05); }
+        .button.toggle.active { background-color: rgb(0,255,0,0.4); }
+        .button.disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .button-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        /* Inputs */
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            border: 1px solid var(--grey-color);
+            border-radius: 4px;
+            background-color: var(--surface-color-dark);
+            color: var(--text-color-dark);
+            font-size: 16px;
+            box-sizing: border-box; /* Include padding in width */
+        }
+
+        /* Modals/Confirmations */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1002;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--surface-color-dark);
+            margin: auto;
+            padding: 20px;
+            border: 1px solid var(--grey-color);
+            border-radius: 8px;
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* New Game specific styles */
+        .player-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            background-color: var(--surface-color-dark);
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid var(--grey-color);
+        }
+
+        .player-item input[type="text"] {
+            flex-grow: 1;
+            margin-right: 5px;
+            max-width: 10ch; /* Approx 10 chars wide */
+            min-width: 60px; /* Ensure some minimum width */
+        }
+
+        .player-item input[type="number"] {
+            width: 4ch; /* Approx 4 chars wide for points */
+            text-align: center;
+            margin-right: 5px;
+        }
+
+        .player-item .button {
+            padding: 8px 12px;
+            font-size: 14px;
+            margin: 0 2px;
+        }
+
+        .player-item .grab-handle {
+            cursor: grab;
+            font-size: 20px;
+            margin-left: 5px;
+            padding: 0 5px;
+        }
+
+        /* Scorekeeping specific styles */
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .score-table th, .score-table td {
+            border: 1px solid var(--grey-color);
+            padding: 8px;
+            text-align: center;
+            white-space: nowrap; /* Prevent wrapping */
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .score-table th {
+            background-color: rgb(255,255,255,0.1);
+        }
+
+        .score-table .player-row.current-turn {
+            background-color: rgb(122,122,255, 0.1);
+            color: white;
+        }
+
+        .score-table .player-name {
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .score-button {
+            padding: 5px 10px; /* Minimal padding for score buttons */
+            margin: 0; /* Remove default margin */
+            font-size: 14px;
+        }
+
+        .score-button.add-subtract {
+            padding: 5px 5px !important; /* Specific padding for +1/-1 */
+            margin: 0 2px;
+        }
+
+        .score-buttons-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2px; /* Small gap between buttons */
+            padding: 0; /* Remove cell padding */
+        }
+
+        .special-points {
+            color: var(--secondary-color);
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .current-round-points {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .total-points {
+            color: var(--text-color-dark);
+            font-weight: bold;
+        }
+
+        .turn-navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .turn-number-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .sort-icon {
+            cursor: pointer;
+            font-size: 20px;
+            border: 1px solid var(--grey-color);
+            padding: 2px 5px;
+            border-radius: 3px;
+            background-color: var(--grey-color);
+        }
+
+        .sort-icon.active {
+            background-color: var(--light-grey-color);
+        }
+
+        .current-player-display {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        /* Final Scores and History styles */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .results-table th, .results-table td {
+            border: 1px solid var(--grey-color);
+            padding: 8px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .results-table th {
+            background-color: var(--grey-color);
+        }
+
+        .results-table .player-score {
+            font-weight: bold;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 400px) {
+            .player-item input[type="text"] {
+                max-width: 8ch;
+            }
+            .player-item .button {
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+            .score-button {
+                padding: 3px 6px;
+                font-size: 12px;
+            }
+            .score-button.add-subtract {
+                padding: 3px 3px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="menu-icon" onclick="openNav()">&#9776;</div>
+        <div class="app-title">Pistelaskuri</div>
+    </div>
+
+    <div id="sideMenu" class="side-menu">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <a href="#" onclick="showNewGameConfirm()">Uusi peli</a>
+        <a href="#" onclick="showScorekeeping()">Pistelasku</a>
+        <a href="#" onclick="showFinalScores()">Loppupisteet</a>
+        <a href="#" onclick="showHistory()">Historia</a>
+    </div>
+
+    <div class="container" id="mainContent">
+        </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <p id="confirmMessage"></p>
+            <div class="modal-buttons">
+                <button class="button primary" id="confirmYes">Kyllä</button>
+                <button class="button danger" id="confirmNo">Ei</button>
+            </div>
+            <p id="errorMessage" class="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        const mainContent = document.getElementById('mainContent');
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmYes = document.getElementById('confirmYes');
+        const confirmNo = document.getElementById('confirmNo');
+        const errorMessage = document.getElementById('errorMessage');
+
+        let players = [];
+        let currentTurn = 0; // 0-indexed for internal use, 1-indexed for display
+        let gameTurns = []; // Stores score for each turn: [{ playerId: score, ... }]
+        let dragSrcEl = null;
+        let isSortingPlayers = false; // Flag to indicate if sorting is active in scorekeeping view
+
+        // --- Data Persistence (LocalStorage) ---
+        function saveData() {
+            localStorage.setItem('players', JSON.stringify(players));
+            localStorage.setItem('currentTurn', JSON.stringify(currentTurn));
+            localStorage.setItem('gameTurns', JSON.stringify(gameTurns));
+        }
+
+        function loadData() {
+            const storedPlayers = localStorage.getItem('players');
+            const storedCurrentTurn = localStorage.getItem('currentTurn');
+            const storedGameTurns = localStorage.getItem('gameTurns');
+
+            if (storedPlayers) {
+                players = JSON.parse(storedPlayers);
+            } else {
+                players = []; // Ensure players array is initialized
+            }
+            if (storedCurrentTurn) {
+                currentTurn = JSON.parse(storedCurrentTurn);
+            } else {
+                currentTurn = 0;
+            }
+            if (storedGameTurns) {
+                gameTurns = JSON.parse(storedGameTurns);
+            } else {
+                gameTurns = [];
+            }
+
+            // Ensure gameTurns is never empty if players exist for a new game scenario
+            if (players.length > 0 && gameTurns.length === 0) {
+                gameTurns.push(createEmptyTurn());
+            } else if (players.length === 0 && gameTurns.length > 0) {
+                 // Clear gameTurns if players are somehow gone
+                gameTurns = [];
+                currentTurn = 0;
+            }
+        }
+
+        // --- Menu Functions ---
+        function openNav() {
+            document.getElementById("sideMenu").style.width = "250px";
+        }
+
+        function closeNav() {
+            document.getElementById("sideMenu").style.width = "0";
+        }
+
+        // --- Confirmation Modal Functions ---
+        let confirmAction = null;
+        let confirmErrorTarget = null;
+
+        function showConfirm(message, callback, errorMsg = '', errorTarget = null) {
+            confirmMessage.textContent = message;
+            errorMessage.textContent = ''; // Clear previous errors
+            confirmAction = callback;
+            confirmErrorTarget = errorTarget; // Store where to display error if needed
+            confirmModal.style.display = 'flex';
+        }
+
+        confirmYes.onclick = () => {
+            if (confirmAction) {
+                try {
+                    confirmAction(true);
+                    confirmModal.style.display = 'none';
+                } catch (e) {
+                    errorMessage.textContent = e.message;
+                    // Don't hide modal on error if it's meant to show an error
+                }
+            }
+        };
+
+        confirmNo.onclick = () => {
+            confirmModal.style.display = 'none';
+            if (confirmAction) {
+                confirmAction(false); // Pass false for "No"
+            }
+            errorMessage.textContent = ''; // Clear error on close
+        };
+
+        // --- View Management ---
+        function clearMainContent() {
+            mainContent.innerHTML = '';
+            closeNav();
+        }
+
+        // --- New Game View ---
+        function showNewGameConfirm() {
+            clearMainContent();
+            showConfirm("Tyhjennä nykyinen ja luo uusi?", (response) => {
+                if (response) {
+                    startNewGameProcess();
+                }
+            });
+        }
+
+        function startNewGameProcess() {
+            players = [];
+            currentTurn = 0;
+            gameTurns = [];
+            addPlayerRow(); // Add first player input automatically
+            renderNewGameView();
+            saveData();
+        }
+
+        function renderNewGameView() {
+            clearMainContent();
+            let html = `
+                <button class="button secondary" onclick="startGameConfirm()">Aloita peli</button>
+                <ul id="playerList" class="player-list"></ul>
+                <button class="button primary" onclick="addPlayerRow()">Uusi pelaaja</button>
+            `;
+            mainContent.innerHTML = html;
+
+            if (players.length === 0) {
+                addPlayerRow(); // Ensure at least one player input is always present
+            } else {
+                players.forEach(player => addPlayerRow(player));
+            }
+
+            setupDragAndDrop();
+        }
+
+        function addPlayerRow(player = { id: Date.now(), name: '', initialPoints: 0 }) {
+            if (!player.name) player.name = ''; // Ensure name is not undefined
+            if (!player.initialPoints) player.initialPoints = 0; // Ensure initialPoints is not undefined
+
+            const playerList = document.getElementById('playerList');
+            if (!playerList) { // If playerList doesn't exist yet, it means renderNewGameView hasn't been called
+                players.push(player);
+                return;
+            }
+
+            const li = document.createElement('li');
+            li.className = 'player-item';
+            li.draggable = true;
+            li.dataset.id = player.id; // Store player ID on the DOM element
+
+            li.innerHTML = `
+                <input type="text" placeholder="nimi" value="${escapeHtml(player.name)}" oninput="updatePlayerName(this, ${player.id})" maxlength="10">
+                <input type="number" value="${player.initialPoints}" oninput="updatePlayerInitialPoints(this, ${player.id})" style="width: 4ch;">
+                <button class="button danger" onclick="removePlayerRow(this, ${player.id})">Poista</button>
+                <span class="grab-handle">&#x2263;</span>
+            `;
+            playerList.appendChild(li);
+            if (!players.find(p => p.id === player.id)) { // Add only if not already in array
+                players.push(player);
+            }
+            saveData();
+        }
+
+        function updatePlayerName(input, playerId) {
+            const player = players.find(p => p.id === playerId);
+            if (player) {
+                player.name = input.value;
+                saveData();
+            }
+        }
+
+        function updatePlayerInitialPoints(input, playerId) {
+            const player = players.find(p => p.id === playerId);
+            if (player) {
+                player.initialPoints = parseInt(input.value) || 0;
+                saveData();
+            }
+        }
+
+        function removePlayerRow(button, playerId) {
+            button.closest('.player-item').remove();
+            players = players.filter(p => p.id !== playerId);
+            saveData();
+        }
+
+        function startGameConfirm() {
+            const playerNames = players.map(p => p.name.trim()).filter(name => name !== '');
+            if (playerNames.length < 2) {
+                showConfirm("Haluatko aloittaa pelin?", (response) => { /* noop for "yes", just show error */ }, "Pelaajia on oltava vähintään 2.", true);
+                return;
+            }
+
+            showConfirm("Haluatko aloittaa pelin?", (response) => {
+                if (response) {
+                    startGame();
+                }
+            });
+        }
+
+        function startGame() {
+            // Filter out players with empty names and update IDs if needed
+            players = players.filter(p => p.name.trim() !== '');
+            if (players.length < 2) {
+                throw new Error("Pelaajia on oltava vähintään 2.");
+            }
+
+            // Re-assign simple IDs for game turns if needed, or keep original IDs consistent
+            // For simplicity, we'll keep original IDs. If original IDs are based on Date.now(), they are unique enough.
+            // If the order changed, players array is already updated by drag & drop.
+
+            gameTurns = [];
+            currentTurn = 0; // Start at turn 0 (first turn in gameTurns array)
+            gameTurns.push(createEmptyTurn()); // Create the very first turn
+
+            // Apply initial points to the first turn
+            players.forEach(player => {
+                if (player.initialPoints && player.initialPoints !== 0) {
+                    gameTurns[0][player.id] = { base: 0, special: player.initialPoints, plus3: false, plus2: false };
+                } else {
+                    gameTurns[0][player.id] = { base: 0, special: 0, plus3: false, plus2: false };
+                }
+            });
+
+            saveData();
+            showScorekeeping();
+        }
+
+        function createEmptyTurn() {
+            const turn = {};
+            players.forEach(player => {
+                // Initialize each player for the new turn with 0 points
+                turn[player.id] = { base: 0, special: 0, plus3: false, plus2: false };
+            });
+            return turn;
+        }
+
+        function setupDragAndDrop() {
+            const playerList = document.getElementById('playerList');
+            if (!playerList) return;
+
+            playerList.addEventListener('dragstart', handleDragStart, false);
+            playerList.addEventListener('dragover', handleDragOver, false);
+            playerList.addEventListener('drop', handleDrop, false);
+            playerList.addEventListener('dragend', handleDragEnd, false);
+        }
+
+        function handleDragStart(e) {
+            dragSrcEl = e.target.closest('.player-item');
+            if (dragSrcEl) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', dragSrcEl.innerHTML);
+                dragSrcEl.classList.add('dragging');
+            }
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow drop
+            e.dataTransfer.dropEffect = 'move';
+            const target = e.target.closest('.player-item');
+            if (target && target !== dragSrcEl) {
+                const rect = target.getBoundingClientRect();
+                const mid = rect.top + rect.height / 2;
+                if (e.clientY < mid) {
+                    target.parentNode.insertBefore(dragSrcEl, target);
+                } else {
+                    target.parentNode.insertBefore(dragSrcEl, target.nextSibling);
+                }
+            }
+        }
+
+        function handleDrop(e) {
+            e.stopPropagation(); // Stops some browsers from redirecting.
+            if (dragSrcEl !== e.target.closest('.player-item')) {
+                // The actual DOM manipulation happens in dragover
+            }
+            return false;
+        }
+
+        function handleDragEnd(e) {
+            const playerItems = document.querySelectorAll('#playerList .player-item');
+            players = Array.from(playerItems).map(item => {
+                const id = parseInt(item.dataset.id);
+                const nameInput = item.querySelector('input[type="text"]');
+                const pointsInput = item.querySelector('input[type="number"]');
+                return {
+                    id: id,
+                    name: nameInput ? nameInput.value : '',
+                    initialPoints: pointsInput ? parseInt(pointsInput.value) || 0 : 0
+                };
+            });
+            dragSrcEl.classList.remove('dragging');
+            dragSrcEl = null;
+            saveData();
+        }
+
+        // --- Scorekeeping View ---
+        function showScorekeeping(turnIndex = currentTurn) {
+            clearMainContent();
+            if (players.length === 0) {
+                mainContent.innerHTML = `<p>Aloita uusi peli lisätäksesi pelaajia.</p>`;
+                return;
+            }
+
+            // Ensure currentTurn is within bounds
+            if (turnIndex < 0) turnIndex = 0;
+            if (turnIndex >= gameTurns.length) turnIndex = gameTurns.length - 1;
+            currentTurn = turnIndex; // Update global currentTurn
+
+            const displayTurnNumber = currentTurn + 1;
+            const currentPlayerIndex = currentTurn % players.length; // Determine current player for visual highlight
+
+            let html = `
+                <div class="current-player-display">Vuorossa: ${escapeHtml(players[currentPlayerIndex]?.name || '')}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div class="turn-navigation">
+                        <button class="button secondary ${currentTurn === 0 ? 'disabled' : ''}" onclick="showScorekeeping(${currentTurn - 1})">&lt;</button>
+                        <span class="turn-number-display">Vuoro ${displayTurnNumber}</span>
+                        <button class="button secondary ${currentTurn === gameTurns.length - 1 ? 'disabled' : ''}" onclick="showScorekeeping(${currentTurn + 1})">&gt;</button>
+                    </div>
+                    <button class="button primary" onclick="saveTurnConfirm(${displayTurnNumber})">Tallenna vuoro ${displayTurnNumber}</button>
+                    <span class="sort-icon ${isSortingPlayers ? 'active' : ''}" onclick="toggleSortScores()">&#x2195;</span>
+                </div>
+                <table class="score-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nimi</th>
+                            <th>Pisteet</th>
+                            <th colspan="3">Muokkaa</th>
+                            <th>Kierros</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scoreTableBody">
+                    </tbody>
+                </table>
+                <button class="button danger" onclick="endGameConfirm()" style="margin-top: 20px; width: 100%;">Lopeta peli</button>
+            `;
+            mainContent.innerHTML = html;
+            renderScoreTableRows();
+            saveData();
+        }
+
+        function renderScoreTableRows() {
+            const scoreTableBody = document.getElementById('scoreTableBody');
+            scoreTableBody.innerHTML = '';
+
+            const currentTurnData = gameTurns[currentTurn] || createEmptyTurn();
+            // Calculate total points for sorting
+            const playersWithScores = players.map(player => {
+                const playerTotalScore = calculateTotalPoints(player.id, currentTurn);
+                return {
+                    player: player,
+                    totalScore: playerTotalScore,
+                    roundScore: calculateRoundScore(player.id, currentTurn),
+                    turnData: currentTurnData[player.id] || { base: 0, special: 0, plus3: false, plus2: false }
+                };
+            });
+
+            // Sort if sorting is active
+            if (isSortingPlayers) {
+                playersWithScores.sort((a, b) => b.totalScore - a.totalScore); // Descending order
+            }
+
+            playersWithScores.forEach((data, index) => {
+                const player = data.player;
+                const roundData = data.turnData;
+                const rowClass = (currentTurn % players.length === players.findIndex(p => p.id === player.id) && currentTurn === gameTurns.length - 1) ? 'current-turn' : '';
+
+                const tr = document.createElement('tr');
+                tr.className = `player-row ${rowClass}`;
+                tr.innerHTML = `
+                    <td>${index + 1}.</td>
+                    <td class="player-name">${escapeHtml(player.name)}</td>
+                    <td class="total-points">${data.totalScore}</td>
+                    <td><button class="button primary score-button toggle ${roundData.plus3 ? 'active' : ''}" onclick="togglePoint(this, ${player.id}, 'plus3')">+3</button></td>
+                    <td><button class="button accent score-button toggle ${roundData.plus2 ? 'active' : ''}" onclick="togglePoint(this, ${player.id}, 'plus2')">+2</button></td>
+                    <td class="score-buttons-cell">
+                        <button class="button secondary score-button add-subtract" style="padding: 5px 5px;" onclick="addSpecialPoint(${player.id}, 1)">+1</button>
+                        <button class="button secondary score-button add-subtract" style="padding: 5px 5px;" onclick="addSpecialPoint(${player.id}, -1)">-1</button>
+                        <span class="special-points">${roundData.special || 0}</span>
+                    </td>
+                    <td class="current-round-points">${data.roundScore}</td>
+                `;
+                scoreTableBody.appendChild(tr);
+            });
+        }
+
+        function toggleSortScores() {
+            isSortingPlayers = !isSortingPlayers;
+            const sortIcon = document.querySelector('.sort-icon');
+            if (sortIcon) {
+                sortIcon.classList.toggle('active', isSortingPlayers);
+            }
+            renderScoreTableRows();
+            saveData();
+        }
+
+        function togglePoint(button, playerId, type) {
+            if (currentTurn !== gameTurns.length - 1) { // Only allow modification of current (latest) turn
+                alert("Et voi muokata aikaisempia vuoroja näin.");
+                return;
+            }
+
+            const currentTurnData = gameTurns[currentTurn][playerId];
+            if (!currentTurnData) return;
+
+            button.classList.toggle('active');
+            currentTurnData[type] = !currentTurnData[type];
+
+            updateRoundScoresAndDisplay();
+            saveData();
+        }
+
+        function addSpecialPoint(playerId, value) {
+            if (currentTurn !== gameTurns.length - 1) { // Only allow modification of current (latest) turn
+                alert("Et voi muokata aikaisempia vuoroja näin.");
+                return;
+            }
+
+            const currentTurnData = gameTurns[currentTurn][playerId];
+            if (!currentTurnData) return;
+
+            currentTurnData.special = (currentTurnData.special || 0) + value;
+            updateRoundScoresAndDisplay();
+            saveData();
+        }
+
+        function calculateRoundScore(playerId, turnIndex) {
+            const turnData = gameTurns[turnIndex]?.[playerId];
+            if (!turnData) return 0;
+            let score = (turnData.base || 0) + (turnData.special || 0);
+            if (turnData.plus3) score += 3;
+            if (turnData.plus2) score += 2;
+            return score;
+        }
+
+        function calculateTotalPoints(playerId, upToIndex) {
+            let total = 0;
+            for (let i = 0; i <= upToIndex; i++) {
+                total += calculateRoundScore(playerId, i);
+            }
+            return total;
+        }
+
+        function updateRoundScoresAndDisplay() {
+            renderScoreTableRows(); // Re-render table to update all scores
+        }
+
+        function saveTurnConfirm(displayTurnNumber) {
+             showConfirm(`Haluatko tallentaa vuoron ${displayTurnNumber}?`, (response) => {
+                if (response) {
+                    saveCurrentTurn();
+                }
+            });
+        }
+
+        function saveCurrentTurn() {
+            // No actual "saving" is needed as changes are live. This function mainly prepares for next turn.
+            // Check if it's the latest turn before creating a new one
+            if (currentTurn === gameTurns.length - 1) {
+                // Ensure all players exist in the current turn before creating a new one
+                players.forEach(player => {
+                    if (!gameTurns[currentTurn][player.id]) {
+                        gameTurns[currentTurn][player.id] = { base: 0, special: 0, plus3: false, plus2: false };
+                    }
+                });
+                gameTurns.push(createEmptyTurn()); // Create new empty turn
+                currentTurn = gameTurns.length - 1; // Move to the newly created turn
+            }
+            saveData();
+            showScorekeeping(currentTurn); // Re-render to show new empty turn / disable > button
+        }
+
+        function endGameConfirm() {
+            showConfirm("Loppuiko peli ja lasketaan loppupisteet?", (response) => {
+                if (response) {
+                    showFinalScores();
+                }
+            });
+        }
+
+        // --- Final Scores View ---
+        function showFinalScores() {
+            clearMainContent();
+            if (players.length === 0) {
+                mainContent.innerHTML = `<p>Aloita uusi peli nähdäksesi loppupisteet.</p>`;
+                return;
+            }
+
+            const finalScores = players.map(player => ({
+                player: player,
+                total: calculateTotalPoints(player.id, gameTurns.length - 1)
+            }));
+
+            finalScores.sort((a, b) => b.total - a.total); // Sort descending
+
+            let html = `<h2>Loppupisteet</h2>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Sijoitus</th>
+                            <th>Nimi</th>
+                            <th>Pisteet</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            finalScores.forEach((data, index) => {
+                html += `
+                    <tr>
+                        <td>${index + 1}.</td>
+                        <td>${escapeHtml(data.player.name)}</td>
+                        <td class="player-score">${data.total}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            mainContent.innerHTML = html;
+        }
+
+        // --- History View ---
+        function showHistory() {
+            clearMainContent();
+            if (players.length === 0 || gameTurns.length === 0) {
+                mainContent.innerHTML = `<p>Ei historiaa näytettäväksi. Aloita peli.</p>`;
+                return;
+            }
+
+            let html = `<h2>Historia</h2>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>`; // Vuoronumero
+
+            // Player names in order of initial list
+            players.forEach(player => {
+                html += `<th>${escapeHtml(player.name)}</th>`;
+            });
+            html += `</tr></thead><tbody>`;
+
+            gameTurns.forEach((turnData, index) => {
+                // Only show turns where points have been added or it's the last turn
+                const isTurnEmpty = Object.values(turnData).every(pData =>
+                    (pData.base === 0 || typeof pData.base === 'undefined') &&
+                    (pData.special === 0 || typeof pData.special === 'undefined') &&
+                    !pData.plus2 && !pData.plus3
+                );
+                // Don't show the very last (empty) turn if it's truly empty and not the only turn
+                if (isTurnEmpty && index === gameTurns.length - 1 && gameTurns.length > 1) {
+                    return; // Skip rendering this empty future turn
+                }
+                if (isTurnEmpty && index < gameTurns.length -1) {
+                    return; // Don't show empty past turns
+                }
+
+
+                html += `<tr><td>${index + 1}.</td>`;
+                players.forEach(player => {
+                    const score = calculateRoundScore(player.id, index);
+                    html += `<td>${score}</td>`;
+                });
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table>`;
+            mainContent.innerHTML = html;
+        }
+
+        // --- Utility to escape HTML for display ---
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            if (players.length > 0) {
+                showScorekeeping(); // Go directly to scorekeeping if data exists
+            } else {
+                renderNewGameView(); // Otherwise, start with New Game
+            }
+        });
+
+    </script>
+</body>
+</html>
