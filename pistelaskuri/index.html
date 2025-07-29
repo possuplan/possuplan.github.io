@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pistelaskuri</title>
+	
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+	
+
     <style>
         :root {
             --background-color-dark: #121212;
@@ -365,7 +371,16 @@
                 padding: 3px 3px !important;
             }
         }
+		
+		.newgame {
+			color:rgb(120,255,0,0.7) !important;
+		}
+		
+		.side-menu i {
+			margin-right:6px;
+		}
     </style>
+	
 </head>
 <body>
     <div class="header">
@@ -375,10 +390,14 @@
 
     <div id="sideMenu" class="side-menu">
         <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-        <a href="#" onclick="showNewGameConfirm()">Uusi peli</a>
-        <a href="#" onclick="showScorekeeping()">Pistelasku</a>
-        <a href="#" onclick="showFinalScores()">Loppupisteet</a>
-        <a href="#" onclick="showHistory()">Historia</a>
+        <a href="#" onclick="showNewGameConfirm()" class="newgame"><i class="fa-solid fa-circle-plus"></i> Uusi peli
+</a>
+        <a href="#" onclick="showScorekeeping()"><i class="fa-solid fa-calculator"></i> Pistelasku
+</a>
+        <a href="#" onclick="showFinalScores()"><i class="fa-solid fa-flag-checkered"></i> Loppupisteet
+</a>
+        <a href="#" onclick="showHistory()"><i class="fa-solid fa-clock-rotate-left"></i> Historia
+</a>
     </div>
 
     <div class="container" id="mainContent">
@@ -954,14 +973,14 @@
                     return; // Skip rendering this empty future turn
                 }
                 if (isTurnEmpty && index < gameTurns.length -1) {
-                    return; // Don't show empty past turns
+                    //return; // Don't show empty past turns
                 }
 
 
                 html += `<tr><td>${index + 1}.</td>`;
                 players.forEach(player => {
                     const score = calculateRoundScore(player.id, index);
-                    html += `<td>${score}</td>`;
+                    html += `<td>${score === 0 ? "&nbsp;" : score}</td>`;
                 });
                 html += `</tr>`;
             });
