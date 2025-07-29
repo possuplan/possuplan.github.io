@@ -222,19 +222,26 @@
             border-collapse: collapse;
             margin-top: 10px;
         }
-
+		
         .score-table th, .score-table td {
             border: 1px solid var(--grey-color);
-            padding: 8px;
+            padding: 4px 0px 4px 0px;
             text-align: center;
             white-space: nowrap; /* Prevent wrapping */
             overflow: hidden;
             text-overflow: ellipsis;
+			
         }
 
         .score-table th {
             background-color: rgb(255,255,255,0.1);
         }
+		
+		
+		.titles {
+			font-size:10px;
+		}
+
 
         .score-table .player-row.current-turn {
             background-color: rgb(122,122,255, 0.1);
@@ -244,10 +251,11 @@
         .score-table .player-name {
             text-align: left;
             font-weight: bold;
+			padding-left:8px;
         }
 
         .score-button {
-            padding: 5px 10px; /* Minimal padding for score buttons */
+            padding: 5px 5px; /* Minimal padding for score buttons */
             margin: 0; /* Remove default margin */
             font-size: 14px;
         }
@@ -712,12 +720,12 @@
                 </div>
                 <table class="score-table">
                     <thead>
-                        <tr>
+                        <tr class="titles">
                             <th>#</th>
                             <th>Nimi</th>
                             <th>Pisteet</th>
-                            <th colspan="3">Muokkaa</th>
-                            <th>Kierros</th>
+                            <th colspan="2">Muokkaa</th>
+                            <th>Nyt</th>
                         </tr>
                     </thead>
                     <tbody id="scoreTableBody">
@@ -762,8 +770,13 @@
                     <td>${index + 1}.</td>
                     <td class="player-name">${escapeHtml(player.name)}</td>
                     <td class="total-points">${data.totalScore}</td>
-                    <td><button class="button primary score-button toggle ${roundData.plus3 ? 'active' : ''}" onclick="togglePoint(this, ${player.id}, 'plus3')">+3</button></td>
-                    <td><button class="button accent score-button toggle ${roundData.plus2 ? 'active' : ''}" onclick="togglePoint(this, ${player.id}, 'plus2')">+2</button></td>
+                    <td>
+						
+						<button class="button primary score-button toggle ${roundData.plus3 ? 'active' : ''}" onclick="togglePoint(this, ${player.id}, 'plus3')">+3</button>
+						
+						<button class="button accent score-button toggle ${roundData.plus2 ? 'active' : ''}" onclick="togglePoint(this, ${player.id}, 'plus2')">+2</button>
+					
+					</td>
                     <td class="score-buttons-cell">
                         <button class="button secondary score-button add-subtract" style="padding: 5px 5px;" onclick="addSpecialPoint(${player.id}, 1)">+1</button>
                         <button class="button secondary score-button add-subtract" style="padding: 5px 5px;" onclick="addSpecialPoint(${player.id}, -1)">-1</button>
