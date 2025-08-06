@@ -166,6 +166,8 @@
 
     document.addEventListener('DOMContentLoaded', (event) => {
         loadData();
+		//console.log("data loaded");
+		//console.log(data);
         if (data.rooms.length === 0) {
             showSettings();
         } else {
@@ -188,6 +190,7 @@
     function toggleNav() {
         const sidebar = document.getElementById("sidebar");
         const mainContent = document.getElementById("main-content");
+		renderSidebar();
         if (sidebar.style.width === "250px") {
             sidebar.style.width = "0";
             mainContent.style.marginLeft = "0";
@@ -198,6 +201,7 @@
     }
 
     function renderSidebar() {
+		//console.log("renderSidebar");
         const roomListSidebar = document.getElementById('room-list-sidebar');
         roomListSidebar.innerHTML = '';
         data.rooms.forEach(room => {
@@ -319,7 +323,14 @@
             const plantDiv = document.createElement('div');
             plantDiv.className = `row ${isToday ? 'row-today' : ''}`;
             
-            const dateString = lastWateredDate ? lastWateredDate.toLocaleString('fi-FI', { dateStyle: 'short', timeStyle: 'short' }) : 'Ei kasteltu';
+			const dateString = lastWateredDate
+			  ? `${lastWateredDate.toLocaleDateString('fi-FI')} ${lastWateredDate.toLocaleTimeString('fi-FI', {
+				  hour: '2-digit',
+				  minute: '2-digit',
+				  second: '2-digit',
+				  hour12: false // optional: ensures 24-hour format
+				}).replaceAll('.', ':')}`
+			  : 'Ei kasteltu tänään';
             
             plantDiv.innerHTML = `
                 <div class="flex-grow">${plant.name}</div>
