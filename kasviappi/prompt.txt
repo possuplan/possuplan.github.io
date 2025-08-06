@@ -1,0 +1,73 @@
+tee yhden sivun javascript/html/css dark themed mobiilisovellus mahdollisimman tiiviisti. ohjelman pitää tallentaa tiedot tietokantaan myöhempää käyttöä varten jotta ne eivät katoa kun selain suljetaan. älä jaa css/js/html erillisiin sivuihin.
+
+
+
+ohjelma on erilaisia tehtäviä varten, esim milloin on kastellut kasvit. voidaan myös luoda uusia kategorioita kasvien lisäksi. ylhäällä vasemmalla on 3 viivan ikoni jossa näkyy: Kategoriat, ja näiden alla kaikki kategoriat (viiva tai pallo niiden edessä esittäen listaa) joita klikkaamalla mennään editoimaan niitä. Kateorien alhaalla viimeisenä on Roskakori, josta voidaan palauttaa poistettuja tietoja. viimeisin kategoria jota on muokattu (esim kasteltu kasveja) avautuu automaattisesti kirjaamismoodiin kun ohjelman avaa uudestaan, sekä se kategoria on korostettu kategoriat listassa kirkkaammalla taustavärillä. kun ohjelman avaa ensimmäistä kertaa, mennään kategoriat sivulle, jossa luodaan kategorioita.
+
+
+
+kategoriat valintaa klikkaamalla avautuu näkymä jossa listataan kaikki kategoriat joissa on inputit sen nimen muokkaamiseen sekä sen alla on lista ryhmistä (esim olohuone) ja sen alla on erikseen listattuna kasvit nimeltä joiden nimiä voi myös muokata. jokaisella kategorialla, ryhmällä tai kasvin tiedoilla on poistonappi (jolloin se menee roskakoriin josta sen voi myös palauttaa myöhemmin). ja jokaisen listan alapuolella on lisää uusi (kategoria, ryhmä, tieto) nappi, joka lisää uuden rivin sen listan alle jossa voi lisätä uuden nimen noille. voi myös luoda kategorian niin että se yksinkertaisesti pitää kirjaa kerroista jolloin sitä on tehty, esim milloin on juonut kaljaa ja mitä kaljaa.
+
+
+
+esimerkki näkymästä kategoriat sivulla (oletuksena kategoriat on pienennetty jolloin niitä klikkaamalla se avautuu):
+
+
+
+Kasvien kastelu (kategoria)
+
+- olohuone (ryhmä) | historia nappi
+
+  - aloe vera | vähän (kastelumäärä) | 08.05.2025 | kastele (nappi)
+
+  - limoviikuna | vähän (kastelumäärä) | 08.05.2025 | kastele (nappi)
+
+- parveke (ryhmä) | historia nappi
+
+  - aloe vera | vähän (kastelumäärä) | 08.05.2025 | kastele (nappi)
+
+  - limoviikuna | vähän (kastelumäärä) | 08.05.2025 | kastele (nappi)
+
+
+
+kasvin lopussa on nappi "kastele" joka päivittää kastelupäivän siihen kasviin, jolloin päivämäärä päivittyy tuossa kasvissa, ei siis näytetä erikseen jokaista kastelukertaa. historia nappia painamalla pääsee näkemään sen ryhmän kasteluhistoriaa jokaista kastelukertaa mukaanlukien, jolloin listassa näkyy vain kasvien tiedot ja sen lopussa "historia" nappi jota painamalla avautuu lista jokaisesta kastelukerrasta mitä on ikinä tehty. lista pitäisi olla niin että viimeisin kastelu näkyy ensimmäisenä, ja se näyttäisi maksimissaan 10 kastelukertaa, jonka lopussa on "näytä lisää" nappi joka näyttää vanhempia kertoja. "näytä lisää | v" napin oikealla puolella on nuoli nappula (esimerkissä "v" tarkoittaa alaspäin nuolta) jota painamalla avautuu pieni valikko josta voi valita "näytä vähän" (tässä hetkessä aktiivinen) ja "näytä kaikki" jolloin jokainen kerta tulee näkyviin kerralla. jos painaa "näytä kaikki" niin listan lopussa on "näytä vähemmän" nappi joka palauttaa alkuperäisen 10 kastelukerran. käytä tätä logiikkaa kaikkiin kategorioihin.
+
+
+
+Kaljan juominen (kategoria)
+
+- 08.05.2025 / 23:01:55 | kalja | 0.5l | 8% 
+
+- 08.05.2025 / 23:51:55 | kalja | 0.5l | 8% 
+
+
+
+masturboiminen (kategoria)
+
+- 08.05.2025 / 23:01:55
+
+- 08.05.2025 / 23:51:55
+
+
+
+kaljan juomiseenkin voi luoda uusia ryhmiä, esim:
+
+
+
+Kaljan juominen (kategoria)
+
+- terassi
+
+  - 08.05.2025 / 23:01:55 | kalja | 0.5l | 8% 
+
+  - 08.05.2025 / 23:51:55 | kalja | 0.5l | 8% 
+
+- kotona
+
+  - 08.05.2025 / 23:01:55 | kalja | 0.5l | 8% 
+
+  - 08.05.2025 / 23:51:55 | kalja | 0.5l | 8% 
+
+
+
+eli pitäisi myös olla editori jolla voidaan määrittää minkälaisia tietoja kerätään, vaihtoehtoina olisi aikaleima, asian nimi (kalja), litramäärä, prosentti, teksti, numero (keksi lisää mahdollisia tietotyyppejä tähän tulevaisuutta varten). sekä voisi valita miten ne tiedot näytetään käyttäjälle, esim kasvien kastelussa ei ole tärkeää näyttää kuin pelkkä päivämäärä, ei kellonaikaa. kuten esimerkissä näkyy, masturboimiseen ei tarvita kuin kellonaika. kellonaika ei toisaalta ole pakollista lisätä kaikkiin kategorioihin, käyttäjä voi määrittää mitä tietoja kerätään, voi olla mahdollista myös tehdä ostoslista tällä tavalla, eli antamalla mahdollisuudeksi pelkän teksti-inputin (jonka pitäisi ehdottaa aiemmin kirjoitettuja arvoja siihen kategoriaan liittyen).

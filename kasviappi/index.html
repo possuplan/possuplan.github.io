@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasvien Kastelu - Dark Theme</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #1f1f1f;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        .menu-toggle {
+            font-size: 24px;
+            cursor: pointer;
+            padding-right: 15px;
+            color: #ffffff;
+        }
+        .container {
+            padding: 20px;
+        }
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 200;
+            top: 0;
+            left: 0;
+            background-color: #1f1f1f;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+        }
+        .sidebar-content {
+            padding: 20px;
+        }
+        .sidebar a {
+            padding: 8px 8px 8px 32px;
+            text-decoration: none;
+            font-size: 20px;
+            color: #818181;
+            display: block;
+            transition: 0.3s;
+        }
+        .sidebar a:hover {
+            color: #f1f1f1;
+        }
+        .sidebar .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
+        }
+        .main-content {
+            transition: margin-left .5s;
+            padding: 20px;
+        }
+        h2 {
+            color: #ffffff;
+            margin-top: 0;
+        }
+        button, input[type="text"] {
+            padding: 8px 12px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            background-color: #333;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            width: calc(100% - 24px);
+        }
+        .btn-green { background-color: #4CAF50; }
+        .btn-red { background-color: #f44336; }
+        .btn-blue { background-color: #2196F3; }
+        .btn-yellow { background-color: #ffc107; }
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #333;
+        }
+        .row:last-child {
+            border-bottom: none;
+        }
+        .row-today {
+            background-color: #2e7d32;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .flex-grow {
+            flex-grow: 1;
+            padding-right: 10px;
+        }
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .settings-row input {
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <span class="menu-toggle" onclick="toggleNav()">&#9776;</span>
+    <h2 id="current-view-title">Asetukset</h2>
+</div>
+
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-content">
+        <a href="javascript:void(0)" class="closebtn" onclick="toggleNav()">&times;</a>
+        <a href="#" onclick="showSettings()">Asetukset</a>
+        <h3 style="color:#ffffff;">Huoneet:</h3>
+        <div id="room-list-sidebar"></div>
+    </div>
+</div>
+
+<div id="main-content" class="main-content">
+    <div id="settings-view">
+        <div id="settings-rooms-list"></div>
+        <div class="settings-row">
+            <input type="text" id="new-room-input" placeholder="Uusi huoneen nimi">
+            <button class="btn-green" onclick="addRoom()">Tallenna</button>
+        </div>
+    </div>
+    
+    <div id="room-view" style="display:none;">
+        <div id="plants-list-view"></div>
+        <div id="add-plant-section">
+            <div class="settings-row">
+                <input type="text" id="new-plant-input" placeholder="Uusi kasvin nimi">
+                <button class="btn-green" onclick="addPlantToCurrentRoom()">Tallenna</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'plantTrackerData';
+    let data = { rooms: [] };
+    let currentRoomId = null;
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+        loadData();
+        if (data.rooms.length === 0) {
+            showSettings();
+        } else {
+            showRoomView(data.rooms[0].id);
+        }
+    });
+
+    function loadData() {
+        const storedData = localStorage.getItem(STORAGE_KEY);
+        if (storedData) {
+            data = JSON.parse(storedData);
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        renderSidebar();
+    }
+
+    function toggleNav() {
+        const sidebar = document.getElementById("sidebar");
+        const mainContent = document.getElementById("main-content");
+        if (sidebar.style.width === "250px") {
+            sidebar.style.width = "0";
+            mainContent.style.marginLeft = "0";
+        } else {
+            sidebar.style.width = "250px";
+            mainContent.style.marginLeft = "250px";
+        }
+    }
+
+    function renderSidebar() {
+        const roomListSidebar = document.getElementById('room-list-sidebar');
+        roomListSidebar.innerHTML = '';
+        data.rooms.forEach(room => {
+            const roomLink = document.createElement('a');
+            roomLink.href = '#';
+            roomLink.onclick = () => { showRoomView(room.id); toggleNav(); };
+            roomLink.textContent = room.name;
+            roomListSidebar.appendChild(roomLink);
+        });
+    }
+
+    function showSettings() {
+        document.getElementById('current-view-title').textContent = 'Asetukset';
+        document.getElementById('settings-view').style.display = 'block';
+        document.getElementById('room-view').style.display = 'none';
+        renderSettings();
+    }
+
+    function renderSettings() {
+        const settingsRoomsList = document.getElementById('settings-rooms-list');
+        settingsRoomsList.innerHTML = '';
+        data.rooms.forEach(room => {
+            const roomDiv = document.createElement('div');
+            roomDiv.className = 'row settings-row';
+            roomDiv.innerHTML = `
+                <div class="flex-grow">${room.name}</div>
+                <div class="actions">
+                    <button class="btn-red" onclick="removeRoom('${room.id}')">Poista</button>
+                </div>
+            `;
+            settingsRoomsList.appendChild(roomDiv);
+            
+            const plantsDiv = document.createElement('div');
+            plantsDiv.style.marginLeft = '20px';
+            plantsDiv.innerHTML = `<h4 style="color:#ffffff;">Kasvit huoneessa: ${room.name}</h4>`;
+            room.plants.forEach(plant => {
+                const plantDiv = document.createElement('div');
+                plantDiv.className = 'row settings-row';
+                plantDiv.innerHTML = `
+                    <div class="flex-grow">${plant.name}</div>
+                    <div class="actions">
+                        <button class="btn-red" onclick="removePlant('${room.id}', '${plant.id}')">Poista</button>
+                    </div>
+                `;
+                plantsDiv.appendChild(plantDiv);
+            });
+            const addPlantRow = document.createElement('div');
+            addPlantRow.className = 'settings-row';
+            addPlantRow.innerHTML = `
+                <input type="text" id="new-plant-input-${room.id}" placeholder="Uusi kasvin nimi">
+                <button class="btn-green" onclick="addPlant('${room.id}')">Tallenna</button>
+            `;
+            plantsDiv.appendChild(addPlantRow);
+            settingsRoomsList.appendChild(plantsDiv);
+        });
+    }
+
+    function addRoom() {
+        const input = document.getElementById('new-room-input');
+        const roomName = input.value.trim();
+        if (roomName) {
+            const newRoom = { id: Date.now().toString(), name: roomName, plants: [] };
+            data.rooms.push(newRoom);
+            saveData();
+            input.value = '';
+            showSettings();
+        }
+    }
+
+    function removeRoom(roomId) {
+        data.rooms = data.rooms.filter(room => room.id !== roomId);
+        saveData();
+        showSettings();
+    }
+    
+    function addPlant(roomId) {
+        const input = document.getElementById(`new-plant-input-${roomId}`);
+        const plantName = input.value.trim();
+        if (plantName) {
+            const room = data.rooms.find(r => r.id === roomId);
+            if (room) {
+                const newPlant = { id: Date.now().toString(), name: plantName, lastWatered: null, previousWatered: null };
+                room.plants.push(newPlant);
+                saveData();
+                input.value = '';
+                showSettings();
+            }
+        }
+    }
+    
+    function removePlant(roomId, plantId) {
+        const room = data.rooms.find(r => r.id === roomId);
+        if (room) {
+            room.plants = room.plants.filter(plant => plant.id !== plantId);
+            saveData();
+            showSettings();
+        }
+    }
+
+    function showRoomView(roomId) {
+        currentRoomId = roomId;
+        const room = data.rooms.find(r => r.id === roomId);
+        if (room) {
+            document.getElementById('current-view-title').textContent = room.name;
+            document.getElementById('settings-view').style.display = 'none';
+            document.getElementById('room-view').style.display = 'block';
+            renderPlants(room);
+        }
+    }
+
+    function renderPlants(room) {
+        const plantsListView = document.getElementById('plants-list-view');
+        plantsListView.innerHTML = '';
+        room.plants.forEach(plant => {
+            const now = new Date();
+            const lastWateredDate = plant.lastWatered ? new Date(plant.lastWatered) : null;
+            const isToday = lastWateredDate && lastWateredDate.getDate() === now.getDate() && lastWateredDate.getMonth() === now.getMonth() && lastWateredDate.getFullYear() === now.getFullYear();
+            
+            const plantDiv = document.createElement('div');
+            plantDiv.className = `row ${isToday ? 'row-today' : ''}`;
+            
+            const dateString = lastWateredDate ? lastWateredDate.toLocaleString('fi-FI', { dateStyle: 'short', timeStyle: 'short' }) : 'Ei kasteltu';
+            
+            plantDiv.innerHTML = `
+                <div class="flex-grow">${plant.name}</div>
+                <div class="flex-grow">${dateString}</div>
+                <div class="actions">
+                    <button class="btn-blue" onclick="waterPlant('${room.id}', '${plant.id}')">Kastele</button>
+                    <button class="btn-yellow" onclick="undoWatering('${room.id}', '${plant.id}')">Peruuta</button>
+                </div>
+            `;
+            plantsListView.appendChild(plantDiv);
+        });
+    }
+
+    function waterPlant(roomId, plantId) {
+        const room = data.rooms.find(r => r.id === roomId);
+        if (room) {
+            const plant = room.plants.find(p => p.id === plantId);
+            if (plant) {
+                plant.previousWatered = plant.lastWatered;
+                plant.lastWatered = new Date().toISOString();
+                saveData();
+                showRoomView(roomId);
+            }
+        }
+    }
+    
+    function undoWatering(roomId, plantId) {
+        const room = data.rooms.find(r => r.id === roomId);
+        if (room) {
+            const plant = room.plants.find(p => p.id === plantId);
+            if (plant && plant.previousWatered !== undefined) {
+                plant.lastWatered = plant.previousWatered;
+                plant.previousWatered = null; // Clear previous state
+                saveData();
+                showRoomView(roomId);
+            }
+        }
+    }
+
+    function addPlantToCurrentRoom() {
+        if (currentRoomId) {
+            const input = document.getElementById('new-plant-input');
+            const plantName = input.value.trim();
+            if (plantName) {
+                const room = data.rooms.find(r => r.id === currentRoomId);
+                if (room) {
+                    const newPlant = { id: Date.now().toString(), name: plantName, lastWatered: null, previousWatered: null };
+                    room.plants.push(newPlant);
+                    saveData();
+                    input.value = '';
+                    showRoomView(currentRoomId);
+                }
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
