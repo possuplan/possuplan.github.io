@@ -26,6 +26,36 @@
             color: var(--text-color);
             overflow: hidden;
         }
+        
+        /* --- START: Added Loader CSS --- */
+        #loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loader-spinner {
+            border: 8px solid var(--surface-color); 
+            border-top: 8px solid var(--primary-color); 
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* --- END: Added Loader CSS --- */
 
         #app-container {
             display: flex;
@@ -235,8 +265,11 @@
 </head>
 <body>
 
-    <div id="app-container">
-        <header>
+    <div id="loader-overlay">
+        <div class="loader-spinner"></div>
+    </div>
+    <div id="app-container" style="visibility: hidden;">
+    <header>
             <div id="menu-icon">&#9776;</div>
             <nav id="menu">
                 <a href="#" id="nav-plants">Kasvit</a>
@@ -302,6 +335,8 @@
         let lastTapTarget = null;
 
         // --- UI Elements ---
+        const loaderOverlay = document.getElementById('loader-overlay'); // <-- START: Added loader element
+        const appContainer = document.getElementById('app-container'); // <-- START: Added app container
         const menuIcon = document.getElementById('menu-icon');
         const menu = document.getElementById('menu');
         const navPlants = document.getElementById('nav-plants');
@@ -317,8 +352,6 @@
         const calendarBody = document.getElementById('calendar-body');
 
         // --- Core Functions ---
-
-
 		async function initializeApp() {
 			await openDb();
 			await loadData();
@@ -358,6 +391,17 @@
 				showPage('plants');
 			}
 			renderAll();
+            
+            // --- START: Added logic to hide loader ---
+            // Make the main content visible now that it's ready
+            appContainer.style.visibility = 'visible';
+            
+            // Fade out and then hide the loader
+            loaderOverlay.style.opacity = '0';
+            loaderOverlay.addEventListener('transitionend', () => {
+                loaderOverlay.style.display = 'none';
+            }, { once: true }); // 'once' ensures the event listener is removed after firing
+            // --- END: Added logic to hide loader ---
 		}
 
 
@@ -408,12 +452,12 @@
 		
 		
 		function getWeekday(dateStr) {
-		  // dateStr muodossa "dd.mm.yy"
+		  // dateStr in format "dd.mm.yy"
 		  const [dd, mm, yy] = dateStr.split(".");
 		  
-		  // Korjataan vuosi, esim "25" -> 2025
-		  const year = 2000 + parseInt(yy, 10); 
-		  const month = parseInt(mm, 10) - 1; // JS:ssä tammikuu = 0
+		  // Fix year, e.g. "25" -> 2025
+		  const year = 2000 + parseInt(yy, 10);  
+		  const month = parseInt(mm, 10) - 1; // JS month is 0-indexed
 		  const day = parseInt(dd, 10);
 
 		  const date = new Date(year, month, day);
