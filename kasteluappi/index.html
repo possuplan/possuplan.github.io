@@ -313,28 +313,49 @@
         const calendarBody = document.getElementById('calendar-body');
 
         // --- Core Functions ---
-        async function initializeApp() {
-            await openDb();
-            await loadData();
-            
-            // Ensure today's date exists
-            const today = getFormattedDate(new Date());
-            if (!wateringData[today]) {
-                const newDayData = {};
-                plants.forEach(p => newDayData[p.id] = 0);
-                wateringData[today] = newDayData;
-                await saveWateringData(today, newDayData);
-            }
 
-            setupEventListeners();
-            
-            if (plants.length > 0) {
-                showPage('calendar');
-            } else {
-                showPage('plants');
-            }
-            renderAll();
-        }
+
+		async function initializeApp() {
+			await openDb();
+			await loadData();
+
+			const today = new Date();
+			const todayStr = getFormattedDate(today);
+
+			// Determine first date to start filling from
+			let earliestDate = today;
+			const keys = Object.keys(wateringData);
+
+			if (keys.length > 0) {
+				const parsedDates = keys.map(k => {
+					const [d, m, y] = k.split('.');
+					return new Date(`20${y}`, m - 1, d);
+				});
+				earliestDate = new Date(Math.min(...parsedDates));
+			}
+
+			// Fill all days from earliestDate to today
+			const allDates = getDateRange(earliestDate, today);
+			for (const date of allDates) {
+				const dateStr = getFormattedDate(date);
+				if (!wateringData[dateStr]) {
+					const newDayData = {};
+					plants.forEach(p => newDayData[p.id] = 0);
+					wateringData[dateStr] = newDayData;
+					await saveWateringData(dateStr, newDayData);
+				}
+			}
+
+			setupEventListeners();
+
+			if (plants.length > 0) {
+				showPage('calendar');
+			} else {
+				showPage('plants');
+			}
+			renderAll();
+		}
+
 
         async function loadData() {
             const plantTx = db.transaction(PLANTS_STORE, 'readonly');
@@ -369,7 +390,19 @@
             const y = String(date.getFullYear()).slice(-2);
             return `${d}.${m}.${y}`;
         }
+		
+		
+		function getDateRange(start, end) {
+			const dates = [];
+			let current = new Date(start);
+			while (current <= end) {
+				dates.push(new Date(current));
+				current.setDate(current.getDate() + 1);
+			}
+			return dates;
+		}
         
+		
         function showPage(pageName) {
             Object.values(pages).forEach(p => p.classList.remove('active'));
             pages[pageName].classList.add('active');
