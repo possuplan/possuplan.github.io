@@ -178,6 +178,10 @@
             top: 0;
             z-index: 10;
         }
+		
+		.weekstart {
+			border-bottom:3px solid rgb(255,255,255,0.8);
+		}
 
         .date-col {
             min-width: 70px;
@@ -401,6 +405,22 @@
 			}
 			return dates;
 		}
+		
+		
+		function getWeekday(dateStr) {
+		  // dateStr muodossa "dd.mm.yy"
+		  const [dd, mm, yy] = dateStr.split(".");
+		  
+		  // Korjataan vuosi, esim "25" -> 2025
+		  const year = 2000 + parseInt(yy, 10); 
+		  const month = parseInt(mm, 10) - 1; // JS:ssä tammikuu = 0
+		  const day = parseInt(dd, 10);
+
+		  const date = new Date(year, month, day);
+
+		  const weekdays = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
+		  return weekdays[date.getDay()];
+		}
         
 		
         function showPage(pageName) {
@@ -462,9 +482,15 @@
 			let todaycss = "today";
 
             sortedDates.forEach(date => {
+				let dateformatted = date;
+				let dayshortname = getWeekday(date);
+				
                 const row = document.createElement('tr');
-				let dateformatted = date; //date.replaceAll('.', '-');
-                row.innerHTML = `<td class="date-col ${todaycss}">${dateformatted}</td>`;
+				if(dayshortname == "Ma"){
+					row.classList.add("weekstart");
+				}
+				
+                row.innerHTML = `<td class="date-col ${todaycss}">${dayshortname}<br>${dateformatted}</td>`;
                 const dayData = wateringData[date] || {};
 
                 plants.forEach(plant => {
