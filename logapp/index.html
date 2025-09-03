@@ -665,6 +665,42 @@
                 }
             });
 
+
+
+            // Double Tap Logic for Calendar
+            calendarBody.addEventListener('click', (e) => {
+                const target = e.target;
+                if (!target.classList.contains('water-btn')) return;
+
+                if (tapTimer && lastTapTarget === target) {
+                    // Double tap
+                    clearTimeout(tapTimer);
+                    tapTimer = null;
+                    lastTapTarget = null;
+						
+					const date = target.dataset.date;
+					const plantId = parseInt(target.dataset.plantId, 10);
+
+					let currentState = wateringData[date][plantId] || 0;
+					let newState = currentState + 1;
+					wateringData[date][plantId] = newState;
+
+					target.textContent = newState; // Update display
+					target.classList.add('session-changed');
+
+                    saveWateringData(date, wateringData[date]);
+                } else {
+                    // First tap
+                    if(tapTimer) clearTimeout(tapTimer);
+                    lastTapTarget = target;
+                    tapTimer = setTimeout(() => {
+                        tapTimer = null;
+                        lastTapTarget = null;
+                    }, 300); // 300ms double tap window
+                }
+            });
+
+/*
             // --- START: New Calendar Event Logic ---
             let longPressTimer = null;
             const LONG_PRESS_DURATION = 500; // 500ms for a long press
@@ -726,6 +762,8 @@
                     longPressTimer = null;
                 }
             };
+			
+			
             
             // Mouse events
             calendarBody.addEventListener('mousedown', startPress);
@@ -750,6 +788,7 @@
                 }
             });
             // --- END: New Calendar Event Logic ---
+			*/
 
 
             // Drag and Drop for Plant Reordering
