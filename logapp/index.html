@@ -666,17 +666,23 @@
             });
 
 
-
+/*
             // Double Tap Logic for Calendar
             calendarBody.addEventListener('click', (e) => {
                 const target = e.target;
                 if (!target.classList.contains('water-btn')) return;
+				
+				
+				console.log("tap start");
+			
 
                 if (tapTimer && lastTapTarget === target) {
                     // Double tap
                     clearTimeout(tapTimer);
                     tapTimer = null;
                     lastTapTarget = null;
+					
+					console.log("+1");
 						
 					const date = target.dataset.date;
 					const plantId = parseInt(target.dataset.plantId, 10);
@@ -693,14 +699,17 @@
                     // First tap
                     if(tapTimer) clearTimeout(tapTimer);
                     lastTapTarget = target;
+					console.log("no tap timer - tap timer start");
                     tapTimer = setTimeout(() => {
                         tapTimer = null;
                         lastTapTarget = null;
+						console.log("no tap timer - taptimer off");
                     }, 300); // 300ms double tap window
                 }
             });
+*/
 
-/*
+
             // --- START: New Calendar Event Logic ---
             let longPressTimer = null;
             const LONG_PRESS_DURATION = 500; // 500ms for a long press
@@ -710,7 +719,7 @@
                 const target = e.target;
                 if (!target.classList.contains('water-btn')) return;
                 
-                //e.preventDefault();
+                e.preventDefault();
 
                 const date = target.dataset.date;
                 const plantId = parseInt(target.dataset.plantId, 10);
@@ -770,6 +779,7 @@
             calendarBody.addEventListener('mouseup', cancelPress);
             calendarBody.addEventListener('mouseleave', cancelPress, true);
 
+/*
             // Touch events
             calendarBody.addEventListener('touchstart', (e) => {
                 // Prevent scrolling or other default actions while holding the button
@@ -780,7 +790,7 @@
             });
             calendarBody.addEventListener('touchend', cancelPress);
             calendarBody.addEventListener('touchcancel', cancelPress);
-            
+            */
             // Prevent context menu on long press
             calendarBody.addEventListener('contextmenu', (e) => {
                 if (e.target.classList.contains('water-btn')) {
@@ -788,7 +798,7 @@
                 }
             });
             // --- END: New Calendar Event Logic ---
-			*/
+			
 
 
             // Drag and Drop for Plant Reordering
