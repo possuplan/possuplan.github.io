@@ -779,18 +779,18 @@
             calendarBody.addEventListener('mouseup', cancelPress);
             calendarBody.addEventListener('mouseleave', cancelPress, true);
 
-/*
+
             // Touch events
             calendarBody.addEventListener('touchstart', (e) => {
                 // Prevent scrolling or other default actions while holding the button
                 if (e.target.classList.contains('water-btn')) {
-                    e.preventDefault();
+                    //e.preventDefault();
                 }
                 startPress(e);
             });
             calendarBody.addEventListener('touchend', cancelPress);
             calendarBody.addEventListener('touchcancel', cancelPress);
-            */
+            
             // Prevent context menu on long press
             calendarBody.addEventListener('contextmenu', (e) => {
                 if (e.target.classList.contains('water-btn')) {
