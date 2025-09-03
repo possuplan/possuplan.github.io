@@ -11,6 +11,8 @@
             --primary-color: #0a84ff;
             --surface-color: #0a0d0a;
             --border-color: #8f8f8f;
+            --watered-color: #022772; /* Dark Blue */
+			--fertilized-color: #046817;
             --session-change-color: #3399ff; /* Light Blue */
             --danger-color: #ff3b30;
         }
@@ -185,6 +187,7 @@
         
         #calendar-table {
             border-collapse: collapse;
+            ---width: 100%;
         }
 
         #calendar-table th, #calendar-table td {
@@ -193,8 +196,9 @@
             padding: 0;
             height: 40px;
         }
-        
-        .plant-header-cell {
+		
+		.plant-header-cell {
+			
             height: 150px !important;
         }
 
@@ -204,10 +208,10 @@
             top: 0;
             z-index: 10;
         }
-        
-        .weekstart {
-            border-bottom:3px solid rgb(255,255,255,0.8);
-        }
+		
+		.weekstart {
+			border-bottom:3px solid rgb(255,255,255,0.8);
+		}
 
         .date-col {
             min-width: 70px;
@@ -218,11 +222,11 @@
             left: 0;
             z-index: 5;
         }
-        
-        .date-col.today {
-            font-weight:bold;
-            color:#FFFF55;
-        }
+		
+		.date-col.today {
+			font-weight:bold;
+			color:#FFFF55;
+		}
         
         .plant-header-cell {
             vertical-align: bottom;
@@ -237,24 +241,24 @@
             width: 25px; /* Matches cell height */
             height: 25px; /* Matches cell width */
             text-align: left;
-            font-weight: normal;
+			
+			----padding-left: 14px;
+			
+			font-weight: normal;
         }
 
         .water-btn {
             width: 40px;
             height: 40px;
-            min-width: 40px;
-			min-height: 40px;
             border: none;
             cursor: pointer;
-            display: flex; /* Use flexbox for centering */
-            justify-content: center; /* Center horizontally */
-            align-items: center; /* Center vertically */
-            background-color: var(--bg-color);
+            display: block;
+		    background-color: var(--bg-color);
             color: var(--text-color);
             font-size: 16px; /* Make the number readable */
         }
 
+    
         .water-btn.session-changed { border:1px dashed rgb(255,255,255,0.6); }
 
     </style>
@@ -326,10 +330,12 @@
         // --- State ---
         let plants = [];
         let wateringData = {};
+        let tapTimer = null;
+        let lastTapTarget = null;
 
         // --- UI Elements ---
-        const loaderOverlay = document.getElementById('loader-overlay');
-        const appContainer = document.getElementById('app-container');
+        const loaderOverlay = document.getElementById('loader-overlay'); // <-- START: Added loader element
+        const appContainer = document.getElementById('app-container'); // <-- START: Added app container
         const menuIcon = document.getElementById('menu-icon');
         const menu = document.getElementById('menu');
         const navPlants = document.getElementById('nav-plants');
@@ -345,53 +351,57 @@
         const calendarBody = document.getElementById('calendar-body');
 
         // --- Core Functions ---
-        async function initializeApp() {
-            await openDb();
-            await loadData();
+		async function initializeApp() {
+			await openDb();
+			await loadData();
 
-            const today = new Date();
-            const todayStr = getFormattedDate(today);
+			const today = new Date();
+			const todayStr = getFormattedDate(today);
 
-            // Determine first date to start filling from
-            let earliestDate = today;
-            const keys = Object.keys(wateringData);
+			// Determine first date to start filling from
+			let earliestDate = today;
+			const keys = Object.keys(wateringData);
 
-            if (keys.length > 0) {
-                const parsedDates = keys.map(k => {
-                    const [d, m, y] = k.split('.');
-                    return new Date(`20${y}`, m - 1, d);
-                });
-                earliestDate = new Date(Math.min(...parsedDates));
-            }
+			if (keys.length > 0) {
+				const parsedDates = keys.map(k => {
+					const [d, m, y] = k.split('.');
+					return new Date(`20${y}`, m - 1, d);
+				});
+				earliestDate = new Date(Math.min(...parsedDates));
+			}
 
-            // Fill all days from earliestDate to today
-            const allDates = getDateRange(earliestDate, today);
-            for (const date of allDates) {
-                const dateStr = getFormattedDate(date);
-                if (!wateringData[dateStr]) {
-                    const newDayData = {};
-                    plants.forEach(p => newDayData[p.id] = 0);
-                    wateringData[dateStr] = newDayData;
-                    await saveWateringData(dateStr, newDayData);
-                }
-            }
+			// Fill all days from earliestDate to today
+			const allDates = getDateRange(earliestDate, today);
+			for (const date of allDates) {
+				const dateStr = getFormattedDate(date);
+				if (!wateringData[dateStr]) {
+					const newDayData = {};
+					plants.forEach(p => newDayData[p.id] = 0);
+					wateringData[dateStr] = newDayData;
+					await saveWateringData(dateStr, newDayData);
+				}
+			}
 
-            setupEventListeners();
+			setupEventListeners();
 
-            if (plants.length > 0) {
-                showPage('calendar');
-            } else {
-                showPage('plants');
-            }
-            renderAll();
+			if (plants.length > 0) {
+				showPage('calendar');
+			} else {
+				showPage('plants');
+			}
+			renderAll();
             
-            // --- Logic to hide loader ---
+            // --- START: Added logic to hide loader ---
+            // Make the main content visible now that it's ready
             appContainer.style.visibility = 'visible';
+            
+            // Fade out and then hide the loader
             loaderOverlay.style.opacity = '0';
             loaderOverlay.addEventListener('transitionend', () => {
                 loaderOverlay.style.display = 'none';
-            }, { once: true });
-        }
+            }, { once: true }); // 'once' ensures the event listener is removed after firing
+            // --- END: Added logic to hide loader ---
+		}
 
 
         async function loadData() {
@@ -427,35 +437,35 @@
             const y = String(date.getFullYear()).slice(-2);
             return `${d}.${m}.${y}`;
         }
-        
-        
-        function getDateRange(start, end) {
-            const dates = [];
-            let current = new Date(start);
-            while (current <= end) {
-                dates.push(new Date(current));
-                current.setDate(current.getDate() + 1);
-            }
-            return dates;
-        }
-        
-        
-        function getWeekday(dateStr) {
-          // dateStr in format "dd.mm.yy"
-          const [dd, mm, yy] = dateStr.split(".");
-          
-          // Fix year, e.g. "25" -> 2025
-          const year = 2000 + parseInt(yy, 10);  
-          const month = parseInt(mm, 10) - 1; // JS month is 0-indexed
-          const day = parseInt(dd, 10);
+		
+		
+		function getDateRange(start, end) {
+			const dates = [];
+			let current = new Date(start);
+			while (current <= end) {
+				dates.push(new Date(current));
+				current.setDate(current.getDate() + 1);
+			}
+			return dates;
+		}
+		
+		
+		function getWeekday(dateStr) {
+		  // dateStr in format "dd.mm.yy"
+		  const [dd, mm, yy] = dateStr.split(".");
+		  
+		  // Fix year, e.g. "25" -> 2025
+		  const year = 2000 + parseInt(yy, 10);  
+		  const month = parseInt(mm, 10) - 1; // JS month is 0-indexed
+		  const day = parseInt(dd, 10);
 
-          const date = new Date(year, month, day);
+		  const date = new Date(year, month, day);
 
-          const weekdays = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
-          return weekdays[date.getDay()];
-        }
+		  const weekdays = ["Su", "Ma", "Ti", "Ke", "To", "Pe", "La"];
+		  return weekdays[date.getDay()];
+		}
         
-        
+		
         function showPage(pageName) {
             Object.values(pages).forEach(p => p.classList.remove('active'));
             pages[pageName].classList.add('active');
@@ -511,18 +521,18 @@
                 const [db, mb, yb] = b.split('.').map(Number);
                 return new Date(`20${yb}`, mb - 1, db) - new Date(`20${ya}`, ma - 1, da);
             });
-            
-            let todaycss = "today";
+			
+			let todaycss = "today";
 
             sortedDates.forEach(date => {
-                let dateformatted = date;
-                let dayshortname = getWeekday(date);
-                
+				let dateformatted = date;
+				let dayshortname = getWeekday(date);
+				
                 const row = document.createElement('tr');
-                if(dayshortname == "Ma"){
-                    row.classList.add("weekstart");
-                }
-                
+				if(dayshortname == "Ma"){
+					row.classList.add("weekstart");
+				}
+				
                 row.innerHTML = `<td class="date-col ${todaycss}">${dayshortname}<br>${dateformatted}</td>`;
                 const dayData = wateringData[date] || {};
 
@@ -532,10 +542,10 @@
                     const displayText = state > 0 ? state : '';
                     td.innerHTML = `<button class="water-btn" data-date="${date}" data-plant-id="${plant.id}">${displayText}</button>`;
                     row.appendChild(td);
-                });
+                });	
                 calendarBody.appendChild(row);
-                
-                todaycss = "";
+				
+				todaycss = "";
             });
         }
         
@@ -741,6 +751,7 @@
             });
             // --- END: New Calendar Event Logic ---
 
+
             // Drag and Drop for Plant Reordering
             let draggedItem = null;
             plantListEl.addEventListener('dragstart', (e) => {
@@ -750,7 +761,7 @@
                 }
             });
 
-            plantListEl.addEventListener('dragend', () => {
+            plantListEl.addEventListener('dragend', (e) => {
                 if (draggedItem) {
                     draggedItem.classList.remove('dragging');
                     draggedItem = null;
