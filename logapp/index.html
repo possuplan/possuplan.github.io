@@ -256,6 +256,13 @@
 		    background-color: var(--bg-color);
             color: var(--text-color);
             font-size: 16px; /* Make the number readable */
+			
+			
+		    user-select: none;
+		    -webkit-user-select: none; /* Safari */
+		    -ms-user-select: none;     /* Old IE/Edge */
+		  
+		    touch-action: manipulation; /* avoids double-tap zoom */
         }
 
     
@@ -783,9 +790,9 @@
             // Touch events
             calendarBody.addEventListener('touchstart', (e) => {
                 // Prevent scrolling or other default actions while holding the button
-                if (e.target.classList.contains('water-btn')) {
+                //if (e.target.classList.contains('water-btn')) {
                     //e.preventDefault();
-                }
+                //}
                 startPress(e);
             });
             calendarBody.addEventListener('touchend', cancelPress);
