@@ -194,24 +194,26 @@
             border: 1px solid var(--border-color);
             text-align: center;
             padding: 0;
+			width:40px !important;
             height: 40px;
         }
 		
 		#calendar-table th {
-			width:40px;
-		}
-		
-		.plant-header-cell {
 			
-            height: 150px !important;
-        }
-
-        #calendar-table th {
-            background-color: var(--surface-color);
+			
+			
+			background-color: var(--surface-color);
             position: sticky;
             top: 0;
             z-index: 10;
+		}
+		
+		.plant-header-cell {
+			width:40px !important;
+            height: 150px !important;
         }
+
+
 		
 		.weekstart {
 			border-bottom:3px solid rgb(255,255,255,0.8);
@@ -228,8 +230,8 @@
         }
 		
 		.date-col-corner {
-            min-width: 70px;
-            max-width: 70px;
+            min-width: 70px !important;
+            max-width: 70px !important;
 		}
 		
 		.date-col.today {
