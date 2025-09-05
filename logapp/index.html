@@ -197,6 +197,10 @@
             height: 40px;
         }
 		
+		#calendar-table th {
+			width:40px;
+		}
+		
 		.plant-header-cell {
 			
             height: 150px !important;
@@ -222,6 +226,11 @@
             left: 0;
             z-index: 5;
         }
+		
+		.date-col-corner {
+            min-width: 70px;
+            max-width: 70px;
+		}
 		
 		.date-col.today {
 			font-weight:bold;
@@ -265,8 +274,14 @@
 		    touch-action: manipulation; /* avoids double-tap zoom */
         }
 		
-		.focused-color {
-			background-color:#141427;
+	
+		
+		.focused-style-title {
+			background-color:#222244 !important;
+		}
+		.focused-style-cell {
+			border-right:2px solid white !important;
+			border-left:2px solid white !important;
 		}
 		
 		#calendar-head {
@@ -537,13 +552,13 @@
 
             // Header
             const headerRow = document.createElement('tr');
-            headerRow.innerHTML = `<th>&nbsp;</th>`;
+            headerRow.innerHTML = `<th class="date-col-corner">&nbsp;</th>`;
             plants.forEach(plant => {
                 const th = document.createElement('th');
                 th.className = 'plant-header-cell';
 				th.dataset.id = plant.id;
 				if(lastClickedTh && lastClickedTh.dataset.id === th.dataset.id){
-					th.style.backgroundColor = focusedTitleBG;
+					th.classList.add("focused-style-title");
 				}
 				
                 th.innerHTML = `<span class="rotated-text">&nbsp;${plant.name}</span>`;
@@ -597,7 +612,7 @@
 						let focusedStr = "";
 						if(lastClickedTh && lastClickedTh.dataset.id == plant.id){
 							//td.classList.add("focused-color");
-							focusedStr = " focused-color";
+							focusedStr = " focused-style-cell";
 						}
 
 						const displayText = state > 0 ? state : '';
