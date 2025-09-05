@@ -264,6 +264,19 @@
 		  
 		    touch-action: manipulation; /* avoids double-tap zoom */
         }
+		
+		.focused-color {
+			background-color:#222200;
+		}
+		
+		#calendar-head {
+			
+		    user-select: none;
+		    -webkit-user-select: none; /* Safari */
+		    -ms-user-select: none;     /* Old IE/Edge */
+		  
+		    touch-action: manipulation; /* avoids double-tap zoom */
+		}
 
     
         .water-btn.session-changed { border:1px dashed rgb(255,255,255,0.6); }
@@ -339,6 +352,10 @@
         let wateringData = {};
         let tapTimer = null;
         let lastTapTarget = null;
+		
+		let lastClickedTh = null;
+		let lastClickedTitleID = null;
+		let focusedTitleBG = "#444422";
 
         // --- UI Elements ---
         const loaderOverlay = document.getElementById('loader-overlay'); // <-- START: Added loader element
@@ -504,8 +521,15 @@
                 plantListEl.appendChild(li);
             });
         }
+		
+		function showCompactView(){
+			renderCalendarPage(true);
+		}
+		function showNormalView(){
+			renderCalendarPage();
+		}
         
-        function renderCalendarPage() {
+        function renderCalendarPage(compactView) {
             calendarHead.innerHTML = '';
             calendarBody.innerHTML = '';
             
@@ -517,6 +541,11 @@
             plants.forEach(plant => {
                 const th = document.createElement('th');
                 th.className = 'plant-header-cell';
+				th.dataset.id = plant.id;
+				if(lastClickedTh && lastClickedTh.dataset.id === th.dataset.id){
+					th.style.backgroundColor = focusedTitleBG;
+				}
+				
                 th.innerHTML = `<span class="rotated-text">&nbsp;${plant.name}</span>`;
                 headerRow.appendChild(th);
             });
@@ -542,15 +571,42 @@
 				
                 row.innerHTML = `<td class="date-col ${todaycss}">${dayshortname}<br>${dateformatted}</td>`;
                 const dayData = wateringData[date] || {};
+				
+				let addRow = true;
+				if(compactView){
+					let foundItems = 0;
+					plants.forEach(plant => {
+						const td = document.createElement('td');
+						const state = dayData[plant.id] || 0;
+						
+						if(lastClickedTh && lastClickedTh.dataset.id == plant.id){
+							if(state){
+								foundItems++;
+							}
+						}
+					});
+					if(!foundItems){
+						addRow = false;
+					}
+				}
+				
+				if(addRow){
+					plants.forEach(plant => {
+						const td = document.createElement('td');
+						const state = dayData[plant.id] || 0;
+						let focusedStr = "";
+						if(lastClickedTh && lastClickedTh.dataset.id == plant.id){
+							//td.classList.add("focused-color");
+							focusedStr = " focused-color";
+						}
 
-                plants.forEach(plant => {
-                    const td = document.createElement('td');
-                    const state = dayData[plant.id] || 0;
-                    const displayText = state > 0 ? state : '';
-                    td.innerHTML = `<button class="water-btn" data-date="${date}" data-plant-id="${plant.id}">${displayText}</button>`;
-                    row.appendChild(td);
-                });	
-                calendarBody.appendChild(row);
+						const displayText = state > 0 ? state : '';
+						td.innerHTML = `<button class="water-btn ${focusedStr}" data-date="${date}" data-plant-id="${plant.id}">${displayText}</button>`;
+						row.appendChild(td);
+					
+					});	
+					calendarBody.appendChild(row);
+				}
 				
 				todaycss = "";
             });
@@ -721,6 +777,51 @@
             let longPressTimer = null;
             const LONG_PRESS_DURATION = 500; // 500ms for a long press
 
+			
+			calendarHead.addEventListener('dblclick', (e) => {
+				e.preventDefault();
+
+				// find the closest th with the right class and data-id
+				const th = e.target.closest('th.plant-header-cell');
+
+				if (!th) return; // clicked outside th
+
+				let resetted = false;
+
+				// reset previous clicked th (if any)
+				if (lastClickedTh) {
+					// reset to original bg color
+					lastClickedTh.style.backgroundColor = "";
+					
+					// reset view if deselected title:
+					if(lastClickedTh.dataset.id === th.dataset.id){
+						lastClickedTh = null;
+						lastClickedTitleID = null;
+						resetted = true;
+					}
+				}
+				
+				if(!resetted){
+					lastClickedTitleID = th.dataset.id;
+
+					// update tracker
+					lastClickedTh = th;
+
+					console.log("clicked " + lastClickedTitleID);
+
+					// change background color of that th
+					th.style.backgroundColor = focusedTitleBG;
+					showCompactView();
+
+				}else{
+				
+					console.log("resetted ");
+					showNormalView();
+				}
+				
+				
+			});
+	
             // --- Double Tap to Increment ---
             calendarBody.addEventListener('dblclick', (e) => {
                 const target = e.target;
