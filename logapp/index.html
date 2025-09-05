@@ -187,33 +187,46 @@
         
         #calendar-table {
             border-collapse: collapse;
-            ---width: 100%;
+           
         }
 
-        #calendar-table th, #calendar-table td {
+        #calendar-table th {
             border: 1px solid var(--border-color);
             text-align: center;
             padding: 0;
-			width:40px !important;
-            height: 40px;
-        }
-		
-		#calendar-table th {
-			
+			width: 40px;
 			
 			
 			background-color: var(--surface-color);
             position: sticky;
             top: 0;
             z-index: 10;
-		}
-		
-		.plant-header-cell {
-			width:40px !important;
-            height: 150px !important;
         }
+		
+		#calendar-table td {
+            border: 1px solid var(--border-color);
+            text-align: center;
+            padding: 0;
+			width: 40px;
+            height: 40px;
+        }
+		
+	
+		
+	
 
-
+        .plant-header-cell {
+            vertical-align: bottom;
+			width: 40px !important;
+            height: 150px  !important;
+            padding-bottom: 8px;
+        }
+		
+		.date-col-corner {
+            min-width: 70px !important;
+            max-width: 70px !important;
+			height: 150px  !important;
+		}
 		
 		.weekstart {
 			border-bottom:3px solid rgb(255,255,255,0.8);
@@ -229,21 +242,13 @@
             z-index: 5;
         }
 		
-		.date-col-corner {
-            min-width: 70px !important;
-            max-width: 70px !important;
-		}
+
 		
 		.date-col.today {
 			font-weight:bold;
 			color:#FFFF55;
 		}
         
-        .plant-header-cell {
-            vertical-align: bottom;
-            height: 120px;
-            padding-bottom: 8px;
-        }
 
         .rotated-text {
             display: inline-block;
