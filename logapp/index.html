@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
  
-	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+ 	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 	<link rel="manifest" href="site.webmanifest">
 
-
-	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 	<meta name="mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -168,7 +166,17 @@
             border-radius: 4px;
             font-size: 16px;
         }
-
+		
+        .plant-style-input {
+            flex-grow: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+		
         .plant-btn {
             background: none;
             border: none;
@@ -210,7 +218,7 @@
             text-align: center;
             padding: 0;
 
-            height: 150px  !important;
+            height: 170px  !important;
 			
 			background-color: var(--surface-color);
             position: sticky;
@@ -228,7 +236,6 @@
 		
 	
 		
-	
 
         .plant-header-cell {
             vertical-align: bottom;
@@ -240,7 +247,7 @@
 		.date-col-corner {
             min-width: 70px !important;
             max-width: 70px !important;
-			height: 150px  !important;
+			height: 170px  !important;
 		}
 		
 		.weekstart {
@@ -338,6 +345,7 @@
                 <ul id="plant-list"></ul>
                 <div id="add-plant-row">
                     <input type="text" id="new-plant-name" class="plant-name-input" placeholder="Uuden teon nimi...">
+					<select class="plant-style-input" id="default-plant-style-input"></select>
                 </div>
                 <button id="add-plant-btn">Lisää teko</button>
             </div>
@@ -382,7 +390,52 @@
                 };
             });
         }
-        
+		
+		
+		let plantStyles = [
+			{id:0, text:"Numeroitu", type:0},
+			{id:10, text:"✔", type:1},
+			{id:20, text:"✖", type:1},
+			{id:21, text:"★", type:1},
+			{id:22, text:"✿", type:1},
+			{id:23, text:"●", type:1},
+			{id:24, text:"■", type:1},
+			{id:30, text:"1 väri", colors: ["", "#022772"], type:2},
+			{id:40, text:"2 väriä", colors: ["", "#022772", "#046817"], type:2},
+		];
+
+		// plantStyles.find(s => s.id == style)?.type ?? 0;
+		function findType(style){
+			for(let i = 0; i < plantStyles.length; i++){
+				if(plantStyles[i].id == style){
+					return plantStyles[i].type;
+				}
+			}
+			return 0;
+		}
+		
+		// plantStyles.find(s => s.id == style)?.text ?? "";
+		function findText(style){
+			for(let i = 0; i < plantStyles.length; i++){
+				if(plantStyles[i].id == style){
+					return plantStyles[i].text;
+				}
+			}
+			return "";
+		}
+		
+		// plantStyles.find(s => s.id == style)?.colors ?? null;
+		function findColors(style){
+			for(let i = 0; i < plantStyles.length; i++){
+				if(plantStyles[i].id == style){
+					return plantStyles[i].colors;
+				}
+			}
+			return null;
+		}
+		
+
+	
         // --- State ---
         let plants = [];
         let wateringData = {};
@@ -406,10 +459,50 @@
         };
         const plantListEl = document.getElementById('plant-list');
         const newPlantNameInput = document.getElementById('new-plant-name');
+		const newPlantStyleSelect = document.getElementById('default-plant-style-input');
         const addPlantBtn = document.getElementById('add-plant-btn');
         const calendarHead = document.getElementById('calendar-head');
         const calendarBody = document.getElementById('calendar-body');
 
+
+		// Generate options dynamically
+		let plantStylesOptionsHTML = plantStyles.map(style => {
+			return `<option value="${style.id}">${style.text}</option>`;
+		}).join('');
+		newPlantStyleSelect.innerHTML = plantStylesOptionsHTML;
+		
+
+		function getDisplayValue(state, style){
+			let type = findType(style);//plantStyles.find(s => s.id == style)?.type ?? 0;
+			let icon = findText(style);//plantStyles.find(s => s.id == style)?.text ?? "";
+			
+			
+			let displayText = "";
+			let bgcolor = "";
+			
+			switch(type){
+				case 1: // icon on/off
+					displayText = state > 0 ? icon : '';
+				break;
+				case 2: // bgcolor looping
+					// no text.
+					let colors = findColors(style);//plantStyles.find(s => s.id == style)?.colors ?? null;
+					if(colors){
+						if(state < colors.length){
+							bgcolor = colors[state];
+						}else{
+							bgcolor = colors[colors.length-1];
+						}
+					}
+				break;
+				default: // type 0
+					displayText = state > 0 ? state : '';
+				break;
+			}
+			return {text: displayText, bgcolor: bgcolor};
+		}
+
+		
         // --- Core Functions ---
 		async function initializeApp() {
 			await openDb();
@@ -477,6 +570,7 @@
                         cursor.continue();
                     } else {
                         resolve(allPlants);
+						console.log(allPlants);
                     }
                 };
             });
@@ -541,6 +635,7 @@
             renderPlantsPage();
             renderCalendarPage();
         }
+		
 
         function renderPlantsPage() {
             plantListEl.innerHTML = '';
@@ -549,9 +644,18 @@
                 li.className = 'plant-row';
                 li.dataset.id = plant.id;
                 li.draggable = true;
+				
+				// Generate options dynamically
+				let optionsHTML = plantStyles.map(style => {
+					return `<option value="${style.id}" ${style.id == plant.style ? 'selected' : ''}>${style.text}</option>`;
+				}).join('');
+
                 li.innerHTML = `
                     <span class="reorder-handle plant-btn">↕️</span>
                     <input type="text" class="plant-name-input" value="${plant.name}" data-id="${plant.id}">
+					<select class="plant-style-input" data-id="${plant.id}">
+						${optionsHTML}
+					</select>
                     <button class="delete-btn plant-btn" data-id="${plant.id}">🗑️</button>
                 `;
                 plantListEl.appendChild(li);
@@ -630,14 +734,25 @@
 					plants.forEach(plant => {
 						const td = document.createElement('td');
 						const state = dayData[plant.id] || 0;
+						const style = plant.style || 0;
+						const type = findType(style);//plantStyles.find(s => s.id == style)?.type ?? 0;
+
 						let focusedStr = "";
 						if(lastClickedTh && lastClickedTh.dataset.id == plant.id){
 							//td.classList.add("focused-color");
 							focusedStr = " focused-style-cell";
 						}
 
-						const displayText = state > 0 ? state : '';
-						td.innerHTML = `<button class="water-btn ${focusedStr}" data-date="${date}" data-plant-id="${plant.id}">${displayText}</button>`;
+// calendarBody.addEventListener('dblclick',
+
+						let { text: displayText, bgcolor: background } = getDisplayValue(state, style);
+						
+						let cssStyle = "";
+						if(background){
+							cssStyle = "background-color: "+background;
+						}
+			
+						td.innerHTML = `<button class="water-btn ${focusedStr}" data-date="${date}" data-plant-id="${plant.id}" data-style="${style}" style="${cssStyle}">${displayText}</button>`;
 						row.appendChild(td);
 					
 					});	
@@ -651,10 +766,11 @@
         // --- Data Modification ---
         async function addPlant() {
             const name = newPlantNameInput.value.trim();
+			const style = newPlantStyleSelect.value.trim();
             if (!name) return;
 
             const maxOrder = plants.length > 0 ? Math.max(...plants.map(p => p.order)) : -1;
-            const newPlant = { name: name, order: maxOrder + 1 };
+            const newPlant = { name: name, order: maxOrder+1, style: style};
             
             const tx = db.transaction(PLANTS_STORE, 'readwrite');
             const store = tx.objectStore(PLANTS_STORE);
@@ -677,7 +793,20 @@
                 renderAll();
             };
         }
-
+		
+		
+		
+        async function updatePlantStyle(id, newStyle) {
+            const plant = plants.find(p => p.id === id);
+            if (plant && plant.style !== newStyle) {
+                plant.style = newStyle;
+                const tx = db.transaction(PLANTS_STORE, 'readwrite');
+                tx.objectStore(PLANTS_STORE).put(plant);
+                await tx.complete;
+                renderCalendarPage(); // Only need to re-render calendar header
+            }
+        }
+		
         async function updatePlantName(id, newName) {
             const plant = plants.find(p => p.id === id);
             if (plant && plant.name !== newName) {
@@ -761,6 +890,14 @@
                     const id = parseInt(e.target.dataset.id, 10);
                     const newName = e.target.value.trim();
                     updatePlantName(id, newName);
+                }
+            });
+			
+            plantListEl.addEventListener('change', (e) => {
+                if (e.target.classList.contains('plant-style-input')) {
+                    const id = parseInt(e.target.dataset.id, 10);
+                    const newStyle = e.target.value.trim();
+                    updatePlantStyle(id, newStyle);
                 }
             });
 
@@ -860,19 +997,57 @@
 	
             // --- Double Tap to Increment ---
             calendarBody.addEventListener('dblclick', (e) => {
+				console.log("fired");
                 const target = e.target;
+				//const target = e.target.closest('.water-btn');
                 if (!target.classList.contains('water-btn')) return;
                 
                 e.preventDefault();
 
                 const date = target.dataset.date;
                 const plantId = parseInt(target.dataset.plantId, 10);
+				const style = parseInt(target.dataset.style, 10);
+				let type = findType(style);//plantStyles.find(s => s.id == style)?.type ?? 0;
+				
 
                 let currentState = wateringData[date][plantId] || 0;
+	
+
+	
                 let newState = currentState + 1;
+				switch(type){
+					case 1:
+						// on/off:
+						if(newState > 1){
+							newState = 0;
+						}
+					break;
+					case 2:
+						// array of colors:
+						let colors = findColors(style);//plantStyles.find(s => s.id == style)?.colors ?? null;
+						if(colors){
+							if(newState > colors.length-1){
+								newState = 0;
+							}
+						}
+					break;
+					default: // type 0, numbered
+						// no limits.
+					break;
+				}
+				let { text: displayText, bgcolor: background } = getDisplayValue(newState, style);
+
+// td.innerHTML = `<button class="water-btn ${focusedStr}" data-date="${date}" data-plant-id="${plant.id}" data-style="${style}">${displayText}</button>`;
+
                 wateringData[date][plantId] = newState;
 
-                target.textContent = newState; // Update display
+                target.textContent = displayText; // Update display
+				if(background){
+					target.style.backgroundColor = background;
+				}else{
+					target.style.backgroundColor = "";
+				}
+				
                 target.classList.add('session-changed');
 
                 saveWateringData(date, wateringData[date]);
@@ -884,13 +1059,25 @@
 
                 const date = target.dataset.date;
                 const plantId = parseInt(target.dataset.plantId, 10);
+				const style = parseInt(target.dataset.style, 10);
+
                 
                 let currentState = wateringData[date][plantId] || 0;
                 if (currentState > 0) {
                     let newState = currentState - 1;
+					
+		
+					let { text: displayText, bgcolor: background } = getDisplayValue(newState, style);
+					
+					
                     wateringData[date][plantId] = newState;
 
-                    target.textContent = newState > 0 ? newState : ''; // Update display
+                    target.textContent = displayText; // Update display
+					if(background){
+						target.style.backgroundColor = background;
+					}else{
+						target.style.backgroundColor = "";
+					}
                     target.classList.add('session-changed');
 
                     saveWateringData(date, wateringData[date]);
@@ -943,6 +1130,128 @@
             });
             // --- END: New Calendar Event Logic ---
 			
+
+            // --- START: NEW Double-tap and long-press event logic for mobile/PC ---
+            
+            // Variables to manage taps and presses
+            let tapTimeout = null;
+            let lastTouchTime = 0;
+            const DOUBLE_TAP_DELAY = 300; // milliseconds
+            let pressTimeout = null;
+            const LONG_PRESS_DELAY = 500; // milliseconds
+            let activeTarget = null;
+
+            calendarBody.addEventListener('mousedown', handlePressStart);
+            calendarBody.addEventListener('mouseup', handlePressEnd);
+            calendarBody.addEventListener('mouseleave', handlePressCancel);
+            
+            calendarBody.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // This is crucial to prevent zoom on double-tap
+                handlePressStart(e);
+            }, { passive: false });
+            calendarBody.addEventListener('touchend', handlePressEnd);
+            calendarBody.addEventListener('touchcancel', handlePressCancel);
+
+            function handlePressStart(e) {
+                activeTarget = e.target.closest('.water-btn');
+                if (!activeTarget) return;
+
+                // Start the long-press timer
+                pressTimeout = setTimeout(() => {
+                    handleDecrement(activeTarget);
+                    pressTimeout = null;
+                }, LONG_PRESS_DELAY);
+            }
+
+            function handlePressEnd(e) {
+                if (!activeTarget) return;
+
+                const currentTime = new Date().getTime();
+                const timeDiff = currentTime - lastTouchTime;
+
+                // Check for a double tap
+                if (timeDiff < DOUBLE_TAP_DELAY && timeDiff > 0) {
+                    // This is a double tap
+                    clearTimeout(tapTimeout);
+                    tapTimeout = null;
+                    handleIncrement(activeTarget);
+                } else {
+                    // This is a single tap
+                    tapTimeout = setTimeout(() => {
+                        tapTimeout = null;
+                    }, DOUBLE_TAP_DELAY);
+                }
+
+                lastTouchTime = currentTime;
+
+                // Cancel the long-press timer if it hasn't fired yet
+                if (pressTimeout) {
+                    clearTimeout(pressTimeout);
+                    pressTimeout = null;
+                }
+                activeTarget = null;
+            }
+
+            function handlePressCancel() {
+                if (pressTimeout) {
+                    clearTimeout(pressTimeout);
+                    pressTimeout = null;
+                }
+                activeTarget = null;
+            }
+
+            // Function to handle incrementing the value
+            function handleIncrement(target) {
+                const date = target.dataset.date;
+                const plantId = parseInt(target.dataset.plantId, 10);
+                const style = parseInt(target.dataset.style, 10);
+                const type = findType(style);
+
+                let currentState = wateringData[date][plantId] || 0;
+                let newState = currentState + 1;
+                switch(type) {
+                    case 1: // on/off
+                        if (newState > 1) newState = 0;
+                        break;
+                    case 2: // colors
+                        const colors = findColors(style);
+                        if (colors && newState > colors.length - 1) newState = 0;
+                        break;
+                    default: // numbered
+                        // no limits
+                        break;
+                }
+                
+                updateCell(target, date, plantId, newState, style);
+            }
+
+            // Function to handle decrementing the value
+            function handleDecrement(target) {
+                const date = target.dataset.date;
+                const plantId = parseInt(target.dataset.plantId, 10);
+                const style = parseInt(target.dataset.style, 10);
+
+                let currentState = wateringData[date][plantId] || 0;
+                if (currentState > 0) {
+                    const newState = currentState - 1;
+                    updateCell(target, date, plantId, newState, style);
+                }
+            }
+
+            function updateCell(target, date, plantId, newState, style) {
+                wateringData[date][plantId] = newState;
+                const { text: displayText, bgcolor: background } = getDisplayValue(newState, style);
+                
+                target.textContent = displayText;
+                if (background) {
+                    target.style.backgroundColor = background;
+                } else {
+                    target.style.backgroundColor = '';
+                }
+                target.classList.add('session-changed');
+                saveWateringData(date, wateringData[date]);
+            }
+            // --- END: NEW Double-tap and long-press event logic for mobile/PC ---
 
 
             // Drag and Drop for Plant Reordering
