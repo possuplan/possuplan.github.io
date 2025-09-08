@@ -699,7 +699,7 @@
 		async function initializeApp() {
 			await openDb();
 			await loadData();
-
+			await loadLastTab();
 
 
 			const today = new Date();
@@ -758,6 +758,38 @@
 		}
 
 
+		async function loadLastTab() {
+			//currentGroupOpen = await getSetting(SETTING_LAST_OPEN_TAB);
+			
+			
+			await getSetting(SETTING_LAST_OPEN_TAB).then(lastTabId => {
+				const tabs = document.querySelectorAll('.tab');
+				let tabToActivate;
+
+				if (lastTabId) {
+					currentGroupOpen = lastTabId;
+					console.log("current group open: "+lastTabId);
+					tabs.forEach(tab => tab.classList.remove('active'));
+					tabToActivate = Array.from(tabs).find(tab => tab.dataset.id === lastTabId);
+				} else {
+					// fallback: first tab active
+					tabToActivate = tabs[0];
+					const defaultTabId = tabToActivate.dataset.id; 
+					currentGroupOpen = defaultTabId;
+					console.log("current group open: "+defaultTabId);
+					// save the default tab into the DB so future calls succeed
+					saveSetting(SETTING_LAST_OPEN_TAB, defaultTabId);
+				}
+
+				if (tabToActivate) {
+					tabToActivate.classList.add('active');
+					// scroll the tab into view
+					tabToActivate.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+				}
+			});
+		}
+		
+		
         async function loadData() {
             const plantTx = db.transaction(PLANTS_STORE, 'readonly');
             const plantStore = plantTx.objectStore(PLANTS_STORE);
@@ -784,9 +816,6 @@
             waterRecords.forEach(record => {
                 wateringData[record.date] = record.data;
             });
-			
-			
-			activateLastTab();
         }
 
         function getFormattedDate(date) {
@@ -904,7 +933,6 @@
 				}else{
 					if(currentGroupOpen == group){
 						displayColumn = true;
-						console.log("displayColumn");
 					}
 				}
 				if(displayColumn){
@@ -968,11 +996,9 @@
 						}else{
 							if(currentGroupOpen == group){
 								displayColumn = true;
-								console.log("displayColumn");
 							}
 						}
 						
-						console.log("currentGroupOpen = "+currentGroupOpen+", group = "+group);
 						
 						if(displayColumn){
 
