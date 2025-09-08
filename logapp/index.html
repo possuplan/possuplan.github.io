@@ -399,19 +399,9 @@
 		<header>
             <div id="menu-icon">&#9776;</div>
 			
-        <!-- Top tabs (scrollable) -->
-        <div id="top-tabs-container">
-            <div id="top-tabs">
-			<!--
-                <div class="tab active">Tab 1</div>
-                <div class="tab">Tab 2</div>
-                <div class="tab">Tab 3</div>
-                <div class="tab">Tab 4</div>
-                <div class="tab">Tab 5</div>
-                <div class="tab">Tab 6</div>
-				-->
-            </div>
-        </div>
+			<div id="top-tabs-container">
+				<div id="top-tabs"></div>
+			</div>
 		
             <nav id="menu">
                 <a href="#" id="nav-plants">Teot</a>
@@ -531,6 +521,7 @@
 			{id:26, text:"⛺", type:1},
 			{id:30, text:"1 väri", colors: ["", "#022772"], type:2},
 			{id:40, text:"2 väriä", colors: ["", "#022772", "#046817"], type:2},
+			{id:50, text:"Emoji", list: ["", "😐", "😊", "😁", "😂", "😍", "🙁", "😭", "😡"], type:3},
 		];
 		
 		let plantGroups = [
@@ -573,7 +564,15 @@
 			return null;
 		}
 		
-
+		// plantStyles.find(s => s.id == style)?.colors ?? null;
+		function findList(style){
+			for(let i = 0; i < plantStyles.length; i++){
+				if(plantStyles[i].id == style){
+					return plantStyles[i].list;
+				}
+			}
+			return null;
+		}
 	
         // --- State ---
         let plants = [];
@@ -694,6 +693,16 @@
 							bgcolor = colors[state];
 						}else{
 							bgcolor = colors[colors.length-1];
+						}
+					}
+				break;
+				case 3: // emoji looping
+					let list = findList(style);//plantStyles.find(s => s.id == style)?.list ?? null;
+					if(list){
+						if(state < list.length){
+							displayText = list[state];
+						}else{
+							displayText = list[list.length-1];
 						}
 					}
 				break;
@@ -1359,6 +1368,15 @@
 						let colors = findColors(style);//plantStyles.find(s => s.id == style)?.colors ?? null;
 						if(colors){
 							if(newState > colors.length-1){
+								newState = 0;
+							}
+						}
+					break;
+					case 3:
+						// array of emoji:
+						let list = findList(style);//plantStyles.find(s => s.id == style)?.list ?? null;
+						if(list){
+							if(newState > list.length-1){
 								newState = 0;
 							}
 						}
