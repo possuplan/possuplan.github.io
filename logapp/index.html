@@ -443,7 +443,7 @@
 		
 		
 		const SETTING_LAST_OPEN_TAB = "lastOpenTab";
-		let currentTabOpen = 0;
+		let currentGroupOpen = -1;
 		
 		const deleteall = false;
 		if(deleteall){
@@ -517,6 +517,8 @@
 			{id:22, text:"✿", type:1},
 			{id:23, text:"●", type:1},
 			{id:24, text:"■", type:1},
+			{id:25, text:"🍄", type:1},
+			{id:26, text:"⛺", type:1},
 			{id:30, text:"1 väri", colors: ["", "#022772"], type:2},
 			{id:40, text:"2 väriä", colors: ["", "#022772", "#046817"], type:2},
 		];
@@ -627,14 +629,16 @@
 				let tabToActivate;
 
 				if (lastTabId) {
-					console.log(lastTabId);
+					currentGroupOpen = lastTabId;
+					console.log("current group open: "+lastTabId);
 					tabs.forEach(tab => tab.classList.remove('active'));
 					tabToActivate = Array.from(tabs).find(tab => tab.dataset.id === lastTabId);
 				} else {
 					// fallback: first tab active
 					tabToActivate = tabs[0];
 					const defaultTabId = tabToActivate.dataset.id; 
-					currentTabOpen = 0;
+					currentGroupOpen = defaultTabId;
+					console.log("current group open: "+defaultTabId);
 					// save the default tab into the DB so future calls succeed
 					saveSetting(SETTING_LAST_OPEN_TAB, defaultTabId);
 				}
@@ -893,9 +897,20 @@
 				if(lastClickedTh && lastClickedTh.dataset.id === th.dataset.id){
 					th.classList.add("focused-style-title");
 				}
-				
-                th.innerHTML = `<span class="rotated-text">&nbsp;${plant.name}</span>`;
-                headerRow.appendChild(th);
+				let group = plant.group;
+				let displayColumn = false;
+				if(currentGroupOpen == -1){
+					displayColumn = true;
+				}else{
+					if(currentGroupOpen == group){
+						displayColumn = true;
+						console.log("displayColumn");
+					}
+				}
+				if(displayColumn){
+					th.innerHTML = `<span class="rotated-text">&nbsp;${plant.name}</span>`;
+					headerRow.appendChild(th);
+				}
             });
             calendarHead.appendChild(headerRow);
             
@@ -945,24 +960,40 @@
 						const state = dayData[plant.id] || 0;
 						const style = plant.style || 0;
 						const type = findType(style);//plantStyles.find(s => s.id == style)?.type ?? 0;
-
-						let focusedStr = "";
-						if(lastClickedTh && lastClickedTh.dataset.id == plant.id){
-							//td.classList.add("focused-color");
-							focusedStr = " focused-style-cell";
-						}
-
-// calendarBody.addEventListener('dblclick',
-
-						let { text: displayText, bgcolor: background } = getDisplayValue(state, style);
+						const group = plant.group;
 						
-						let cssStyle = "";
-						if(background){
-							cssStyle = "background-color: "+background;
+						let displayColumn = false;
+						if(currentGroupOpen == -1){
+							displayColumn = true;
+						}else{
+							if(currentGroupOpen == group){
+								displayColumn = true;
+								console.log("displayColumn");
+							}
 						}
-			
-						td.innerHTML = `<button class="water-btn ${focusedStr}" data-date="${date}" data-plant-id="${plant.id}" data-style="${style}" style="${cssStyle}">${displayText}</button>`;
-						row.appendChild(td);
+						
+						console.log("currentGroupOpen = "+currentGroupOpen+", group = "+group);
+						
+						if(displayColumn){
+
+							let focusedStr = "";
+							if(lastClickedTh && lastClickedTh.dataset.id == plant.id){
+								//td.classList.add("focused-color");
+								focusedStr = " focused-style-cell";
+							}
+
+	// calendarBody.addEventListener('dblclick',
+
+							let { text: displayText, bgcolor: background } = getDisplayValue(state, style);
+							
+							let cssStyle = "";
+							if(background){
+								cssStyle = "background-color: "+background;
+							}
+				
+							td.innerHTML = `<button class="water-btn ${focusedStr}" data-date="${date}" data-plant-id="${plant.id}" data-style="${style}" style="${cssStyle}">${displayText}</button>`;
+							row.appendChild(td);
+						}
 					
 					});	
 					calendarBody.appendChild(row);
@@ -1113,9 +1144,14 @@
 				// Save clicked tab ID to DB
 				const tabId = clickedTab.dataset.id;
 				saveSetting(SETTING_LAST_OPEN_TAB, tabId);
+				
+				console.log("current group open: "+tabId);
+				currentGroupOpen = tabId;
 
 				// Optionally scroll it into view
 				clickedTab.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+				
+				renderCalendarPage();
 			});
 			
             document.addEventListener('click', () => menu.classList.remove('open'));
