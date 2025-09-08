@@ -3,12 +3,23 @@
 <head>
     <meta charset="UTF-8">
  
- 	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+ 	<!-- note: remove slashes from filenames, also from manifest, and change bgcolors to black -->
+	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 	<link rel="manifest" href="site.webmanifest">
 
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<!--this fucks up dblclick event from firing since its not allowed to zoom:-->
+	
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<!--
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	-->
+	
+   
+	
 	<meta name="mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -236,6 +247,7 @@
 		
 	
 		
+	
 
         .plant-header-cell {
             vertical-align: bottom;
@@ -363,8 +375,28 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- DB Setup ---
+        // --- DB Setup database ---
         const DB_NAME = 'UserActionsDB';
+		
+		const deleteall = false;
+		if(deleteall){
+			const request = indexedDB.deleteDatabase(DB_NAME);
+			
+			request.onsuccess = function () {
+			  console.log(`Database "${DB_NAME}" deleted successfully`);
+			};
+
+			request.onerror = function () {
+			  console.error(`Error deleting database "${DB_NAME}"`);
+			};
+
+			request.onblocked = function () {
+			  console.warn(`Delete blocked: Please close all tabs using "${DB_NAME}"`);
+			};
+	
+		}
+		
+		
         const DB_VERSION = 1;
         const PLANTS_STORE = 'actions';
         const WATERING_STORE = 'actionsData';
@@ -508,11 +540,19 @@
 			await openDb();
 			await loadData();
 
+
+
 			const today = new Date();
-			const todayStr = getFormattedDate(today);
+			const pastdate = new Date();
+			pastdate.setDate(today.getDate() - 14);
+			
+			
+			const pastdateStr = getFormattedDate(pastdate);
+			
+			console.log(pastdateStr);
 
 			// Determine first date to start filling from
-			let earliestDate = today;
+			let earliestDate = pastdate;
 			const keys = Object.keys(wateringData);
 
 			if (keys.length > 0) {
@@ -527,6 +567,7 @@
 			const allDates = getDateRange(earliestDate, today);
 			for (const date of allDates) {
 				const dateStr = getFormattedDate(date);
+				console.log(dateStr);
 				if (!wateringData[dateStr]) {
 					const newDayData = {};
 					plants.forEach(p => newDayData[p.id] = 0);
@@ -1130,128 +1171,6 @@
             });
             // --- END: New Calendar Event Logic ---
 			
-
-            // --- START: NEW Double-tap and long-press event logic for mobile/PC ---
-            
-            // Variables to manage taps and presses
-            let tapTimeout = null;
-            let lastTouchTime = 0;
-            const DOUBLE_TAP_DELAY = 300; // milliseconds
-            let pressTimeout = null;
-            const LONG_PRESS_DELAY = 500; // milliseconds
-            let activeTarget = null;
-
-            calendarBody.addEventListener('mousedown', handlePressStart);
-            calendarBody.addEventListener('mouseup', handlePressEnd);
-            calendarBody.addEventListener('mouseleave', handlePressCancel);
-            
-            calendarBody.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // This is crucial to prevent zoom on double-tap
-                handlePressStart(e);
-            }, { passive: false });
-            calendarBody.addEventListener('touchend', handlePressEnd);
-            calendarBody.addEventListener('touchcancel', handlePressCancel);
-
-            function handlePressStart(e) {
-                activeTarget = e.target.closest('.water-btn');
-                if (!activeTarget) return;
-
-                // Start the long-press timer
-                pressTimeout = setTimeout(() => {
-                    handleDecrement(activeTarget);
-                    pressTimeout = null;
-                }, LONG_PRESS_DELAY);
-            }
-
-            function handlePressEnd(e) {
-                if (!activeTarget) return;
-
-                const currentTime = new Date().getTime();
-                const timeDiff = currentTime - lastTouchTime;
-
-                // Check for a double tap
-                if (timeDiff < DOUBLE_TAP_DELAY && timeDiff > 0) {
-                    // This is a double tap
-                    clearTimeout(tapTimeout);
-                    tapTimeout = null;
-                    handleIncrement(activeTarget);
-                } else {
-                    // This is a single tap
-                    tapTimeout = setTimeout(() => {
-                        tapTimeout = null;
-                    }, DOUBLE_TAP_DELAY);
-                }
-
-                lastTouchTime = currentTime;
-
-                // Cancel the long-press timer if it hasn't fired yet
-                if (pressTimeout) {
-                    clearTimeout(pressTimeout);
-                    pressTimeout = null;
-                }
-                activeTarget = null;
-            }
-
-            function handlePressCancel() {
-                if (pressTimeout) {
-                    clearTimeout(pressTimeout);
-                    pressTimeout = null;
-                }
-                activeTarget = null;
-            }
-
-            // Function to handle incrementing the value
-            function handleIncrement(target) {
-                const date = target.dataset.date;
-                const plantId = parseInt(target.dataset.plantId, 10);
-                const style = parseInt(target.dataset.style, 10);
-                const type = findType(style);
-
-                let currentState = wateringData[date][plantId] || 0;
-                let newState = currentState + 1;
-                switch(type) {
-                    case 1: // on/off
-                        if (newState > 1) newState = 0;
-                        break;
-                    case 2: // colors
-                        const colors = findColors(style);
-                        if (colors && newState > colors.length - 1) newState = 0;
-                        break;
-                    default: // numbered
-                        // no limits
-                        break;
-                }
-                
-                updateCell(target, date, plantId, newState, style);
-            }
-
-            // Function to handle decrementing the value
-            function handleDecrement(target) {
-                const date = target.dataset.date;
-                const plantId = parseInt(target.dataset.plantId, 10);
-                const style = parseInt(target.dataset.style, 10);
-
-                let currentState = wateringData[date][plantId] || 0;
-                if (currentState > 0) {
-                    const newState = currentState - 1;
-                    updateCell(target, date, plantId, newState, style);
-                }
-            }
-
-            function updateCell(target, date, plantId, newState, style) {
-                wateringData[date][plantId] = newState;
-                const { text: displayText, bgcolor: background } = getDisplayValue(newState, style);
-                
-                target.textContent = displayText;
-                if (background) {
-                    target.style.backgroundColor = background;
-                } else {
-                    target.style.backgroundColor = '';
-                }
-                target.classList.add('session-changed');
-                saveWateringData(date, wateringData[date]);
-            }
-            // --- END: NEW Double-tap and long-press event logic for mobile/PC ---
 
 
             // Drag and Drop for Plant Reordering
