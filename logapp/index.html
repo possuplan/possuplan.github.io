@@ -548,8 +548,7 @@
 			
 			
 			const pastdateStr = getFormattedDate(pastdate);
-			
-			console.log(pastdateStr);
+			//console.log(pastdateStr);
 
 			// Determine first date to start filling from
 			let earliestDate = pastdate;
@@ -567,11 +566,12 @@
 			const allDates = getDateRange(earliestDate, today);
 			for (const date of allDates) {
 				const dateStr = getFormattedDate(date);
-				console.log(dateStr);
+				
 				if (!wateringData[dateStr]) {
 					const newDayData = {};
 					plants.forEach(p => newDayData[p.id] = 0);
 					wateringData[dateStr] = newDayData;
+					console.log(dateStr);
 					await saveWateringData(dateStr, newDayData);
 				}
 			}
@@ -989,7 +989,7 @@
 
             // --- START: New Calendar Event Logic ---
             let longPressTimer = null;
-            const LONG_PRESS_DURATION = 500; // 500ms for a long press
+            const LONG_PRESS_DURATION = 500;
 
 			
 			calendarHead.addEventListener('dblclick', (e) => {
@@ -1094,6 +1094,20 @@
                 saveWateringData(date, wateringData[date]);
             });
 
+
+			function vibratePhone() {
+			  if ("vibrate" in navigator) {
+				// Vibrate for 200ms
+				navigator.vibrate(200);
+
+				// Or use a pattern: vibrate-pause-vibrate
+				// navigator.vibrate([200, 100, 200]);
+			  } else {
+				console.log("Vibration API not supported on this device.");
+			  }
+			}
+			
+			
             // --- Long Press to Decrement ---
             const handleLongPress = (target) => {
                 if (!target.classList.contains('water-btn')) return;
@@ -1122,6 +1136,8 @@
                     target.classList.add('session-changed');
 
                     saveWateringData(date, wateringData[date]);
+					
+					vibratePhone();
                 }
             };
 
