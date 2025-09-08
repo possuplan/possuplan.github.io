@@ -231,7 +231,7 @@
         /* --- Calendar Page --- */
         #calendar-container {
             width: 100%;
-            height: calc(100vh - 1px); /* Full viewport height minus top padding */
+            height: calc(100vh - 65px); /* Full viewport height minus top padding */
             overflow: auto; /* Enables both horizontal and vertical scrolling */
         }
         
@@ -627,7 +627,7 @@
 		
 		function renderTopTabs() {
 			// ${group.order === 0 ? "active" : ""}
-			let topTabShowAll = `<div class="tab active" data-id="-1">*</div>`;
+			let topTabShowAll = `<div class="tab active" data-id="-1">✽</div>`;
 			let topTabsHTML = topTabShowAll+plantGroups
 				.filter(group => group.id !== -1)
 				.map(group => {
@@ -728,7 +728,7 @@
 
 			const today = new Date();
 			const pastdate = new Date();
-			pastdate.setDate(today.getDate() - 14);
+			pastdate.setDate(today.getDate() - 31*6); // add 6 months of empty logs.
 			
 			
 			const pastdateStr = getFormattedDate(pastdate);
@@ -743,11 +743,12 @@
 					const [d, m, y] = k.split('.');
 					return new Date(`20${y}`, m - 1, d);
 				});
-				earliestDate = new Date(Math.min(...parsedDates));
+				earliestDate = new Date(Math.min(...parsedDates, pastdate)); // oldest date
 			}
 
 			// Fill all days from earliestDate to today
 			const allDates = getDateRange(earliestDate, today);
+			
 			for (const date of allDates) {
 				const dateStr = getFormattedDate(date);
 				
