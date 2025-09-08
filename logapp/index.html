@@ -138,7 +138,7 @@
         }
 
         main {
-            padding: 60px 15px 15px 15px;
+            padding: 60px 5px 15px 5px;
             flex-grow: 1;
             overflow-y: auto;
         }
@@ -449,9 +449,10 @@
 		];
 		
 		let plantGroups = [
-			{id: 0, text: "Oletus"},
-			{id: 1, text: "Oletus1"},
-			{id: 2, text: "Oletus2"},
+			{id: 0, text: "Ryhmä", notSelectable: true},
+			{id: 1, text: "Muut"},
+			{id: 2, text: "Kasvit"},
+			{id: 3, text: "Siivous"},
 		];
 
 		// plantStyles.find(s => s.id == style)?.type ?? 0;
@@ -523,7 +524,7 @@
 		newPlantStyleSelect.innerHTML = plantStylesOptionsHTML;
 		
 		let plantGroupsOptionsHTML = plantGroups.map(group => {
-			return `<option value="${group.id}">${group.text}</option>`;
+			return `<option value="${group.id}" ${group.notSelectable ? " disabled selected" : ""}>${group.text}</option>`;
 		}).join('');
 		newPlantGroupSelect.innerHTML = plantGroupsOptionsHTML;
 
@@ -715,7 +716,7 @@
 				}).join('');
 						
 				let groupsOptionsHTML = plantGroups.map(group => {
-					return `<option value="${group.id}" ${group.id == plant.group ? 'selected' : ''}>${group.text}</option>`;
+					return `<option value="${group.id}" ${group.notSelectable ? " disabled" : ""} ${group.id == plant.group ? 'selected' : ''}>${group.text}</option>`;
 				}).join('');
 				
 
@@ -770,14 +771,15 @@
                 return new Date(`20${yb}`, mb - 1, db) - new Date(`20${ya}`, ma - 1, da);
             });
 			
-			let todaycss = "today";
+			
 
-            sortedDates.forEach(date => {
+            sortedDates.forEach((date, index) => {
+				let todaycss = (index === 0) ? "today" : ""; // highlight first item.
 				let dateformatted = date;
 				let dayshortname = getWeekday(date);
 				
                 const row = document.createElement('tr');
-				if(dayshortname == "Ma"){
+				if(dayshortname == "Ma"){ // "Ma" is from predefined array for finnish daynames.
 					row.classList.add("weekstart");
 				}
 				
@@ -830,8 +832,7 @@
 					});	
 					calendarBody.appendChild(row);
 				}
-				
-				todaycss = "";
+
             });
         }
         
@@ -986,6 +987,7 @@
                 }
             });
 			
+			
             plantListEl.addEventListener('change', (e) => {
                 if (e.target.classList.contains('plant-group-input')) {
                     const id = parseInt(e.target.dataset.id, 10);
@@ -1092,6 +1094,7 @@
 				console.log("fired");
                 const target = e.target;
 				//const target = e.target.closest('.water-btn');
+				//if (!target) return;
                 if (!target.classList.contains('water-btn')) return;
                 
                 e.preventDefault();
