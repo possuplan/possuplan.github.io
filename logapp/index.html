@@ -360,7 +360,16 @@
 	//top:10px;
 	margin-left:60px;
 	margin-top:10px;
+	    -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+    scrollbar-width: none; /* Firefox */
 }
+
+
+
+#top-tabs-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
 
 #top-tabs {
     display: inline-flex;
