@@ -435,6 +435,15 @@
     document.addEventListener('DOMContentLoaded', () => {
         // --- DB Setup database ---
         const DB_NAME = 'UserActionsDB';
+        const DB_VERSION = 2;
+        const PLANTS_STORE = 'actions';
+        const WATERING_STORE = 'actionsData';
+		const SETTINGS_STORE = 'settings';
+        let db;
+		
+		
+		const SETTING_LAST_OPEN_TAB = "lastOpenTab";
+		let currentTabOpen = 0;
 		
 		const deleteall = false;
 		if(deleteall){
@@ -455,10 +464,6 @@
 		}
 		
 		
-        const DB_VERSION = 1;
-        const PLANTS_STORE = 'actions';
-        const WATERING_STORE = 'actionsData';
-        let db;
 
         function openDb() {
             return new Promise((resolve, reject) => {
@@ -477,9 +482,31 @@
                     if (!dbInstance.objectStoreNames.contains(WATERING_STORE)) {
                         dbInstance.createObjectStore(WATERING_STORE, { keyPath: 'date' });
                     }
+					// New store for settings
+					if (!dbInstance.objectStoreNames.contains(SETTINGS_STORE)) {
+						dbInstance.createObjectStore(SETTINGS_STORE, { keyPath: 'key' });
+					}
                 };
             });
         }
+		function getSetting(key) {
+			return new Promise((resolve, reject) => {
+				const transaction = db.transaction([SETTINGS_STORE], 'readonly');
+				const store = transaction.objectStore(SETTINGS_STORE);
+				const request = store.get(key);
+
+				request.onsuccess = () => resolve(request.result?.value);
+				request.onerror = () => reject(request.error);
+			});
+		}
+
+		function saveSetting(key, value) {
+			const transaction = db.transaction([SETTINGS_STORE], 'readwrite');
+			const store = transaction.objectStore(SETTINGS_STORE);
+			store.put({ key, value });
+		}
+		
+	
 		
 		
 		let plantStyles = [
@@ -499,7 +526,9 @@
 			{id: 0, text: "Muut", order: 1},
 			{id: 1, text: "Kasvit", order: 2},
 			{id: 2, text: "Siivous", order: 3},
-			{id: 3, text: "Siivous2", order: 4},
+			{id: 3, text: "Makuuhuone", order: 4},
+			{id: 4, text: "Olohuone", order: 5},
+			{id: 5, text: "Parveke", order: 6},
 		];
 
 		// plantStyles.find(s => s.id == style)?.type ?? 0;
@@ -578,14 +607,47 @@
 		}).join('');
 		newPlantGroupSelect.innerHTML = plantGroupsOptionsHTML;
 		
-		// ${group.order === 0 ? "active" : ""}
-		let topTabShowAll = `<div class="tab active" data-id="-1">*</div>`;
-		let topTabsHTML = topTabShowAll+plantGroups
-			.filter(group => group.id !== -1)
-			.map(group => {
-			return `<div class="tab" data-id="${group.id}">${group.text}</div>`;
-		}).join('');
-		topTabs.innerHTML = topTabsHTML;
+
+		
+		function renderTopTabs() {
+			// ${group.order === 0 ? "active" : ""}
+			let topTabShowAll = `<div class="tab active" data-id="-1">*</div>`;
+			let topTabsHTML = topTabShowAll+plantGroups
+				.filter(group => group.id !== -1)
+				.map(group => {
+				return `<div class="tab" data-id="${group.id}">${group.text}</div>`;
+			}).join('');
+			topTabs.innerHTML = topTabsHTML;
+		}
+		
+		function activateLastTab() {
+			console.log("activateLastTab");
+			getSetting(SETTING_LAST_OPEN_TAB).then(lastTabId => {
+				const tabs = document.querySelectorAll('.tab');
+				let tabToActivate;
+
+				if (lastTabId) {
+					console.log(lastTabId);
+					tabs.forEach(tab => tab.classList.remove('active'));
+					tabToActivate = Array.from(tabs).find(tab => tab.dataset.id === lastTabId);
+				} else {
+					// fallback: first tab active
+					tabToActivate = tabs[0];
+					const defaultTabId = tabToActivate.dataset.id; 
+					currentTabOpen = 0;
+					// save the default tab into the DB so future calls succeed
+					saveSetting(SETTING_LAST_OPEN_TAB, defaultTabId);
+				}
+
+				if (tabToActivate) {
+					tabToActivate.classList.add('active');
+					// scroll the tab into view
+					tabToActivate.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+				}
+			});
+		}
+		
+		renderTopTabs();
 		
 		/*            <div id="top-tabs">
 			<!--
@@ -718,6 +780,9 @@
             waterRecords.forEach(record => {
                 wateringData[record.date] = record.data;
             });
+			
+			
+			activateLastTab();
         }
 
         function getFormattedDate(date) {
@@ -1023,14 +1088,34 @@
                 menu.classList.toggle('open');
             });
 			
-			const tabs = document.querySelectorAll('.tab');
-			tabs.forEach(tab => {
+			const tabsClasses = document.querySelectorAll('.tab');
+			tabsClasses.forEach(tab => {
 				tab.addEventListener('click', () => {
-					tabs.forEach(t => t.classList.remove('active'));
+					tabsClasses.forEach(t => t.classList.remove('active'));
 					tab.classList.add('active');
 					// optional: scroll the tab into view
 					tab.scrollIntoView({ behavior: 'smooth', inline: 'center' });
 				});
+			});
+			
+			const tabs = () => document.querySelectorAll('.tab');
+			const tabsContainer = document.getElementById('top-tabs');
+			tabsContainer.addEventListener('click', (e) => {
+				const clickedTab = e.target.closest('.tab');
+				if (!clickedTab) return; // clicked outside of a tab
+
+				// Remove active class from all tabs
+				tabs().forEach(tab => tab.classList.remove('active'));
+
+				// Add active class to clicked tab
+				clickedTab.classList.add('active');
+
+				// Save clicked tab ID to DB
+				const tabId = clickedTab.dataset.id;
+				saveSetting(SETTING_LAST_OPEN_TAB, tabId);
+
+				// Optionally scroll it into view
+				clickedTab.scrollIntoView({ behavior: 'smooth', inline: 'center' });
 			});
 			
             document.addEventListener('click', () => menu.classList.remove('open'));
