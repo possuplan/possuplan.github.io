@@ -627,13 +627,13 @@
 		
 		function renderTopTabs() {
 			// ${group.order === 0 ? "active" : ""}
-			let topTabShowAll = `<div class="tab active" data-id="-1">🞲</div>`;
-			let topTabsHTML = topTabShowAll+plantGroups
+			let topTabShowAll = `<div class="tab active" data-id="-1">✽</div>`;
+			let topTabsHTML = plantGroups
 				.filter(group => group.id !== -1)
 				.map(group => {
 				return `<div class="tab" data-id="${group.id}">${group.text}</div>`;
 			}).join('');
-			topTabs.innerHTML = topTabsHTML;
+			topTabs.innerHTML = topTabShowAll+topTabsHTML;
 		}
 		
 		function activateLastTab() {
