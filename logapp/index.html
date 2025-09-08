@@ -347,6 +347,37 @@
     
         .water-btn.session-changed { border:1px dashed rgb(153,153,153); }
 
+
+
+/* Top tabs container */
+#top-tabs-container {
+    overflow-x: auto; /* allow horizontal scroll */
+    white-space: nowrap; /* keep tabs in one line */
+    flex-grow: 1; /* fill remaining space next to menu-icon */
+	position:relative;
+	//left:60px;
+	//top:10px;
+	margin-left:60px;
+	margin-top:10px;
+}
+
+#top-tabs {
+    display: inline-flex;
+}
+
+.tab {
+    display: inline-block;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+}
+
+.tab.active {
+    border-bottom: 2px solid blue;
+    font-weight: bold;
+}
+
     </style>
 </head>
 <body>
@@ -355,8 +386,23 @@
         <div class="loader-spinner"></div>
     </div>
     <div id="app-container" style="visibility: hidden;">
-    <header>
+		<header>
             <div id="menu-icon">&#9776;</div>
+			
+        <!-- Top tabs (scrollable) -->
+        <div id="top-tabs-container">
+            <div id="top-tabs">
+			<!--
+                <div class="tab active">Tab 1</div>
+                <div class="tab">Tab 2</div>
+                <div class="tab">Tab 3</div>
+                <div class="tab">Tab 4</div>
+                <div class="tab">Tab 5</div>
+                <div class="tab">Tab 6</div>
+				-->
+            </div>
+        </div>
+		
             <nav id="menu">
                 <a href="#" id="nav-plants">Teot</a>
                 <a href="#" id="nav-calendar">Kalenteri</a>
@@ -449,10 +495,11 @@
 		];
 		
 		let plantGroups = [
-			{id: 0, text: "Ryhmä", notSelectable: true},
-			{id: 1, text: "Muut"},
-			{id: 2, text: "Kasvit"},
-			{id: 3, text: "Siivous"},
+			{id: -1, text: "Ryhmä", order: 0, notSelectable: true},
+			{id: 0, text: "Muut", order: 1},
+			{id: 1, text: "Kasvit", order: 2},
+			{id: 2, text: "Siivous", order: 3},
+			{id: 3, text: "Siivous2", order: 4},
 		];
 
 		// plantStyles.find(s => s.id == style)?.type ?? 0;
@@ -512,9 +559,12 @@
         const newPlantNameInput = document.getElementById('new-plant-name');
 		const newPlantStyleSelect = document.getElementById('default-plant-style-input');
 		const newPlantGroupSelect = document.getElementById('default-plant-group-input');
+		const topTabs = document.getElementById('top-tabs');
         const addPlantBtn = document.getElementById('add-plant-btn');
         const calendarHead = document.getElementById('calendar-head');
         const calendarBody = document.getElementById('calendar-body');
+
+
 
 
 		// Generate options dynamically
@@ -527,6 +577,26 @@
 			return `<option value="${group.id}" ${group.notSelectable ? " disabled selected" : ""}>${group.text}</option>`;
 		}).join('');
 		newPlantGroupSelect.innerHTML = plantGroupsOptionsHTML;
+		
+		// ${group.order === 0 ? "active" : ""}
+		let topTabShowAll = `<div class="tab active" data-id="-1">*</div>`;
+		let topTabsHTML = topTabShowAll+plantGroups
+			.filter(group => group.id !== -1)
+			.map(group => {
+			return `<div class="tab" data-id="${group.id}">${group.text}</div>`;
+		}).join('');
+		topTabs.innerHTML = topTabsHTML;
+		
+		/*            <div id="top-tabs">
+			<!--
+                <div class="tab active">Tab 1</div>
+                <div class="tab">Tab 2</div>
+                <div class="tab">Tab 3</div>
+                <div class="tab">Tab 4</div>
+                <div class="tab">Tab 5</div>
+                <div class="tab">Tab 6</div>
+				-->
+            </div>*/
 
 		function getDisplayValue(state, style){
 			let type = findType(style);//plantStyles.find(s => s.id == style)?.type ?? 0;
@@ -952,7 +1022,17 @@
                 e.stopPropagation();
                 menu.classList.toggle('open');
             });
-
+			
+			const tabs = document.querySelectorAll('.tab');
+			tabs.forEach(tab => {
+				tab.addEventListener('click', () => {
+					tabs.forEach(t => t.classList.remove('active'));
+					tab.classList.add('active');
+					// optional: scroll the tab into view
+					tab.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+				});
+			});
+			
             document.addEventListener('click', () => menu.classList.remove('open'));
             menu.addEventListener('click', (e) => e.stopPropagation());
             
