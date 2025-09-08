@@ -170,6 +170,7 @@
 
         .plant-name-input {
             flex-grow: 1;
+			min-width: 50px;
             background-color: var(--bg-color);
             color: var(--text-color);
             border: 1px solid var(--border-color);
@@ -179,6 +180,16 @@
         }
 		
         .plant-style-input {
+            flex-grow: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+		
+		.plant-group-input {
             flex-grow: 1;
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -356,8 +367,9 @@
             <div id="plants-page" class="page">
                 <ul id="plant-list"></ul>
                 <div id="add-plant-row">
-                    <input type="text" id="new-plant-name" class="plant-name-input" placeholder="Uuden teon nimi...">
+                    <input type="text" class="plant-name-input" id="new-plant-name" placeholder="Uuden teon nimi...">
 					<select class="plant-style-input" id="default-plant-style-input"></select>
+					<select class="plant-group-input" id="default-plant-group-input"></select>
                 </div>
                 <button id="add-plant-btn">Lisää teko</button>
             </div>
@@ -425,7 +437,7 @@
 		
 		
 		let plantStyles = [
-			{id:0, text:"Numeroitu", type:0},
+			{id:0, text:"Numero", type:0},
 			{id:10, text:"✔", type:1},
 			{id:20, text:"✖", type:1},
 			{id:21, text:"★", type:1},
@@ -434,6 +446,12 @@
 			{id:24, text:"■", type:1},
 			{id:30, text:"1 väri", colors: ["", "#022772"], type:2},
 			{id:40, text:"2 väriä", colors: ["", "#022772", "#046817"], type:2},
+		];
+		
+		let plantGroups = [
+			{id: 0, text: "Oletus"},
+			{id: 1, text: "Oletus1"},
+			{id: 2, text: "Oletus2"},
 		];
 
 		// plantStyles.find(s => s.id == style)?.type ?? 0;
@@ -492,6 +510,7 @@
         const plantListEl = document.getElementById('plant-list');
         const newPlantNameInput = document.getElementById('new-plant-name');
 		const newPlantStyleSelect = document.getElementById('default-plant-style-input');
+		const newPlantGroupSelect = document.getElementById('default-plant-group-input');
         const addPlantBtn = document.getElementById('add-plant-btn');
         const calendarHead = document.getElementById('calendar-head');
         const calendarBody = document.getElementById('calendar-body');
@@ -503,6 +522,10 @@
 		}).join('');
 		newPlantStyleSelect.innerHTML = plantStylesOptionsHTML;
 		
+		let plantGroupsOptionsHTML = plantGroups.map(group => {
+			return `<option value="${group.id}">${group.text}</option>`;
+		}).join('');
+		newPlantGroupSelect.innerHTML = plantGroupsOptionsHTML;
 
 		function getDisplayValue(state, style){
 			let type = findType(style);//plantStyles.find(s => s.id == style)?.type ?? 0;
@@ -690,12 +713,20 @@
 				let optionsHTML = plantStyles.map(style => {
 					return `<option value="${style.id}" ${style.id == plant.style ? 'selected' : ''}>${style.text}</option>`;
 				}).join('');
+						
+				let groupsOptionsHTML = plantGroups.map(group => {
+					return `<option value="${group.id}" ${group.id == plant.group ? 'selected' : ''}>${group.text}</option>`;
+				}).join('');
+				
 
                 li.innerHTML = `
                     <span class="reorder-handle plant-btn">↕️</span>
                     <input type="text" class="plant-name-input" value="${plant.name}" data-id="${plant.id}">
 					<select class="plant-style-input" data-id="${plant.id}">
 						${optionsHTML}
+					</select>
+					<select class="plant-group-input" data-id="${plant.id}">
+						${groupsOptionsHTML}
 					</select>
                     <button class="delete-btn plant-btn" data-id="${plant.id}">🗑️</button>
                 `;
@@ -808,10 +839,11 @@
         async function addPlant() {
             const name = newPlantNameInput.value.trim();
 			const style = newPlantStyleSelect.value.trim();
+			const group = newPlantGroupSelect.value.trim();
             if (!name) return;
 
             const maxOrder = plants.length > 0 ? Math.max(...plants.map(p => p.order)) : -1;
-            const newPlant = { name: name, order: maxOrder+1, style: style};
+            const newPlant = { name: name, order: maxOrder+1, style: style, group: group};
             
             const tx = db.transaction(PLANTS_STORE, 'readwrite');
             const store = tx.objectStore(PLANTS_STORE);
@@ -847,6 +879,18 @@
                 renderCalendarPage(); // Only need to re-render calendar header
             }
         }
+		
+		async function updatePlantGroup(id, newGroup) {
+            const plant = plants.find(p => p.id === id);
+            if (plant && plant.group !== newGroup) {
+                plant.group = newGroup;
+                const tx = db.transaction(PLANTS_STORE, 'readwrite');
+                tx.objectStore(PLANTS_STORE).put(plant);
+                await tx.complete;
+                renderCalendarPage(); // Only need to re-render calendar header
+            }
+        }
+		
 		
         async function updatePlantName(id, newName) {
             const plant = plants.find(p => p.id === id);
@@ -941,7 +985,14 @@
                     updatePlantStyle(id, newStyle);
                 }
             });
-
+			
+            plantListEl.addEventListener('change', (e) => {
+                if (e.target.classList.contains('plant-group-input')) {
+                    const id = parseInt(e.target.dataset.id, 10);
+                    const newGroup = e.target.value.trim();
+                    updatePlantGroup(id, newGroup);
+                }
+            });
 
 /*
             // Double Tap Logic for Calendar
