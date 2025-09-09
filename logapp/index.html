@@ -609,21 +609,31 @@
                 };
                 request.onupgradeneeded = (e) => {
                     const dbInstance = e.target.result;
-                    if (!dbInstance.objectStoreNames.contains(PLANTS_STORE)) {
-                        const plantStore = dbInstance.createObjectStore(PLANTS_STORE, { keyPath: 'id', autoIncrement: true });
-                        plantStore.createIndex('order', 'order', { unique: false });
-                    }
-					if (!dbInstance.objectStoreNames.contains(GROUPS_STORE)) {
-                        const groupStore = dbInstance.createObjectStore(GROUPS_STORE, { keyPath: 'id', autoIncrement: true });
-                        groupStore.createIndex('order', 'order', { unique: false });
-                    }
-                    if (!dbInstance.objectStoreNames.contains(WATERING_STORE)) {
-                        dbInstance.createObjectStore(WATERING_STORE, { keyPath: 'date' });
-                    }
-					// New store for settings
-					if (!dbInstance.objectStoreNames.contains(SETTINGS_STORE)) {
-						dbInstance.createObjectStore(SETTINGS_STORE, { keyPath: 'key' });
+					const oldVersion = e.oldVersion;
+					const newVersion = e.newVersion;
+
+					if (oldVersion < 2) {
+						if (!dbInstance.objectStoreNames.contains(PLANTS_STORE)) {
+							const plantStore = dbInstance.createObjectStore(PLANTS_STORE, { keyPath: 'id', autoIncrement: true });
+							plantStore.createIndex('order', 'order', { unique: false });
+						}
+						if (!dbInstance.objectStoreNames.contains(WATERING_STORE)) {
+							dbInstance.createObjectStore(WATERING_STORE, { keyPath: 'date' });
+						}
 					}
+					if (oldVersion < 3) {
+						// New store for settings
+						if (!dbInstance.objectStoreNames.contains(SETTINGS_STORE)) {
+							dbInstance.createObjectStore(SETTINGS_STORE, { keyPath: 'key' });
+						}
+					}
+					if (oldVersion < 4) {
+						if (!dbInstance.objectStoreNames.contains(GROUPS_STORE)) {
+							const groupStore = dbInstance.createObjectStore(GROUPS_STORE, { keyPath: 'id', autoIncrement: true });
+							groupStore.createIndex('order', 'order', { unique: false });
+						}
+					}
+
                 };
             });
         }
