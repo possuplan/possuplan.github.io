@@ -136,7 +136,10 @@
             border-bottom: 1px solid var(--border-color);
         }
         #menu a:hover {
-            background-color: var(--primary-color);
+			/*
+			bugged after optimizing page render calls o.o
+			background-color: var(--primary-color);
+			*/
         }
         #menu a.active {
             background-color: var(--primary-color);
@@ -150,6 +153,12 @@
 
         .page { display: none; }
         .page.active { display: block; }
+		
+		.all-items-icon {
+			position: relative;
+			bottom: 5px;
+			color:#AAAAFF;
+		}
         
         /* --- Plants Page --- */
         #plant-list {
@@ -393,6 +402,14 @@
     font-weight: bold;
 }
 
+
+.disabledClass {
+	color:gray !important;
+}
+.disabledClassBtn {
+	color:gray !important;
+}
+
     </style>
 </head>
 <body>
@@ -449,6 +466,10 @@
 		
 		const SETTING_LAST_OPEN_TAB = "lastOpenTab";
 		let currentGroupOpen = -1;
+		let currentPageName = "";
+		const PAGE_PLANTS = "plants";
+		const PAGE_CALENDAR = "calendar";
+		let compactView = false;
 		
 		const deleteall = false;
 		if(deleteall){
@@ -627,7 +648,7 @@
 		
 		function renderTopTabs() {
 			// ${group.order === 0 ? "active" : ""}
-			let topTabShowAll = `<div class="tab active" data-id="-1">✽</div>`;
+			let topTabShowAll = `<div class="tab active" data-id="-1"><span class="all-items-icon">✽</span></div>`;
 			let topTabsHTML = plantGroups
 				.filter(group => group.id !== -1)
 				.map(group => {
@@ -667,16 +688,7 @@
 		
 		renderTopTabs();
 		
-		/*            <div id="top-tabs">
-			<!--
-                <div class="tab active">Tab 1</div>
-                <div class="tab">Tab 2</div>
-                <div class="tab">Tab 3</div>
-                <div class="tab">Tab 4</div>
-                <div class="tab">Tab 5</div>
-                <div class="tab">Tab 6</div>
-				-->
-            </div>*/
+
 
 		function getDisplayValue(state, style){
 			let type = findType(style);//plantStyles.find(s => s.id == style)?.type ?? 0;
@@ -764,9 +776,9 @@
 			setupEventListeners();
 
 			if (plants.length > 0) {
-				showPage('calendar');
+				showPage(PAGE_CALENDAR);
 			} else {
-				showPage('plants');
+				showPage(PAGE_PLANTS);
 			}
 			renderAll();
             
@@ -882,26 +894,44 @@
             Object.values(pages).forEach(p => p.classList.remove('active'));
             pages[pageName].classList.add('active');
             
-            navPlants.classList.toggle('active', pageName === 'plants');
-            navCalendar.classList.toggle('active', pageName === 'calendar');
+            navPlants.classList.toggle('active', pageName === PAGE_PLANTS);
+            navCalendar.classList.toggle('active', pageName === PAGE_CALENDAR);
+			
+			currentPageName = pageName;
+			console.log(`currentPageName = ${currentPageName}`);
 
             menu.classList.remove('open');
         }
 
         // --- Rendering ---
         function renderAll() {
-            renderPlantsPage();
-            renderCalendarPage();
+
+			console.time("renderAll"); // start timer
+
+			renderPlantsPage();
+			renderCalendarPage();
+
+			console.timeEnd("renderAll"); // logs elapsed time
         }
 		
 
         function renderPlantsPage() {
+			console.time("renderPlantsPage"); // start timer
+		
             plantListEl.innerHTML = '';
             plants.forEach(plant => {
                 const li = document.createElement('li');
                 li.className = 'plant-row';
                 li.dataset.id = plant.id;
                 li.draggable = true;
+				
+				let disabledClassBtn = "disabledClassBtn";
+				let disabledClass = "disabledClass";
+				
+				if(plant.group == currentGroupOpen || currentGroupOpen == -1){
+					disabledClassBtn = "";
+					disabledClass = "";
+				}
 				
 				// Generate options dynamically
 				let optionsHTML = plantStyles.map(style => {
@@ -914,28 +944,35 @@
 				
 
                 li.innerHTML = `
-                    <span class="reorder-handle plant-btn">↕️</span>
-                    <input type="text" class="plant-name-input" value="${plant.name}" data-id="${plant.id}">
-					<select class="plant-style-input" data-id="${plant.id}">
+                    <span class="reorder-handle plant-btn ${disabledClassBtn}">↕️</span>
+                    <input type="text" class="plant-name-input ${disabledClass}" value="${plant.name}" data-id="${plant.id}">
+					<select class="plant-style-input ${disabledClass}" data-id="${plant.id}">
 						${optionsHTML}
 					</select>
-					<select class="plant-group-input" data-id="${plant.id}">
+					<select class="plant-group-input ${disabledClass}" data-id="${plant.id}">
 						${groupsOptionsHTML}
 					</select>
-                    <button class="delete-btn plant-btn" data-id="${plant.id}">🗑️</button>
+                    <button class="delete-btn plant-btn ${disabledClassBtn}" data-id="${plant.id}">🗑️</button>
                 `;
                 plantListEl.appendChild(li);
             });
+			
+			console.timeEnd("renderPlantsPage"); // end timer
+		
         }
 		
 		function showCompactView(){
-			renderCalendarPage(true);
+			compactView = true;
+			renderCalendarPage();
 		}
 		function showNormalView(){
+			compactView = false;
 			renderCalendarPage();
 		}
         
-        function renderCalendarPage(compactView) {
+        function renderCalendarPage() {
+			console.time("renderCalendarPage"); // start timer
+		
             calendarHead.innerHTML = '';
             calendarBody.innerHTML = '';
             
@@ -971,12 +1008,16 @@
             const sortedDates = Object.keys(wateringData).sort((a, b) => {
                 const [da, ma, ya] = a.split('.').map(Number);
                 const [db, mb, yb] = b.split('.').map(Number);
-                return new Date(`20${yb}`, mb - 1, db) - new Date(`20${ya}`, ma - 1, da);
+                return new Date(`20${yb}`, mb-1, db) - new Date(`20${ya}`, ma-1, da);
             });
 			
-			
+			const maxRowsVisible = 31*1;
 
-            sortedDates.forEach((date, index) => {
+            sortedDates.some((date, index) => {
+				// render only part of the table if not in compact view:
+				if(!compactView && index > maxRowsVisible-1){
+					return true;
+				}
 				let todaycss = (index === 0) ? "today" : ""; // highlight first item.
 				let dateformatted = date;
 				let dayshortname = getWeekday(date);
@@ -1008,6 +1049,7 @@
 				}
 				
 				if(addRow){
+					
 					plants.forEach(plant => {
 						const td = document.createElement('td');
 						const state = dayData[plant.id] || 0;
@@ -1051,6 +1093,8 @@
 				}
 
             });
+			
+			console.timeEnd("renderCalendarPage"); // end timer
         }
         
         // --- Data Modification ---
@@ -1081,7 +1125,9 @@
                 }
                 
                 await waterTx.complete;
-                renderAll();
+				
+                //renderAll();
+				renderPlantsPage();
             };
         }
 		
@@ -1094,7 +1140,7 @@
                 const tx = db.transaction(PLANTS_STORE, 'readwrite');
                 tx.objectStore(PLANTS_STORE).put(plant);
                 await tx.complete;
-                renderCalendarPage(); // Only need to re-render calendar header
+                //renderCalendarPage(); // Only need to re-render calendar header
             }
         }
 		
@@ -1105,7 +1151,7 @@
                 const tx = db.transaction(PLANTS_STORE, 'readwrite');
                 tx.objectStore(PLANTS_STORE).put(plant);
                 await tx.complete;
-                renderCalendarPage(); // Only need to re-render calendar header
+                //renderCalendarPage(); // Only need to re-render calendar header
             }
         }
 		
@@ -1117,12 +1163,14 @@
                 const tx = db.transaction(PLANTS_STORE, 'readwrite');
                 tx.objectStore(PLANTS_STORE).put(plant);
                 await tx.complete;
-                renderCalendarPage(); // Only need to re-render calendar header
+                //renderCalendarPage(); // Only need to re-render calendar header
             }
         }
         
         async function deletePlant(id) {
-            if (!confirm('Are you sure you want to delete this plant and all its watering history?')) return;
+			const plant = plants.find(p => p.id === id);
+		
+            if (!confirm(`Poista "${plant.name}" ja kaikki data siihen liittyen?`)) return;
             
             // Delete from plants store
             const plantTx = db.transaction(PLANTS_STORE, 'readwrite');
@@ -1139,10 +1187,12 @@
                 waterStore.put({ date: date, data: wateringData[date] });
             }
             await waterTx.complete;
-            
-            renderAll();
+
+			//renderAll();
+			renderPlantsPage();
+			
             if (plants.length === 0) {
-                showPage('plants');
+                //showPage(PAGE_PLANTS); // TODO: WTF WHY THIS WAS HERE
             }
         }
 
@@ -1160,7 +1210,9 @@
                 store.put(plant);
             });
             await tx.complete;
-            renderAll();
+
+			//renderAll();
+			renderPlantsPage();
         }
 
         // --- Event Listeners ---
@@ -1202,14 +1254,29 @@
 				// Optionally scroll it into view
 				clickedTab.scrollIntoView({ behavior: 'smooth', inline: 'center' });
 				
-				renderCalendarPage();
+				if(currentPageName == "calendar"){
+					renderCalendarPage();
+				}else if(currentPageName == "plants"){
+					renderPlantsPage();
+				}else{
+					renderAll();
+					console.log("renderAll triggered, page not found");
+				}
 			});
 			
             document.addEventListener('click', () => menu.classList.remove('open'));
             menu.addEventListener('click', (e) => e.stopPropagation());
             
-            navPlants.addEventListener('click', (e) => { e.preventDefault(); showPage('plants'); });
-            navCalendar.addEventListener('click', (e) => { e.preventDefault(); showPage('calendar'); });
+            navPlants.addEventListener('click', (e) => {
+				e.preventDefault();
+				showPage(PAGE_PLANTS);
+				renderPlantsPage();
+			});
+            navCalendar.addEventListener('click', (e) => {
+				e.preventDefault();
+				showPage(PAGE_CALENDAR);
+				renderCalendarPage();
+			});
 
             addPlantBtn.addEventListener('click', addPlant);
             newPlantNameInput.addEventListener('keyup', (e) => {
