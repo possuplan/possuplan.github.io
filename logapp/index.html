@@ -443,7 +443,7 @@
 	margin-top:10px;
 	-webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
     scrollbar-width: none; /* Firefox */
-	height:43px;
+	height:43px; /*prevent showing transparent when toptabs arent shown*/
 }
 
 
@@ -758,7 +758,7 @@
 			console.log("activateLastTab");
 			getSetting(SETTING_LAST_OPEN_TAB).then(lastTabId => {
 				const tabs = document.querySelectorAll('.tab');
-				let tabToActivate;
+				let tabToActivate = null;
 
 				if (lastTabId) {
 					currentGroupOpen = lastTabId;
@@ -767,12 +767,16 @@
 					tabToActivate = Array.from(tabs).find(tab => tab.dataset.id === lastTabId);
 				} else {
 					// fallback: first tab active
-					tabToActivate = tabs[0];
-					const defaultTabId = tabToActivate.dataset.id; 
-					currentGroupOpen = defaultTabId;
-					console.log("current group open: "+defaultTabId);
+					if(tabs.length > 0){
+						tabToActivate = tabs[0];
+						const defaultTabId = tabToActivate.dataset.id; 
+						currentGroupOpen = defaultTabId;
+					}else{
+						currentGroupOpen = -1;
+					}
+					console.log("current group open: "+currentGroupOpen);
 					// save the default tab into the DB so future calls succeed
-					saveSetting(SETTING_LAST_OPEN_TAB, defaultTabId);
+					saveSetting(SETTING_LAST_OPEN_TAB, currentGroupOpen);
 				}
 
 				if (tabToActivate) {
@@ -901,7 +905,7 @@
 			
 			await getSetting(SETTING_LAST_OPEN_TAB).then(lastTabId => {
 				const tabs = document.querySelectorAll('.tab');
-				let tabToActivate;
+				let tabToActivate = null;
 
 				if (lastTabId) {
 					currentGroupOpen = lastTabId;
@@ -910,12 +914,16 @@
 					tabToActivate = Array.from(tabs).find(tab => tab.dataset.id === lastTabId);
 				} else {
 					// fallback: first tab active
-					tabToActivate = tabs[0];
-					const defaultTabId = tabToActivate.dataset.id; 
-					currentGroupOpen = defaultTabId;
-					console.log("current group open: "+defaultTabId);
+					if(tabs.length > 0){
+						tabToActivate = tabs[0];
+						const defaultTabId = tabToActivate.dataset.id; 
+						currentGroupOpen = defaultTabId;
+					}else{
+						currentGroupOpen = -1;
+					}
+					console.log("current group open: "+currentGroupOpen);
 					// save the default tab into the DB so future calls succeed
-					saveSetting(SETTING_LAST_OPEN_TAB, defaultTabId);
+					saveSetting(SETTING_LAST_OPEN_TAB, currentGroupOpen);
 				}
 
 				if (tabToActivate) {
