@@ -441,8 +441,9 @@
 	//top:10px;
 	margin-left:60px;
 	margin-top:10px;
-	    -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+	-webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
     scrollbar-width: none; /* Firefox */
+	height:43px;
 }
 
 
@@ -480,7 +481,7 @@
 
 
 .hiddenclass {
-	display:none;
+	display:none !important;
 }
 
     </style>
@@ -729,16 +730,16 @@
         const calendarBody = document.getElementById('calendar-body');
 
 
-        const topTabsContainer = document.getElementById('top-tabs-container');
+        const topTabsList = document.getElementById('top-tabs');
 
 
 		
 
 		function showTopTabs(enabled){
 			if(enabled){
-				topTabsContainer.classList.remove("hiddenclass");
+				topTabsList.classList.remove("hiddenclass");
 			}else{
-				topTabsContainer.classList.add("hiddenclass");
+				topTabsList.classList.add("hiddenclass");
 			}
 		}
 		
