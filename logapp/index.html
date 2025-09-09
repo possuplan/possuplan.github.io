@@ -99,7 +99,10 @@
 		#plants-page {
 			margin-bottom: 50px;
 		}
-
+		#groups-page {
+			margin-bottom: 50px;
+		}
+		
         #menu-icon {
             font-size: 28px;
             padding: 10px;
@@ -222,10 +225,7 @@
             padding: 5px;
         }
 
-        .reorder-handle { cursor: grab; }
-        .reorder-handle:active { cursor: grabbing; }
-        .delete-btn { color: var(--danger-color); }
-
+ 
         #add-plant-btn {
             width: 100%;
             padding: 12px;
@@ -236,6 +236,73 @@
             font-size: 16px;
             cursor: pointer;
         }
+		
+		
+		
+		
+		
+        /* --- Plants Page --- */
+        #group-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .group-row, #add-group-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: var(--surface-color);
+            border-radius: 5px;
+        }
+
+        .group-row.dragging {
+            opacity: 0.5;
+            background: var(--primary-color);
+        }
+
+        .group-name-input {
+            flex-grow: 1;
+			min-width: 50px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+		
+
+        .group-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 5px;
+        }
+
+ 
+        #add-group-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+		
+		
+		
+		
+		.reorder-handle { cursor: grab; }
+        .reorder-handle:active { cursor: grabbing; }
+        .delete-btn { color: var(--danger-color); }
+
 
         /* --- Calendar Page --- */
         #calendar-container {
@@ -411,6 +478,11 @@
 	/*nothing here*/
 }
 
+
+.hiddenclass {
+	display:none;
+}
+
     </style>
 </head>
 <body>
@@ -428,6 +500,7 @@
 		
             <nav id="menu">
                 <a href="#" id="nav-plants">Teot</a>
+                <a href="#" id="nav-groups">Ryhmät</a>
                 <a href="#" id="nav-calendar">Kalenteri</a>
             </nav>
         </header>
@@ -442,7 +515,15 @@
                 </div>
                 <button id="add-plant-btn">Lisää teko</button>
             </div>
-
+			
+            <div id="groups-page" class="page">
+                <ul id="group-list"></ul>
+                <div id="add-group-row">
+                    <input type="text" class="group-name-input" id="new-group-name" placeholder="Uuden ryhmän nimi...">
+                </div>
+                <button id="add-group-btn">Lisää ryhmä</button>
+            </div>
+			
             <div id="calendar-page" class="page">
                 <div id="calendar-container">
                     <table id="calendar-table">
@@ -458,8 +539,9 @@
     document.addEventListener('DOMContentLoaded', () => {
         // --- DB Setup database ---
         const DB_NAME = 'UserActionsDB';
-        const DB_VERSION = 2;
+        const DB_VERSION = 3;
         const PLANTS_STORE = 'actions';
+        const GROUPS_STORE = 'groups';
         const WATERING_STORE = 'actionsData';
 		const SETTINGS_STORE = 'settings';
         let db;
@@ -469,6 +551,7 @@
 		let currentGroupOpen = -1;
 		let currentPageName = "";
 		const PAGE_PLANTS = "plants";
+		const PAGE_GROUPS = "groups";
 		const PAGE_CALENDAR = "calendar";
 		let compactView = false;
 		
@@ -505,6 +588,10 @@
                     if (!dbInstance.objectStoreNames.contains(PLANTS_STORE)) {
                         const plantStore = dbInstance.createObjectStore(PLANTS_STORE, { keyPath: 'id', autoIncrement: true });
                         plantStore.createIndex('order', 'order', { unique: false });
+                    }
+					if (!dbInstance.objectStoreNames.contains(GROUPS_STORE)) {
+                        const groupStore = dbInstance.createObjectStore(GROUPS_STORE, { keyPath: 'id', autoIncrement: true });
+                        groupStore.createIndex('order', 'order', { unique: false });
                     }
                     if (!dbInstance.objectStoreNames.contains(WATERING_STORE)) {
                         dbInstance.createObjectStore(WATERING_STORE, { keyPath: 'date' });
@@ -551,6 +638,7 @@
 			{id:50, text:"Emoji", list: ["", "😐", "😊", "😁", "😂", "😍", "🙁", "😭", "😡"], type:3},
 		];
 		
+		/*
 		let plantGroups = [
 			{id: -1, text: "Ryhmä", order: 0, notSelectable: true},
 			{id: 0, text: "Muut", order: 1},
@@ -560,6 +648,7 @@
 			{id: 4, text: "Olohuone", order: 5},
 			{id: 5, text: "Parveke", order: 6},
 		];
+		*/
 
 		// plantStyles.find(s => s.id == style)?.type ?? 0;
 		function findType(style){
@@ -603,6 +692,7 @@
 	
         // --- State ---
         let plants = [];
+        let groups = [];
         let wateringData = {};
         let tapTimer = null;
         let lastTapTarget = null;
@@ -617,43 +707,48 @@
         const menuIcon = document.getElementById('menu-icon');
         const menu = document.getElementById('menu');
         const navPlants = document.getElementById('nav-plants');
+        const navGroups = document.getElementById('nav-groups');
         const navCalendar = document.getElementById('nav-calendar');
         const pages = {
             plants: document.getElementById('plants-page'),
+            groups: document.getElementById('groups-page'),
             calendar: document.getElementById('calendar-page'),
         };
         const plantListEl = document.getElementById('plant-list');
         const newPlantNameInput = document.getElementById('new-plant-name');
 		const newPlantStyleSelect = document.getElementById('default-plant-style-input');
 		const newPlantGroupSelect = document.getElementById('default-plant-group-input');
-		const topTabs = document.getElementById('top-tabs');
         const addPlantBtn = document.getElementById('add-plant-btn');
+		
+        const groupListEl = document.getElementById('group-list');
+        const newGroupNameInput = document.getElementById('new-group-name');
+        const addGroupBtn = document.getElementById('add-group-btn');
+		
+		const topTabs = document.getElementById('top-tabs');
         const calendarHead = document.getElementById('calendar-head');
         const calendarBody = document.getElementById('calendar-body');
 
 
+        const topTabsContainer = document.getElementById('top-tabs-container');
 
 
-		// Generate options dynamically
-		let plantStylesOptionsHTML = plantStyles.map(style => {
-			return `<option value="${style.id}">${style.text}</option>`;
-		}).join('');
-		newPlantStyleSelect.innerHTML = plantStylesOptionsHTML;
-		
-		let plantGroupsOptionsHTML = plantGroups.map(group => {
-			return `<option value="${group.id}" ${group.notSelectable ? " disabled selected" : ""}>${group.text}</option>`;
-		}).join('');
-		newPlantGroupSelect.innerHTML = plantGroupsOptionsHTML;
 		
 
+		function showTopTabs(enabled){
+			if(enabled){
+				topTabsContainer.classList.remove("hiddenclass");
+			}else{
+				topTabsContainer.classList.add("hiddenclass");
+			}
+		}
 		
 		function renderTopTabs() {
 			// ${group.order === 0 ? "active" : ""}
 			let topTabShowAll = `<div class="tab active" data-id="-1"><span class="all-items-icon">✽</span></div>`;
-			let topTabsHTML = plantGroups
+			let topTabsHTML = groups
 				.filter(group => group.id !== -1)
 				.map(group => {
-				return `<div class="tab" data-id="${group.id}">${group.text}</div>`;
+				return `<div class="tab" data-id="${group.id}">${group.name}</div>`;
 			}).join('');
 			topTabs.innerHTML = topTabShowAll+topTabsHTML;
 		}
@@ -687,7 +782,6 @@
 			});
 		}
 		
-		renderTopTabs();
 		
 
 
@@ -782,6 +876,8 @@
 				showPage(PAGE_PLANTS);
 			}
 			renderAll();
+			
+			renderTopTabs();
             
             // --- START: Added logic to hide loader ---
             // Make the main content visible now that it's ready
@@ -845,6 +941,24 @@
                     }
                 };
             });
+			
+			
+			const groupTx = db.transaction(GROUPS_STORE, 'readonly');
+            const groupStore = groupTx.objectStore(GROUPS_STORE);
+            const groupIndex = groupStore.index('order');
+            groups = await new Promise((resolve) => {
+                const allGroups = [];
+                groupIndex.openCursor().onsuccess = (e) => {
+                    const cursor = e.target.result;
+                    if (cursor) {
+                        allGroups.push(cursor.value);
+                        cursor.continue();
+                    } else {
+                        resolve(allGroups);
+						console.log(allGroups);
+                    }
+                };
+            });
 
             const waterTx = db.transaction(WATERING_STORE, 'readonly');
             const waterStore = waterTx.objectStore(WATERING_STORE);
@@ -891,11 +1005,13 @@
 		}
         
 		
+		
         function showPage(pageName) {
             Object.values(pages).forEach(p => p.classList.remove('active'));
             pages[pageName].classList.add('active');
             
             navPlants.classList.toggle('active', pageName === PAGE_PLANTS);
+            navGroups.classList.toggle('active', pageName === PAGE_GROUPS);
             navCalendar.classList.toggle('active', pageName === PAGE_CALENDAR);
 			
 			currentPageName = pageName;
@@ -919,6 +1035,20 @@
         function renderPlantsPage() {
 			console.time("renderPlantsPage"); // start timer
 		
+
+			// Generate options dynamically
+			let plantStylesOptionsHTML = plantStyles.map(style => {
+				return `<option value="${style.id}">${style.text}</option>`;
+			}).join('');
+			newPlantStyleSelect.innerHTML = plantStylesOptionsHTML;
+			
+			
+			let plantGroupsOptionsHTML = groups.map(group => {
+				return `<option value="${group.id}">${group.name}</option>`;
+			}).join('');
+			newPlantGroupSelect.innerHTML = plantGroupsOptionsHTML;
+			
+		
             plantListEl.innerHTML = '';
             plants.forEach(plant => {
                 const li = document.createElement('li');
@@ -938,10 +1068,20 @@
 				let optionsHTML = plantStyles.map(style => {
 					return `<option value="${style.id}" ${style.id == plant.style ? 'selected' : ''}>${style.text}</option>`;
 				}).join('');
-						
-				let groupsOptionsHTML = plantGroups.map(group => {
-					return `<option value="${group.id}" ${group.notSelectable ? " disabled" : ""} ${group.id == plant.group ? 'selected' : ''}>${group.text}</option>`;
+				
+
+				let foundGroup = false;
+				let groupsOptionsHTML = groups.map(group => {
+					if(group.id == plant.group){
+						foundGroup = true;
+					}
+					return `<option value="${group.id}" ${group.id == plant.group ? 'selected' : ''}>${group.name}</option>`;
 				}).join('');
+				
+				if (!foundGroup) {
+					groupsOptionsHTML = `<option value="-1" selected>— Ei ryhmää —</option>` + groupsOptionsHTML;
+				}
+			
 				
 
                 li.innerHTML = `
@@ -959,6 +1099,30 @@
             });
 			
 			console.timeEnd("renderPlantsPage"); // end timer
+		
+        }
+		
+		
+		
+        function renderGroupsPage() {
+			console.time("renderGroupsPage"); // start timer
+		
+            groupListEl.innerHTML = '';
+            groups.forEach(group => {
+                const li = document.createElement('li');
+                li.className = 'group-row';
+                li.dataset.id = group.id;
+                li.draggable = true;
+			
+                li.innerHTML = `
+                    <span class="reorder-handle group-btn">↕️</span>
+                    <input type="text" class="group-name-input" value="${group.name}" data-id="${group.id}">
+                    <button class="delete-btn group-btn" data-id="${group.id}">🗑️</button>
+                `;
+                groupListEl.appendChild(li);
+            });
+			
+			console.timeEnd("renderGroupsPage"); // end timer
 		
         }
 		
@@ -1215,6 +1379,82 @@
 			//renderAll();
 			renderPlantsPage();
         }
+		
+		
+		// groups page:
+
+        // --- Data Modification ---
+        async function addGroup() {
+            const name = newGroupNameInput.value.trim();
+            if (!name) return;
+
+            const maxOrder = groups.length > 0 ? Math.max(...groups.map(p => p.order)) : -1;
+            const newGroup = { name: name, order: maxOrder+1};
+            
+            const tx = db.transaction(GROUPS_STORE, 'readwrite');
+            const store = tx.objectStore(GROUPS_STORE);
+            const request = store.add(newGroup);
+            
+            request.onsuccess = async (e) => {
+                newGroup.id = e.target.result;
+                groups.push(newGroup);
+                newGroupNameInput.value = '';
+
+                //renderAll();
+				renderGroupsPage();
+				renderTopTabs();
+            };
+        }
+
+        async function updateGroupName(id, newName) {
+            const group = groups.find(p => p.id === id);
+            if (group && group.name !== newName) {
+                group.name = newName;
+                const tx = db.transaction(GROUPS_STORE, 'readwrite');
+                tx.objectStore(GROUPS_STORE).put(group);
+                await tx.complete;
+                //renderCalendarPage(); // Only need to re-render calendar header
+				renderTopTabs();
+            }
+        }
+        
+        async function deleteGroup(id) {
+			const group = groups.find(p => p.id === id);
+		
+            if (!confirm(`Poista ryhmä "${group.name}" ?`)) return;
+            
+            // Delete from plants store
+            const groupTx = db.transaction(GROUPS_STORE, 'readwrite');
+            groupTx.objectStore(GROUPS_STORE).delete(id);
+            await groupTx.complete;
+
+            groups = groups.filter(p => p.id !== id);
+            
+			//renderAll();
+			renderGroupsPage();
+			renderTopTabs();
+			
+            if (groups.length === 0) {
+                //showPage(PAGE_GROUPS); // TODO: WTF WHY THIS WAS HERE
+            }
+        }
+
+        async function updateGroupOrder() {
+            const tx = db.transaction(GROUPS_STORE, 'readwrite');
+            const store = tx.objectStore(GROUPS_STORE);
+            groups.forEach((group, index) => {
+                group.order = index;
+                store.put(group);
+            });
+            await tx.complete;
+
+			//renderAll();
+			renderGroupsPage();
+			renderTopTabs();
+        }
+		
+		
+		
 
         // --- Event Listeners ---
         function setupEventListeners() {
@@ -1259,6 +1499,8 @@
 					renderCalendarPage();
 				}else if(currentPageName == "plants"){
 					renderPlantsPage();
+				}else if(currentPageName == "groups"){
+					renderGroupsPage();
 				}else{
 					renderAll();
 					console.log("renderAll triggered, page not found");
@@ -1271,11 +1513,19 @@
             navPlants.addEventListener('click', (e) => {
 				e.preventDefault();
 				showPage(PAGE_PLANTS);
+				showTopTabs(true);
 				renderPlantsPage();
+			});
+			navGroups.addEventListener('click', (e) => {
+				e.preventDefault();
+				showPage(PAGE_GROUPS);
+				showTopTabs(false);
+				renderGroupsPage();
 			});
             navCalendar.addEventListener('click', (e) => {
 				e.preventDefault();
 				showPage(PAGE_CALENDAR);
+				showTopTabs(true);
 				renderCalendarPage();
 			});
 
@@ -1315,50 +1565,31 @@
                     updatePlantGroup(id, newGroup);
                 }
             });
-
-/*
-            // Double Tap Logic for Calendar
-            calendarBody.addEventListener('click', (e) => {
-                const target = e.target;
-                if (!target.classList.contains('water-btn')) return;
-				
-				
-				console.log("tap start");
 			
+			
+			// groups page:
 
-                if (tapTimer && lastTapTarget === target) {
-                    // Double tap
-                    clearTimeout(tapTimer);
-                    tapTimer = null;
-                    lastTapTarget = null;
-					
-					console.log("+1");
-						
-					const date = target.dataset.date;
-					const plantId = parseInt(target.dataset.plantId, 10);
+            addGroupBtn.addEventListener('click', addGroup);
+            newGroupNameInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') addGroup();
+            });
 
-					let currentState = wateringData[date][plantId] || 0;
-					let newState = currentState + 1;
-					wateringData[date][plantId] = newState;
-
-					target.textContent = newState; // Update display
-					target.classList.add('session-changed');
-
-                    saveWateringData(date, wateringData[date]);
-                } else {
-                    // First tap
-                    if(tapTimer) clearTimeout(tapTimer);
-                    lastTapTarget = target;
-					console.log("no tap timer - tap timer start");
-                    tapTimer = setTimeout(() => {
-                        tapTimer = null;
-                        lastTapTarget = null;
-						console.log("no tap timer - taptimer off");
-                    }, 300); // 300ms double tap window
+            groupListEl.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-btn')) {
+                    const id = parseInt(e.target.dataset.id, 10);
+                    deleteGroup(id);
                 }
             });
-*/
 
+            groupListEl.addEventListener('change', (e) => {
+                if (e.target.classList.contains('group-name-input')) {
+                    const id = parseInt(e.target.dataset.id, 10);
+                    const newName = e.target.value.trim();
+                    updateGroupName(id, newName);
+                }
+            });
+			
+ 
 
             // --- START: New Calendar Event Logic ---
             let longPressTimer = null;
@@ -1604,10 +1835,59 @@
                     plantListEl.insertBefore(draggedItem, afterElement);
                 }
             });
+			
+			function getDragAfterElement(container, y) {
+				const draggableElements = [...container.querySelectorAll('.plant-row:not(.dragging)')];
+				return draggableElements.reduce((closest, child) => {
+					const box = child.getBoundingClientRect();
+					const offset = y - box.top - box.height / 2;
+					if (offset < 0 && offset > closest.offset) {
+						return { offset: offset, element: child };
+					} else {
+						return closest;
+					}
+				}, { offset: Number.NEGATIVE_INFINITY }).element;
+			}
+			
+			// groups page:
+			
+
+            // Drag and Drop for Plant Reordering
+            let draggedGroupItem = null;
+            groupListEl.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('group-row')) {
+                    draggedGroupItem = e.target;
+                    setTimeout(() => e.target.classList.add('dragging'), 0);
+                }
+            });
+
+            groupListEl.addEventListener('dragend', (e) => {
+                if (draggedGroupItem) {
+                    draggedGroupItem.classList.remove('dragging');
+                    draggedGroupItem = null;
+
+                    // Update local 'plants' array order
+                    const newOrderedIds = [...groupListEl.querySelectorAll('.group-row')].map(row => parseInt(row.dataset.id));
+                    groups.sort((a, b) => newOrderedIds.indexOf(a.id) - newOrderedIds.indexOf(b.id));
+
+                    // Persist new order to DB
+                    updateGroupOrder();
+                }
+            });
+            
+            groupListEl.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = getDragAfterGroupElement(groupListEl, e.clientY);
+                if (afterElement == null) {
+                    groupListEl.appendChild(draggedGroupItem);
+                } else {
+                    groupListEl.insertBefore(draggedGroupItem, afterElement);
+                }
+            });
         }
         
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.plant-row:not(.dragging)')];
+        function getDragAfterGroupElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.group-row:not(.dragging)')];
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
