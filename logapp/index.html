@@ -752,6 +752,7 @@
 				return `<div class="tab" data-id="${group.id}">${group.name}</div>`;
 			}).join('');
 			topTabs.innerHTML = topTabShowAll+topTabsHTML;
+			activateLastTab();
 		}
 		
 		function activateLastTab() {
@@ -884,7 +885,6 @@
 			
 			renderTopTabs();
 			
-			activateLastTab();
             
             // --- START: Added logic to hide loader ---
             // Make the main content visible now that it's ready
