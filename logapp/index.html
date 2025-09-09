@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+	
+	<!--
+	TODO:
+	- toptabs: hide group tabs that have no items set to them.
+	- on groups page: show groups as gray if they have no items set to them.
+	-->
  
  	<!-- note: remove slashes from filenames, also from manifest, and change bgcolors to black -->
 	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -367,6 +373,12 @@
             position: sticky;
             left: -1px;
             z-index: 5;
+
+			user-select: none;
+			-webkit-user-select: none; /* Safari */
+			-ms-user-select: none;     /* Old IE/Edge */
+		  
+			touch-action: manipulation; /* avoids double-tap zoom */
         }
 		
 
@@ -444,6 +456,13 @@
 	-webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
     scrollbar-width: none; /* Firefox */
 	height:43px; /*prevent showing transparent when toptabs arent shown*/
+	
+
+	user-select: none;
+	-webkit-user-select: none; /* Safari */
+	-ms-user-select: none;     /* Old IE/Edge */
+  
+	touch-action: manipulation; /* avoids double-tap zoom */
 }
 
 
@@ -470,6 +489,10 @@
     font-weight: bold;
 }
 
+
+.unused-group {
+	color:gray;
+}
 
 .disabledClass {
     color: #777 !important;
@@ -746,11 +769,26 @@
 		function renderTopTabs() {
 			// ${group.order === 0 ? "active" : ""}
 			let topTabShowAll = `<div class="tab active" data-id="-1"><span class="all-items-icon">✽</span></div>`;
+			/*
 			let topTabsHTML = groups
 				.filter(group => group.id !== -1)
 				.map(group => {
 				return `<div class="tab" data-id="${group.id}">${group.name}</div>`;
 			}).join('');
+			*/
+			
+			// make array of only the groups used in plants:
+			let usedGroupIds = new Set(plants.map(p => p.group));
+
+			let topTabsHTML = groups
+			  .filter(group => group.id !== -1)
+			  .map(group => {
+				// make into string first or check fails:
+				const isUsed = usedGroupIds.has(String(group.id));
+				return `<div class="tab ${isUsed ? '' : 'unused-group'}" data-id="${group.id}">${group.name}</div>`;
+			  })
+			  .join('');
+			  
 			topTabs.innerHTML = topTabShowAll+topTabsHTML;
 			activateLastTab();
 		}
