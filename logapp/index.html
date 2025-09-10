@@ -5,8 +5,7 @@
 	
 	<!--
 	TODO:
-	- toptabs: hide group tabs that have no items set to them.
-	- on groups page: show groups as gray if they have no items set to them.
+	- transfer data from kasteluapp into this app.
 	-->
  
  	<!-- note: remove slashes from filenames, also from manifest, and change bgcolors to black -->
@@ -494,14 +493,14 @@
 	color:gray;
 }
 
-.disabledClass {
+.disabledClass input {
     color: #777 !important;
     border-color: #444;
 }
-.disabledClassBtn {
-	/*nothing here*/
+.disabledClass select {
+    color: #777 !important;
+    border-color: #444;
 }
-
 
 .hiddenclass {
 	display:none !important;
@@ -1115,12 +1114,11 @@
                 li.dataset.id = plant.id;
                 li.draggable = true;
 				
-				let disabledClassBtn = "disabledClassBtn";
-				let disabledClass = "disabledClass";
-				
+				// update coloring for inputs if the group is currently open:
 				if(plant.group == currentGroupOpen || currentGroupOpen == -1){
-					disabledClassBtn = "";
-					disabledClass = "";
+					li.classList.remove("disabledClass");
+				}else{
+					li.classList.add("disabledClass");
 				}
 				
 				// Generate options dynamically
@@ -1144,15 +1142,15 @@
 				
 
                 li.innerHTML = `
-                    <span class="reorder-handle plant-btn ${disabledClassBtn}">↕️</span>
-                    <input type="text" class="plant-name-input ${disabledClass}" value="${plant.name}" data-id="${plant.id}">
-					<select class="plant-style-input ${disabledClass}" data-id="${plant.id}">
+                    <span class="reorder-handle plant-btn">↕️</span>
+                    <input type="text" class="plant-name-input" value="${plant.name}" data-id="${plant.id}">
+					<select class="plant-style-input" data-id="${plant.id}">
 						${optionsHTML}
 					</select>
-					<select class="plant-group-input ${disabledClass}" data-id="${plant.id}">
+					<select class="plant-group-input" data-id="${plant.id}">
 						${groupsOptionsHTML}
 					</select>
-                    <button class="delete-btn plant-btn ${disabledClassBtn}" data-id="${plant.id}">🗑️</button>
+                    <button class="delete-btn plant-btn" data-id="${plant.id}">🗑️</button>
                 `;
                 plantListEl.appendChild(li);
             });
@@ -1172,6 +1170,13 @@
                 li.className = 'group-row';
                 li.dataset.id = group.id;
                 li.draggable = true;
+				
+				// make array of only the groups used in plants:
+				let usedGroupIds = new Set(plants.map(p => p.group));
+				const isUsed = usedGroupIds.has(String(group.id));
+				if(!isUsed){
+					li.classList.add("disabledClass");
+				}
 			
                 li.innerHTML = `
                     <span class="reorder-handle group-btn">↕️</span>
@@ -1352,6 +1357,7 @@
 				
                 //renderAll();
 				renderPlantsPage();
+				renderTopTabs();
             };
         }
 		
@@ -1376,6 +1382,16 @@
                 tx.objectStore(PLANTS_STORE).put(plant);
                 await tx.complete;
                 //renderCalendarPage(); // Only need to re-render calendar header
+				
+				// update coloring for inputs if the group is currently open:
+				const li = document.querySelector(`li[data-id="${plant.id}"]`);
+				if(plant.group == currentGroupOpen || currentGroupOpen == -1){
+					li.classList.remove("disabledClass");
+				}else{
+					li.classList.add("disabledClass");
+				}
+				
+				renderTopTabs();
             }
         }
 		
@@ -1414,6 +1430,7 @@
 
 			//renderAll();
 			renderPlantsPage();
+			renderTopTabs();
 			
             if (plants.length === 0) {
                 //showPage(PAGE_PLANTS); // TODO: WTF WHY THIS WAS HERE
