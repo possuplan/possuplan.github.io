@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wi-Fi Tic-Tac-Toe</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-text: #e0e0e0;
+            --secondary-text: #a0a0a0;
+            --border-color: #333;
+            --accent-color: #03dac6;
+            --grid-line-color: #444;
+            --win-line-color: #ffeb3b;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1, h2 {
+            margin-top: 0;
+            font-weight: 500;
+        }
+
+        .input-group {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--primary-text);
+            font-size: 16px;
+        }
+
+        input::placeholder {
+            color: var(--secondary-text);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--accent-color);
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:disabled {
+            background-color: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background-color: var(--surface-color);
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+
+        .symbol-select-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        #symbol-select {
+            flex-grow: 1;
+        }
+
+        #custom-symbol-input {
+            width: 80px;
+            text-align: center;
+            font-size: 20px;
+        }
+        
+        #player-list {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+            margin-top: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        #player-list li {
+            background-color: var(--surface-color);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        
+        #game-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none; /* Managed by JS */
+            flex-direction: column;
+        }
+
+        #game-canvas {
+            touch-action: none; /* Disables default browser gestures */
+            background-color: #000;
+            width: 100%;
+            height: 100%;
+        }
+
+        #game-info {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+            text-align: center;
+            font-size: 1.2em;
+            color: white;
+            pointer-events: none; /* Clicks go through it */
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="home-screen" class="screen active">
+        <h1>Wi-Fi Tic-Tac-Toe</h1>
+        <div class="input-group">
+            <input type="text" id="game-name-input" placeholder="Enter Game Name">
+        </div>
+        <div class="input-group">
+            <input type="text" id="player-name-input" placeholder="Enter Your Name">
+        </div>
+        <button id="host-btn">Host Game</button>
+        <br>
+        <button id="join-btn" class="secondary">Join Game</button>
+        <p id="home-error" style="color: red;"></p>
+    </div>
+
+    <div id="lobby-screen" class="screen">
+        <h2 id="lobby-game-name"></h2>
+        <div id="host-controls">
+            <h3>Game Settings</h3>
+            <div class="input-group" style="display: flex; gap: 10px;">
+                <input type="number" id="grid-x-input" value="10" min="3">
+                <input type="number" id="grid-y-input" value="10" min="3">
+            </div>
+            <div class="input-group">
+                <label for="win-condition-input">Symbols in a row to win:</label>
+                <input type="number" id="win-condition-input" value="4" min="3">
+            </div>
+            <button id="start-game-btn">Start Game</button>
+        </div>
+        
+        <h3>Players in Lobby</h3>
+        <ul id="player-list"></ul>
+        
+        <div class="input-group">
+            <label>Your Symbol</label>
+            <div class="symbol-select-group">
+                <select id="symbol-select"></select>
+                <input type="text" id="custom-symbol-input" maxlength="8" placeholder="Unicode">
+            </div>
+        </div>
+        <button id="change-symbol-btn">Set Symbol</button>
+        <p id="lobby-error" style="color: red;"></p>
+    </div>
+
+    <div id="game-screen">
+        <div id="game-info"></div>
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+<script>
+// ---------- CONFIG & STATE ---------- //
+const PREDEFINED_SYMBOLS = ['X', 'O', '#', '%'];
+
+let peer;
+let myPeerId;
+let hostId;
+let connections = {}; // key: peerId, value: connection object
+let isHost = false;
+
+let localPlayer = {
+    id: null,
+    name: "Player",
+    symbol: '',
+    isReady: false,
+};
+
+let gameState = {
+    players: [],
+    grid: [],
+    gridSize: { x: 10, y: 10 },
+    winCondition: 4,
+    currentPlayerIndex: 0,
+    gameStarted: false,
+    gameOver: false,
+    winner: null,
+};
+
+
+// ---------- UI ELEMENT REFERENCES ---------- //
+const screens = {
+    home: document.getElementById('home-screen'),
+    lobby: document.getElementById('lobby-screen'),
+    game: document.getElementById('game-screen'),
+};
+const gameNameInput = document.getElementById('game-name-input');
+const playerNameInput = document.getElementById('player-name-input');
+const hostBtn = document.getElementById('host-btn');
+const joinBtn = document.getElementById('join-btn');
+const homeError = document.getElementById('home-error');
+
+const lobbyGameName = document.getElementById('lobby-game-name');
+const hostControls = document.getElementById('host-controls');
+const startGameBtn = document.getElementById('start-game-btn');
+const playerList = document.getElementById('player-list');
+const symbolSelect = document.getElementById('symbol-select');
+const customSymbolInput = document.getElementById('custom-symbol-input');
+const changeSymbolBtn = document.getElementById('change-symbol-btn');
+const lobbyError = document.getElementById('lobby-error');
+const gridXInput = document.getElementById('grid-x-input');
+const gridYInput = document.getElementById('grid-y-input');
+const winConditionInput = document.getElementById('win-condition-input');
+
+const gameInfo = document.getElementById('game-info');
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+// ---------- UI MANAGEMENT ---------- //
+function showScreen(screenName) {
+    Object.values(screens).forEach(screen => screen.classList.remove('active'));
+    if(screenName === 'game') {
+        screens.game.style.display = 'flex';
+        screens.home.style.display = 'none';
+        screens.lobby.style.display = 'none';
+    } else {
+        screens.game.style.display = 'none';
+        screens[screenName].classList.add('active');
+    }
+}
+
+function updateLobbyUI() {
+    lobbyGameName.textContent = `Game: ${gameNameInput.value}`;
+    hostControls.style.display = isHost ? 'block' : 'none';
+    
+    const me = gameState.players.find(p => p.id === localPlayer.id);
+    if (me) {
+        localPlayer = { ...localPlayer, ...me };
+    }
+
+    playerList.innerHTML = '';
+    gameState.players.forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = `${p.symbol} - ${p.name}`;
+        playerList.appendChild(li);
+    });
+
+    const usedSymbols = gameState.players.map(p => p.symbol);
+    const availableSymbols = PREDEFINED_SYMBOLS.filter(s => !usedSymbols.includes(s) || s === localPlayer.symbol);
+
+    symbolSelect.innerHTML = availableSymbols.map(s => `<option value="${s}" ${s === localPlayer.symbol ? 'selected' : ''}>${s}</option>`).join('');
+/*
+	// bugged. doesnt sometimes allow setting the symbol.
+    if (availableSymbols.length > 0) {
+        symbolSelect.disabled = false;
+        customSymbolInput.value = PREDEFINED_SYMBOLS.includes(localPlayer.symbol) ? '' : localPlayer.symbol;
+		
+		console.log("availableSymbols.length > 0");
+		console.log(PREDEFINED_SYMBOLS);
+		console.log(localPlayer.symbol);
+    } else {
+        symbolSelect.disabled = true;
+        symbolSelect.innerHTML = '<option>All taken</option>';
+        customSymbolInput.value = localPlayer.symbol;
+		
+		console.log("availableSymbols.length <= 0");
+		console.log(PREDEFINED_SYMBOLS);
+		console.log(localPlayer.symbol);
+    }*/
+}
+
+function updateGameUI() {
+    if (gameState.gameStarted) {
+        updateGameInfo();
+        draw();
+    }
+}
+
+// ---------- NETWORKING (PeerJS) ---------- //
+function initializePeer(peerId) {
+    myPeerId = peerId || 'tictactoe-' + Math.random().toString(36).substr(2, 9);
+    localPlayer.id = myPeerId;
+    peer = new Peer(myPeerId, { debug: 2 });
+
+    peer.on('open', id => {
+        console.log('My peer ID is: ' + id);
+    });
+
+    peer.on('connection', conn => {
+        setupConnection(conn);
+    });
+
+    peer.on('error', err => {
+        console.error("PeerJS Error:", err);
+        homeError.textContent = `Error: ${err.message}. Try a different Game Name.`;
+        joinBtn.disabled = false;
+        hostBtn.disabled = false;
+    });
+}
+
+function setupConnection(conn) {
+    conn.on('open', () => {
+        console.log(`Connected to ${conn.peer}`);
+        connections[conn.peer] = conn;
+
+        if (isHost) {
+            conn.send({ type: 'game_state', state: gameState });
+        }
+    });
+
+    conn.on('data', data => handleMessage(data, conn.peer));
+    conn.on('close', () => {
+        console.log(`Connection closed with ${conn.peer}`);
+        delete connections[conn.peer];
+        if (isHost) {
+            gameState.players = gameState.players.filter(p => p.id !== conn.peer);
+            broadcast({ type: 'game_state', state: gameState });
+            updateLobbyUI(); // Host updates its own view
+        }
+    });
+}
+
+function hostGame() {
+    const gameName = gameNameInput.value.trim();
+    const playerName = playerNameInput.value.trim();
+    if (!gameName || !playerName) {
+        homeError.textContent = "Game Name and Your Name cannot be empty.";
+        return;
+    }
+    localPlayer.name = playerName;
+    isHost = true;
+    hostBtn.disabled = true;
+    joinBtn.disabled = true;
+    initializePeer(gameName); 
+    
+    localPlayer.symbol = PREDEFINED_SYMBOLS[0];
+    localPlayer.isReady = true;
+    gameState.players.push(localPlayer); 
+    
+    showScreen('lobby');
+    updateLobbyUI();
+}
+
+function joinGame() {
+    const gameName = gameNameInput.value.trim();
+    const playerName = playerNameInput.value.trim();
+    if (!gameName || !playerName) {
+        homeError.textContent = "Game Name and Your Name cannot be empty.";
+        return;
+    }
+    localPlayer.name = playerName;
+    isHost = false;
+    hostId = gameName;
+    hostBtn.disabled = true;
+    joinBtn.disabled = true;
+    initializePeer();
+
+    setTimeout(() => { 
+        if (!peer || !peer.id) return;
+        const conn = peer.connect(hostId, { reliable: true });
+        if(conn) {
+            setupConnection(conn);
+        } else {
+            homeError.textContent = "Could not connect to host. Check Game Name.";
+            hostBtn.disabled = false;
+            joinBtn.disabled = false;
+        }
+    }, 1000);
+}
+
+function broadcast(data) {
+    if (!isHost) return;
+    Object.values(connections).forEach(conn => {
+        conn.send(data);
+    });
+}
+
+function sendToHost(data) {
+    if (isHost) return;
+    const conn = connections[hostId];
+    if (conn) {
+        conn.send(data);
+    }
+}
+
+function handleMessage(data, peerId) {
+    //console.log('Received:', data.type);
+    switch (data.type) {
+        case 'game_state':
+            gameState = data.state;
+            if (!isHost && !localPlayer.isReady) {
+                showScreen('lobby');
+                sendToHost({ type: 'player_join', player: localPlayer });
+                localPlayer.isReady = true; 
+            }
+            if (gameState.gameStarted) {
+                showScreen('game');
+                resizeCanvas();
+                updateGameUI();
+            } else {
+                updateLobbyUI();
+            }
+            break;
+        case 'player_join':
+            if (isHost) {
+                // ** THE BUG FIX IS HERE **
+                // Check if player already exists before adding
+                if (gameState.players.some(p => p.id === data.player.id)) {
+                    //console.warn(`Player ${data.player.id} tried to join again. Ignoring.`);
+                    // Resend state just in case they missed it
+                    connections[data.player.id]?.send({ type: 'game_state', state: gameState });
+                    return; 
+                }
+
+                let newPlayer = data.player;
+                const usedSymbols = gameState.players.map(p => p.symbol);
+                const nextSymbol = PREDEFINED_SYMBOLS.find(s => !usedSymbols.includes(s));
+                newPlayer.symbol = nextSymbol || '';
+                
+                gameState.players.push(newPlayer);
+                broadcast({ type: 'game_state', state: gameState });
+                updateLobbyUI();
+            }
+            break;
+        case 'player_update':
+             if (isHost) {
+                const playerIndex = gameState.players.findIndex(p => p.id === peerId);
+                if (playerIndex > -1) {
+                    const requestedSymbol = data.player.symbol;
+                    if (gameState.players.some((p, i) => p.symbol === requestedSymbol && i !== playerIndex)) {
+                        connections[peerId].send({type: 'symbol_taken'});
+                    } else {
+                        gameState.players[playerIndex].symbol = data.player.symbol;
+                        broadcast({ type: 'game_state', state: gameState });
+                        updateLobbyUI();
+                    }
+                }
+            }
+            break;
+        case 'symbol_taken':
+            lobbyError.textContent = "Symbol is already taken!";
+            setTimeout(() => lobbyError.textContent = "", 2000);
+            break;
+        case 'game_start': // This case can be removed if game_state handles it all
+            gameState.grid = data.grid;
+            gameState.gridSize = data.gridSize;
+            gameState.winCondition = data.winCondition;
+            gameState.currentPlayerIndex = data.currentPlayerIndex;
+            gameState.gameStarted = true;
+            showScreen('game');
+            resizeCanvas();
+            updateGameUI();
+            break;
+        case 'player_move':
+            if (isHost) {
+                handlePlayerMove(data.move);
+            }
+            break;
+    }
+}
+
+// ---------- GAME LOGIC ---------- //
+function attemptSetSymbol() {
+    const selectedSymbol = String(symbolSelect.value);
+    const customSymbol = String(customSymbolInput.value);
+	
+	console.log("attemptSetSymbol selectedSymbol:'"+selectedSymbol+"', customSymbol:'"+customSymbol+"'");
+    
+    let symbolToSet = customSymbol || selectedSymbol;
+    if (!symbolToSet || localPlayer.symbol === symbolToSet) return;
+	
+	console.log("attemptSetSymbol 2");
+
+    let updatedPlayer = { ...localPlayer, symbol: symbolToSet };
+    
+    const payload = { type: 'player_update', player: updatedPlayer };
+
+    if (isHost) {
+		console.log("attemptSetSymbol 3");
+        const playerIndex = gameState.players.findIndex(p => p.id === localPlayer.id);
+        if (playerIndex > -1) {
+            if (gameState.players.some((p, i) => p.symbol === symbolToSet && i !== playerIndex)) {
+                lobbyError.textContent = "Symbol is already taken!";
+				console.log(lobbyError.textContent);
+                setTimeout(() => lobbyError.textContent = "", 2000);
+            } else {
+                gameState.players[playerIndex].symbol = symbolToSet;
+                broadcast({ type: 'game_state', state: gameState });
+				console.log("set symbol: "+symbolToSet);
+                updateLobbyUI();
+            }
+        }
+    } else {
+		console.log("attemptSetSymbol 4");
+        sendToHost(payload);
+    }
+}
+
+function startGame() {
+    if (!isHost) return;
+
+    gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
+    gameState.winCondition = parseInt(winConditionInput.value);
+    gameState.grid = Array(gameState.gridSize.y).fill(null).map(() => Array(gameState.gridSize.x).fill(null));
+    gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+    gameState.gameStarted = true;
+    gameState.gameOver = false;
+    gameState.winner = null;
+    gameState.winLines = [];
+
+    broadcast({ type: 'game_state', state: gameState });
+    handleMessage({ type: 'game_state', state: gameState }); // Update host locally
+}
+
+function handlePlayerMove({x, y, playerId}) {
+    if (gameState.gameOver || gameState.grid[y][x] !== null) return;
+    
+    const player = gameState.players[gameState.currentPlayerIndex];
+    if (player.id !== playerId) return;
+
+    gameState.grid[y][x] = player.symbol;
+
+    const winResult = checkWin(x, y);
+    if (winResult.won) {
+        gameState.gameOver = true;
+        gameState.winner = player;
+        gameState.winLines = winResult.lines;
+    } else {
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    }
+    
+    broadcast({ type: 'game_state', state: gameState });
+    handleMessage({ type: 'game_state', state: gameState });
+}
+
+function checkWin(x, y) {
+    const symbol = gameState.grid[y][x];
+    if (!symbol) return { won: false };
+    
+    const N = gameState.winCondition;
+    const lines = [];
+
+    const directions = [
+        { dx: 1, dy: 0 },  // Horizontal
+        { dx: 0, dy: 1 },  // Vertical
+        { dx: 1, dy: 1 },  // Diagonal \
+        { dx: 1, dy: -1 }  // Diagonal /
+    ];
+
+    for (const { dx, dy } of directions) {
+        let line = [{x, y}];
+        
+        for (let i = 1; i < N; i++) {
+            const newX = x + i * dx;
+            const newY = y + i * dy;
+            if (newX >= 0 && newX < gameState.gridSize.x && newY >= 0 && newY < gameState.gridSize.y && gameState.grid[newY][newX] === symbol) {
+                line.push({x: newX, y: newY});
+            } else {
+                break;
+            }
+        }
+        
+        for (let i = 1; i < N; i++) {
+            const newX = x - i * dx;
+            const newY = y - i * dy;
+            if (newX >= 0 && newX < gameState.gridSize.x && newY >= 0 && newY < gameState.gridSize.y && gameState.grid[newY][newX] === symbol) {
+                line.push({x: newX, y: newY});
+            } else {
+                break;
+            }
+        }
+        
+        if (line.length >= N) {
+            line.sort((a,b) => a.x - b.x || a.y - b.y);
+            for (let i = 0; i <= line.length - N; i++) {
+                 lines.push({ start: line[i], end: line[i + N - 1] });
+            }
+        }
+    }
+    
+    return { won: lines.length > 0, lines: lines };
+}
+
+function updateGameInfo() {
+    if (!gameState.gameStarted) return;
+    
+    if (gameState.gameOver) {
+        if (gameState.winner) {
+            gameInfo.textContent = `${gameState.winner.name} (${gameState.winner.symbol}) won the game!`;
+        } else {
+            gameInfo.textContent = "It's a draw!";
+        }
+    } else {
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+        const turnText = currentPlayer.id === localPlayer.id ? "Your Turn" : `${currentPlayer.name}'s Turn`;
+        gameInfo.textContent = `${turnText} (${currentPlayer.symbol})`;
+    }
+}
+
+
+// ---------- CANVAS DRAWING & INTERACTION ---------- //
+let viewport = {
+    x: 0, y: 0, scale: 1,
+    minScale: 0.2, maxScale: 5,
+};
+let panState = {
+    isPanning: false,
+    startX: 0, startY: 0,
+};
+let lastTap = 0;
+let cellSize = 50;
+
+function draw() {
+    if (!gameState.gameStarted) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(viewport.scale, viewport.scale);
+    ctx.translate(viewport.x, viewport.y);
+
+    const gridWidth = gameState.gridSize.x * cellSize;
+    const gridHeight = gameState.gridSize.y * cellSize;
+    const offsetX = -gridWidth / 2;
+    const offsetY = -gridHeight / 2;
+
+    // Draw grid lines
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1 / viewport.scale;
+
+    for (let i = 0; i <= gameState.gridSize.x; i++) {
+        ctx.beginPath();
+        ctx.moveTo(offsetX + i * cellSize, offsetY);
+        ctx.lineTo(offsetX + i * cellSize, offsetY + gridHeight);
+        ctx.stroke();
+    }
+    for (let i = 0; i <= gameState.gridSize.y; i++) {
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY + i * cellSize);
+        ctx.lineTo(offsetX + gridWidth, offsetY + i * cellSize);
+        ctx.stroke();
+    }
+    
+    // Draw symbols
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${cellSize * 0.7}px sans-serif`;
+    
+    for (let y = 0; y < gameState.gridSize.y; y++) {
+        for (let x = 0; x < gameState.gridSize.x; x++) {
+            if (gameState.grid[y] && gameState.grid[y][x]) {
+                const symbol = gameState.grid[y][x];
+                const playerIndex = gameState.players.findIndex(p => p.symbol === symbol);
+                ctx.fillStyle = playerIndex > -1 ? ('hsl(' + (playerIndex * 60) + ', 80%, 70%)') : 'white';
+                ctx.fillText(symbol, offsetX + x * cellSize + cellSize / 2, offsetY + y * cellSize + cellSize / 2);
+            }
+        }
+    }
+    
+    // Draw winning line(s)
+    if (gameState.gameOver && gameState.winLines) {
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+        ctx.lineWidth = 40 / viewport.scale;
+        ctx.lineCap = 'round';
+        
+        gameState.winLines.forEach(line => {
+            const startX = offsetX + line.start.x * cellSize + cellSize / 2;
+            const startY = offsetY + line.start.y * cellSize + cellSize / 2;
+            const endX = offsetX + line.end.x * cellSize + cellSize / 2;
+            const endY = offsetY + line.end.y * cellSize + cellSize / 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        });
+    }
+
+    ctx.restore();
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if (gameState.gameStarted) {
+        draw();
+    }
+}
+
+function getTouchPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function getGridCoords(canvasX, canvasY) {
+    // Inverse transform canvas coordinates to world coordinates
+    const worldX = (canvasX - canvas.width / 2) / viewport.scale - viewport.x;
+    const worldY = (canvasY - canvas.height / 2) / viewport.scale - viewport.y;
+
+    const gridWidth = gameState.gridSize.x * cellSize;
+    const gridHeight = gameState.gridSize.y * cellSize;
+    const offsetX = -gridWidth / 2;
+    const offsetY = -gridHeight / 2;
+
+    const gridX = Math.floor((worldX - offsetX) / cellSize);
+    const gridY = Math.floor((worldY - offsetY) / cellSize);
+
+    return { x: gridX, y: gridY };
+}
+
+
+// Canvas event listeners
+let panStart = { x: 0, y: 0 };
+let isPanning = false;
+
+function onPointerDown(e) {
+    if (e.touches && e.touches.length > 1) return;
+    isPanning = true;
+    const pos = getTouchPos(e);
+    panStart.x = pos.x - viewport.x * viewport.scale;
+    panStart.y = pos.y - viewport.y * viewport.scale;
+}
+
+function onPointerMove(e) {
+    if (!isPanning || (e.touches && e.touches.length > 1)) return;
+    const pos = getTouchPos(e);
+    viewport.x = (pos.x - panStart.x) / viewport.scale;
+    viewport.y = (pos.y - panStart.y) / viewport.scale;
+    draw();
+}
+
+function onPointerUp(e) {
+    isPanning = false;
+    let currentTime = new Date().getTime();
+    if (currentTime - lastTap < 300) {
+       onDoubleClick(e);
+    }
+    lastTap = currentTime;
+}
+
+function onDoubleClick(e) {
+    if (gameState.gameOver) return;
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (currentPlayer.id !== localPlayer.id) return;
+
+    const pos = getTouchPos(e);
+    const { x, y } = getGridCoords(pos.x, pos.y);
+
+    if (x >= 0 && x < gameState.gridSize.x && y >= 0 && y < gameState.gridSize.y) {
+        const move = { x, y, playerId: localPlayer.id };
+        if (isHost) {
+            handlePlayerMove(move);
+        } else {
+            sendToHost({ type: 'player_move', move });
+        }
+    }
+}
+
+let lastDist = 0;
+function onTouchStart(e) {
+    if (e.touches.length > 1) { 
+        isPanning = false; 
+        lastDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+    } else { 
+        onPointerDown(e);
+    }
+}
+
+function onTouchMove(e) {
+    e.preventDefault();
+    if (e.touches.length > 1) {
+        const newDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+        const scaleFactor = newDist / lastDist;
+        const newScale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
+        viewport.scale = newScale;
+        lastDist = newDist;
+        draw();
+    } else {
+        onPointerMove(e);
+    }
+}
+
+canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+canvas.addEventListener('touchend', onPointerUp);
+
+canvas.addEventListener('mousedown', onPointerDown);
+canvas.addEventListener('mousemove', onPointerMove);
+canvas.addEventListener('mouseup', onPointerUp);
+canvas.addEventListener('mouseleave', () => isPanning = false);
+canvas.addEventListener('dblclick', onDoubleClick);
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    viewport.scale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
+    draw();
+}, { passive: false });
+
+
+// ---------- INITIALIZATION ---------- //
+hostBtn.addEventListener('click', hostGame);
+joinBtn.addEventListener('click', joinGame);
+startGameBtn.addEventListener('click', startGame);
+changeSymbolBtn.addEventListener('click', attemptSetSymbol);
+window.addEventListener('resize', resizeCanvas);
+
+</script>
+</body>
+</html>
