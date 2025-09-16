@@ -166,13 +166,101 @@
             z-index: 10;
         }
     </style>
+	
+	
+	
+
+
+
+
+
+
+<style>
+/*
+  body { 
+    font-family: sans-serif; 
+    margin: 20px; 
+    background: #121212; 
+    color: #eee;
+  }
+  select, input { 
+    font-size: 16px; 
+    padding: 5px; 
+    background: #1e1e1e;
+    color: #eee;
+    border: 1px solid #555;
+  }
+  */
+  
+  #emojiView {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #1a1a1a;
+    overflow-y: auto;
+    display: none;
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 1000;
+    color: #eee;
+  }
+  #emojiGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 20px;
+  }
+  .emojiSquare {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    background: #222;
+    color: #eee;
+  }
+  .emojiSquare:hover { background: #ff4d4d; color: #fff; }
+  #emojiControls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  #closeBtn {
+    margin-left: auto;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+    padding: 5px 10px;
+    background: #333;
+    border: 1px solid #555;
+    color: #eee;
+    border-radius: 4px;
+  }
+  #closeBtn:hover { background: #ff4d4d; color: #fff; }
+  #searchOptions { display: flex; align-items: center; gap: 5px; }
+  #searchOptions input, #searchOptions button {
+    background: #222;
+    color: #eee;
+    border: 1px solid #555;
+    padding: 5px 8px;
+    border-radius: 4px;
+  }
+  #searchOptions button:hover { background: #ff4d4d; color: #fff; }
+</style>
+
+
 </head>
 <body>
 
     <div id="home-screen" class="screen active">
         <h1>Wi-Fi Tic-Tac-Toe</h1>
         <div class="input-group">
-            <input type="text" id="game-name-input" placeholder="Enter Game Name">
+            <input type="text" id="game-name-input" value="DefaultGameName" placeholder="Enter Game Name">
         </div>
         <div class="input-group">
             <input type="text" id="player-name-input" placeholder="Enter Your Name">
@@ -180,7 +268,7 @@
         <button id="host-btn">Host Game</button>
         <br>
         <button id="join-btn" class="secondary">Join Game</button>
-        <p id="home-error" style="color: red;"></p>
+        <p id="home-error" style="color: #FF00FF;"></p>
     </div>
 
     <div id="lobby-screen" class="screen">
@@ -188,12 +276,12 @@
         <div id="host-controls">
             <h3>Game Settings</h3>
             <div class="input-group" style="display: flex; gap: 10px;">
-                <input type="number" id="grid-x-input" value="10" min="3">
-                <input type="number" id="grid-y-input" value="10" min="3">
+                <input type="number" id="grid-x-input" value="30" min="3">
+                <input type="number" id="grid-y-input" value="30" min="3">
             </div>
             <div class="input-group">
                 <label for="win-condition-input">Symbols in a row to win:</label>
-                <input type="number" id="win-condition-input" value="4" min="3">
+                <input type="number" id="win-condition-input" value="5" min="3">
             </div>
             <button id="start-game-btn">Start Game</button>
         </div>
@@ -205,7 +293,29 @@
             <label>Your Symbol</label>
             <div class="symbol-select-group">
                 <select id="symbol-select"></select>
-                <input type="text" id="custom-symbol-input" maxlength="8" placeholder="Unicode">
+
+<label for="groupSelect">Group:</label>
+<select id="groupSelect">
+  <option value=""></option>
+  <option value="search">--Search--</option>
+</select>
+<!--<input type="text" id="selectedEmoji" placeholder="Selected Emoji">-->
+
+<div id="emojiView">
+  <div id="emojiControls">
+    <div id="searchOptions" style="display:none;">
+      <input type="text" id="searchInput" placeholder="Search...">
+      <button id="matchModeBtn">Word</button>
+      <button id="searchBtn">Search</button>
+    </div>
+    <div id="closeBtn">✖</div>
+  </div>
+  <div id="emojiGrid"></div>
+</div>
+
+
+
+                <input type="text" id="custom-symbol-input" maxlength="16" placeholder="Unicode">
             </div>
         </div>
         <button id="change-symbol-btn">Set Symbol</button>
@@ -216,6 +326,85 @@
         <div id="game-info"></div>
         <canvas id="game-canvas"></canvas>
     </div>
+
+
+
+<script>
+let emojiData = [];
+let matchMode = 'word'; // or 'any'
+
+async function loadEmojis() {
+  const res = await fetch('emojis-all.json');
+  emojiData = await res.json();
+
+  const select = document.getElementById('groupSelect');
+  emojiData.forEach(group => {
+    const opt = document.createElement('option');
+    opt.value = group.group;
+    opt.textContent = group.group;
+    select.appendChild(opt);
+  });
+}
+
+function showEmojiView(items) {
+  const grid = document.getElementById('emojiGrid');
+  grid.innerHTML = '';
+  items.forEach(([symbol, name]) => {
+    const div = document.createElement('div');
+    div.className = 'emojiSquare';
+    div.textContent = symbol;
+    div.title = name;
+    div.addEventListener('click', () => {
+      document.getElementById('custom-symbol-input').value = symbol;
+      document.getElementById('emojiView').style.display = 'none';
+    });
+    grid.appendChild(div);
+  });
+  document.getElementById('emojiView').style.display = 'block';
+}
+
+document.getElementById('groupSelect').addEventListener('change', (e) => {
+  const val = e.target.value;
+  const searchOptions = document.getElementById('searchOptions');
+  if(val === 'search') {
+    searchOptions.style.display = 'flex';
+    document.getElementById('emojiGrid').innerHTML = '';
+    document.getElementById('emojiView').style.display = 'block';
+  } else {
+    searchOptions.style.display = 'none';
+    const group = emojiData.find(g => g.group === val);
+    if(group) showEmojiView(group.list);
+  }
+});
+
+document.getElementById('closeBtn').addEventListener('click', () => {
+  document.getElementById('emojiView').style.display = 'none';
+});
+
+document.getElementById('matchModeBtn').addEventListener('click', () => {
+  matchMode = matchMode === 'word' ? 'any' : 'word';
+  document.getElementById('matchModeBtn').textContent = matchMode.charAt(0).toUpperCase() + matchMode.slice(1);
+});
+
+document.getElementById('searchBtn').addEventListener('click', () => {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  if(!query) return;
+  let results = [];
+  emojiData.forEach(group => {
+    group.list.forEach(([symbol,name]) => {
+      const lname = name.toLowerCase();
+      if((matchMode==='word' && lname.split(' ').includes(query)) ||
+         (matchMode==='any' && lname.includes(query))) {
+        results.push([symbol,name]);
+      }
+    });
+  });
+  showEmojiView(results);
+});
+
+loadEmojis();
+</script>
+
 
 <script>
 // ---------- CONFIG & STATE ---------- //
