@@ -157,14 +157,20 @@
             top: 0;
             left: 0;
             width: 100%;
-            padding: 10px;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+            padding: 5px;
             text-align: center;
             font-size: 1.2em;
             color: white;
             pointer-events: none; /* Clicks go through it */
             z-index: 10;
         }
+		
+		.my-turn {
+            background-color: rgba(0,0,255,0.5);
+		}
+		.opponent-turn {
+            background-color: rgba(255,0,0,0.5);
+		}
     </style>
 	
 	
@@ -318,7 +324,7 @@
                 <input type="text" id="custom-symbol-input" maxlength="16" placeholder="Unicode">
             </div>
         </div>
-        <button id="change-symbol-btn">Set Symbol</button>
+        <!--<button id="change-symbol-btn">Set Symbol</button>-->
         <p id="lobby-error" style="color: red;"></p>
     </div>
 
@@ -357,6 +363,7 @@ function showEmojiView(items) {
     div.addEventListener('click', () => {
       document.getElementById('custom-symbol-input').value = symbol;
       document.getElementById('emojiView').style.display = 'none';
+	  attemptSetSymbol();
     });
     grid.appendChild(div);
   });
@@ -416,6 +423,8 @@ let hostId;
 let connections = {}; // key: peerId, value: connection object
 let isHost = false;
 
+let lastMoves = {};
+
 let localPlayer = {
     id: null,
     name: "Player",
@@ -453,7 +462,7 @@ const startGameBtn = document.getElementById('start-game-btn');
 const playerList = document.getElementById('player-list');
 const symbolSelect = document.getElementById('symbol-select');
 const customSymbolInput = document.getElementById('custom-symbol-input');
-const changeSymbolBtn = document.getElementById('change-symbol-btn');
+//const changeSymbolBtn = document.getElementById('change-symbol-btn');
 const lobbyError = document.getElementById('lobby-error');
 const gridXInput = document.getElementById('grid-x-input');
 const gridYInput = document.getElementById('grid-y-input');
@@ -462,6 +471,8 @@ const winConditionInput = document.getElementById('win-condition-input');
 const gameInfo = document.getElementById('game-info');
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = true;
+
 
 // ---------- UI MANAGEMENT ---------- //
 function showScreen(screenName) {
@@ -520,6 +531,7 @@ function updateGameUI() {
     if (gameState.gameStarted) {
         updateGameInfo();
         draw();
+		console.log("updateGameUI draw()");
     }
 }
 
@@ -759,6 +771,12 @@ function startGame() {
     handleMessage({ type: 'game_state', state: gameState }); // Update host locally
 }
 
+
+function setLastMoveByPlayer(x, y, playerId) {
+    gameState.lastMoves = gameState.lastMoves || {};
+    gameState.lastMoves[playerId] = { x, y };
+}
+
 function handlePlayerMove({x, y, playerId}) {
     if (gameState.gameOver || gameState.grid[y][x] !== null) return;
     
@@ -766,6 +784,7 @@ function handlePlayerMove({x, y, playerId}) {
     if (player.id !== playerId) return;
 
     gameState.grid[y][x] = player.symbol;
+	setLastMoveByPlayer(x, y, player.id);
 
     const winResult = checkWin(x, y);
     if (winResult.won) {
@@ -839,7 +858,17 @@ function updateGameInfo() {
         }
     } else {
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-        const turnText = currentPlayer.id === localPlayer.id ? "Your Turn" : `${currentPlayer.name}'s Turn`;
+		let turnText = "";
+		if(currentPlayer.id === localPlayer.id){
+			turnText = "Your Turn";
+			gameInfo.classList.add("my-turn");
+			gameInfo.classList.remove("opponent-turn");
+		}else{
+			turnText = `${currentPlayer.name}'s Turn`;
+			gameInfo.classList.remove("my-turn");
+			gameInfo.classList.add("opponent-turn");
+		}
+        //const turnText = currentPlayer.id === localPlayer.id ? "Your Turn" : `${currentPlayer.name}'s Turn`;
         gameInfo.textContent = `${turnText} (${currentPlayer.symbol})`;
     }
 }
@@ -857,8 +886,38 @@ let panState = {
 let lastTap = 0;
 let cellSize = 50;
 
+let startTime = Date.now();
+
+
+
+function hasMoveAt(x, y) {
+  return Object.entries(gameState.lastMoves).some(([playerId, move]) => {
+    if (playerId === localPlayer.id) return false; // ignore self
+    return move.x === x && move.y === y;
+  });
+}
+
+
+let lastTime = 0;
+const fps = 60;
+const frameDuration = 1000 / fps;
+
+function gameLoop(timestamp) {
+  if (timestamp - lastTime >= frameDuration) {
+    lastTime = timestamp;
+    draw();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+
+
 function draw() {
     if (!gameState.gameStarted) return;
+	
+	const time = (Date.now() - startTime) / 1000; // seconds
+	const pulse = 1 + 0.15 * Math.sin(time * 4);   // oscillates between 0.8–1.2
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -899,8 +958,29 @@ function draw() {
             if (gameState.grid[y] && gameState.grid[y][x]) {
                 const symbol = gameState.grid[y][x];
                 const playerIndex = gameState.players.findIndex(p => p.symbol === symbol);
-                ctx.fillStyle = playerIndex > -1 ? ('hsl(' + (playerIndex * 60) + ', 80%, 70%)') : 'white';
-                ctx.fillText(symbol, offsetX + x * cellSize + cellSize / 2, offsetY + y * cellSize + cellSize / 2);
+				
+                //ctx.fillStyle = playerIndex > -1 ? ('hsl(' + (playerIndex * 60) + ', 80%, 70%)') : 'white';
+                //ctx.fillText(symbol, offsetX + x * cellSize + cellSize / 2, offsetY + y * cellSize + cellSize / 2);
+				let baseSize = cellSize * 0.7;
+				let fontSize = baseSize;
+
+				// If this is the last move, apply pulse
+				if (hasMoveAt(x, y)) {
+				  fontSize = baseSize * pulse;
+				}
+
+				ctx.font = `${fontSize}px sans-serif`;
+
+				// Draw symbol
+				ctx.fillStyle = playerIndex > -1
+				  ? `hsl(${playerIndex * 60}, 80%, 70%)`
+				  : "white";
+
+				ctx.fillText(
+				  symbol,
+				  offsetX + x * cellSize + cellSize / 2,
+				  offsetY + y * cellSize + cellSize / 2
+				);
             }
         }
     }
@@ -908,7 +988,7 @@ function draw() {
     // Draw winning line(s)
     if (gameState.gameOver && gameState.winLines) {
         ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
-        ctx.lineWidth = 40 / viewport.scale;
+        ctx.lineWidth = 40;
         ctx.lineCap = 'round';
         
         gameState.winLines.forEach(line => {
@@ -977,7 +1057,7 @@ function onPointerMove(e) {
     const pos = getTouchPos(e);
     viewport.x = (pos.x - panStart.x) / viewport.scale;
     viewport.y = (pos.y - panStart.y) / viewport.scale;
-    draw();
+    //draw();
 }
 
 function onPointerUp(e) {
@@ -1025,7 +1105,7 @@ function onTouchMove(e) {
         const newScale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
         viewport.scale = newScale;
         lastDist = newDist;
-        draw();
+        //draw();
     } else {
         onPointerMove(e);
     }
@@ -1045,7 +1125,7 @@ canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
     viewport.scale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
-    draw();
+    //draw();
 }, { passive: false });
 
 
@@ -1053,8 +1133,10 @@ canvas.addEventListener('wheel', e => {
 hostBtn.addEventListener('click', hostGame);
 joinBtn.addEventListener('click', joinGame);
 startGameBtn.addEventListener('click', startGame);
-changeSymbolBtn.addEventListener('click', attemptSetSymbol);
+//changeSymbolBtn.addEventListener('click', attemptSetSymbol);
 window.addEventListener('resize', resizeCanvas);
+
+customSymbolInput.addEventListener('input', attemptSetSymbol);
 
 </script>
 </body>
