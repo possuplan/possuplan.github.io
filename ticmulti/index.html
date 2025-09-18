@@ -8,7 +8,9 @@
 	
 	<script src="riffwave.js"></script>
 	<script src="sfxr.js"></script>
-	
+	<!--
+	todo: play_sound doesnt work on others than the host. or works twice on others than host if in dblclick function.
+	-->
     <style>
         :root {
             --bg-color: #121212;
@@ -209,48 +211,55 @@
     background: #1a1a1a;
     overflow-y: auto;
     display: none;
-    padding: 20px;
+    padding: 5px;
     box-sizing: border-box;
     z-index: 1000;
     color: #eee;
+    padding-top: 65px;
   }
-  #emojiGrid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 20px;
+#emojiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 50px);
+  gap: 0;
+}
+
+.emojiSquare {
+  width: 50px;
+  height: 50px;
+  outline: 1px solid #555; /* outline doesn’t double up */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  cursor: pointer;
+  background: #222;
+  color: #eee;
+}
+  .emojiSquare:hover {
+	  background: #ff0000;
+	  color: #fff;
   }
-  .emojiSquare {
-    width: 40px;
-    height: 40px;
-    border: 1px solid #555;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    background: #222;
-    color: #eee;
-  }
-  .emojiSquare:hover { background: #ff4d4d; color: #fff; }
   #emojiControls {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
     align-items: center;
   }
-  #closeBtn {
-    margin-left: auto;
+#closeBtn {
+    position: fixed;
+    top: 4px;
+    right: 11px;
     cursor: pointer;
     font-weight: bold;
-    font-size: 18px;
-    padding: 5px 10px;
+    font-size: 29px;
+    padding: 5px 12px;
     background: #333;
-    border: 1px solid #555;
+    border: 3px solid #DDD;
     color: #eee;
     border-radius: 4px;
-  }
+    box-shadow: 0 0 15px 10px rgba(0,0,0,0.75);
+}
+
   #closeBtn:hover { background: #ff4d4d; color: #fff; }
   #searchOptions { display: flex; align-items: center; gap: 5px; }
   #searchOptions input, #searchOptions button {
