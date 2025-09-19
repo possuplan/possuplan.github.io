@@ -10,7 +10,7 @@
 	<script src="sfxr.js"></script>
 	<!--
 	todo: 
-	- 
+	- tasapeliä ei tarksiteta ollenkaan. pitää tehä uus tsekkaus sitä varten. play_sound("tie");
 	-->
     <style>
         :root {
@@ -172,6 +172,43 @@
             z-index: 10;
         }
 		
+#chat {
+  position: absolute;
+  top: 0;
+  left: 0;             /* start from the left edge */
+  right: 0;            /* stretch to the right edge */
+  display: flex;
+  gap: 5px;
+  align-items: center;  /* vertically center children */
+  padding: 0 10px;     /* optional horizontal padding */
+  box-sizing: border-box; /* include padding in width */
+}
+
+
+#chatMessages {
+  flex: 1;               /* takes all remaining space */
+  border: 1px solid #ccc;
+  padding: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  height:90px;
+}
+
+#chatInput {
+  width: 100px;           /* fixed sizes */
+    position: relative;
+    top: 20px;
+}
+
+
+#chatSend {
+  width: 80px;           /* fixed width */
+    position: relative;
+    top: 20px;
+}
+
+
 		.my-turn {
             background-color: rgba(0,0,255,0.5);
 		}
@@ -346,6 +383,14 @@
     <div id="game-screen">
         <div id="game-info"></div>
         <canvas id="game-canvas"></canvas>
+		
+
+		 <!-- Chat box -->
+		<div id="chat">
+			<div id="chatMessages"></div>
+			<input id="chatInput" type="text" placeholder="Type message...">
+			<button id="chatSend">Send</button>
+		</div>
     </div>
 
 
@@ -598,6 +643,11 @@ const gameInfo = document.getElementById('game-info');
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = true;
+
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const chatSend = document.getElementById("chatSend");
+
 
 
 // ---------- UI MANAGEMENT ---------- //
@@ -902,7 +952,58 @@ function handleMessage(data, peerId) {
                 handlePlayerMove(data.move);
             }
             break;
+		case "player_message":
+		  if (isHost) {
+			// Rebroadcast to everyone else, but NOT back to the original sender
+			broadcast(data, peerId); // assuming your broadcast supports excluding peerId
+		  }
+
+		  // Show the message (all peers including host)
+		  addChatMessage(data.playerId, data.text);
+		  break;
     }
+}
+
+
+// Send message when clicking the button
+chatSend.addEventListener("click", sendChatMessage);
+
+// Or when pressing Enter
+chatInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") sendChatMessage();
+});
+
+function sendChatMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  const msg = {
+    type: "player_message",
+    playerId: localPlayer.id,
+    text
+  };
+
+  if (isHost) {
+    // Host only needs to broadcast, not handleMessage directly
+    broadcast(msg);
+    addChatMessage(msg.playerId, msg.text); // add to host UI only
+  } else {
+    sendToHost(msg);
+    //addChatMessage(msg.playerId, msg.text); // add immediately for sender
+  }
+
+  chatInput.value = "";
+}
+
+
+
+function addChatMessage(playerId, text) {
+  const div = document.createElement("div");
+  div.textContent = `${playerId}: ${text}`;
+  chatMessages.appendChild(div);
+
+  // scroll to bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // ---------- GAME LOGIC ---------- //
