@@ -165,55 +165,85 @@
             left: 0;
             width: 100%;
             padding: 5px;
-            text-align: center;
+            text-align: right;
             font-size: 1.2em;
             color: white;
             pointer-events: none; /* Clicks go through it */
             z-index: 10;
         }
+				
+		#chat {
+			position: absolute;
+			top: 0;
+			left: 0;             /* start from the left edge */
+			right: 0;            /* stretch to the right edge */
+			display: flex;
+			/*gap: 5px;*/
+			align-items: center;  /* vertically center children */
+
+			box-sizing: border-box; /* include padding in width */
+		}
+
+		#chatMessages {
+			flex: 1;               /* takes all remaining space */
+			border: 1px solid #888;
+			border-left:0;
+			border-top:0;
+			padding: 5px;
+			overflow: hidden;
+			/*white-space: nowrap;*/
+				
+			white-space: normal;     /* allow line breaks */
+			word-break: break-word;  /* break long words if needed */
+			overflow-wrap: anywhere; /* modern way to force wrapping */
+
+			/*text-overflow: ellipsis;*/
+			height:71px;
+			padding-top:71px;
+			background-color: rgba(0, 0, 0, 0.8);
+			overflow-x: hidden;           /* prevent horizontal scroll */
+			overflow-y: auto;         /* enable vertical scrolling */
+			scrollbar-width: none;    /* hide scrollbar in Firefox */
+			
+			position: relative;   /* must be positioned for z-index to work */
+			top:0;
+			z-index: 1;           /* normal */
+			outline: none;        /* remove blue focus outline if you don’t want it */
+		}
+		#chatMessages:focus {
+			z-index: 9999;        /* bring on top when focused */
+			border-color:white;
+		}
 		
-#chat {
-  position: absolute;
-  top: 0;
-  left: 0;             /* start from the left edge */
-  right: 0;            /* stretch to the right edge */
-  display: flex;
-  gap: 5px;
-  align-items: center;  /* vertically center children */
-  
-  box-sizing: border-box; /* include padding in width */
-}
+		#chatMessages::-webkit-scrollbar {
+			display: none;            /* hide scrollbar in Chrome/Safari/Edge */
+		}
+	
+		#chatInput {
+			width: 100px;           /* fixed sizes */
+			position: relative;
+			top: 18px;
+			border-radius:0;
+			height: 39px;
+			padding-left: 3px;
+			padding-right: 3px;
+		}
 
-
-#chatMessages {
-  flex: 1;               /* takes all remaining space */
-  border: 1px solid #ccc;
-  padding: 5px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  height:90px;
-}
-
-#chatInput {
-  width: 100px;           /* fixed sizes */
-    position: relative;
-    top: 20px;
-}
-
-
-#chatSend {
-  width: 80px;           /* fixed width */
-    position: relative;
-    top: 20px;
-}
+		#chatSend {
+			width: 56px;           /* fixed width */
+			position: relative;
+			top: 18px;
+			border-radius:0;
+			height: 39px;
+			padding:0;
+		}
 
 
 		.my-turn {
-            background-color: rgba(0,0,255,0.5);
+            background-color: rgba(0,0,255,0.3);
 		}
 		.opponent-turn {
-            background-color: rgba(255,0,0,0.5);
+            background-color: rgba(255,0,0,0.3);
 		}
     </style>
 	
@@ -387,7 +417,7 @@
 
 		 <!-- Chat box -->
 		<div id="chat">
-			<div id="chatMessages"></div>
+			<div id="chatMessages" tabindex="0"></div>
 			<input id="chatInput" type="text" placeholder="Type message...">
 			<button id="chatSend">Send</button>
 		</div>
@@ -504,6 +534,25 @@ function play_sound(soundName){
 }
 
 generate_sounds();
+
+
+const playerColors = [
+	"#e6194B", // red
+	"#4363d8", // blue
+	"#ffe119", // yellow
+	"#3cb44b", // dark green
+	"#f58231", // orange
+	"#911eb4", // purple
+	"#42d4f4", // cyan
+	"#f032e6", // magenta
+	"#bfef45", // lime
+	"#469990", // teal
+	"#9A6324", // brown
+	"#808000", // olive
+	"#000075", // navy
+	"#a9a9a9", // gray
+	"#000000"  // black
+];
 
 
 
@@ -675,7 +724,9 @@ function updateLobbyUI() {
     playerList.innerHTML = '';
     gameState.players.forEach(p => {
         const li = document.createElement('li');
-        li.textContent = `${p.symbol} - ${p.name}`;
+		const safeName = document.createTextNode(p.name);
+		li.innerHTML = `${p.symbol} - <span style="color:${p.color}"></span>`;
+		li.querySelector("span").appendChild(safeName);
         playerList.appendChild(li);
     });
 
@@ -755,6 +806,11 @@ function setupConnection(conn) {
     });
 }
 
+function newPlayerColor(){
+	let colorIndex = gameState.players.length % playerColors.length;
+	return playerColors[colorIndex];
+}
+
 function hostGame() {
     const gameName = gameNameInput.value.trim();
     const playerName = playerNameInput.value.trim();
@@ -770,6 +826,7 @@ function hostGame() {
     
     localPlayer.symbol = PREDEFINED_SYMBOLS[0];
     localPlayer.isReady = true;
+	localPlayer.color = newPlayerColor();
     gameState.players.push(localPlayer); 
     
     showScreen('lobby');
@@ -912,6 +969,7 @@ function handleMessage(data, peerId) {
                 const usedSymbols = gameState.players.map(p => p.symbol);
                 const nextSymbol = PREDEFINED_SYMBOLS.find(s => !usedSymbols.includes(s));
                 newPlayer.symbol = nextSymbol || '';
+				newPlayer.color = newPlayerColor();
                 
                 gameState.players.push(newPlayer);
                 broadcast({ type: 'game_state', state: gameState });
@@ -995,15 +1053,32 @@ function sendChatMessage() {
   chatInput.value = "";
 }
 
+function getPlayerById(id) {
+	return gameState.players.find(p => p.id === id) || null;
+}
 
 
 function addChatMessage(playerId, text) {
-  const div = document.createElement("div");
-  div.textContent = `${playerId}: ${text}`;
-  chatMessages.appendChild(div);
 
-  // scroll to bottom
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+	let player = getPlayerById(playerId);
+
+	const div = document.createElement("div");
+
+	// Player name in color
+	const nameSpan = document.createElement("span");
+	nameSpan.style.color = player.color;
+	nameSpan.textContent = player.name; // safe
+
+	div.appendChild(nameSpan);
+
+	// Colon + message
+	div.appendChild(document.createTextNode(": " + text));
+
+	chatMessages.appendChild(div);
+
+
+	// scroll to bottom
+	chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // ---------- GAME LOGIC ---------- //
@@ -1136,6 +1211,23 @@ function checkWin(x, y) {
     return { won: lines.length > 0, lines: lines };
 }
 
+
+function hexToRgba(hex, alpha = 1) {
+  // Remove leading # if present
+  hex = hex.replace(/^#/, '');
+
+  // Parse short form #abc
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function updateGameInfo() {
     if (!gameState.gameStarted) return;
     
@@ -1151,15 +1243,17 @@ function updateGameInfo() {
         }
     } else {
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.color, 0.3);
 		let turnText = "";
 		if(currentPlayer.id === localPlayer.id){
 			turnText = "Your Turn";
-			gameInfo.classList.add("my-turn");
-			gameInfo.classList.remove("opponent-turn");
+			
+			//gameInfo.classList.add("my-turn");
+			//gameInfo.classList.remove("opponent-turn");
 		}else{
 			turnText = `${currentPlayer.name}'s Turn`;
-			gameInfo.classList.remove("my-turn");
-			gameInfo.classList.add("opponent-turn");
+			//gameInfo.classList.remove("my-turn");
+			//gameInfo.classList.add("opponent-turn");
 		}
         //const turnText = currentPlayer.id === localPlayer.id ? "Your Turn" : `${currentPlayer.name}'s Turn`;
         gameInfo.textContent = `${turnText} (${currentPlayer.symbol})`;
