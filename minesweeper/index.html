@@ -1478,12 +1478,12 @@ requestAnimationFrame(gameLoop);
 
 
 let sounds = {
-	miss: {filename: "sounds/miss.mp3", gain: 1},
-	miss_long: {filename: "sounds/miss_long.mp3", gain: 1},
-	hit: {filename: "sounds/hit.mp3", gain: 0.5},
-	bigsplash: {filename: "sounds/bigsplash.mp3", gain: 1},
-	victory: {filename: "sounds/victory.mp3", gain: 1},
-	warning: {filename: "sounds/warning.mp3", gain: 1},
+	miss: {filename: "sounds/miss.mp3", gain: 1, filter: false},
+	miss_long: {filename: "sounds/miss_long.mp3", gain: 1, filter: false},
+	hit: {filename: "sounds/hit.mp3", gain: 0.5, filter: true},
+	bigsplash: {filename: "sounds/bigsplash.mp3", gain: 1, filter: false},
+	victory: {filename: "sounds/victory.mp3", gain: 1, filter: false},
+	warning: {filename: "sounds/warning.mp3", gain: 1, filter: false},
 };
 
 // Preload all sounds
@@ -1507,19 +1507,32 @@ function loadSound(src) {
 
 
 function playSound(src) {
-  const buffer = soundBuffers[sounds[src].filename];
-  if (!buffer) return; // sound not loaded yet
+	let sound = sounds[src];
+	const buffer = soundBuffers[sound.filename];
+	if (!buffer) return; // sound not loaded yet
 
-  const source = context.createBufferSource();
-  source.buffer = buffer;
-  
-  // Create a gain node for volume control
-  const gainNode = context.createGain();
-  gainNode.gain.value = sounds[src].gain; // 1.0 = 100%, 0.5 = 50%, etc.
-  source.connect(gainNode);
-  gainNode.connect(context.destination);
+	const source = context.createBufferSource();
+	source.buffer = buffer;
 
-  source.start();
+	// Create a gain node for volume control
+	const gainNode = context.createGain();
+	gainNode.gain.value = sound.gain; // 1.0 = 100%, 0.5 = 50%, etc.
+
+	if (sound.filter) {
+		// Create and use filter
+		const filter = context.createBiquadFilter();
+		filter.type = "lowpass";
+		filter.frequency.value = 3000;
+
+		source.connect(filter);
+		filter.connect(gainNode);
+	} else {
+		// Connect directly
+		source.connect(gainNode);
+	}
+
+	gainNode.connect(context.destination);
+	source.start();
 }
 
 
