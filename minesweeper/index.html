@@ -14,6 +14,8 @@ todo:
 - lisää pelin tilanne: miinat löydetty per pelaaja ja miinat löytämättä pelissä.
 - lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
   tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
+- lisää pommi 5x5 räjähdys jonka voi käyttää vain kerran (tai määritelty pelin asetuksissa).
+- lisää muita aseita joita voisi ehkä löytää mapista ja keräillä.
 -->
 <style>
 :root {
@@ -1476,17 +1478,17 @@ requestAnimationFrame(gameLoop);
 
 
 let sounds = {
-	miss: "sounds/miss.mp3",
-	miss_long: "sounds/miss_long.mp3",
-	hit: "sounds/hit.mp3",
-	bigsplash: "sounds/bigsplash.mp3",
-	victory: "sounds/victory.mp3",
-	warning: "sounds/warning.mp3",
+	miss: {filename: "sounds/miss.mp3", gain: 1},
+	miss_long: {filename: "sounds/miss_long.mp3", gain: 1},
+	hit: {filename: "sounds/hit.mp3", gain: 0.6},
+	bigsplash: {filename: "sounds/bigsplash.mp3", gain: 1},
+	victory: {filename: "sounds/victory.mp3", gain: 1},
+	warning: {filename: "sounds/warning.mp3", gain: 1},
 };
 
 // Preload all sounds
 for (const key in sounds) {
-  loadSound(sounds[key]); // call your loadSound function for each file
+  loadSound(sounds[key].filename); // call your loadSound function for each file
 }
 
 
@@ -1505,12 +1507,18 @@ function loadSound(src) {
 
 
 function playSound(src) {
-  const buffer = soundBuffers[sounds[src]];
+  const buffer = soundBuffers[sounds[src].filename];
   if (!buffer) return; // sound not loaded yet
 
   const source = context.createBufferSource();
   source.buffer = buffer;
-  source.connect(context.destination);
+  
+  // Create a gain node for volume control
+  const gainNode = context.createGain();
+  gainNode.gain.value = sounds[src].gain; // 1.0 = 100%, 0.5 = 50%, etc.
+  source.connect(gainNode);
+  gainNode.connect(context.destination);
+
   source.start();
 }
 
