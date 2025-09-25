@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Wi-Fi Minesweepers</title>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script src="riffwave.js"></script>
+<script src="sfxr.js"></script>
+<!--
+todo: 
+- tasapeliä ei tarksiteta ollenkaan. pitää tehä uus tsekkaus sitä varten. play_sound("tie");
+-->
+<style>
+:root {
+	--bg-color: #121212;
+	--surface-color: #1e1e1e;
+	--primary-text: #e0e0e0;
+	--secondary-text: #a0a0a0;
+	--border-color: #333;
+	--accent-color: #03dac6;
+	--grid-line-color: #444;
+	--win-line-color: #ffeb3b;
+}
+
+* {
+	box-sizing: border-box;
+	-webkit-tap-highlight-color: transparent;
+}
+
+body {
+	background-color: var(--bg-color);
+	color: var(--primary-text);
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100vh;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.screen {
+	display: none;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	max-width: 400px;
+	padding: 20px;
+	text-align: center;
+}
+
+.screen.active {
+	display: flex;
+}
+
+h1, h2 {
+	margin-top: 0;
+	font-weight: 500;
+}
+
+.input-group {
+	width: 100%;
+	margin-bottom: 15px;
+}
+
+input[type="text"], input[type="number"], select {
+	width: 100%;
+	padding: 12px;
+	background-color: var(--surface-color);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	color: var(--primary-text);
+	font-size: 16px;
+}
+
+input::placeholder {
+	color: var(--secondary-text);
+}
+
+button {
+	width: 100%;
+	padding: 14px;
+	border: none;
+	border-radius: 8px;
+	background-color: var(--accent-color);
+	color: #000;
+	font-size: 18px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+
+button:disabled {
+	background-color: #555;
+	color: #888;
+	cursor: not-allowed;
+}
+
+button.secondary {
+	background-color: var(--surface-color);
+	color: var(--accent-color);
+	border: 1px solid var(--accent-color);
+}
+
+.symbol-select-group {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+}
+
+#symbol-select {
+	flex-grow: 1;
+}
+
+#custom-symbol-input {
+	width: 80px;
+	text-align: center;
+	font-size: 20px;
+}
+
+#player-list {
+	list-style: none;
+	padding: 0;
+	width: 100%;
+	margin-top: 20px;
+	max-height: 150px;
+	overflow-y: auto;
+}
+
+#player-list li {
+	background-color: var(--surface-color);
+	padding: 10px;
+	border-radius: 5px;
+	margin-bottom: 5px;
+	font-size: 18px;
+}
+
+#game-screen {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: none; /* Managed by JS */
+	flex-direction: column;
+}
+
+#game-canvas {
+	touch-action: none; /* Disables default browser gestures */
+	background-color: #000;
+	width: 100%;
+	height: 100%;
+}
+
+#game-info {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	padding: 5px;
+	text-align: right;
+	font-size: 1.2em;
+	color: white;
+	pointer-events: none; /* Clicks go through it */
+	z-index: 10;
+}
+		
+#chat {
+	position: absolute;
+	top: 0;
+	left: 0;             /* start from the left edge */
+	right: 0;            /* stretch to the right edge */
+	display: flex;
+	/*gap: 5px;*/
+	align-items: center;  /* vertically center children */
+
+	box-sizing: border-box; /* include padding in width */
+}
+
+#chatMessages {
+	flex: 1;               /* takes all remaining space */
+	border: 1px solid #888;
+	border-left:0;
+	border-top:0;
+	padding: 5px;
+	overflow: hidden;
+	/*white-space: nowrap;*/
+		
+	white-space: normal;     /* allow line breaks */
+	word-break: break-word;  /* break long words if needed */
+	overflow-wrap: anywhere; /* modern way to force wrapping */
+
+	/*text-overflow: ellipsis;*/
+	height:71px;
+	padding-top:71px;
+	background-color: rgba(0, 0, 0, 0.8);
+	overflow-x: hidden;           /* prevent horizontal scroll */
+	overflow-y: auto;         /* enable vertical scrolling */
+	scrollbar-width: none;    /* hide scrollbar in Firefox */
+	
+	position: relative;   /* must be positioned for z-index to work */
+	top:0;
+	z-index: 1;           /* normal */
+	outline: none;        /* remove blue focus outline if you don’t want it */
+}
+#chatMessages:focus {
+	z-index: 9999;        /* bring on top when focused */
+	border-color:white;
+}
+
+#chatMessages::-webkit-scrollbar {
+	display: none;            /* hide scrollbar in Chrome/Safari/Edge */
+}
+
+#chatInput {
+	width: 100px;           /* fixed sizes */
+	position: relative;
+	top: 18px;
+	border-radius:0;
+	height: 39px;
+	padding-left: 3px;
+	padding-right: 3px;
+}
+
+#chatSend {
+	width: 56px;           /* fixed width */
+	position: relative;
+	top: 18px;
+	border-radius:0;
+	height: 39px;
+	padding:0;
+}
+
+
+.my-turn {
+	background-color: rgba(0,0,255,0.3);
+}
+.opponent-turn {
+	background-color: rgba(255,0,0,0.3);
+}
+</style>
+	
+	
+	
+
+
+
+
+
+
+<style>
+/*
+  body { 
+    font-family: sans-serif; 
+    margin: 20px; 
+    background: #121212; 
+    color: #eee;
+  }
+  select, input { 
+    font-size: 16px; 
+    padding: 5px; 
+    background: #1e1e1e;
+    color: #eee;
+    border: 1px solid #555;
+  }
+  */
+  
+  #emojiView {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #1a1a1a;
+    overflow-y: auto;
+    display: none;
+    padding: 5px;
+    box-sizing: border-box;
+    z-index: 1000;
+    color: #eee;
+    padding-top: 65px;
+  }
+#emojiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 50px);
+  gap: 0;
+}
+
+.emojiSquare {
+  width: 50px;
+  height: 50px;
+  outline: 1px solid #555; /* outline doesn’t double up */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  cursor: pointer;
+  background: #222;
+  color: #eee;
+}
+  .emojiSquare:hover {
+	  background: #ff0000;
+	  color: #fff;
+  }
+  #emojiControls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+#closeBtn {
+    position: fixed;
+    top: 4px;
+    right: 11px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 29px;
+    padding: 5px 12px;
+    background: #333;
+    border: 3px solid #DDD;
+    color: #eee;
+    border-radius: 4px;
+    box-shadow: 0 0 15px 10px rgba(0,0,0,0.75);
+}
+
+  #closeBtn:hover { background: #ff4d4d; color: #fff; }
+  #searchOptions { display: flex; align-items: center; gap: 5px; }
+  #searchOptions input, #searchOptions button {
+    background: #222;
+    color: #eee;
+    border: 1px solid #555;
+    padding: 5px 8px;
+    border-radius: 4px;
+  }
+  #searchOptions button:hover { background: #ff4d4d; color: #fff; }
+</style>
+
+
+</head>
+<body>
+
+
+    <div id="home-screen" class="screen active">
+        <h1>Wi-Fi Minesweeper</h1>
+        <div class="input-group">
+            <input type="text" id="game-name-input" value="DefaultGameName" placeholder="Enter Game Name">
+        </div>
+        <div class="input-group">
+            <input type="text" id="player-name-input" placeholder="Enter Your Name">
+        </div>
+        <button id="host-btn">Host Game</button>
+        <br>
+        <button id="join-btn" class="secondary">Join Game</button>
+        <p id="home-error" style="color: #FF00FF;"></p>
+    </div>
+
+    <div id="lobby-screen" class="screen">
+        <h2 id="lobby-game-name"></h2>
+        <div id="host-controls">
+            <h3>Game Settings</h3>
+            <div class="input-group" style="display: flex; gap: 10px;">
+                <input type="number" id="grid-x-input" value="16" min="3">
+                <input type="number" id="grid-y-input" value="16" min="3">
+            </div>
+            <div class="input-group">
+             
+				<label for="total-mines-input">Total mines:</label>
+                <input type="number" id="total-mines-input" value="30" min="1">
+				
+				
+                <input type="number" id="win-condition-input" value="500" min="3" hidden>
+            </div>
+            <button id="start-game-btn">Start Game</button>
+        </div>
+        
+        <h3>Players in Lobby</h3>
+        <ul id="player-list"></ul>
+        
+        <div class="input-group">
+            <label>Your Symbol</label>
+            <div class="symbol-select-group">
+                <select id="symbol-select"></select>
+
+<label for="groupSelect">Group:</label>
+<select id="groupSelect">
+  <option value=""></option>
+  <option value="search">--Search--</option>
+</select>
+<!--<input type="text" id="selectedEmoji" placeholder="Selected Emoji">-->
+
+<div id="emojiView">
+  <div id="emojiControls">
+    <div id="searchOptions" style="display:none;">
+      <input type="text" id="searchInput" placeholder="Search...">
+      <button id="matchModeBtn">Word</button>
+      <button id="searchBtn">Search</button>
+    </div>
+    <div id="closeBtn">✖</div>
+  </div>
+  <div id="emojiGrid"></div>
+</div>
+
+
+
+                <input type="text" id="custom-symbol-input" maxlength="16" placeholder="Unicode">
+            </div>
+        </div>
+        <!--<button id="change-symbol-btn">Set Symbol</button>-->
+        <p id="lobby-error" style="color: red;"></p>
+    </div>
+
+    <div id="game-screen">
+        <div id="game-info"></div>
+        <canvas id="game-canvas"></canvas>
+		
+
+		 <!-- Chat box -->
+		<div id="chat">
+			<div id="chatMessages" tabindex="0"></div>
+			<input id="chatInput" type="text" placeholder="Type message...">
+			<button id="chatSend">Send</button>
+		</div>
+    </div>
+
+
+
+<script>
+
+var CACHED_SOUND_EFFECTS = {};
+
+
+var SOUNDS = {
+	//undo: [1,0,0,0.145,0,0.432,0.468603,0,-0.212,0,0,0,0,0,0.548476,0,0,0,0,0.756234,0,0,0,0,0.061],
+	changestyle: [1,0,0,0.066307,0,0.489649,0.468196,0,0.396335,0,0,0,0,0,0.555478,0,0.623612,0,0,1,0,0,0,0,0.11],
+	showhide: [1,3,0.219375,0.070448,0.264728,0.246,0.940782,0,-0.359019,0,0.276075,0.558813,0,0,0,0,0,0,0,1,0,0,0.909348,0,0.252],
+	complete: [1,0,0,0.414,0.092,0.851,0.269,0,0.391888,0,0,0.787,0.027,0.033,0.082,-0.489,0.463,0.002,0.001,1,0,0,0,0,0.13],
+	explosion: [1,3,0,0.287594,0.51717,0.855,0.117312,0,0,0,0.652,0.66,0,0,0,0,0,-0.146964,-0.004699,    1,0,0,0,0,0.25],
+	hint: [1,3,0.2034,0.519972,0.079301,0.420554,0.503805,0,0.019718,-0.113554,0.02742,-0.960806,0.437405,-0.928749,0.31182,0.242098,-0.059401,0.008261,-0.0102,0.205988,0.046432,0.574843,0.114387,0.001109,0.1068],
+	already: [1,1,0,0.115,0.431,0.526,0.311,0,0,-0.266,0,0,0.542421,0.624539,0,0,0,0,0,1,0,0,0,0,0.184],
+	tie: [1,0,0,0.66307,0,0.489649,0.468196,0,0.396335,0,0,0,0,0,0.555478,0,0.423612,0,0,1,0,0,0,0,0.11],
+	fail: [1,1,0,0.081582,0.588936,0.495,0.623,0,0,-0.352,0,0,0.542421,0.624539,0,0,0,0,0,1,0,0,0,0,0.1068],
+	really: [1,0,0,0.382534,0,0.663,0.318,0,0.115469,-0.138,0,0,0,0,0.31911,0,0,0,0,0.642664,0,0,0,0,0.1068],
+	kill: [1,0,0,0.089127,0,0.441,0.494,0,-0.333792,0,0,0,0,0,0.080034,0,0,0,0,1,0,0,0.013473,0,0.09],
+	next: [1,0,0,0.362553,0,0.454,0.501627,0,0.205054,0,0,0,0,0,0.578561,0,0,0,0,0.902463,0,0,0.157574,0,0.1068],
+	clear: [1,3,0,0.233,0.316,0.438,0.301,0,-0.294087,0,0,0,0.319083,0.897748,0,0,0.670729,0,0,1,0,0,0,0,0.1068],
+	score: [1,0,0,0.353496,0,0.472,0.404228,0,0.391888,0,0,0,0,0,0.174445,0,0.527907,0,0,1,0,0,0,0,0.1068],
+	click: [1,1,0,0.081582,0.588936,0.495,0.623,0,0,0,0,0,0.542421,0.624539,0,0,0,0,0,1,0,0,0,0,0.1068],
+	shuffle: [1,1,0,0.19396,0,0.463777,0.225533,0,0.307713,0,0,0,0,0,1,0,0.578735,0,0,1,0,0,0,0,0.134],
+}
+
+
+
+
+/////////////////////////////////
+// JSFXR
+
+var SOUNDS_ENABLED = true;
+var PARAMS;
+if(typeof Params !== "undefined"){
+	PARAMS = new Params();
+}else{
+	SOUNDS_ENABLED = false;
+}
+var SOUND;
+var SOUND_VOL = 0.1068; // see sfxr.js (var volume) for volume adjusting for browser. this changes the wav file but doesnt work well because it clips the sounds at too loud or low volumes.
+var SAMPLE_RATE = 44100;
+var SAMPLE_SIZE = 8;
+
+// JSFXR
+/////////////////////////////////
+
+
+
+
+function generate_sounds(){
+	if(SOUNDS_ENABLED){
+		for(var soundName in SOUNDS) {
+			if(SOUNDS.hasOwnProperty(soundName)){
+				console.log("Generating sound "+soundName);
+				generate_sound_caches(soundName);
+			}
+		}
+	}
+}
+
+
+function generate_sound_caches(soundName){
+	if(SOUNDS_ENABLED){
+		let newPARAMS = SOUNDS[soundName];
+		
+		if(newPARAMS[0] != 1){
+			console.log("unknown sound version '"+newPARAMS[0]+"'");
+			console.log(newPARAMS);
+			return;
+		}
+		
+		let order = ['jsfxr_version', 'wave_type', 'p_env_attack','p_env_sustain','p_env_punch','p_env_decay','p_base_freq','p_freq_limit','p_freq_ramp','p_freq_dramp','p_vib_strength','p_vib_speed','p_arp_mod','p_arp_speed','p_duty','p_duty_ramp','p_repeat_speed','p_pha_offset','p_pha_ramp','p_lpf_freq','p_lpf_ramp','p_lpf_resonance','p_hpf_freq','p_hpf_ramp','sound_vol'];
+		
+		let output = {};
+		output['oldParams'] = true;
+		output['sample_rate'] = 44100;
+		output['sample_size'] = 8;
+
+		for(let i = 1; i < order.length; i++){
+			output[order[i]] = newPARAMS[i];
+		}
+
+		PARAMS.fromJSON(output);
+		
+		if(typeof CACHED_SOUND_EFFECTS[soundName] === "undefined"){
+			CACHED_SOUND_EFFECTS[soundName] = {};
+		}
+		
+		SOUND = new SoundEffect(PARAMS).generate();
+		CACHED_SOUND_EFFECTS[soundName]['sound'] = SOUND;
+		CACHED_SOUND_EFFECTS[soundName]['params'] = PARAMS;
+	}
+}
+
+
+function play_sound(soundName){
+	if(SOUNDS_ENABLED){
+		if(typeof CACHED_SOUND_EFFECTS[soundName] === "undefined"){
+			return;
+		}
+		SOUND = CACHED_SOUND_EFFECTS[soundName]['sound'];
+		SOUND.getAudio().play();
+		console.log("play_sound: "+soundName);
+		
+		//console.log("CACHED_SOUND_EFFECTS:");
+		//console.log(CACHED_SOUND_EFFECTS);
+	}
+}
+
+generate_sounds();
+
+
+const playerColors = [
+	"#e6194B", // red
+	"#4363d8", // blue
+	"#ffe119", // yellow
+	"#3cb44b", // dark green
+	"#f58231", // orange
+	"#911eb4", // purple
+	"#42d4f4", // cyan
+	"#f032e6", // magenta
+	"#bfef45", // lime
+	"#469990", // teal
+	"#9A6324", // brown
+	"#808000", // olive
+	"#000075", // navy
+	"#a9a9a9", // gray
+	"#000000"  // black
+];
+
+let typeToValue = {
+	"-1": "", // 🚩
+};
+
+let TYPE_MINE = -1;
+let TYPE_EMPTY = 0;
+
+function set_mine(data, x, y, type){
+	data.map[y][x].type = type;
+	data.map[y][x].value = typeToValue[data.map[y][x].type] ?? "X";
+}
+
+
+function generate_map(width, height, total_mines){
+	let data = {
+		width: width,
+		height: height,
+		map: Array.from({length: height}, () => Array.from({length: width}, () => ({type:0,value:"",visible:0,waternum:random(0,2)}))),
+	};
+	
+	/*
+	states:
+	-3 ...
+	-2 other item (for later use)
+	-1 mine 💣 🚩 <span style="color: red;">⚑</span>
+	0 empty
+	1 (number of mines around)
+	2 (number of mines around)
+	3...
+	*/
+	
+	// add mines:
+	let placed = 0;
+	while (placed < total_mines) {
+		let x = Math.floor(Math.random() * width);
+		let y = Math.floor(Math.random() * height);
+
+		if (data.map[y][x].type === TYPE_EMPTY) {
+			set_mine(data, x, y, TYPE_MINE);
+			placed++;
+		}
+	}
+	
+	// count mines around each spot:
+	for(let y = 0; y < height; y++){
+		for(let x = 0; x < width; x++){
+			
+			if(data.map[y][x].type === TYPE_EMPTY){
+				data.map[y][x].type = count_mines_around(data, x, y);
+			}
+		}	
+	}
+
+
+	return data;
+}
+
+function count_mines_around(data, xp, yp){
+	let count = 0;
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(data.map[yy][xx].type < 0){
+						count++;
+					}
+				}
+			}
+		}
+	}
+	return count;
+}
+
+function revealZeros(data, startX, startY, grid) {
+  let queue = [[startY, startX]];
+
+  while (queue.length > 0) {
+    let [y, x] = queue.shift();
+
+    // Bounds check
+    if (y < 0 || y >= data.height || x < 0 || x >= data.width) continue;
+
+    let cell = data.map[y][x];
+	
+    // Already visible? skip
+    if (cell.visible) continue;
+
+    // Reveal this cell
+    cell.visible = 1;
+	if(cell.type < 0){
+		grid[y][x] = cell.value;
+	}else{
+		if(cell.type === 0){
+			grid[y][x] = "";
+			
+		}else{
+			grid[y][x] = cell.type;
+		}
+	}
+
+    // If it's not a zero, stop spreading from here
+    if (cell.type !== 0) continue;
+
+    // Spread to all 8 neighbors
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue; // skip self
+        queue.push([y + dy, x + dx]);
+      }
+    }
+  }
+}
+
+
+/*
+0 0 x 1 x 0 0 0 0 0
+x x x x x 0 0 0 0 0
+x 1 x x x x 0 0 0 0
+x x x x 1 x x x 0 0
+0 0 0 x x x 1 x x x
+0 0 0 0 0 x x x 1 x
+x x 0 0 0 0 0 x x x
+1 x 0 0 x x x 0 0 0
+x x 0 0 x 1 x 0 x x
+0 0 0 0 x x x 0 x 1
+
+*/
+/*
+let gameMap = generate_map(6,6,4);
+//console.log(gameMap);
+
+revealZeros(gameMap, 3, 3);
+console.log(gameMap);
+*/
+
+
+
+let emojiData = [];
+let matchMode = 'word'; // or 'any'
+
+async function loadEmojis() {
+  const res = await fetch('emojis-all.json');
+  emojiData = await res.json();
+
+  const select = document.getElementById('groupSelect');
+  emojiData.forEach(group => {
+    const opt = document.createElement('option');
+    opt.value = group.group;
+    opt.textContent = group.group;
+    select.appendChild(opt);
+  });
+}
+
+function showEmojiView(items) {
+  const grid = document.getElementById('emojiGrid');
+  grid.innerHTML = '';
+  items.forEach(([symbol, name]) => {
+    const div = document.createElement('div');
+    div.className = 'emojiSquare';
+    div.textContent = symbol;
+    div.title = name;
+    div.addEventListener('click', () => {
+      document.getElementById('custom-symbol-input').value = symbol;
+      document.getElementById('emojiView').style.display = 'none';
+	  attemptSetSymbol();
+    });
+    grid.appendChild(div);
+  });
+  document.getElementById('emojiView').style.display = 'block';
+}
+
+document.getElementById('groupSelect').addEventListener('change', (e) => {
+  const val = e.target.value;
+  const searchOptions = document.getElementById('searchOptions');
+  if(val === 'search') {
+    searchOptions.style.display = 'flex';
+    document.getElementById('emojiGrid').innerHTML = '';
+    document.getElementById('emojiView').style.display = 'block';
+  } else {
+    searchOptions.style.display = 'none';
+    const group = emojiData.find(g => g.group === val);
+    if(group) showEmojiView(group.list);
+  }
+});
+
+document.getElementById('closeBtn').addEventListener('click', () => {
+  document.getElementById('emojiView').style.display = 'none';
+});
+
+document.getElementById('matchModeBtn').addEventListener('click', () => {
+  matchMode = matchMode === 'word' ? 'any' : 'word';
+  document.getElementById('matchModeBtn').textContent = matchMode.charAt(0).toUpperCase() + matchMode.slice(1);
+});
+
+document.getElementById('searchBtn').addEventListener('click', () => {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  if(!query) return;
+  let results = [];
+  emojiData.forEach(group => {
+    group.list.forEach(([symbol,name]) => {
+      const lname = name.toLowerCase();
+      if((matchMode==='word' && lname.split(' ').includes(query)) ||
+         (matchMode==='any' && lname.includes(query))) {
+        results.push([symbol,name]);
+      }
+    });
+  });
+  showEmojiView(results);
+});
+
+loadEmojis();
+</script>
+
+
+<script>
+// ---------- CONFIG & STATE ---------- //
+const PREDEFINED_SYMBOLS = ['X', 'O', '#', '%'];
+
+let peer;
+let myPeerId;
+let hostId;
+let connections = {}; // key: peerId, value: connection object
+let isHost = false;
+
+let lastMoves = {};
+
+let localPlayer = {
+    id: null,
+    name: "Player",
+    symbol: '',
+    isReady: false,
+};
+
+let gameState = {
+    players: [],
+    grid: [],
+    gridSize: { x: 10, y: 10 },
+    winCondition: 4,
+	totalMines: 30,
+    currentPlayerIndex: 0,
+    gameStarted: false,
+    gameOver: false,
+    winner: null,
+	minemap: [],
+};
+
+
+// ---------- UI ELEMENT REFERENCES ---------- //
+const screens = {
+    home: document.getElementById('home-screen'),
+    lobby: document.getElementById('lobby-screen'),
+    game: document.getElementById('game-screen'),
+};
+const gameNameInput = document.getElementById('game-name-input');
+const playerNameInput = document.getElementById('player-name-input');
+const hostBtn = document.getElementById('host-btn');
+const joinBtn = document.getElementById('join-btn');
+const homeError = document.getElementById('home-error');
+
+const lobbyGameName = document.getElementById('lobby-game-name');
+const hostControls = document.getElementById('host-controls');
+const startGameBtn = document.getElementById('start-game-btn');
+const playerList = document.getElementById('player-list');
+const symbolSelect = document.getElementById('symbol-select');
+const customSymbolInput = document.getElementById('custom-symbol-input');
+//const changeSymbolBtn = document.getElementById('change-symbol-btn');
+const lobbyError = document.getElementById('lobby-error');
+const gridXInput = document.getElementById('grid-x-input');
+const gridYInput = document.getElementById('grid-y-input');
+const winConditionInput = document.getElementById('win-condition-input');
+const totalMinesInput = document.getElementById('total-mines-input');
+
+
+const gameInfo = document.getElementById('game-info');
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const chatSend = document.getElementById("chatSend");
+
+
+
+// ---------- UI MANAGEMENT ---------- //
+function showScreen(screenName) {
+    Object.values(screens).forEach(screen => screen.classList.remove('active'));
+    if(screenName === 'game') {
+        screens.game.style.display = 'flex';
+        screens.home.style.display = 'none';
+        screens.lobby.style.display = 'none';
+    } else {
+        screens.game.style.display = 'none';
+        screens[screenName].classList.add('active');
+    }
+}
+
+function updateLobbyUI() {
+    lobbyGameName.textContent = `Game: ${gameNameInput.value}`;
+    hostControls.style.display = isHost ? 'block' : 'none';
+    
+    const me = gameState.players.find(p => p.id === localPlayer.id);
+    if (me) {
+        localPlayer = { ...localPlayer, ...me };
+    }
+
+    playerList.innerHTML = '';
+    gameState.players.forEach(p => {
+        const li = document.createElement('li');
+		const safeName = document.createTextNode(p.name);
+		li.innerHTML = `${p.symbol} - <span style="color:${p.color}"></span>`;
+		li.querySelector("span").appendChild(safeName);
+        playerList.appendChild(li);
+    });
+
+    const usedSymbols = gameState.players.map(p => p.symbol);
+    const availableSymbols = PREDEFINED_SYMBOLS.filter(s => !usedSymbols.includes(s) || s === localPlayer.symbol);
+
+    symbolSelect.innerHTML = availableSymbols.map(s => `<option value="${s}" ${s === localPlayer.symbol ? 'selected' : ''}>${s}</option>`).join('');
+
+}
+
+function updateGameUI() {
+    if (gameState.gameStarted) {
+        updateGameInfo();
+        draw();
+		console.log("updateGameUI draw()");
+    }
+}
+
+// ---------- NETWORKING (PeerJS) ---------- //
+function initializePeer(peerId) {
+    myPeerId = peerId || 'tictactoe-' + Math.random().toString(36).substr(2, 9);
+    localPlayer.id = myPeerId;
+    peer = new Peer(myPeerId, { debug: 2 });
+
+    peer.on('open', id => {
+        console.log('My peer ID is: ' + id);
+    });
+
+    peer.on('connection', conn => {
+        setupConnection(conn);
+    });
+
+    peer.on('error', err => {
+        console.error("PeerJS Error:", err);
+        homeError.textContent = `Error: ${err.message}. Try a different Game Name.`;
+        joinBtn.disabled = false;
+        hostBtn.disabled = false;
+    });
+}
+
+function setupConnection(conn) {
+    conn.on('open', () => {
+        console.log(`Connected to ${conn.peer}`);
+        connections[conn.peer] = conn;
+
+        if (isHost) {
+            conn.send({ type: 'game_state', state: gameState });
+        }
+    });
+
+    conn.on('data', data => handleMessage(data, conn.peer));
+    conn.on('close', () => {
+        console.log(`Connection closed with ${conn.peer}`);
+        delete connections[conn.peer];
+        if (isHost) {
+            gameState.players = gameState.players.filter(p => p.id !== conn.peer);
+            broadcast({ type: 'game_state', state: gameState });
+            updateLobbyUI(); // Host updates its own view
+        }
+    });
+}
+
+function newPlayerColor(){
+	let colorIndex = gameState.players.length % playerColors.length;
+	return playerColors[colorIndex];
+}
+
+function hostGame() {
+    const gameName = gameNameInput.value.trim();
+    const playerName = playerNameInput.value.trim();
+    if (!gameName || !playerName) {
+        homeError.textContent = "Game Name and Your Name cannot be empty.";
+        return;
+    }
+    localPlayer.name = playerName;
+    isHost = true;
+    hostBtn.disabled = true;
+    joinBtn.disabled = true;
+    initializePeer(gameName); 
+    
+    localPlayer.symbol = PREDEFINED_SYMBOLS[0];
+    localPlayer.isReady = true;
+	localPlayer.color = newPlayerColor();
+    gameState.players.push(localPlayer); 
+    
+    showScreen('lobby');
+    updateLobbyUI();
+}
+
+function joinGame() {
+    const gameName = gameNameInput.value.trim();
+    const playerName = playerNameInput.value.trim();
+    if (!gameName || !playerName) {
+        homeError.textContent = "Game Name and Your Name cannot be empty.";
+        return;
+    }
+    localPlayer.name = playerName;
+    isHost = false;
+    hostId = gameName;
+    hostBtn.disabled = true;
+    joinBtn.disabled = true;
+    initializePeer();
+
+    setTimeout(() => { 
+        if (!peer || !peer.id) return;
+        const conn = peer.connect(hostId, { reliable: true });
+        if(conn) {
+            setupConnection(conn);
+        } else {
+            homeError.textContent = "Could not connect to host. Check Game Name.";
+            hostBtn.disabled = false;
+            joinBtn.disabled = false;
+        }
+    }, 1000);
+}
+
+function broadcast(data) {
+    if (!isHost) return;
+    Object.values(connections).forEach(conn => {
+        conn.send(data);
+    });
+}
+
+function sendToHost(data) {
+    if (isHost) return;
+    const conn = connections[hostId];
+    if (conn) {
+        conn.send(data);
+    }
+}
+
+/*
+
+var SOUNDS = {
+	//undo: [1,0,0,0.145,0,0.432,0.468603,0,-0.212,0,0,0,0,0,0.548476,0,0,0,0,0.756234,0,0,0,0,0.061],
+	changestyle: [1,0,0,0.066307,0,0.489649,0.468196,0,0.396335,0,0,0,0,0,0.555478,0,0.623612,0,0,1,0,0,0,0,0.11],
+	showhide: [1,3,0.219375,0.070448,0.264728,0.246,0.940782,0,-0.359019,0,0.276075,0.558813,0,0,0,0,0,0,0,1,0,0,0.909348,0,0.252],
+	complete: [1,0,0,0.414,0.092,0.851,0.269,0,0.391888,0,0,0.787,0.027,0.033,0.082,-0.489,0.463,0.002,0.001,1,0,0,0,0,0.204],
+	explosion: [1,3,0,0.287594,0.51717,0.855,0.117312,0,0,0,0.652,0.66,0,0,0,0,0,-0.146964,-0.004699,    1,0,0,0,0,0.25],
+	hint: [1,3,0.2034,0.519972,0.079301,0.420554,0.503805,0,0.019718,-0.113554,0.02742,-0.960806,0.437405,-0.928749,0.31182,0.242098,-0.059401,0.008261,-0.0102,0.205988,0.046432,0.574843,0.114387,0.001109,0.1068],
+	already: [1,1,0,0.115,0.431,0.526,0.311,0,0,-0.266,0,0,0.542421,0.624539,0,0,0,0,0,1,0,0,0,0,0.184],
+	fail: [1,1,0,0.081582,0.588936,0.495,0.623,0,0,-0.352,0,0,0.542421,0.624539,0,0,0,0,0,1,0,0,0,0,0.1068],
+	really: [1,0,0,0.382534,0,0.663,0.318,0,0.115469,-0.138,0,0,0,0,0.31911,0,0,0,0,0.642664,0,0,0,0,0.1068],
+	kill: [1,0,0,0.089127,0,0.441,0.494,0,-0.333792,0,0,0,0,0,0.080034,0,0,0,0,1,0,0,0.013473,0,0.09],
+	next: [1,0,0,0.362553,0,0.454,0.501627,0,0.205054,0,0,0,0,0,0.578561,0,0,0,0,0.902463,0,0,0.157574,0,0.1068],
+	clear: [1,3,0,0.233,0.316,0.438,0.301,0,-0.294087,0,0,0,0.319083,0.897748,0,0,0.670729,0,0,1,0,0,0,0,0.1068],
+	score: [1,0,0,0.353496,0,0.472,0.404228,0,0.391888,0,0,0,0,0,0.174445,0,0.527907,0,0,1,0,0,0,0,0.1068],
+	click: [1,1,0,0.081582,0.588936,0.495,0.623,0,0,0,0,0,0.542421,0.624539,0,0,0,0,0,1,0,0,0,0,0.1068],
+	shuffle: [1,1,0,0.19396,0,0.463777,0.225533,0,0.307713,0,0,0,0,0,1,0,0.578735,0,0,1,0,0,0,0,0.134],
+}
+changestyle
+showhide hyvä
+already ok
+fail ok 
+already lol
+kill hyvä
+next hassu
+clear hyvä
+score ok
+click ok
+shuffle ok
+
+complete : voitit pelin
+explosion : hävisit
+*/
+function handleMessage(data, peerId) {
+    //console.log('Received:', data.type);
+	
+	console.log(data.type);
+	
+    switch (data.type) {
+        case 'game_state':
+            gameState = data.state;
+			console.log("gameState:");
+			console.log(gameState);
+			
+			if (gameState.gameOver) {
+				if (gameState.winner) {
+					//gameInfo.textContent = `${gameState.winner.name} (${gameState.winner.symbol}) won the game!`;
+					if(gameState.winner.id === localPlayer.id){
+						play_sound("complete");
+					}else{
+						play_sound("explosion");
+					}
+				} else {
+					play_sound("tie");
+				}
+			} else {
+				if (gameState.lastMove) {
+					const { playerId } = gameState.lastMove;
+					if (playerId === localPlayer.id) {
+						playSound("miss"); // you made the move
+					} else {
+						playSound("miss"); // opponent move
+					}
+				}
+			}
+			
+            if (!isHost && !localPlayer.isReady) {
+                showScreen('lobby');
+                sendToHost({ type: 'player_join', player: localPlayer });
+                localPlayer.isReady = true; 
+            }
+            if (gameState.gameStarted) {
+                showScreen('game');
+                resizeCanvas();
+                updateGameUI();
+            } else {
+                updateLobbyUI();
+            }
+			
+
+            break;
+        case 'player_join':
+            if (isHost) {
+                // ** THE BUG FIX IS HERE **
+                // Check if player already exists before adding
+                if (gameState.players.some(p => p.id === data.player.id)) {
+                    //console.warn(`Player ${data.player.id} tried to join again. Ignoring.`);
+                    // Resend state just in case they missed it
+                    connections[data.player.id]?.send({ type: 'game_state', state: gameState });
+                    return; 
+                }
+
+                let newPlayer = data.player;
+                const usedSymbols = gameState.players.map(p => p.symbol);
+                const nextSymbol = PREDEFINED_SYMBOLS.find(s => !usedSymbols.includes(s));
+                newPlayer.symbol = nextSymbol || '';
+				newPlayer.color = newPlayerColor();
+                
+                gameState.players.push(newPlayer);
+                broadcast({ type: 'game_state', state: gameState });
+                updateLobbyUI();
+            }
+            break;
+        case 'player_update':
+             if (isHost) {
+                const playerIndex = gameState.players.findIndex(p => p.id === peerId);
+                if (playerIndex > -1) {
+                    const requestedSymbol = data.player.symbol;
+                    if (gameState.players.some((p, i) => p.symbol === requestedSymbol && i !== playerIndex)) {
+                        connections[peerId].send({type: 'symbol_taken'});
+                    } else {
+                        gameState.players[playerIndex].symbol = data.player.symbol;
+                        broadcast({ type: 'game_state', state: gameState });
+                        updateLobbyUI();
+                    }
+                }
+            }
+            break;
+        case 'symbol_taken':
+            lobbyError.textContent = "Symbol is already taken!";
+            setTimeout(() => lobbyError.textContent = "", 2000);
+            break;
+        case 'game_start': // This case can be removed if game_state handles it all 
+			//start_game
+            gameState.grid = data.grid;
+            gameState.gridSize = data.gridSize;
+            gameState.winCondition = data.winCondition;
+			gameState.totalMines = data.totalMines;
+            gameState.currentPlayerIndex = data.currentPlayerIndex;
+            gameState.gameStarted = true;
+            showScreen('game');
+            resizeCanvas();
+            updateGameUI();
+			
+            break;
+        case 'player_move':
+            if (isHost) {
+                handlePlayerMove(data.move);
+            }
+            break;
+		case "player_message":
+		  if (isHost) {
+			// Rebroadcast to everyone else, but NOT back to the original sender
+			broadcast(data, peerId); // assuming your broadcast supports excluding peerId
+		  }
+
+		  // Show the message (all peers including host)
+		  addChatMessage(data.playerId, data.text);
+		  break;
+    }
+}
+
+
+// Send message when clicking the button
+chatSend.addEventListener("click", sendChatMessage);
+
+// Or when pressing Enter
+chatInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") sendChatMessage();
+});
+
+function sendChatMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  const msg = {
+    type: "player_message",
+    playerId: localPlayer.id,
+    text
+  };
+
+  if (isHost) {
+    // Host only needs to broadcast, not handleMessage directly
+    broadcast(msg);
+    addChatMessage(msg.playerId, msg.text); // add to host UI only
+  } else {
+    sendToHost(msg);
+    //addChatMessage(msg.playerId, msg.text); // add immediately for sender
+  }
+
+  chatInput.value = "";
+}
+
+function getPlayerById(id) {
+	return gameState.players.find(p => p.id === id) || null;
+}
+
+
+function addChatMessage(playerId, text) {
+
+	let player = getPlayerById(playerId);
+
+	const div = document.createElement("div");
+
+	// Player name in color
+	const nameSpan = document.createElement("span");
+	nameSpan.style.color = player.color;
+	nameSpan.textContent = player.name; // safe
+
+	div.appendChild(nameSpan);
+
+	// Colon + message
+	div.appendChild(document.createTextNode(": " + text));
+
+	chatMessages.appendChild(div);
+
+
+	// scroll to bottom
+	chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// ---------- GAME LOGIC ---------- //
+function attemptSetSymbol() {
+    const selectedSymbol = String(symbolSelect.value);
+    const customSymbol = String(customSymbolInput.value);
+	
+	console.log("attemptSetSymbol selectedSymbol:'"+selectedSymbol+"', customSymbol:'"+customSymbol+"'");
+    
+    let symbolToSet = customSymbol || selectedSymbol;
+    if (!symbolToSet || localPlayer.symbol === symbolToSet) return;
+	
+	console.log("attemptSetSymbol 2");
+
+    let updatedPlayer = { ...localPlayer, symbol: symbolToSet };
+    
+    const payload = { type: 'player_update', player: updatedPlayer };
+
+    if (isHost) {
+		console.log("attemptSetSymbol 3");
+        const playerIndex = gameState.players.findIndex(p => p.id === localPlayer.id);
+        if (playerIndex > -1) {
+            if (gameState.players.some((p, i) => p.symbol === symbolToSet && i !== playerIndex)) {
+                lobbyError.textContent = "Symbol is already taken!";
+				console.log(lobbyError.textContent);
+                setTimeout(() => lobbyError.textContent = "", 2000);
+            } else {
+                gameState.players[playerIndex].symbol = symbolToSet;
+                broadcast({ type: 'game_state', state: gameState });
+				console.log("set symbol: "+symbolToSet);
+                updateLobbyUI();
+            }
+        }
+    } else {
+		console.log("attemptSetSymbol 4");
+        sendToHost(payload);
+    }
+}
+
+function startGame() {
+    if (!isHost) return;
+
+    gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
+    gameState.winCondition = parseInt(winConditionInput.value);
+	gameState.totalMines = parseInt(totalMinesInput.value);
+    gameState.grid = Array(gameState.gridSize.y).fill(null).map(() => Array(gameState.gridSize.x).fill(null));
+    gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
+    gameState.gameStarted = true;
+    gameState.gameOver = false;
+    gameState.winner = null;
+    gameState.winLines = [];
+	
+	gameState.minemap = generate_map(gameState.gridSize.x, gameState.gridSize.y, gameState.totalMines);
+	
+	
+
+    broadcast({ type: 'game_state', state: gameState });
+    handleMessage({ type: 'game_state', state: gameState }); // Update host locally
+}
+
+
+function setLastMoveByPlayer(x, y, playerId) {
+    gameState.lastMoves = gameState.lastMoves || {};
+    gameState.lastMoves[playerId] = { x, y };
+	gameState.lastMove = { x, y, playerId };
+}
+
+function handlePlayerMove({x, y, playerId}) {
+    if (gameState.gameOver || gameState.grid[y][x] !== null) return;
+    
+    const player = gameState.players[gameState.currentPlayerIndex];
+    if (player.id !== playerId) return;
+
+    //gameState.grid[y][x] = player.symbol;
+	setLastMoveByPlayer(x, y, player.id);
+	
+	revealZeros(gameState.minemap, x, y, gameState.grid);
+	
+    const winResult = checkWin(x, y);
+    if (winResult.won) {
+        gameState.gameOver = true;
+        gameState.winner = player;
+        gameState.winLines = winResult.lines;
+    } else {
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+    }
+    
+    broadcast({ type: 'game_state', state: gameState });
+    handleMessage({ type: 'game_state', state: gameState });
+}
+
+function checkWin(x, y) {
+    const symbol = gameState.grid[y][x];
+    if (!symbol) return { won: false };
+    
+    const N = gameState.winCondition;
+    const lines = [];
+
+    const directions = [
+        { dx: 1, dy: 0 },  // Horizontal
+        { dx: 0, dy: 1 },  // Vertical
+        { dx: 1, dy: 1 },  // Diagonal 
+        { dx: 1, dy: -1 }  // Diagonal 
+    ];
+
+    for (const { dx, dy } of directions) {
+        let line = [{x, y}];
+        
+        for (let i = 1; i < N; i++) {
+            const newX = x + i * dx;
+            const newY = y + i * dy;
+            if (newX >= 0 && newX < gameState.gridSize.x && newY >= 0 && newY < gameState.gridSize.y && gameState.grid[newY][newX] === symbol) {
+                line.push({x: newX, y: newY});
+            } else {
+                break;
+            }
+        }
+        
+        for (let i = 1; i < N; i++) {
+            const newX = x - i * dx;
+            const newY = y - i * dy;
+            if (newX >= 0 && newX < gameState.gridSize.x && newY >= 0 && newY < gameState.gridSize.y && gameState.grid[newY][newX] === symbol) {
+                line.push({x: newX, y: newY});
+            } else {
+                break;
+            }
+        }
+        
+        if (line.length >= N) {
+            line.sort((a,b) => a.x - b.x || a.y - b.y);
+            for (let i = 0; i <= line.length - N; i++) {
+                 lines.push({ start: line[i], end: line[i + N - 1] });
+            }
+        }
+    }
+    
+    return { won: lines.length > 0, lines: lines };
+}
+
+
+function hexToRgba(hex, alpha = 1) {
+  // Remove leading # if present
+  hex = hex.replace(/^#/, '');
+
+  // Parse short form #abc
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function updateGameInfo() {
+    if (!gameState.gameStarted) return;
+    
+    if (gameState.gameOver) {
+        if (gameState.winner) {
+			if(gameState.winner.id === localPlayer.id){
+				gameInfo.textContent = `You (${gameState.winner.symbol}) won the game!`;
+			}else{
+				gameInfo.textContent = `${gameState.winner.name} (${gameState.winner.symbol}) won the game!`;
+			}
+        } else {
+            gameInfo.textContent = "It's a draw!";
+        }
+    } else {
+        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.color, 0.3);
+		let turnText = "";
+		if(currentPlayer.id === localPlayer.id){
+			turnText = "Your Turn";
+			
+			//gameInfo.classList.add("my-turn");
+			//gameInfo.classList.remove("opponent-turn");
+		}else{
+			turnText = `${currentPlayer.name}'s Turn`;
+			//gameInfo.classList.remove("my-turn");
+			//gameInfo.classList.add("opponent-turn");
+		}
+        //const turnText = currentPlayer.id === localPlayer.id ? "Your Turn" : `${currentPlayer.name}'s Turn`;
+        gameInfo.textContent = `${turnText} (${currentPlayer.symbol})`;
+    }
+}
+
+
+// ---------- CANVAS DRAWING & INTERACTION ---------- //
+let viewport = {
+    x: 0, y: 0, scale: 1,
+    minScale: 0.2, maxScale: 5,
+};
+let panState = {
+    isPanning: false,
+    startX: 0, startY: 0,
+};
+let lastTap = 0;
+let cellSize = 50;
+
+let startTime = Date.now();
+
+
+
+function hasMoveAt(x, y) {
+  return Object.entries(gameState.lastMoves).some(([playerId, move]) => {
+    if (playerId === localPlayer.id) return false; // ignore self
+    return move.x === x && move.y === y;
+  });
+}
+
+
+let lastTime = 0;
+const fps = 60;
+const frameDuration = 1000 / fps;
+
+function gameLoop(timestamp) {
+  if (timestamp - lastTime >= frameDuration) {
+    lastTime = timestamp;
+    draw();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+
+
+
+
+
+
+
+
+const sound_miss = new Audio("sounds/miss.mp3");
+sound_miss.preload = "auto";
+const sound_hit = new Audio("sounds/hit.mp3");
+sound_hit.preload = "auto";
+const sound_bigsplash = new Audio("sounds/bigsplash.mp3");
+sound_bigsplash.preload = "auto";
+const sound_victory = new Audio("sounds/victory.mp3");
+sound_victory.preload = "auto";
+const sound_warning = new Audio("sounds/warning.mp3");
+sound_warning.preload = "auto";
+
+let sounds = {
+	miss: sound_miss,
+	hit: sound_hit,
+	bigsplash: sound_bigsplash,
+	victory: sound_victory,
+	warning: sound_warning,
+};
+
+function playSound(sound){
+	sounds[sound].play();
+}
+
+
+
+const img_water1 = new Image();
+img_water1.src = "images/water1.png";
+const img_water2 = new Image();
+img_water2.src = "images/water2.png";
+const img_water3 = new Image();
+img_water3.src = "images/water3.png";
+
+const img_empty = new Image();
+img_empty.src = "images/empty.png";
+
+const img_flag_red = new Image();
+img_flag_red.src = "images/flag-red.png";
+const img_flag_blue = new Image();
+img_flag_blue.src = "images/flag-blue.png";
+
+const img_turn_red = new Image();
+img_turn_red.src = "images/turn-red.png";
+const img_turn_blue = new Image();
+img_turn_blue.src = "images/turn-blue.png";
+
+
+let images = {
+	water: [img_water1, img_water2, img_water3],
+	empty: img_empty,
+	flag: {
+		red: img_flag_red,
+		blue: img_flag_blue,
+	},
+	turn: {
+		red: img_turn_red,
+		blue: img_turn_blue,
+	},
+};
+
+
+let numbercolors = [
+	"",
+	"#050DA5", // 1
+	"#246100", // 2
+	"#BC0C00", // 3
+	"#0E0C71", // 4
+	"#733F00", // 5
+	"#B6005E", // 6
+	"#E9C397", // 7
+	"#FFFFFF"  // 8
+];
+
+function random(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+
+function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, sizePercent){
+	ctx.drawImage(
+		image,
+		offsetX + x*cellSize - 0.5,
+		offsetY + y*cellSize - 0.5,
+		cellSize + 1,
+		cellSize + 1
+	);
+}
+
+
+function draw() {
+    if (!gameState.gameStarted) return;
+	
+	const time = (Date.now() - startTime) / 1000; // seconds
+	const pulse = 1 + 0.15 * Math.sin(time * 4);   // oscillates between 0.8–1.2
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(viewport.scale, viewport.scale);
+    ctx.translate(viewport.x, viewport.y);
+
+    const gridWidth = gameState.gridSize.x * cellSize;
+    const gridHeight = gameState.gridSize.y * cellSize;
+    const offsetX = -gridWidth / 2;
+    const offsetY = -gridHeight / 2;
+
+/*
+    // Draw grid lines
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1 / viewport.scale;
+
+    for (let i = 0; i <= gameState.gridSize.x; i++) {
+        ctx.beginPath();
+        ctx.moveTo(offsetX + i * cellSize, offsetY);
+        ctx.lineTo(offsetX + i * cellSize, offsetY + gridHeight);
+        ctx.stroke();
+    }
+    for (let i = 0; i <= gameState.gridSize.y; i++) {
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY + i * cellSize);
+        ctx.lineTo(offsetX + gridWidth, offsetY + i * cellSize);
+        ctx.stroke();
+    }*/
+    
+    // Draw symbols
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${cellSize * 0.7}px sans-serif`;
+    
+    for (let y = 0; y < gameState.gridSize.y; y++) {
+        for (let x = 0; x < gameState.gridSize.x; x++) {
+		
+			const mapcell = gameState.minemap.map[y][x];
+			
+			if(mapcell.visible){
+				if (mapcell.type >= 0){
+					drawImage(ctx, images.empty, offsetX, offsetY, x, y, cellSize);
+				}else{
+					drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+					drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize);
+				}
+			}else{
+				drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+			}
+			
+            if (gameState.grid[y] && gameState.grid[y][x]) {
+                const symbol = gameState.grid[y][x];
+                const playerIndex = gameState.players.findIndex(p => p.symbol === symbol);
+
+
+				let baseSize = cellSize * 0.7;
+				let fontSize = baseSize;
+
+				// If this is the last move, apply pulse
+				if (hasMoveAt(x, y)) {
+				  //fontSize = baseSize * pulse;
+				  drawImage(ctx, images.turn.red, offsetX, offsetY, x, y, cellSize);
+				}
+
+				ctx.font = `bold ${fontSize}px sans-serif`;
+
+				// Draw symbol
+				//ctx.fillStyle = playerIndex > -1 ? `hsl(${playerIndex * 60}, 80%, 70%)` : "black";
+				ctx.fillStyle = numbercolors[mapcell.type];
+				
+
+				ctx.fillText(
+				  symbol,
+				  offsetX + x * cellSize + cellSize / 2,
+				  offsetY + y * cellSize + cellSize / 2
+				);
+            }
+        }
+    }
+    
+    // Draw winning line(s)
+    if (gameState.gameOver && gameState.winLines) {
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+        ctx.lineWidth = 40;
+        ctx.lineCap = 'round';
+        
+        gameState.winLines.forEach(line => {
+            const startX = offsetX + line.start.x * cellSize + cellSize / 2;
+            const startY = offsetY + line.start.y * cellSize + cellSize / 2;
+            const endX = offsetX + line.end.x * cellSize + cellSize / 2;
+            const endY = offsetY + line.end.y * cellSize + cellSize / 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        });
+    }
+
+    ctx.restore();
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if (gameState.gameStarted) {
+        draw();
+    }
+}
+
+function getTouchPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function getGridCoords(canvasX, canvasY) {
+    // Inverse transform canvas coordinates to world coordinates
+    const worldX = (canvasX - canvas.width / 2) / viewport.scale - viewport.x;
+    const worldY = (canvasY - canvas.height / 2) / viewport.scale - viewport.y;
+
+    const gridWidth = gameState.gridSize.x * cellSize;
+    const gridHeight = gameState.gridSize.y * cellSize;
+    const offsetX = -gridWidth / 2;
+    const offsetY = -gridHeight / 2;
+
+    const gridX = Math.floor((worldX - offsetX) / cellSize);
+    const gridY = Math.floor((worldY - offsetY) / cellSize);
+
+    return { x: gridX, y: gridY };
+}
+
+
+
+// Canvas event listeners
+let panStart = { x: 0, y: 0 };
+let isPanning = false;
+
+function onPointerDown(e) {
+    if (e.touches && e.touches.length > 1) return;
+    isPanning = true;
+    const pos = getTouchPos(e);
+    panStart.x = pos.x - viewport.x * viewport.scale;
+    panStart.y = pos.y - viewport.y * viewport.scale;
+}
+
+function onPointerMove(e) {
+    if (!isPanning || (e.touches && e.touches.length > 1)) return;
+    const pos = getTouchPos(e);
+    viewport.x = (pos.x - panStart.x) / viewport.scale;
+    viewport.y = (pos.y - panStart.y) / viewport.scale;
+    //draw();
+}
+
+function onPointerUp(e) {
+    isPanning = false;
+    let currentTime = new Date().getTime();
+    if (currentTime - lastTap < 300) {
+       onDoubleClick(e);
+    }
+    lastTap = currentTime;
+}
+
+function onDoubleClick(e) {
+    if (gameState.gameOver) return;
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (currentPlayer.id !== localPlayer.id) return;
+	
+	console.log("onDoubleClick");
+
+    const pos = getTouchPos(e);
+    const { x, y } = getGridCoords(pos.x, pos.y);
+	
+	
+
+    if (x >= 0 && x < gameState.gridSize.x && y >= 0 && y < gameState.gridSize.y) {
+        const move = { x, y, playerId: localPlayer.id };
+        if (isHost) {
+            handlePlayerMove(move);
+        } else {
+            sendToHost({ type: 'player_move', move });
+        }
+    }
+}
+
+let lastDist = 0;
+function onTouchStart(e) {
+    if (e.touches.length > 1) { 
+        isPanning = false; 
+        lastDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+    } else { 
+        onPointerDown(e);
+    }
+}
+
+function onTouchMove(e) {
+    e.preventDefault();
+    if (e.touches.length > 1) {
+        const newDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+        const scaleFactor = newDist / lastDist;
+        const newScale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
+        viewport.scale = newScale;
+        lastDist = newDist;
+        //draw();
+    } else {
+        onPointerMove(e);
+    }
+}
+
+canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+canvas.addEventListener('touchend', onPointerUp);
+
+canvas.addEventListener('mousedown', onPointerDown);
+canvas.addEventListener('mousemove', onPointerMove);
+canvas.addEventListener('mouseup', onPointerUp);
+canvas.addEventListener('mouseleave', () => isPanning = false);
+canvas.addEventListener('dblclick', onDoubleClick);
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    viewport.scale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
+    //draw();
+}, { passive: false });
+
+
+// ---------- INITIALIZATION ---------- //
+hostBtn.addEventListener('click', hostGame);
+joinBtn.addEventListener('click', joinGame);
+startGameBtn.addEventListener('click', startGame);
+//changeSymbolBtn.addEventListener('click', attemptSetSymbol);
+window.addEventListener('resize', resizeCanvas);
+
+customSymbolInput.addEventListener('input', attemptSetSymbol);
+
+</script>
+</body>
+</html>
