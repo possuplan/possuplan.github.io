@@ -1480,7 +1480,7 @@ requestAnimationFrame(gameLoop);
 let sounds = {
 	miss: {filename: "sounds/miss.mp3", gain: 1, filter: false},
 	miss_long: {filename: "sounds/miss_long.mp3", gain: 1, filter: false},
-	hit: {filename: "sounds/hit.mp3", gain: 0.5, filter: true},
+	hit: {filename: "sounds/hit.mp3", gain: 0.35, filter: true},
 	bigsplash: {filename: "sounds/bigsplash.mp3", gain: 1, filter: false},
 	victory: {filename: "sounds/victory.mp3", gain: 1, filter: false},
 	warning: {filename: "sounds/warning.mp3", gain: 1, filter: false},
@@ -1522,7 +1522,7 @@ function playSound(src) {
 		// Create and use filter
 		const filter = context.createBiquadFilter();
 		filter.type = "lowpass";
-		filter.frequency.value = 3000;
+		filter.frequency.value = 2800; // let only frequencies below ~3kHz pass
 
 		source.connect(filter);
 		filter.connect(gainNode);
