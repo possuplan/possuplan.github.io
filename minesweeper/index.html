@@ -1777,7 +1777,7 @@ canvas.addEventListener('mousedown', onPointerDown);
 canvas.addEventListener('mousemove', onPointerMove);
 canvas.addEventListener('mouseup', onPointerUp);
 canvas.addEventListener('mouseleave', () => isPanning = false);
-canvas.addEventListener('dblclick', onDoubleClick);
+canvas.addEventListener('click', onDoubleClick);
 
 canvas.addEventListener('wheel', e => {
     e.preventDefault();
