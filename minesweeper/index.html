@@ -1447,27 +1447,43 @@ requestAnimationFrame(gameLoop);
 
 
 
-const sound_miss = new Audio("sounds/miss.mp3");
-sound_miss.preload = "auto";
-const sound_hit = new Audio("sounds/hit.mp3");
-sound_hit.preload = "auto";
-const sound_bigsplash = new Audio("sounds/bigsplash.mp3");
-sound_bigsplash.preload = "auto";
-const sound_victory = new Audio("sounds/victory.mp3");
-sound_victory.preload = "auto";
-const sound_warning = new Audio("sounds/warning.mp3");
-sound_warning.preload = "auto";
 
 let sounds = {
-	miss: sound_miss,
-	hit: sound_hit,
-	bigsplash: sound_bigsplash,
-	victory: sound_victory,
-	warning: sound_warning,
+	miss: "sounds/miss.mp3",
+	hit: "sounds/hit.mp3",
+	bigsplash: "sounds/bigsplash.mp3",
+	victory: "sounds/victory.mp3",
+	warning: "sounds/warning.mp3",
 };
 
-function playSound(sound){
-	sounds[sound].play();
+// Preload all sounds
+for (const key in sounds) {
+  loadSound(sounds[key]); // call your loadSound function for each file
+}
+
+
+const context = new (window.AudioContext || window.webkitAudioContext)();
+const soundBuffers = {}; // store multiple decoded sounds
+
+function loadSound(src) {
+  return fetch(src)
+    .then(res => res.arrayBuffer())
+    .then(data => context.decodeAudioData(data))
+    .then(decoded => {
+      soundBuffers[src] = decoded; // store buffer by filename
+      return decoded; // also return it
+    });
+}
+
+
+function playSound(src) {
+  const buffer = soundBuffers[sounds[src]];
+  if (!buffer) return; // sound not loaded yet
+
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(context.destination);
+  source.start();
 }
 
 
