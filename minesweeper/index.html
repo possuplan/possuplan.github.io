@@ -10,7 +10,10 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
-- tasapeliä ei tarksiteta ollenkaan. pitää tehä uus tsekkaus sitä varten. play_sound("tie");
+- lisää pelilogiikka 
+- lisää pelin tilanne: miinat löydetty per pelaaja ja miinat löytämättä pelissä.
+- lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
+  tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
 -->
 <style>
 :root {
@@ -1081,7 +1084,11 @@ function handleMessage(data, peerId) {
 					let moveSound = "miss";
 					if(type < 0){
 						moveSound = "hit";
+					}else if(type == 0){
+						moveSound = "miss_long";
+						//gameState.minemap.map[y][x].type === TYPE_EMPTY
 					}
+					
 					if (playerId === localPlayer.id) {
 						playSound(moveSound); // you made the move
 					} else {
@@ -1470,6 +1477,7 @@ requestAnimationFrame(gameLoop);
 
 let sounds = {
 	miss: "sounds/miss.mp3",
+	miss_long: "sounds/miss_long.mp3",
 	hit: "sounds/hit.mp3",
 	bigsplash: "sounds/bigsplash.mp3",
 	victory: "sounds/victory.mp3",
@@ -1602,24 +1610,6 @@ function draw() {
     const offsetX = -gridWidth / 2;
     const offsetY = -gridHeight / 2;
 
-/*
-    // Draw grid lines
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 1 / viewport.scale;
-
-    for (let i = 0; i <= gameState.gridSize.x; i++) {
-        ctx.beginPath();
-        ctx.moveTo(offsetX + i * cellSize, offsetY);
-        ctx.lineTo(offsetX + i * cellSize, offsetY + gridHeight);
-        ctx.stroke();
-    }
-    for (let i = 0; i <= gameState.gridSize.y; i++) {
-        ctx.beginPath();
-        ctx.moveTo(offsetX, offsetY + i * cellSize);
-        ctx.lineTo(offsetX + gridWidth, offsetY + i * cellSize);
-        ctx.stroke();
-    }*/
-    
     // Draw symbols
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -1627,7 +1617,27 @@ function draw() {
     
     for (let y = 0; y < gameState.gridSize.y; y++) {
         for (let x = 0; x < gameState.gridSize.x; x++) {
-		
+			let drawCell = true;
+			// World coordinates of the cell (before scaling/translation)
+			const worldX = offsetX + x * cellSize;
+			const worldY = offsetY + y * cellSize;
+
+			// Convert to screen coordinates
+			const screenX = (worldX + viewport.x) * viewport.scale + canvas.width / 2;
+			const screenY = (worldY + viewport.y) * viewport.scale + canvas.height / 2;
+			const screenSize = cellSize * viewport.scale;
+			
+			// check if square is inside visible screen area:
+			const margin = 0; 
+			if (
+			  screenX + screenSize < 0 + margin ||    // left (shrink visible area)
+			  screenY + screenSize < 0 + margin ||    // top
+			  screenX > canvas.width - margin ||      // right
+			  screenY > canvas.height - margin        // bottom
+			) {
+			  drawCell = false; // skip drawing this cell
+			}
+	
 			const mapcell = gameState.minemap.map[y][x];
 			
 			let scale = 1;
@@ -1636,50 +1646,52 @@ function draw() {
 				scale = (mapcell.frame/MAX_CELL_FRAMES);
 			}
 			
-			if(mapcell.visible){
-				// draw numbers
-			
-				if (mapcell.type >= 0){
-					if(mapcell.frame < MAX_CELL_FRAMES){
+			if(drawCell){
+				if(mapcell.visible){
+					// draw numbers
+				
+					if (mapcell.type >= 0){
+						if(mapcell.frame < MAX_CELL_FRAMES){
+							drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+						}
+						drawImage(ctx, images.empty, offsetX, offsetY, x, y, cellSize, scale);
+					}else{
 						drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+						drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize, scale);
 					}
-					drawImage(ctx, images.empty, offsetX, offsetY, x, y, cellSize, scale);
+
 				}else{
 					drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
-					drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize, scale);
 				}
-
-			}else{
-				drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
-			}
-			
-            if (gameState.grid[y] && gameState.grid[y][x]) {
-                const symbol = gameState.grid[y][x];
-                const playerIndex = gameState.players.findIndex(p => p.symbol === symbol);
-
-
-				let baseSize = cellSize * (scale*0.8);
-				let fontSize = baseSize;
-
-				// If this is the last move, apply pulse
-				if (hasMoveAt(x, y)) {
-				  //fontSize = baseSize * pulse;
-				  drawImage(ctx, images.turn.red, offsetX, offsetY, x, y, cellSize);
-				}
-
-				ctx.font = `bold ${fontSize}px sans-serif`;
-
-				// Draw symbol
-				//ctx.fillStyle = playerIndex > -1 ? `hsl(${playerIndex * 60}, 80%, 70%)` : "black";
-				ctx.fillStyle = numbercolors[mapcell.type];
 				
+				if (gameState.grid[y] && gameState.grid[y][x]) {
+					const symbol = gameState.grid[y][x];
+					const playerIndex = gameState.players.findIndex(p => p.symbol === symbol);
 
-				ctx.fillText(
-				  symbol,
-				  offsetX + x * cellSize + cellSize / 2,
-				  offsetY + y * cellSize + cellSize / 2+3
-				);
-            }
+
+					let baseSize = cellSize * (scale*0.8);
+					let fontSize = baseSize;
+
+					// If this is the last move, apply pulse
+					if (hasMoveAt(x, y)) {
+					  //fontSize = baseSize * pulse;
+					  drawImage(ctx, images.turn.red, offsetX, offsetY, x, y, cellSize);
+					}
+
+					ctx.font = `bold ${fontSize}px sans-serif`;
+
+					// Draw symbol
+					//ctx.fillStyle = playerIndex > -1 ? `hsl(${playerIndex * 60}, 80%, 70%)` : "black";
+					ctx.fillStyle = numbercolors[mapcell.type];
+					
+
+					ctx.fillText(
+					  symbol,
+					  offsetX + x * cellSize + cellSize / 2,
+					  offsetY + y * cellSize + cellSize / 2+3
+					);
+				}
+			}
 			
 			
 			if(mapcell.visible){
