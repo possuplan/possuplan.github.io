@@ -370,7 +370,7 @@ button.secondary {
             <div class="input-group">
              
 				<label for="total-mines-input">Total mines:</label>
-                <input type="number" id="total-mines-input" value="30" min="1">
+                <input type="number" id="total-mines-input" value="51" min="1">
 				
 				
                 <input type="number" id="win-condition-input" value="500" min="3" hidden>
@@ -575,7 +575,13 @@ function generate_map(width, height, total_mines){
 	let data = {
 		width: width,
 		height: height,
-		map: Array.from({length: height}, () => Array.from({length: width}, () => ({type:0,value:"",visible:0,waternum:random(0,2)}))),
+		map: Array.from({length: height}, () => Array.from({length: width}, () => ({
+			type: 0,
+			value: "", 
+			visible: 0, 
+			frame: 0,
+			waternum: random(0,2)
+		}))),
 	};
 	
 	/*
@@ -1037,6 +1043,11 @@ shuffle ok
 complete : voitit pelin
 explosion : hävisit
 */
+
+function getMoveType(x, y){
+	return gameState.minemap.map[y][x].type;
+}
+
 function handleMessage(data, peerId) {
     //console.log('Received:', data.type);
 	
@@ -1061,11 +1072,20 @@ function handleMessage(data, peerId) {
 				}
 			} else {
 				if (gameState.lastMove) {
+					
+					//console.log("gameState.lastMove");
+					//console.log(gameState.lastMove);
 					const { playerId } = gameState.lastMove;
+					
+					let type = getMoveType(gameState.lastMove.x, gameState.lastMove.y);
+					let moveSound = "miss";
+					if(type < 0){
+						moveSound = "hit";
+					}
 					if (playerId === localPlayer.id) {
-						playSound("miss"); // you made the move
+						playSound(moveSound); // you made the move
 					} else {
-						playSound("miss"); // opponent move
+						playSound(moveSound); // opponent move
 					}
 				}
 			}
@@ -1507,7 +1527,8 @@ const img_turn_red = new Image();
 img_turn_red.src = "images/turn-red.png";
 const img_turn_blue = new Image();
 img_turn_blue.src = "images/turn-blue.png";
-
+const img_cursor = new Image();
+img_cursor.src = "images/cursor.png";
 
 let images = {
 	water: [img_water1, img_water2, img_water3],
@@ -1520,6 +1541,7 @@ let images = {
 		red: img_turn_red,
 		blue: img_turn_blue,
 	},
+	cursor: img_cursor,
 };
 
 
@@ -1539,8 +1561,8 @@ function random(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-
-function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, sizePercent){
+/*
+function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale){
 	ctx.drawImage(
 		image,
 		offsetX + x*cellSize - 0.5,
@@ -1548,8 +1570,19 @@ function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, sizePercent){
 		cellSize + 1,
 		cellSize + 1
 	);
+}*/
+function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale = 1) {
+  // Target width/height after scaling
+  const drawSize = cellSize * scale+1;
+
+  // Center the scaled image inside the square
+  const posX = offsetX + x * cellSize + (cellSize - drawSize) / 2-0.5;
+  const posY = offsetY + y * cellSize + (cellSize - drawSize) / 2-0.5;
+
+  ctx.drawImage(image, posX, posY, drawSize, drawSize);
 }
 
+let MAX_CELL_FRAMES = 10;
 
 function draw() {
     if (!gameState.gameStarted) return;
@@ -1597,13 +1630,25 @@ function draw() {
 		
 			const mapcell = gameState.minemap.map[y][x];
 			
+			let scale = 1;
+			
 			if(mapcell.visible){
+				scale = (mapcell.frame/MAX_CELL_FRAMES);
+			}
+			
+			if(mapcell.visible){
+				// draw numbers
+			
 				if (mapcell.type >= 0){
-					drawImage(ctx, images.empty, offsetX, offsetY, x, y, cellSize);
+					if(mapcell.frame < MAX_CELL_FRAMES){
+						drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+					}
+					drawImage(ctx, images.empty, offsetX, offsetY, x, y, cellSize, scale);
 				}else{
 					drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
-					drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize);
+					drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize, scale);
 				}
+
 			}else{
 				drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
 			}
@@ -1613,7 +1658,7 @@ function draw() {
                 const playerIndex = gameState.players.findIndex(p => p.symbol === symbol);
 
 
-				let baseSize = cellSize * 0.7;
+				let baseSize = cellSize * (scale*0.8);
 				let fontSize = baseSize;
 
 				// If this is the last move, apply pulse
@@ -1632,9 +1677,17 @@ function draw() {
 				ctx.fillText(
 				  symbol,
 				  offsetX + x * cellSize + cellSize / 2,
-				  offsetY + y * cellSize + cellSize / 2
+				  offsetY + y * cellSize + cellSize / 2+3
 				);
             }
+			
+			
+			if(mapcell.visible){
+				mapcell.frame++;
+				if(mapcell.frame > MAX_CELL_FRAMES){
+					mapcell.frame = MAX_CELL_FRAMES;
+				}
+			}
         }
     }
     
@@ -1656,6 +1709,12 @@ function draw() {
             ctx.stroke();
         });
     }
+	
+	// draw cursor:
+	if(renderMouse){
+		drawImage(ctx, images.cursor, offsetX, offsetY, mousePos.x, mousePos.y, cellSize, 1.25);
+	}
+
 
     ctx.restore();
 }
@@ -1668,8 +1727,30 @@ function resizeCanvas() {
     }
 }
 
+
+let mousePos = { x: 0, y: 0 };
+let renderMouse = true;
+
+function mouseInsideMap(){
+	if(mousePos.x >= 0 && mousePos.x < gameState.gridSize.x){
+		if(mousePos.y >= 0 && mousePos.y < gameState.gridSize.y){
+			return true;
+		}
+	}
+	return false;
+}
+
 function getTouchPos(e) {
     const rect = canvas.getBoundingClientRect();
+	
+	//mousePos.x = e.clientX - rect.left;
+	//mousePos.y = e.clientY - rect.top;
+	mousePos = getGridCoords(e.clientX - rect.left, e.clientY - rect.top);
+	renderMouse = true;
+	if(!mouseInsideMap()){
+		renderMouse = false;
+	}
+	//console.log(mousePos);
     if (e.touches && e.touches.length > 0) {
         return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
     }
@@ -1706,9 +1787,11 @@ function onPointerDown(e) {
     panStart.y = pos.y - viewport.y * viewport.scale;
 }
 
-function onPointerMove(e) {
+function onPointerMove(e) {    
+	const pos = getTouchPos(e);
+	//console.log(pos);
     if (!isPanning || (e.touches && e.touches.length > 1)) return;
-    const pos = getTouchPos(e);
+
     viewport.x = (pos.x - panStart.x) / viewport.scale;
     viewport.y = (pos.y - panStart.y) / viewport.scale;
     //draw();
@@ -1732,7 +1815,7 @@ function onDoubleClick(e) {
 
     const pos = getTouchPos(e);
     const { x, y } = getGridCoords(pos.x, pos.y);
-	
+
 	
 
     if (x >= 0 && x < gameState.gridSize.x && y >= 0 && y < gameState.gridSize.y) {
@@ -1763,6 +1846,7 @@ function onTouchMove(e) {
         const newScale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
         viewport.scale = newScale;
         lastDist = newDist;
+		//console.log(newDist);
         //draw();
     } else {
         onPointerMove(e);
@@ -1777,7 +1861,7 @@ canvas.addEventListener('mousedown', onPointerDown);
 canvas.addEventListener('mousemove', onPointerMove);
 canvas.addEventListener('mouseup', onPointerUp);
 canvas.addEventListener('mouseleave', () => isPanning = false);
-canvas.addEventListener('click', onDoubleClick);
+canvas.addEventListener('dblclick', onDoubleClick);
 
 canvas.addEventListener('wheel', e => {
     e.preventDefault();
