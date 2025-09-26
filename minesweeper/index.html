@@ -1077,9 +1077,9 @@ function handleMessage(data, peerId) {
 			if (gameState.gameOver) {
 				if (gameState.winner) {
 					if(gameState.winner.id === localPlayer.id){
-						play_sound("complete");
+						playSound("victory");
 					}else{
-						play_sound("explosion");
+						playSound("bigsplash");
 					}
 				} else {
 					play_sound("tie");
