@@ -12,7 +12,6 @@
 todo: 
 - korjaa checkWin(), tasapeli pitäis tehä myös.
   muokkaa checkwin myös niin että se lopettaa pelin jos joku pelaaja on löytänyt riittävästi miinoja eikä muilla ole mahdollisuuksia enää.
-- lisää pelin tilanne: miinat löydetty per pelaaja ja miinat löytämättä pelissä.
 - lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
   tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
 - lisää pommi 5x5 räjähdys jonka voi käyttää vain kerran (tai määritelty pelin asetuksissa).
@@ -167,17 +166,43 @@ button.secondary {
 
 #game-info {
 	position: absolute;
+	display:flex;
+	align-items: center; 
 	top: 0;
 	left: 0;
 	width: 100%;
-	padding: 5px;
-	text-align: right;
+
 	font-size: 1.2em;
 	color: white;
 	pointer-events: none; /* Clicks go through it */
 	z-index: 10;
 }
-		
+
+#infopadding {
+	width:100px;
+}
+
+#game-status {
+  flex: 1;               /* take all remaining horizontal space */
+  text-align:right;
+  padding-right:10px;
+}
+
+#bomb-button {
+    width: 40px;
+    height: 33px;
+    padding: 0;
+    margin: 0;
+	background: green;
+	border: none;
+	cursor: pointer;
+	display:none;
+}
+
+#bomb-button img {
+    width: 25px;
+}
+
 #chat {
 	position: absolute;
 	top: 0;
@@ -464,7 +489,13 @@ button.secondary {
     </div>
 
     <div id="game-screen">
-        <div id="game-info"></div>
+		<div id="game-info">
+			<span id="infopadding"></span>
+		  <span id="game-status"></span>
+		  <button id="bomb-button">
+			<img src="images/bomb-big96.png" alt="bomb" width="90"/>
+		  </button>
+		</div>
         <canvas id="game-canvas"></canvas>
 		
 
@@ -870,7 +901,7 @@ const winConditionInput = document.getElementById('win-condition-input');
 const totalMinesInput = document.getElementById('total-mines-input');
 
 
-const gameInfo = document.getElementById('game-info');
+const gameInfo = document.getElementById('game-status');
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -1491,7 +1522,7 @@ function updateGameInfo() {
 			//gameInfo.classList.add("opponent-turn");
 		}
         //const turnText = currentPlayer.id === localPlayer.id ? "Your Turn" : `${currentPlayer.name}'s Turn`;
-        gameInfo.textContent = `${turnText} (${currentPlayer.symbol})`;
+        gameInfo.textContent = `${turnText}`;
 		
 		createGameStateElements();
 		
