@@ -1394,22 +1394,22 @@ function handlePlayerMove({x, y, playerId}) {
 
     } else {
 		// if missed, go to next player turn:
-		if(gameState.minemap.map[y][x].type > TYPE_EMPTY){
+		if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
 			gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
 		}else{
 			// mark this mine found by current player:
-			if(gameState.minemap.map[y][x].type == TYPE_MINE){
-				gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
-				gameState.minesRemaining = get_remaining_mines();
-				let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
-				gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
+			//if(gameState.minemap.map[y][x].type == TYPE_MINE){
+			gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
+			gameState.minesRemaining = get_remaining_mines();
+			let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
+			gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
 
-				let winplayer = checkWin(x, y);
-				if(winplayer !== null){
-					gameState.gameOver = true;
-					gameState.winner = winplayer;
-				}
+			let winplayer = checkWin(x, y);
+			if(winplayer !== null){
+				gameState.gameOver = true;
+				gameState.winner = winplayer;
 			}
+			//}
 			// keep player turn if hit a mine or empty spot
 		}
     }
