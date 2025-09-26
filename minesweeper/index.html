@@ -11,6 +11,7 @@
 <!--
 todo: 
 - korjaa checkWin(), tasapeli pitäis tehä myös.
+  muokkaa checkwin myös niin että se lopettaa pelin jos joku pelaaja on löytänyt riittävästi miinoja eikä muilla ole mahdollisuuksia enää.
 - lisää pelin tilanne: miinat löydetty per pelaaja ja miinat löytämättä pelissä.
 - lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
   tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
@@ -427,7 +428,7 @@ button.secondary {
         <h3>Players in Lobby</h3>
         <ul id="player-list"></ul>
         
-        <div class="input-group">
+        <div class="input-group" style="display:none">
             <label>Your Symbol</label>
             <div class="symbol-select-group">
                 <select id="symbol-select"></select>
