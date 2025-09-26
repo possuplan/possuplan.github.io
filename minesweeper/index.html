@@ -910,7 +910,7 @@ function updateLobbyUI() {
     gameState.players.forEach(p => {
         const li = document.createElement('li');
 		const safeName = document.createTextNode(p.name);
-		li.innerHTML = `${p.symbol} - <span style="color:${p.color}"></span>`;
+		li.innerHTML = `<span style="color:${p.color}"></span>`;
 		li.querySelector("span").appendChild(safeName);
         playerList.appendChild(li);
     });
