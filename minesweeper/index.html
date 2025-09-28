@@ -1260,30 +1260,36 @@ function handleMessage(data, peerId) {
 
 			if (gameState.lastMove) {
 				
-				//console.log("gameState.lastMove");
-				//console.log(gameState.lastMove);
-				const lastmove = gameState.lastMove;
 				
-				if(lastmove.weapon == MOVE_TYPE_BOMB){
-					if (lastmove.playerId === localPlayer.id) {
-						playSound("bigsplash"); // you made the move
-					} else {
-						playSound("bigsplash"); // opponent move
-					}
-				}else{
-				
-					let type = getMoveType(gameState.lastMove.x, gameState.lastMove.y);
-					let moveSound = "miss";
-					if(type < 0){
-						moveSound = "hit";
-					}else if(type == 0){
-						moveSound = "miss_long";
-					}
+				if(!gameState.lastMoveFailed){
 					
-					if (lastmove.playerId === localPlayer.id) {
-						playSound(moveSound); // you made the move
-					} else {
-						playSound(moveSound); // opponent move
+					console.log("!gameState.lastMoveFailed");
+				
+					//console.log("gameState.lastMove");
+					//console.log(gameState.lastMove);
+					const lastmove = gameState.lastMove;
+					
+					if(lastmove.weapon == MOVE_TYPE_BOMB){
+						if (lastmove.playerId === localPlayer.id) {
+							playSound("bigsplash"); // you made the move
+						} else {
+							playSound("bigsplash"); // opponent move
+						}
+					}else{
+					
+						let type = getMoveType(gameState.lastMove.x, gameState.lastMove.y);
+						let moveSound = "miss";
+						if(type < 0){
+							moveSound = "hit";
+						}else if(type == 0){
+							moveSound = "miss_long";
+						}
+						
+						if (lastmove.playerId === localPlayer.id) {
+							playSound(moveSound); // you made the move
+						} else {
+							playSound(moveSound); // opponent move
+						}
 					}
 				}
 			}
@@ -1516,6 +1522,7 @@ function startGame() {
     gameState.gameStarted = true;
     gameState.gameOver = false;
     gameState.winner = null;
+	gameState.lastMoveFailed = false;
 
 	
 	gameState.minemap = generate_map(gameState.gridSize.x, gameState.gridSize.y, gameState.totalMines);
@@ -1570,7 +1577,7 @@ function handlePlayerMove({x, y, playerId, weapon}) {
     //gameState.grid[y][x] = player.symbol;
 
 	
-	setLastMoveByPlayer(x, y, player.id, weapon);
+	gameState.lastMoveFailed = false;
 	
 	
     if (checkWin(x, y) !== null) {
@@ -1597,10 +1604,11 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 					//}
 					// keep player turn if hit a mine or empty spot
 				}
-				player.lastMoveFailed = false;
+	setLastMoveByPlayer(x, y, player.id, weapon);
+				gameState.lastMoveFailed = false;
 			}else{
 				
-				player.lastMoveFailed = true;
+				gameState.lastMoveFailed = true;
 			}
 	
 			
@@ -1635,10 +1643,11 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 				
 
 				
-				player.lastMoveFailed = false;
+	setLastMoveByPlayer(x, y, player.id, weapon);
+				gameState.lastMoveFailed = false;
 			}else{
 				
-				player.lastMoveFailed = true;
+				gameState.lastMoveFailed = true;
 			}
 		}
 		
