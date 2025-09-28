@@ -15,6 +15,8 @@ todo:
 - lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
   tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
 - lisää pommi 5x5 räjähdys jonka voi käyttää vain kerran (tai määritelty pelin asetuksissa).
+
+- tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä.
 -->
 <style>
 :root {
@@ -1129,10 +1131,14 @@ function setupConnection(conn) {
     });
 }
 
+
+
 function newPlayerColor(){
 	let colorIndex = gameState.players.length % playerColors.length;
 	return playerColors[colorIndex];
 }
+
+
 
 function hostGame() {
     const gameName = gameNameInput.value.trim();
@@ -1151,11 +1157,14 @@ function hostGame() {
     localPlayer.isReady = true;
 	localPlayer.color = newPlayerColor();
 	localPlayer.minesFound = 0;
+	localPlayer.bombsUsed = 0;
     gameState.players.push(localPlayer); 
     
     showScreen('lobby');
     updateLobbyUI();
 }
+
+
 
 function joinGame() {
     const gameName = gameNameInput.value.trim();
@@ -1245,7 +1254,7 @@ function handleMessage(data, peerId) {
 				}
 			} 
 
-			if (gameState.lastMove) {
+			if (gameState.lastMove && !gameState.lastMoveFailed) {
 				
 				//console.log("gameState.lastMove");
 				//console.log(gameState.lastMove);
@@ -1307,6 +1316,7 @@ function handleMessage(data, peerId) {
                 newPlayer.symbol = nextSymbol || '';
 				newPlayer.color = newPlayerColor();
 				newPlayer.minesFound = 0;
+				newPlayer.bombsUsed = 0;
                 
                 gameState.players.push(newPlayer);
                 broadcast({ type: 'game_state', state: gameState });
@@ -1501,6 +1511,7 @@ function startGame() {
     gameState.gameStarted = true;
     gameState.gameOver = false;
     gameState.winner = null;
+	gameState.lastMoveFailed = false;
 	
 	gameState.minemap = generate_map(gameState.gridSize.x, gameState.gridSize.y, gameState.totalMines);
 	gameState.minesRemaining = get_remaining_mines();
@@ -1552,8 +1563,6 @@ function handlePlayerMove({x, y, playerId, weapon}) {
     if (player.id !== playerId) return;
 
     //gameState.grid[y][x] = player.symbol;
-	setLastMoveByPlayer(x, y, player.id, weapon);
-	
 
 	
 	
@@ -1580,30 +1589,46 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 				//}
 				// keep player turn if hit a mine or empty spot
 			}
-		}else if(weapon == MOVE_TYPE_BOMB){
-			revealBombZeros(gameState.minemap, x, y, gameState.grid);
 			
-			for(let yy = -2; yy <= 2; yy++){
-				for(let xx = -2; xx <= 2; xx++){
-					let xp = xx+x;
-					let yp = yy+y;
-					if(xp >= 0 && xp < gameState.minemap.width){
-						if(yp >= 0 && yp < gameState.minemap.height){
-							if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
-								gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
+			setLastMoveByPlayer(x, y, player.id, weapon);
+	
+			gameState.lastMoveFailed = false;
+
+		}else if(weapon == MOVE_TYPE_BOMB){
+			
+			if(gameState.players[gameState.currentPlayerIndex].bombsUsed < gameState.totalBombs){
+				revealBombZeros(gameState.minemap, x, y, gameState.grid);
+				
+				for(let yy = -2; yy <= 2; yy++){
+					for(let xx = -2; xx <= 2; xx++){
+						let xp = xx+x;
+						let yp = yy+y;
+						if(xp >= 0 && xp < gameState.minemap.width){
+							if(yp >= 0 && yp < gameState.minemap.height){
+								if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
+									gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
+								}
 							}
 						}
 					}
 				}
+				
+				gameState.minesRemaining = get_remaining_mines();
+				let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
+				gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
+
+				gameState.players[gameState.currentPlayerIndex].bombsUsed++;
+
+				// next player turn:
+				gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+				
+				setLastMoveByPlayer(x, y, player.id, weapon);
+				
+				gameState.lastMoveFailed = false;
+			}else{
+				
+				gameState.lastMoveFailed = true;
 			}
-			
-			gameState.minesRemaining = get_remaining_mines();
-			let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
-			gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
-
-
-			// next player turn:
-			gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
 		}
 		
 		// check winner:
