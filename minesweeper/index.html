@@ -15,7 +15,6 @@ todo:
 - lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
   tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
 - lisää pommi 5x5 räjähdys jonka voi käyttää vain kerran (tai määritelty pelin asetuksissa).
-- lisää muita aseita joita voisi ehkä löytää mapista ja keräillä.
 -->
 <style>
 :root {
@@ -448,6 +447,9 @@ button.secondary {
 				<label for="total-mines-input">Total mines:</label>
                 <input type="number" id="total-mines-input" value="51" min="1">
 				
+				<label for="total-bombs-input">Total bombs:</label>
+                <input type="number" id="total-bombs-input" value="1" min="0">
+				
 				
                 <input type="number" id="win-condition-input" value="500" min="3" hidden>
             </div>
@@ -623,6 +625,22 @@ function play_sound(soundName){
 generate_sounds();
 
 
+
+
+// Draw a 2px-thick circle in the center; the canvas background remains transparent
+function drawCircle(ctx, offsetX, offsetY, cx, cy, radius, lineWidth = 10, strokeStyle = '#ff0000') {
+	ctx.beginPath();
+	
+	ctx.arc(offsetX+cx, offsetY+cy, radius, 0, Math.PI * 2);
+	ctx.lineWidth = lineWidth;
+	ctx.strokeStyle = strokeStyle;
+	
+	ctx.stroke();
+}
+
+
+
+
 const playerColors = [
 	"#e6194B", // red
 	"#4363d8", // blue
@@ -664,6 +682,7 @@ function generate_map(width, height, total_mines){
 			visible: 0, 
 			frame: 0,
 			owner: -1,
+			numbersAround: 0,
 			waternum: random(0,2)
 		}))),
 	};
@@ -699,10 +718,23 @@ function generate_map(width, height, total_mines){
 			}
 		}	
 	}
+	
+
 
 
 	return data;
 }
+
+
+function count_map_numbers_around(data){
+	// check if this should be rendered as dark water (no visible numbers around it)
+	for(let y = 0; y < data.height; y++){
+		for(let x = 0; x < data.width; x++){
+			data.map[y][x].numbersAround = count_numbers_around(data, x, y);
+		}	
+	}
+}
+
 
 function count_mines_around(data, xp, yp){
 	let count = 0;
@@ -710,6 +742,9 @@ function count_mines_around(data, xp, yp){
 		for(let x = -1; x <= 1; x++){
 			let xx = xp+x;
 			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
 			if(xx >= 0 && xx < data.width){
 				if(yy >= 0 && yy < data.height){
 					if(data.map[yy][xx].type < TYPE_EMPTY){
@@ -721,6 +756,28 @@ function count_mines_around(data, xp, yp){
 	}
 	return count;
 }
+
+function count_numbers_around(data, xp, yp){
+	let count = 0;
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(data.map[yy][xx].type > TYPE_EMPTY && data.map[yy][xx].visible){
+						count++;
+					}
+				}
+			}
+		}
+	}
+	return count;
+}
+
 
 function revealZeros(data, startX, startY, grid) {
   let queue = [[startY, startX]];
@@ -760,6 +817,67 @@ function revealZeros(data, startX, startY, grid) {
       }
     }
   }
+}
+
+
+function revealBombZeros(data, startX, startY, grid) {
+    let queue = [];
+
+    // First, reveal 5x5 area around startX, startY
+    for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+            const y = startY + dy;
+            const x = startX + dx;
+
+            if (y < 0 || y >= data.height || x < 0 || x >= data.width) continue;
+
+            let cell = data.map[y][x];
+            if (cell.visible) continue;
+
+            cell.visible = 1;
+            if (cell.type < TYPE_EMPTY) {
+                grid[y][x] = cell.value;
+            } else {
+                grid[y][x] = cell.type === TYPE_EMPTY ? "" : cell.type;
+            }
+
+            // If the cell is a zero, add it to the BFS queue
+            if (cell.type === TYPE_EMPTY) {
+                queue.push([y, x]);
+            }
+        }
+    }
+
+    // BFS for spreading zeros
+    while (queue.length > 0) {
+        let [y, x] = queue.shift();
+
+        // Spread to all 8 neighbors
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const ny = y + dy;
+                const nx = x + dx;
+
+                if (ny < 0 || ny >= data.height || nx < 0 || nx >= data.width) continue;
+                if (dx === 0 && dy === 0) continue;
+
+                let neighbor = data.map[ny][nx];
+                if (neighbor.visible) continue;
+
+                neighbor.visible = 1;
+                if (neighbor.type < TYPE_EMPTY) {
+                    grid[ny][nx] = neighbor.value;
+                } else {
+                    grid[ny][nx] = neighbor.type === TYPE_EMPTY ? "" : neighbor.type;
+                }
+
+                // If neighbor is zero, add to queue
+                if (neighbor.type === TYPE_EMPTY) {
+                    queue.push([ny, nx]);
+                }
+            }
+        }
+    }
 }
 
 
@@ -885,6 +1003,8 @@ const screens = {
 };
 const gameNameInput = document.getElementById('game-name-input');
 const playerNameInput = document.getElementById('player-name-input');
+playerNameInput.value = randomPlayerName();
+
 const hostBtn = document.getElementById('host-btn');
 const joinBtn = document.getElementById('join-btn');
 const homeError = document.getElementById('home-error');
@@ -901,6 +1021,7 @@ const gridXInput = document.getElementById('grid-x-input');
 const gridYInput = document.getElementById('grid-y-input');
 const winConditionInput = document.getElementById('win-condition-input');
 const totalMinesInput = document.getElementById('total-mines-input');
+const totalBombsInput = document.getElementById('total-bombs-input');
 
 
 const gameInfo = document.getElementById('game-status');
@@ -912,6 +1033,7 @@ const chatMessages = document.getElementById("chatMessages");
 const gameStateList = document.getElementById("game-state-list");
 const chatInput = document.getElementById("chatInput");
 const chatSend = document.getElementById("chatSend");
+
 
 
 
@@ -1098,6 +1220,8 @@ function getMoveType(x, y){
 	return gameState.minemap.map[y][x].type;
 }
 
+
+
 function handleMessage(data, peerId) {
     //console.log('Received:', data.type);
 	
@@ -1119,29 +1243,38 @@ function handleMessage(data, peerId) {
 				} else {
 					play_sound("tie");
 				}
-			} else {
-				if (gameState.lastMove) {
-					
-					//console.log("gameState.lastMove");
-					//console.log(gameState.lastMove);
-					const { playerId } = gameState.lastMove;
-					
+			} 
+
+			if (gameState.lastMove) {
+				
+				//console.log("gameState.lastMove");
+				//console.log(gameState.lastMove);
+				const lastmove = gameState.lastMove;
+				
+				if(lastmove.weapon == MOVE_TYPE_BOMB){
+					if (lastmove.playerId === localPlayer.id) {
+						playSound("bigsplash"); // you made the move
+					} else {
+						playSound("bigsplash"); // opponent move
+					}
+				}else{
+				
 					let type = getMoveType(gameState.lastMove.x, gameState.lastMove.y);
 					let moveSound = "miss";
 					if(type < 0){
 						moveSound = "hit";
 					}else if(type == 0){
 						moveSound = "miss_long";
-						//gameState.minemap.map[y][x].type === TYPE_EMPTY
 					}
 					
-					if (playerId === localPlayer.id) {
+					if (lastmove.playerId === localPlayer.id) {
 						playSound(moveSound); // you made the move
 					} else {
 						playSound(moveSound); // opponent move
 					}
 				}
 			}
+
 			
             if (!isHost && !localPlayer.isReady) {
                 showScreen('lobby');
@@ -1361,7 +1494,8 @@ function startGame() {
 
     gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
     gameState.winCondition = parseInt(winConditionInput.value);
-	gameState.totalMines = parseInt(totalMinesInput.value);
+	gameState.totalMines = Math.max(1, parseInt(totalMinesInput.value));
+	gameState.totalBombs = Math.max(0, parseInt(totalBombsInput.value));
     gameState.grid = Array(gameState.gridSize.y).fill(null).map(() => Array(gameState.gridSize.x).fill(null));
     gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
     gameState.gameStarted = true;
@@ -1378,10 +1512,10 @@ function startGame() {
 
 
 
-function setLastMoveByPlayer(x, y, playerId) {
+function setLastMoveByPlayer(x, y, playerId, weapon) {
     gameState.lastMoves = gameState.lastMoves || {};
-    gameState.lastMoves[playerId] = { x, y };
-	gameState.lastMove = { x, y, playerId };
+    gameState.lastMoves[playerId] = { x, y, weapon};
+	gameState.lastMove = { x, y, playerId, weapon};
 }
 
 
@@ -1411,41 +1545,76 @@ function get_mines_by_player_index(player_index){
 }
 
 
-function handlePlayerMove({x, y, playerId}) {
+function handlePlayerMove({x, y, playerId, weapon}) {
     if (gameState.gameOver || gameState.grid[y][x] !== null) return;
     
     const player = gameState.players[gameState.currentPlayerIndex];
     if (player.id !== playerId) return;
 
     //gameState.grid[y][x] = player.symbol;
-	setLastMoveByPlayer(x, y, player.id);
+	setLastMoveByPlayer(x, y, player.id, weapon);
 	
-	revealZeros(gameState.minemap, x, y, gameState.grid);
+
+	
 	
 	
     if (checkWin(x, y) !== null) {
 
     } else {
-		// if missed, go to next player turn:
-		if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
-			gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-		}else{
-			// mark this mine found by current player:
-			//if(gameState.minemap.map[y][x].type == TYPE_MINE){
-			gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
+		
+		if(weapon == MOVE_TYPE_NORMAL){
+			revealZeros(gameState.minemap, x, y, gameState.grid);
+			
+			// if missed, go to next player turn:
+			if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
+				gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+			}else{
+				// mark this mine found by current player:
+				//if(gameState.minemap.map[y][x].type == TYPE_MINE){
+				gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
+				gameState.minesRemaining = get_remaining_mines();
+				let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
+				gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
+
+
+				//}
+				// keep player turn if hit a mine or empty spot
+			}
+		}else if(weapon == MOVE_TYPE_BOMB){
+			revealBombZeros(gameState.minemap, x, y, gameState.grid);
+			
+			for(let yy = -2; yy <= 2; yy++){
+				for(let xx = -2; xx <= 2; xx++){
+					let xp = xx+x;
+					let yp = yy+y;
+					if(xp >= 0 && xp < gameState.minemap.width){
+						if(yp >= 0 && yp < gameState.minemap.height){
+							if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
+								gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
+							}
+						}
+					}
+				}
+			}
+			
 			gameState.minesRemaining = get_remaining_mines();
 			let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
 			gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
 
-			let winplayer = checkWin(x, y);
-			if(winplayer !== null){
-				gameState.gameOver = true;
-				gameState.winner = winplayer;
-			}
-			//}
-			// keep player turn if hit a mine or empty spot
+
+			// next player turn:
+			gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+		}
+		
+		// check winner:
+		let winplayer = checkWin(x, y);
+		if(winplayer !== null){
+			gameState.gameOver = true;
+			gameState.winner = winplayer;
 		}
     }
+	
+	count_map_numbers_around(gameState.minemap);
     
     broadcast({ type: 'game_state', state: gameState });
     handleMessage({ type: 'game_state', state: gameState });
@@ -1511,7 +1680,7 @@ function updateGameInfo() {
 		
     } else {
         const currentPlayer = gameState.players[gameState.currentPlayerIndex];
-		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.color, 0.3);
+		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.color, 0.6);
 		let turnText = "";
 		if(currentPlayer.id === localPlayer.id){
 			turnText = "Your Turn";
@@ -1723,13 +1892,23 @@ function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale = 1) {
   ctx.drawImage(image, posX, posY, drawSize, drawSize);
 }
 
+function drawTransparentSquare(ctx, x, y, size, color, alpha = 0.5) {
+  ctx.save();
+  ctx.globalAlpha = alpha;  // set transparency
+  ctx.fillStyle = color;    // e.g. "red" or "#00ff00"
+  ctx.fillRect(x-1, y-1, size+2, size+2);
+  ctx.restore();
+}
+
+
+
 let MAX_CELL_FRAMES = 10;
 
 function draw() {
     if (!gameState.gameStarted) return;
 	
 	const time = (Date.now() - startTime) / 1000; // seconds
-	const pulse = 1 + 0.15 * Math.sin(time * 4);   // oscillates between 0.8–1.2
+	const pulse = 1 + 0.4 * Math.sin(time * 4);   // oscillates between 0.8–1.2
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -1803,6 +1982,10 @@ function draw() {
 
 				}else{
 					drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+					
+					if(mapcell.numbersAround == 0){
+						drawTransparentSquare(ctx, offsetX+x*cellSize, offsetX+y*cellSize, cellSize, "#000088", alpha = 0.4); 
+					}
 				}
 				
 				if (gameState.grid[y] && gameState.grid[y][x]) {
@@ -1813,11 +1996,6 @@ function draw() {
 					let baseSize = cellSize * (scale*0.8);
 					let fontSize = baseSize;
 
-					// If this is the last move, apply pulse
-					if (hasMoveAt(x, y)) {
-					  //fontSize = baseSize * pulse;
-					  drawImage(ctx, images.turn.red, offsetX, offsetY, x, y, cellSize);
-					}
 
 					ctx.font = `bold ${fontSize}px sans-serif`;
 
@@ -1843,6 +2021,29 @@ function draw() {
 			}
         }
     }
+	
+	
+	// draw last moves circles and crosshairs:
+	for (const playerId in gameState.lastMoves) {
+		const move = gameState.lastMoves[playerId];
+		let player = getPlayerById(playerId);
+		drawCorners(ctx, 
+			offsetX+move.x*cellSize, 
+			offsetY+move.y*cellSize, cellSize, hexToRgba(player.color, 0.8), pulse
+		);
+		
+		// shadow
+		drawCircle(ctx, offsetX, offsetY, 
+			move.x*cellSize+cellSize/2, 
+			move.y*cellSize+cellSize/2, 100, 7, "rgba(0,0,0,0.2)"
+		);
+		drawCircle(ctx, offsetX, offsetY, 
+			move.x*cellSize+cellSize/2, 
+			move.y*cellSize+cellSize/2, 100, 3, hexToRgba(player.color, 1)
+		);
+
+	}
+
  
 	// draw cursor:
 	if(renderMouse){
@@ -1852,6 +2053,87 @@ function draw() {
 
     ctx.restore();
 }
+
+
+function randomPlayerName() {
+	const prefixes = [
+		"al", "bel", "cor", "dar", "el", "fen", "gal", "hal", "jor", "kal",
+		"lin", "mor", "nor", "or", "pel", "quil", "ron", "sel", "tor", "val"
+	];
+
+	const middles = [
+		"a", "e", "i", "o", "u", "ae", "ia", "eo", "ou", "ai"
+	];
+
+	const suffixes = [
+		"dor", "mar", "ric", "tan", "ven", "win", "bar", "dris", "lith", "zor",
+		"thus", "mir", "gorn", "las", "thar", "mond"
+	];
+
+	const endings = [
+		"son", "ton", "ley", "well", "ford", "smith", "shire", "worth", "more", "vell"
+	];
+
+	function capitalize(word) {
+		return word.charAt(0).toUpperCase() + word.slice(1);
+	}
+
+	const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+	const middle = middles[Math.floor(Math.random() * middles.length)];
+	const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+	const ending = endings[Math.floor(Math.random() * endings.length)];
+
+	return capitalize(prefix + middle + suffix + ending);
+}
+
+// Example: generate 5 names
+for (let i = 0; i < 5; i++) {
+  console.log(randomPlayerName());
+}
+
+
+
+
+function drawCorners(ctx, x, y, cellSize, color, scale = 1) {
+	const lineWidth = 5 * scale;
+	const len = (cellSize / 5) * scale; // "leg" length scaled
+	const half = cellSize / 2;
+
+	ctx.save();
+	ctx.translate(x + half, y + half); // move origin to center
+	ctx.scale(scale, scale);           // scale relative to center
+	ctx.translate(-half, -half);       // move back
+
+	ctx.strokeStyle = color;
+	ctx.lineWidth = lineWidth;
+	ctx.beginPath();
+
+	// Top-left corner
+	ctx.moveTo(0, len);
+	ctx.lineTo(0, 0);
+	ctx.lineTo(len, 0);
+
+	// Top-right corner
+	ctx.moveTo(cellSize - len, 0);
+	ctx.lineTo(cellSize, 0);
+	ctx.lineTo(cellSize, len);
+
+	// Bottom-right corner
+	ctx.moveTo(cellSize, cellSize - len);
+	ctx.lineTo(cellSize, cellSize);
+	ctx.lineTo(cellSize - len, cellSize);
+
+	// Bottom-left corner
+	ctx.moveTo(len, cellSize);
+	ctx.lineTo(0, cellSize);
+	ctx.lineTo(0, cellSize - len);
+
+	ctx.stroke();
+	ctx.restore();
+}
+
+
+
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -1940,6 +2222,34 @@ function onPointerUp(e) {
     lastTap = currentTime;
 }
 
+const MOVE_TYPE_NORMAL = 0;
+const MOVE_TYPE_BOMB = 1;
+
+
+function onRightClick(e){
+    e.preventDefault(); // stops the browser context menu
+    if (gameState.gameOver) return;
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (currentPlayer.id !== localPlayer.id) return;
+	
+	console.log("onRightClick");
+	
+    const pos = getTouchPos(e);
+    const { x, y } = getGridCoords(pos.x, pos.y);
+
+    if (x >= 0 && x < gameState.gridSize.x && y >= 0 && y < gameState.gridSize.y) {
+        const move = { x, y, playerId: localPlayer.id, weapon: MOVE_TYPE_BOMB };
+        if (isHost) {
+            handlePlayerMove(move);
+        } else {
+            sendToHost({ type: 'player_move', move });
+        }
+    }
+	
+}
+
+
+
 function onDoubleClick(e) {
     if (gameState.gameOver) return;
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
@@ -1950,10 +2260,9 @@ function onDoubleClick(e) {
     const pos = getTouchPos(e);
     const { x, y } = getGridCoords(pos.x, pos.y);
 
-	
 
     if (x >= 0 && x < gameState.gridSize.x && y >= 0 && y < gameState.gridSize.y) {
-        const move = { x, y, playerId: localPlayer.id };
+        const move = { x, y, playerId: localPlayer.id, weapon: MOVE_TYPE_NORMAL};
         if (isHost) {
             handlePlayerMove(move);
         } else {
@@ -1996,6 +2305,7 @@ canvas.addEventListener('mousemove', onPointerMove);
 canvas.addEventListener('mouseup', onPointerUp);
 canvas.addEventListener('mouseleave', () => isPanning = false);
 canvas.addEventListener('dblclick', onDoubleClick);
+canvas.addEventListener('contextmenu', onRightClick);
 
 canvas.addEventListener('wheel', e => {
     e.preventDefault();
