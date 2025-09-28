@@ -1494,8 +1494,8 @@ function startGame() {
 
     gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
     gameState.winCondition = parseInt(winConditionInput.value);
-	gameState.totalMines = Math.max(1, parseInt(totalMinesInput.value));
-	gameState.totalBombs = Math.max(0, parseInt(totalBombsInput.value));
+	gameState.totalMines = Math.max(1, parseInt(totalMinesInput.value)); // minimum = 1
+	gameState.totalBombs = Math.max(0, parseInt(totalBombsInput.value)); // minimum = 0
     gameState.grid = Array(gameState.gridSize.y).fill(null).map(() => Array(gameState.gridSize.x).fill(null));
     gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
     gameState.gameStarted = true;
@@ -1546,7 +1546,7 @@ function get_mines_by_player_index(player_index){
 
 
 function handlePlayerMove({x, y, playerId, weapon}) {
-    if (gameState.gameOver || gameState.grid[y][x] !== null) return;
+    if (gameState.gameOver) return;
     
     const player = gameState.players[gameState.currentPlayerIndex];
     if (player.id !== playerId) return;
@@ -1619,6 +1619,8 @@ function handlePlayerMove({x, y, playerId, weapon}) {
     broadcast({ type: 'game_state', state: gameState });
     handleMessage({ type: 'game_state', state: gameState });
 }
+
+
 
 function checkWin(x, y) {
     if(gameState.minesRemaining == 0){
