@@ -10,6 +10,7 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
+- korjaa äänet: toistaa äänen jos klikkaa jo ennestään klikattua aluetta!!!
 - korjaa checkWin(), tasapeli pitäis tehä myös.
   muokkaa checkwin myös niin että se lopettaa pelin jos joku pelaaja on löytänyt riittävästi miinoja eikä muilla ole mahdollisuuksia enää.
 - lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
@@ -1158,6 +1159,7 @@ function hostGame() {
 	localPlayer.color = newPlayerColor();
 	localPlayer.minesFound = 0;
 	localPlayer.bombsUsed = 0;
+	localPlayer.lastMoveFailed = false;
     gameState.players.push(localPlayer); 
     
     showScreen('lobby');
@@ -1252,9 +1254,11 @@ function handleMessage(data, peerId) {
 				} else {
 					play_sound("tie");
 				}
-			} 
+			}
+			
+			
 
-			if (gameState.lastMove && !gameState.lastMoveFailed) {
+			if (gameState.lastMove) {
 				
 				//console.log("gameState.lastMove");
 				//console.log(gameState.lastMove);
@@ -1317,6 +1321,7 @@ function handleMessage(data, peerId) {
 				newPlayer.color = newPlayerColor();
 				newPlayer.minesFound = 0;
 				newPlayer.bombsUsed = 0;
+				newPlayer.lastMoveFailed = false;
                 
                 gameState.players.push(newPlayer);
                 broadcast({ type: 'game_state', state: gameState });
@@ -1511,7 +1516,7 @@ function startGame() {
     gameState.gameStarted = true;
     gameState.gameOver = false;
     gameState.winner = null;
-	gameState.lastMoveFailed = false;
+
 	
 	gameState.minemap = generate_map(gameState.gridSize.x, gameState.gridSize.y, gameState.totalMines);
 	gameState.minesRemaining = get_remaining_mines();
@@ -1565,6 +1570,7 @@ function handlePlayerMove({x, y, playerId, weapon}) {
     //gameState.grid[y][x] = player.symbol;
 
 	
+	setLastMoveByPlayer(x, y, player.id, weapon);
 	
 	
     if (checkWin(x, y) !== null) {
@@ -1572,27 +1578,32 @@ function handlePlayerMove({x, y, playerId, weapon}) {
     } else {
 		
 		if(weapon == MOVE_TYPE_NORMAL){
-			revealZeros(gameState.minemap, x, y, gameState.grid);
 			
-			// if missed, go to next player turn:
-			if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
-				gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+			if(!gameState.minemap.map[y][x].visible){
+				revealZeros(gameState.minemap, x, y, gameState.grid);
+				
+				// if missed, go to next player turn:
+				if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
+					gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+				}else{
+					// mark this mine found by current player:
+					//if(gameState.minemap.map[y][x].type == TYPE_MINE){
+					gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
+					gameState.minesRemaining = get_remaining_mines();
+					let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
+					gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
+
+
+					//}
+					// keep player turn if hit a mine or empty spot
+				}
+				player.lastMoveFailed = false;
 			}else{
-				// mark this mine found by current player:
-				//if(gameState.minemap.map[y][x].type == TYPE_MINE){
-				gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
-				gameState.minesRemaining = get_remaining_mines();
-				let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
-				gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
-
-
-				//}
-				// keep player turn if hit a mine or empty spot
+				
+				player.lastMoveFailed = true;
 			}
-			
-			setLastMoveByPlayer(x, y, player.id, weapon);
 	
-			gameState.lastMoveFailed = false;
+			
 
 		}else if(weapon == MOVE_TYPE_BOMB){
 			
@@ -1622,12 +1633,12 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 				// next player turn:
 				gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
 				
-				setLastMoveByPlayer(x, y, player.id, weapon);
+
 				
-				gameState.lastMoveFailed = false;
+				player.lastMoveFailed = false;
 			}else{
 				
-				gameState.lastMoveFailed = true;
+				player.lastMoveFailed = true;
 			}
 		}
 		
