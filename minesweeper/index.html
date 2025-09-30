@@ -10,14 +10,14 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
-- korjaa äänet: toistaa äänen jos klikkaa jo ennestään klikattua aluetta!!!
-- korjaa checkWin(), tasapeli pitäis tehä myös.
-  muokkaa checkwin myös niin että se lopettaa pelin jos joku pelaaja on löytänyt riittävästi miinoja eikä muilla ole mahdollisuuksia enää.
+- checkwin ei toimi kolmel pelaajal, ei lopeta peliä vaikka ei enää muut pysty saamaan tarpeeksi miinoja.
+- // todo: test this with more than 2 players.
+- checkwin korjaa niin että näyttää tasapelin saaneiden pelaajien nimet.
 - lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
   tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
-- lisää pommi 5x5 räjähdys jonka voi käyttää vain kerran (tai määritelty pelin asetuksissa).
 
-- tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä.
+- tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
+
 -->
 <style>
 :root {
@@ -323,6 +323,54 @@ button.secondary {
 .opponent-turn {
 	background-color: rgba(255,0,0,0.3);
 }
+
+
+/*howtoplay-btn*/
+.infobutton {
+    background-color: #468627;
+    width: 150px;
+    margin-top: 10px;
+}
+
+
+
+  
+ /* Overlay background */
+  .modal {
+    display: none; /* hidden by default */
+    position: fixed;
+    z-index: 1000;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.8);
+  }
+
+  /* Centered box */
+  .modal-content {
+    background: #000;
+    margin: 5% auto;
+    padding: 20px;
+    width: 100%;
+    max-height: 100%;        /* limit height */
+    border-radius: 20px;
+	border:1px solid yellow;
+    overflow-y: auto;       /* scrollbar if content is too tall */
+  }
+
+  .close {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: relative;
+    top: -13px;
+  }
+
+  .instructions {
+    line-height: 1.5;
+  }
+  
+  
 </style>
 	
 	
@@ -416,6 +464,8 @@ button.secondary {
     border-radius: 4px;
   }
   #searchOptions button:hover { background: #ff4d4d; color: #fff; }
+  
+  
 </style>
 
 
@@ -439,10 +489,13 @@ button.secondary {
 
     <div id="lobby-screen" class="screen">
         <h2 id="lobby-game-name"></h2>
+		
         <div id="host-controls">
             <h3>Game Settings</h3>
-            <div class="input-group" style="display: flex; gap: 10px;">
+            <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+				<label for="grid-x-input">Width:</label>
                 <input type="number" id="grid-x-input" value="16" min="3">
+				<label for="grid-y-input">Height:</label>
                 <input type="number" id="grid-y-input" value="16" min="3">
             </div>
             <div class="input-group">
@@ -450,14 +503,21 @@ button.secondary {
 				<label for="total-mines-input">Total mines:</label>
                 <input type="number" id="total-mines-input" value="51" min="1">
 				
-				<label for="total-bombs-input">Total bombs:</label>
-                <input type="number" id="total-bombs-input" value="1" min="0">
-				
+				Bombs:
+				<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+					<label for="total-bombs-input">Total:</label>
+					<input type="number" id="total-bombs-input" value="1" min="0">
+					
+					<label for="bomb-radius-input">Radius:</label>
+					<input type="number" id="bomb-radius-input" value="2" min="1">
+				</div>
 				
                 <input type="number" id="win-condition-input" value="500" min="3" hidden>
             </div>
             <button id="start-game-btn">Start Game</button>
         </div>
+		
+		<button id="howtoplay-btn" class="infobutton">? How to play</button>
         
         <h3>Players in Lobby</h3>
         <ul id="player-list"></ul>
@@ -467,30 +527,50 @@ button.secondary {
             <div class="symbol-select-group">
                 <select id="symbol-select"></select>
 
-<label for="groupSelect">Group:</label>
-<select id="groupSelect">
-  <option value=""></option>
-  <option value="search">--Search--</option>
-</select>
-<!--<input type="text" id="selectedEmoji" placeholder="Selected Emoji">-->
+					<label for="groupSelect">Group:</label>
+					<select id="groupSelect">
+					  <option value=""></option>
+					  <option value="search">--Search--</option>
+					</select>
+					<!--<input type="text" id="selectedEmoji" placeholder="Selected Emoji">-->
 
-<div id="emojiView">
-  <div id="emojiControls">
-    <div id="searchOptions" style="display:none;">
-      <input type="text" id="searchInput" placeholder="Search...">
-      <button id="matchModeBtn">Word</button>
-      <button id="searchBtn">Search</button>
-    </div>
-    <div id="closeBtn">✖</div>
-  </div>
-  <div id="emojiGrid"></div>
-</div>
+					<div id="emojiView">
+					  <div id="emojiControls">
+						<div id="searchOptions" style="display:none;">
+						  <input type="text" id="searchInput" placeholder="Search...">
+						  <button id="matchModeBtn">Word</button>
+						  <button id="searchBtn">Search</button>
+						</div>
+						<div id="closeBtn">✖</div>
+					  </div>
+					  <div id="emojiGrid"></div>
+					</div>
 
 
 
                 <input type="text" id="custom-symbol-input" maxlength="16" placeholder="Unicode">
             </div>
         </div>
+		
+
+		<!-- Modal -->
+		<div id="howtoplay-modal" class="modal">
+		  <div class="modal-content">
+			<span class="close">&times;</span>
+			<h2>How to Play</h2>
+			<div class="instructions">
+			  <p>1. Find the mines by Double Left Click or a Single Tap! You get a new turn if you found a mine. Mines are flagged with flags after they are found.</p>
+			  <p>2. The numbers tell how many mines are around that number: vertically, horizontally and diagonally (maximum of 8 possible mines around a number).</p>
+			  <p>3. Right Click or Long Press activates the bomb, which creates 5x5 explosion by default (radius = 2).</p>
+			  <p>4. Winner is the player who found most mines. A tie is also possible depending on settings.</p>
+			  <p>5. The game also ends if the other players doesn't have a chance anymore to find more mines than the leading player. Leading player becomes the winner and the remaining mines are revealed.</p>
+			  
+			  
+			</div>
+		  </div>
+		</div>
+
+
         <!--<button id="change-symbol-btn">Set Symbol</button>-->
         <p id="lobby-error" style="color: red;"></p>
     </div>
@@ -694,7 +774,7 @@ function generate_map(width, height, total_mines){
 	states:
 	-3 ...
 	-2 other item (for later use)
-	-1 mine 💣 🚩 <span style="color: red;">⚑</span>
+	-1 mine
 	0 empty
 	1 (number of mines around)
 	2 (number of mines around)
@@ -825,10 +905,11 @@ function revealZeros(data, startX, startY, grid) {
 
 function revealBombZeros(data, startX, startY, grid) {
     let queue = [];
+	let radius = gameState.bombRadius;
 
     // First, reveal 5x5 area around startX, startY
-    for (let dy = -2; dy <= 2; dy++) {
-        for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
             const y = startY + dy;
             const x = startX + dx;
 
@@ -989,14 +1070,17 @@ let gameState = {
     gridSize: { x: 10, y: 10 },
     winCondition: 4,
 	totalMines: 30,
+	totalBombs: 1,
+	bombRadius: 2,
     currentPlayerIndex: 0,
     gameStarted: false,
     gameOver: false,
     winner: null,
-	minesRemaining: 0,
+	ties: null,
+	lastMoveFailed: false,
 	minemap: [],
+	minesRemaining: 0,
 };
-
 
 // ---------- UI ELEMENT REFERENCES ---------- //
 const screens = {
@@ -1025,6 +1109,7 @@ const gridYInput = document.getElementById('grid-y-input');
 const winConditionInput = document.getElementById('win-condition-input');
 const totalMinesInput = document.getElementById('total-mines-input');
 const totalBombsInput = document.getElementById('total-bombs-input');
+const bombRadiusInput = document.getElementById('bomb-radius-input');
 
 
 const gameInfo = document.getElementById('game-status');
@@ -1039,6 +1124,44 @@ const chatSend = document.getElementById("chatSend");
 
 
 
+const howToPlayBtn = document.getElementById('howtoplay-btn');
+const modal = document.getElementById('howtoplay-modal');
+const closeBtn = modal.querySelector('.close');
+
+howToPlayBtn.addEventListener('click', () => {
+	modal.style.display = 'block';
+});
+
+closeBtn.addEventListener('click', () => {
+	modal.style.display = 'none';
+});
+
+window.addEventListener('click', (e) => {
+	if (e.target === modal) {
+		modal.style.display = 'none';
+	}
+});
+
+// Close modal by pressing Escape
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modal.style.display === 'block') {
+    modal.style.display = 'none';
+  }
+});
+
+
+
+function setTotalMines() {
+	let width = parseInt(gridXInput.value);
+	let height = parseInt(gridYInput.value);
+	let ratio = 51/256;
+	let val = Math.round(width*height*ratio);
+	if(val < 0) val = 1;
+	totalMinesInput.value = val;
+}
+
+gridXInput.addEventListener("input", setTotalMines);
+gridYInput.addEventListener("input", setTotalMines);
 
 
 
@@ -1401,8 +1524,12 @@ function sendChatMessage() {
   chatInput.value = "";
 }
 
-function getPlayerById(id) {
-	return gameState.players.find(p => p.id === id) || null;
+function getPlayerById(id, myArray = null) {
+	if(myArray){
+		return myArray.find(p => p.id === id) || null;
+	}else{
+		return gameState.players.find(p => p.id === id) || null;
+	}
 }
 
 
@@ -1515,16 +1642,16 @@ function startGame() {
 
     gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
     gameState.winCondition = parseInt(winConditionInput.value);
-	gameState.totalMines = Math.max(1, parseInt(totalMinesInput.value)); // minimum = 1
+	gameState.totalMines = Math.max(1, Math.min(parseInt(totalMinesInput.value), gameState.gridSize.x*gameState.gridSize.y)); // minimum = 1, max = w*h
 	gameState.totalBombs = Math.max(0, parseInt(totalBombsInput.value)); // minimum = 0
+	gameState.bombRadius = Math.max(1, parseInt(bombRadiusInput.value)); // minimum = 1
     gameState.grid = Array(gameState.gridSize.y).fill(null).map(() => Array(gameState.gridSize.x).fill(null));
     gameState.currentPlayerIndex = Math.floor(Math.random() * gameState.players.length);
     gameState.gameStarted = true;
     gameState.gameOver = false;
     gameState.winner = null;
+	gameState.ties = null;
 	gameState.lastMoveFailed = false;
-
-	
 	gameState.minemap = generate_map(gameState.gridSize.x, gameState.gridSize.y, gameState.totalMines);
 	gameState.minesRemaining = get_remaining_mines();
 
@@ -1569,7 +1696,13 @@ function get_mines_by_player_index(player_index){
 
 
 function handlePlayerMove({x, y, playerId, weapon}) {
-    if (gameState.gameOver) return;
+	
+    if (gameState.gameOver){
+		//console.log("cant move, game ended, winner:");
+		//console.log(gameState.winner);
+		
+		return;
+	}
     
     const player = gameState.players[gameState.currentPlayerIndex];
     if (player.id !== playerId) return;
@@ -1580,85 +1713,103 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 	gameState.lastMoveFailed = false;
 	
 	
-    if (checkWin(x, y) !== null) {
-
-    } else {
+    //if (checkWin(x, y) !== null) {
+	//	console.log("game has ended alredy");
+    //} else {
 		
-		if(weapon == MOVE_TYPE_NORMAL){
+	if(weapon == MOVE_TYPE_NORMAL){
+		
+		if(!gameState.minemap.map[y][x].visible){
+			revealZeros(gameState.minemap, x, y, gameState.grid);
 			
-			if(!gameState.minemap.map[y][x].visible){
-				revealZeros(gameState.minemap, x, y, gameState.grid);
-				
-				// if missed, go to next player turn:
-				if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
-					gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-				}else{
-					// mark this mine found by current player:
-					//if(gameState.minemap.map[y][x].type == TYPE_MINE){
-					gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
-					gameState.minesRemaining = get_remaining_mines();
-					let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
-					gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
-
-
-					//}
-					// keep player turn if hit a mine or empty spot
-				}
-	setLastMoveByPlayer(x, y, player.id, weapon);
-				gameState.lastMoveFailed = false;
+			// if missed, go to next player turn:
+			if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
+				gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
 			}else{
-				
-				gameState.lastMoveFailed = true;
-			}
-	
-			
-
-		}else if(weapon == MOVE_TYPE_BOMB){
-			
-			if(gameState.players[gameState.currentPlayerIndex].bombsUsed < gameState.totalBombs){
-				revealBombZeros(gameState.minemap, x, y, gameState.grid);
-				
-				for(let yy = -2; yy <= 2; yy++){
-					for(let xx = -2; xx <= 2; xx++){
-						let xp = xx+x;
-						let yp = yy+y;
-						if(xp >= 0 && xp < gameState.minemap.width){
-							if(yp >= 0 && yp < gameState.minemap.height){
-								if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
-									gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
-								}
-							}
-						}
-					}
-				}
-				
+				// mark this mine found by current player:
+				//if(gameState.minemap.map[y][x].type == TYPE_MINE){
+				gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
 				gameState.minesRemaining = get_remaining_mines();
 				let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
 				gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
 
-				gameState.players[gameState.currentPlayerIndex].bombsUsed++;
 
-				// next player turn:
-				gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-				
-
-				
-	setLastMoveByPlayer(x, y, player.id, weapon);
-				gameState.lastMoveFailed = false;
-			}else{
-				
-				gameState.lastMoveFailed = true;
+				//}
+				// keep player turn if hit a mine or empty spot
 			}
+			
+			setLastMoveByPlayer(x, y, player.id, weapon);
+
+			gameState.lastMoveFailed = false;
+		}else{
+			
+			gameState.lastMoveFailed = true;
 		}
+
 		
-		// check winner:
-		let winplayer = checkWin(x, y);
-		if(winplayer !== null){
-			gameState.gameOver = true;
-			gameState.winner = winplayer;
+
+	}else if(weapon == MOVE_TYPE_BOMB){
+		
+		if(gameState.players[gameState.currentPlayerIndex].bombsUsed < gameState.totalBombs){
+			revealBombZeros(gameState.minemap, x, y, gameState.grid);
+			
+			// set owner for found mines:
+			let radius = gameState.bombRadius;
+			for(let yy = -radius; yy <= radius; yy++){
+				for(let xx = -radius; xx <= radius; xx++){
+					let xp = xx+x;
+					let yp = yy+y;
+					if(xp >= 0 && xp < gameState.minemap.width){
+						if(yp >= 0 && yp < gameState.minemap.height){
+							if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
+								gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
+							}
+						}
+					}
+				}
+			}
+			
+			gameState.minesRemaining = get_remaining_mines();
+			let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
+			gameState.players[gameState.currentPlayerIndex].minesFound = currentPlayerMinesFound;
+
+			gameState.players[gameState.currentPlayerIndex].bombsUsed++;
+
+			// next player turn:
+			gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+			
+
+			
+			setLastMoveByPlayer(x, y, player.id, weapon);
+			
+			gameState.lastMoveFailed = false;
+		}else{
+			
+			gameState.lastMoveFailed = true;
 		}
-    }
+	}
 	
+	// check winner:
+	
+	//return {isTie: isTie, topPlayer: topPlayer};
+	
+	let endState = checkEndState();
+	console.log("endState:");
+	console.log(endState);
+
+	
+	if(endState.winner){
+		gameState.gameOver = true;
+		gameState.winner = endState.winner;
+	}else if(endState.ties.length > 1){
+		gameState.gameOver = true;
+		gameState.winner = null;
+		gameState.ties = endState.ties;
+	}
+	
+    //}
+	
+	// update darker water map:
 	count_map_numbers_around(gameState.minemap);
     
     broadcast({ type: 'game_state', state: gameState });
@@ -1667,21 +1818,245 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 
 
 
-function checkWin(x, y) {
-    if(gameState.minesRemaining == 0){
-		let topPlayer = null;
-		let maxMines = -1;
+let PLAYER_CHANCE_NONE = 0;
+let PLAYER_CHANCE_TIE = 1;
+let PLAYER_CHANCE_WIN = 2;
 
-		for (const player of gameState.players) {
-			if (player.minesFound > maxMines) {
-				maxMines = player.minesFound;
-				topPlayer = player;
-			}
+
+let PLAYER_STATUS_NONE = 0;
+let PLAYER_STATUS_TIE = 1;
+let PLAYER_STATUS_WIN = 2;
+
+
+function countChances(playerStatuses){
+	let winnerList = [];
+	let tieList = [];
+	let noneList = [];
+	for(const playerId in playerStatuses){
+		let playerStatus = playerStatuses[playerId];
+		
+		// check how many win statuses are:
+		if(playerStatus.chance == PLAYER_CHANCE_WIN){
+			winnerList.push(playerId);
 		}
-		return topPlayer;
+		// check how many tie statuses are:
+		if(playerStatus.chance == PLAYER_CHANCE_TIE){
+			tieList.push(playerId);
+		}
+		// check how many none statuses are:
+		if(playerStatus.chance == PLAYER_CHANCE_NONE){
+			noneList.push(playerId);
+		}
 	}
-	return null;
+	return {none: noneList, tie: tieList, win: winnerList};
 }
+
+
+function createPlayersState(minesRemaining, playersMinesFound){
+	let testData = {
+		minesRemaining: minesRemaining, 
+		players: [],
+	};
+	for(let i = 0; i < playersMinesFound.length; i++){
+		let player = {
+			id: "p"+(i+1),
+			minesFound: playersMinesFound[i],
+		};
+		testData.players.push(player);
+	}
+	return testData;
+}
+
+function testWin(minesRemaining, playersMinesFound){
+	let testData = createPlayersState(minesRemaining, playersMinesFound);
+	//console.log("testData:");
+	//console.log(testData);
+
+	let endstate = checkEndState(testData);
+	//console.log("endstate:");
+	//console.log(endstate);
+		
+	let resultList = {};
+	// initialize:
+	for(let i = 0; i < playersMinesFound.length; i++){
+		let player = testData.players[i];
+		resultList[player.id] = `${player.id}: ${player.minesFound} (NO)`;
+	}
+	// add ties:
+	if(endstate.ties.length > 0){
+
+		for(let i = 0; i < endstate.ties.length; i++){
+			let player = endstate.ties[i];
+			
+			resultList[player.id] = `${player.id}: ${player.minesFound} (TIE)`;
+		}
+	}
+	// add winner:
+	if(endstate.winner){
+		let player = endstate.winner;
+		resultList[player.id] = `${player.id}: ${player.minesFound} (WIN)`;
+	}
+	
+	//console.log("resultList");
+	//console.log(structuredClone(resultList));
+	
+	let resultsArr = [];
+	for (const value of Object.values(resultList)) {
+	  resultsArr.push(value);
+	}
+	
+	let resjoin = resultsArr.join(",  ");
+	
+	console.log(resjoin);
+	
+	return resjoin;
+}
+
+
+
+
+
+function checkEndState(testData = null){
+	let minesRemaining = 0;
+	let playersList = {};
+	
+	if(testData){
+		minesRemaining = testData.minesRemaining;
+		playersList = testData.players;
+	}else{
+		minesRemaining = gameState.minesRemaining;
+		playersList = gameState.players;
+	}
+	
+	let playerStatuses = {};
+	for (const player of playersList) {
+		playerStatuses[player.id] = {chance: PLAYER_CHANCE_NONE, status: PLAYER_STATUS_NONE};
+	}
+
+	//console.log("playerStatuses1:");
+	//console.log(structuredClone(playerStatuses));
+	
+	// find max mines of any player:
+	let maxPlayerMines = -1;
+	for (const player of playersList) {
+		if(player.minesFound > maxPlayerMines){
+			maxPlayerMines = player.minesFound;
+		}
+	}
+	//console.log("maxPlayerMines = "+maxPlayerMines);
+	
+	let tieList = [];
+	let winnerPlayer = null;
+	
+	if(playersList.length == 1){
+		//console.log("playersList.length == 1");
+		// allow playing alone until all mines found:
+		if(minesRemaining == 0){
+			winnerPlayer = playersList[0];
+		}
+	}else{
+		
+		if(minesRemaining == 0){
+			
+			//console.log("minesRemaining == 0");
+			
+			// check end state when no mines are remaining:
+			for (const player of playersList) {
+				let playerStatus = playerStatuses[player.id];
+
+				// 2=none, 2=none, 4=tie, 4=tie
+
+				if(player.minesFound < maxPlayerMines){
+					playerStatus.chance = PLAYER_CHANCE_NONE;
+				}else if(player.minesFound == maxPlayerMines){
+					playerStatus.chance = PLAYER_CHANCE_WIN;
+				}
+			}
+			
+			//console.log("playerStatuses2a:");
+			//console.log(structuredClone(playerStatuses));
+			
+			let chances = countChances(playerStatuses);
+			
+			//console.log("chances2a:");
+			//console.log(structuredClone(chances));
+			
+			// clear winner if only one "win" found:
+			// 2=none, 2=none, 4=tie
+			if(chances.win.length == 1){
+				//console.log("chances.win.length == 1");
+				//playerStatuses[chances.win[0]].status = PLAYER_STATUS_WIN;
+				winnerPlayer = getPlayerById(chances.win[0], playersList);
+			}else{
+				//console.log("chances.win.length > 1");
+				
+				// no winner, multiple winners found:
+				// 2=none, 2=none, 4=tie, 4=tie
+				for(let i = 0; i < chances.win.length; i++){
+					//playerStatuses[chances.win[i]].status = PLAYER_STATUS_TIE;
+					tieList.push(getPlayerById(chances.win[i], playersList));
+				}
+			}
+			
+		}else{
+			// check if game could still continue due to tie or win chance:
+			for (const player of playersList) {
+				let playerStatus = playerStatuses[player.id];
+				
+				let nextTurnPossibleMove = player.minesFound + minesRemaining;
+
+				// minesRemaining: 2
+				// maxplayer: 4
+				// before: 0,2,3,4
+				//  after: 2,4,5,6
+				//         N,T,W,W
+				
+				if(player.minesFound < maxPlayerMines){
+					if(nextTurnPossibleMove < maxPlayerMines){
+						playerStatus.chance = PLAYER_CHANCE_NONE;
+					}else if(nextTurnPossibleMove == maxPlayerMines){
+						playerStatus.chance = PLAYER_CHANCE_TIE;
+					}else if(nextTurnPossibleMove > maxPlayerMines){
+						playerStatus.chance = PLAYER_CHANCE_WIN;
+					}
+				}else{
+					playerStatus.chance = PLAYER_CHANCE_WIN;
+				}
+			}
+			
+			//console.log("playerStatuses2b:");
+			//console.log(structuredClone(playerStatuses));
+			
+			let chances = countChances(playerStatuses);
+			
+			//console.log("chances2b:");
+			//console.log(structuredClone(chances));
+			
+			// clear winner:
+			// 2=none, 2=none, 4=win
+			if(chances.win.length == 1){
+				if(chances.tie.length == 0){
+					//playerStatuses[chances.tie[0]].status = PLAYER_STATUS_WIN;
+					winnerPlayer = getPlayerById(chances.win[0], playersList);
+					//console.log("chances.win[0]");
+					//console.log(chances.win[0]);
+					//console.log("playersList");
+					//console.log(playersList);
+					//console.log("winnerPlayer");
+					//console.log(winnerPlayer);
+					
+				}
+			}
+			// tie is not possible when mines are still remaining.
+		}
+	}
+	
+	
+	return {ties: tieList, winner: winnerPlayer};
+}
+
+
+
 
 
 
@@ -1705,16 +2080,32 @@ function hexToRgba(hex, alpha = 1) {
 
 function updateGameInfo() {
     if (!gameState.gameStarted) return;
-    
+
+	const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
     if (gameState.gameOver) {
+
         if (gameState.winner) {
+			gameInfo.style.backgroundColor = hexToRgba(gameState.winner.color, 0.6);
+			
 			if(gameState.winner.id === localPlayer.id){
-				gameInfo.textContent = `You (${gameState.winner.symbol}) won the game!`;
+				gameInfo.textContent = `You won the game!`;
 			}else{
-				gameInfo.textContent = `${gameState.winner.name} (${gameState.winner.symbol}) won the game!`;
+				gameInfo.textContent = `${gameState.winner.name} won the game!`;
 			}
         } else {
-            gameInfo.textContent = "It's a draw!";
+			gameInfo.style.backgroundColor = hexToRgba("#000000", 0.6);
+			
+			if(gameState.players.length == 2){
+				gameInfo.textContent = "It's a tie!";
+			}else{
+				let tieListStr = "It's a tie for players: ";
+				let tieListNames = [];
+				for(let i = 0; i < gameState.ties.length; i++){
+					tieListNames.push(gameState.ties[i].name);
+				}
+				gameInfo.textContent = tieListStr+tieListNames.join(", ");
+			}
         }
 		
 		for(let i = 0; i < gameState.players.length; i++){
@@ -1726,7 +2117,6 @@ function updateGameInfo() {
 		remainingMinesValue.textContent = ": "+gameState.minesRemaining;
 		
     } else {
-        const currentPlayer = gameState.players[gameState.currentPlayerIndex];
 		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.color, 0.6);
 		let turnText = "";
 		if(currentPlayer.id === localPlayer.id){
@@ -1878,6 +2268,9 @@ img_flag_yellow.src = "images/flag-yellow.png";
 const img_flag_green = new Image();
 img_flag_green.src = "images/flag-green.png";
 
+const img_mine = new Image();
+img_mine.src = "images/mine.png";
+
 const img_turn_red = new Image();
 img_turn_red.src = "images/turn-red.png";
 const img_turn_blue = new Image();
@@ -1894,6 +2287,7 @@ let images = {
 		yellow: img_flag_yellow,
 		green: img_flag_green,
 	},
+	mine: img_mine,
 	turn: {
 		red: img_turn_red,
 		blue: img_turn_blue,
@@ -1909,8 +2303,8 @@ let numbercolors = [
 	"#BC0C00", // 3
 	"#0E0C71", // 4
 	"#733F00", // 5
-	"#B6005E", // 6
-	"#E9C397", // 7
+	"#FF0F8B", // 6 magentaish
+	"#83FF5D", // 7 light yellow
 	"#FFFFFF"  // 8
 ];
 
@@ -2006,10 +2400,11 @@ function draw() {
 			}
 			
 			if(drawCell){
+
 				if(mapcell.visible){
 					// draw numbers
 				
-					if (mapcell.type >= 0){
+					if (mapcell.type >= TYPE_EMPTY){
 						if(mapcell.frame < MAX_CELL_FRAMES){
 							drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
 						}
@@ -2029,6 +2424,12 @@ function draw() {
 
 				}else{
 					drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+						
+					if(gameState.gameOver){
+						if(mapcell.type < TYPE_EMPTY){
+							drawImage(ctx, images.mine, offsetX, offsetY, x, y, cellSize, 1);
+						}
+					}
 					
 					if(mapcell.numbersAround == 0){
 						drawTransparentSquare(ctx, offsetX+x*cellSize, offsetX+y*cellSize, cellSize, "#000088", alpha = 0.4); 
@@ -2079,15 +2480,21 @@ function draw() {
 			offsetY+move.y*cellSize, cellSize, hexToRgba(player.color, 0.8), pulse
 		);
 		
-		// shadow
-		drawCircle(ctx, offsetX, offsetY, 
-			move.x*cellSize+cellSize/2, 
-			move.y*cellSize+cellSize/2, 100, 7, "rgba(0,0,0,0.2)"
-		);
-		drawCircle(ctx, offsetX, offsetY, 
-			move.x*cellSize+cellSize/2, 
-			move.y*cellSize+cellSize/2, 100, 3, hexToRgba(player.color, 1)
-		);
+		
+		if(!gameState.gameOver){
+			
+			let maxsize = Math.max(gameState.gridSize.x, gameState.gridSize.y)*cellSize;
+			
+			// shadow
+			drawCircle(ctx, offsetX, offsetY, 
+				move.x*cellSize+cellSize/2, 
+				move.y*cellSize+cellSize/2, maxsize*pulse, 7, "rgba(0,0,0,0.2)"
+			);
+			drawCircle(ctx, offsetX, offsetY, 
+				move.x*cellSize+cellSize/2, 
+				move.y*cellSize+cellSize/2, maxsize*pulse, 3, hexToRgba(player.color, 1)
+			);
+		}
 
 	}
 
