@@ -2474,24 +2474,27 @@ function draw() {
 		let player = getPlayerById(playerId);
 		drawCorners(ctx, 
 			offsetX+move.x*cellSize, 
-			offsetY+move.y*cellSize, cellSize, hexToRgba(player.color, 0.8), pulse
+			offsetY+move.y*cellSize, cellSize, hexToRgba(player.color, 0.8), pulse*1.1
 		);
 		
-		
-		if(!gameState.gameOver){
+		/*
+		if(!gameState.gameOver && player.id !== localPlayer.id){
 			
 			let maxsize = Math.max(gameState.gridSize.x, gameState.gridSize.y)*cellSize;
 			
+			const pulse2 = 0.1+(1+Math.sin(time * 4))/2;
+    
+	
 			// shadow
 			drawCircle(ctx, offsetX, offsetY, 
 				move.x*cellSize+cellSize/2, 
-				move.y*cellSize+cellSize/2, maxsize*pulse, 7, "rgba(0,0,0,0.2)"
+				move.y*cellSize+cellSize/2, maxsize*pulse2, 7, "rgba(0,0,0,0.2)"
 			);
 			drawCircle(ctx, offsetX, offsetY, 
 				move.x*cellSize+cellSize/2, 
-				move.y*cellSize+cellSize/2, maxsize*pulse, 3, hexToRgba(player.color, 1)
+				move.y*cellSize+cellSize/2, maxsize*pulse2, 3, hexToRgba(player.color, 1)
 			);
-		}
+		}*/
 
 	}
 
