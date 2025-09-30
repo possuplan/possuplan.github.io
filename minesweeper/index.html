@@ -10,11 +10,8 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
-- checkwin ei toimi kolmel pelaajal, ei lopeta peliä vaikka ei enää muut pysty saamaan tarpeeksi miinoja.
-- // todo: test this with more than 2 players.
-- checkwin korjaa niin että näyttää tasapelin saaneiden pelaajien nimet.
-- lisää automaattinen miinojen määrän laskija: 51 miinaa per 16x16 ruudukkoa, 20% miinoja about, 
-  tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
+- lisää warning ääni jos enää pari miinaa jäljellä.
+- lisää automaattinen miinojen määrän laskija: tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
 
 - tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
 
@@ -2432,7 +2429,7 @@ function draw() {
 					}
 					
 					if(mapcell.numbersAround == 0){
-						drawTransparentSquare(ctx, offsetX+x*cellSize, offsetX+y*cellSize, cellSize, "#000088", alpha = 0.4); 
+						drawTransparentSquare(ctx, offsetX+x*cellSize, offsetY+y*cellSize, cellSize, "#000088", alpha = 0.4); 
 					}
 				}
 				
