@@ -10,6 +10,7 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
+- estä gameState spämmäystä.
 - lisää warning ääni jos enää pari miinaa jäljellä.
 - lisää automaattinen miinojen määrän laskija: tee luvusta jaoton pelaajien määrän mukaan jolloin ei voi tulla tasapeliä.
 
@@ -1356,12 +1357,11 @@ function getMoveType(x, y){
 function handleMessage(data, peerId) {
     //console.log('Received:', data.type);
 	
-	console.log(data.type);
+	console.log(data.type+":");
 	
     switch (data.type) {
         case 'game_state':
             gameState = data.state;
-			console.log("gameState:");
 			console.log(gameState);
 			
 			if (gameState.gameOver) {
@@ -1383,7 +1383,7 @@ function handleMessage(data, peerId) {
 				
 				if(!gameState.lastMoveFailed){
 					
-					console.log("!gameState.lastMoveFailed");
+					//console.log("!gameState.lastMoveFailed");
 				
 					//console.log("gameState.lastMove");
 					//console.log(gameState.lastMove);
@@ -1791,8 +1791,8 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 	//return {isTie: isTie, topPlayer: topPlayer};
 	
 	let endState = checkEndState();
-	console.log("endState:");
-	console.log(endState);
+	//console.log("endState:");
+	//console.log(endState);
 
 	
 	if(endState.winner){
@@ -2540,10 +2540,7 @@ function randomPlayerName() {
 	return capitalize(prefix + middle + suffix + ending);
 }
 
-// Example: generate 5 names
-for (let i = 0; i < 5; i++) {
-  console.log(randomPlayerName());
-}
+
 
 
 
