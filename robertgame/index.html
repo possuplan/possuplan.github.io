@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Robert</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the dark theme and game elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+            color: #E5E7EB; /* text-gray-200 */
+        }
+
+        .game-card {
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10 and IE 11 */
+            user-select: none; /* Standard syntax */
+            transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            line-height: 1;
+            font-weight: 600;
+        }
+
+        .game-card:not(.revealed):hover {
+            transform: translateY(-4px);
+            background-color: #374151; /* hover:bg-gray-700 */
+        }
+        
+        /* Style for revealed cards */
+        .game-card.revealed {
+            font-size: 0.75rem; /* Smaller font for features */
+            line-height: 1.5;
+            align-items: flex-start;
+            justify-content: flex-start;
+            text-align: left;
+            font-weight: 400;
+            cursor: default;
+        }
+        
+        .game-card.revealed ul {
+            padding-left: 1.25rem;
+        }
+        
+        .game-card.revealed li {
+            margin-bottom: 2px;
+        }
+
+        /* Style for correctly found card */
+        .found {
+            background-color: #10B981; /* bg-emerald-500 */
+            color: #ffffff;
+            font-weight: bold;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #10B981, 0 0 30px #10B981;
+        }
+
+        /* Style for incorrectly guessed cards */
+        .wrong {
+            background-color: #312027; /* Darker red tone */
+            color: #9CA3AF; /* text-gray-400 */
+            opacity: 0.6;
+            transform: scale(0.95);
+        }
+        
+        .feature-tag {
+            background-color: #374151; /* bg-gray-700 */
+            color: #d1d5db; /* text-gray-300 */
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            animation: slide-up 0.4s ease-out;
+        }
+
+        @keyframes slide-up {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+
+    <div class="w-full max-w-7xl mx-auto text-center">
+        <!-- Header -->
+        <header class="mb-6">
+            <h1 class="text-4xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-cyan-300">
+                Where's Robert?
+            </h1>
+            <p class="text-gray-400 mt-2 text-lg">Analyze the subjects and find the one matching the target profile.</p>
+        </header>
+
+        <!-- Target Profile -->
+        <div class="mb-6 p-4 bg-gray-800/50 rounded-lg max-w-3xl mx-auto border border-sky-500/30">
+            <h3 class="text-lg font-semibold text-sky-400 mb-3">TARGET PROFILE: ROBERT</h3>
+            <div id="robert-features" class="flex flex-wrap justify-center gap-2">
+                <!-- Features will be injected here by JS -->
+            </div>
+        </div>
+
+        <!-- Game Info Bar -->
+        <div class="flex justify-center items-center space-x-6 sm:space-x-12 my-6 p-4 bg-gray-800/50 rounded-lg">
+            <div>
+                <span class="text-gray-400 block text-sm">ATTEMPTS</span>
+                <span id="attempts-counter" class="text-2xl font-semibold text-white">0</span>
+            </div>
+            <div>
+                <span class="text-gray-400 block text-sm">TIME</span>
+                <span id="timer" class="text-2xl font-semibold text-white">0s</span>
+            </div>
+        </div>
+
+        <!-- Game Grid -->
+        <main id="game-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2 sm:gap-3"></main>
+    </div>
+
+    <!-- Win Modal -->
+    <div id="win-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full text-center modal-content">
+            <h2 class="text-3xl font-bold text-green-400 mb-4">You Found Him!</h2>
+            <p id="win-message" class="text-gray-300 mb-6 text-lg">Great job, you located Robert.</p>
+            <button id="play-again-btn"
+                class="w-full bg-cyan-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-cyan-500 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-cyan-400/50 transform hover:scale-105">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const gameGrid = document.getElementById('game-grid');
+            const attemptsCounter = document.getElementById('attempts-counter');
+            const timerEl = document.getElementById('timer');
+            const winModal = document.getElementById('win-modal');
+            const winMessage = document.getElementById('win-message');
+            const playAgainBtn = document.getElementById('play-again-btn');
+            const robertFeaturesEl = document.getElementById('robert-features');
+
+            // --- Game State ---
+            let attempts = 0;
+            let timerInterval;
+            let seconds = 0;
+            let gameActive = false;
+            let people = [];
+            let shuffledPeople = [];
+
+            // --- Game Data ---
+            const ROBERT_PROFILE = {
+                name: 'Robert',
+                features: ['Psychopath', 'Cold', 'Ruthless', 'Fearless', 'Detached', 'Manipulative']
+            };
+
+            const DECOY_FEATURES = [
+                'Empathetic', 'Kind', 'Anxious', 'Creative', 'Brave', 'Loyal', 'Impulsive',
+                'Charismatic', 'Ambitious', 'Calm', 'Introverted', 'Observant', 'Sociable',
+                'Energetic', 'Optimistic', 'Logical', 'Methodical', 'Artistic', 'Sensitive',
+                'Moody', 'Generous', 'Stubborn', 'Cynical', 'Idealistic', 'Pragmatic', 'Chaotic',
+                'Paranoid', 'Honest', 'Deceitful', 'Organized', 'Meticulous', 'Reckless'
+            ];
+            
+            const OTHER_NAMES = ["Olivia", "Liam", "Emma", "Noah", "Amelia", "Oliver", "Ava", "Elijah", "Sophia", "Mateo", "Isabella", "Lucas", "Mia", "Levi", "Charlotte", "Asher", "Luna", "James", "Aurora", "Leo", "Ethan", "Gianna", "Muhammad", "Evelyn", "Hudson", "Harper", "Ezra", "Camila", "Luca", "Eleanor", "Michael", "Scarlett", "Daniel", "Penelope", "Maverick", "Layla", "Santiago", "Hazel", "Jack", "Aria", "Benjamin", "Nora", "William", "Chloe", "Henry", "Mila", "Owen", "Violet", "Alexander", "Madison", "Theodore", "Eliana", "Julian", "Lily", "Grayson", "Nova", "Kai", "Isla", "Wyatt", "Zoe", "Sebastian", "Riley", "Carter", "Ellie", "Jayden", "Avery", "John", "Sofia", "David", "Grace", "Joseph", "Abigail", "Caleb", "Emily", "Luke", "Ella", "Gabriel", "Stella", "Anthony", "Paisley", "Isaac", "Addison", "Matthew", "Elena", "Josiah", "Naomi", "Ryan", "Maya", "Lincoln", "Willow", "Jaxon", "Leah", "Christopher", "Lucy", "Andrew", "Ivy", "Nathan", "Savannah", "Joshua", "Ayla"];
+
+
+            // --- Game Logic ---
+
+            /**
+             * Shuffles an array in place.
+             * @param {Array} array The array to shuffle. @returns {Array} The shuffled array.
+             */
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+            
+            /**
+             * Generates the pool of people, including Robert and decoys.
+             */
+            function generatePeople() {
+                people = [ROBERT_PROFILE];
+                const decoyNames = [...OTHER_NAMES];
+
+                // Generate 119 decoys to fill a 120-cell grid
+                for (let i = 0; i < 119; i++) {
+                    const name = decoyNames[i] || `Subject ${i+1}`;
+                    const personFeatures = new Set();
+                    
+                    const numFeatures = Math.floor(Math.random() * 3) + 3; // 3 to 5 features
+                    for (let j = 0; j < numFeatures; j++) {
+                        const randomFeature = DECOY_FEATURES[Math.floor(Math.random() * DECOY_FEATURES.length)];
+                        personFeatures.add(randomFeature);
+                    }
+
+                    // 35% chance to have a crossover feature from Robert's profile to make it harder
+                    if (Math.random() < 0.35) { 
+                        const randomRobertFeature = ROBERT_PROFILE.features[Math.floor(Math.random() * ROBERT_PROFILE.features.length)];
+                        personFeatures.add(randomRobertFeature);
+                    }
+                    
+                    people.push({ name: name, features: Array.from(personFeatures) });
+                }
+            }
+            
+            /**
+             * Displays the target's features at the top of the screen.
+             */
+            function displayTargetProfile() {
+                robertFeaturesEl.innerHTML = '';
+                ROBERT_PROFILE.features.forEach(feature => {
+                    const tag = document.createElement('span');
+                    tag.className = 'feature-tag';
+                    tag.textContent = feature;
+                    robertFeaturesEl.appendChild(tag);
+                });
+            }
+
+            /**
+             * Creates and populates the game grid with subjects.
+             */
+            function createGrid() {
+                gameGrid.innerHTML = '';
+                shuffledPeople = shuffleArray([...people]);
+
+                shuffledPeople.forEach((person, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'game-card bg-gray-800 rounded-lg p-2 sm:p-3 cursor-pointer';
+                    card.textContent = '?';
+                    card.dataset.personIndex = index;
+                    card.addEventListener('click', handleCardClick);
+                    gameGrid.appendChild(card);
+                });
+            }
+
+            /**
+             * Handles the logic when a user clicks on a subject card.
+             * @param {Event} e The click event.
+             */
+            function handleCardClick(e) {
+                const card = e.target;
+                if (!gameActive || card.classList.contains('revealed')) {
+                    return; // Don't do anything if game is over or card is already revealed
+                }
+
+                attempts++;
+                attemptsCounter.textContent = attempts;
+                
+                const personIndex = card.dataset.personIndex;
+                const person = shuffledPeople[personIndex];
+
+                // Reveal features
+                card.classList.add('revealed');
+                card.innerHTML = ''; // Clear the '?'
+                const featureList = document.createElement('ul');
+                featureList.className = 'list-disc';
+                person.features.forEach(feature => {
+                    const li = document.createElement('li');
+                    li.textContent = feature;
+                    featureList.appendChild(li);
+                });
+                card.appendChild(featureList);
+
+                if (person.name === 'Robert') {
+                    card.classList.add('found');
+                    endGame();
+                } else {
+                    card.classList.add('wrong');
+                }
+            }
+            
+            function startTimer() {
+                seconds = 0;
+                timerEl.textContent = '0s';
+                timerInterval = setInterval(() => { seconds++; timerEl.textContent = `${seconds}s`; }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(timerInterval);
+            }
+
+            function endGame() {
+                gameActive = false;
+                stopTimer();
+                winMessage.textContent = `You found Robert in ${seconds} seconds with ${attempts} attempts!`;
+                winModal.classList.remove('hidden');
+            }
+
+            function initGame() {
+                gameActive = true;
+                attempts = 0;
+                attemptsCounter.textContent = '0';
+                winModal.classList.add('hidden');
+                
+                displayTargetProfile();
+                generatePeople();
+                createGrid();
+                stopTimer();
+                startTimer();
+            }
+
+            playAgainBtn.addEventListener('click', initGame);
+
+            initGame();
+        });
+    </script>
+</body>
+</html>
+
