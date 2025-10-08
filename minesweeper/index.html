@@ -330,6 +330,12 @@ button.secondary {
     margin-top: 10px;
 }
 
+.aibutton {
+    background-color: #4686FF;
+    width: 150px;
+    margin-top: 10px;
+}
+
 
 
   
@@ -510,6 +516,14 @@ button.secondary {
 					<input type="number" id="bomb-radius-input" value="2" min="1">
 				</div>
 				
+				AI player:
+				<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+					<label for="ai-confusion-input">Mistake factor:</label>
+					<input type="number" id="ai-confusion-input" value="0" min="0" max="3">
+					<button id="add-ai-btn" class="aibutton">Add AI</button>
+				</div>
+				
+				
                 <input type="number" id="win-condition-input" value="500" min="3" hidden>
             </div>
             <button id="start-game-btn">Start Game</button>
@@ -576,10 +590,10 @@ button.secondary {
     <div id="game-screen">
 		<div id="game-info">
 			<span id="infopadding"></span>
-		  <span id="game-status"></span>
-		  <button id="bomb-button">
-			<img src="images/bomb-big96.png" alt="bomb" width="90"/>
-		  </button>
+		    <span id="game-status"></span>
+		    <button id="bomb-button">
+			    <img src="images/bomb-big96.png" alt="bomb" width="90"/>
+		    </button>
 		</div>
         <canvas id="game-canvas"></canvas>
 		
@@ -740,12 +754,26 @@ const playerColors = [
 	"#000000"  // black
 ];
 
-let typeToValue = {
-	"-1": "", // 🚩
-};
+
+
+
+/*
+states:
+-3 ...
+-2 other item (for later use)
+-1 mine
+0 empty
+1 (number of mines around)
+2 (number of mines around)
+3...
+*/
 
 let TYPE_MINE = -1;
 let TYPE_EMPTY = 0;
+
+let typeToValue = {
+	"-1": "",
+};
 
 function set_mine(data, x, y, type){
 	data.map[y][x].type = type;
@@ -757,27 +785,32 @@ function generate_map(width, height, total_mines){
 	let data = {
 		width: width,
 		height: height,
+		chancesTemp: Array.from({length: height}, () => Array.from({length: width}, () => ({
+			percent: -1, // 0.5, 0.333.., 0.666, 1.0... etc
+			checked: 0,
+			color: "black",
+		}))),
+		chances: Array.from({length: height}, () => Array.from({length: width}, () => ({
+			percent: -1, // 0.5, 0.333.., 0.666, 1.0... etc
+			checked: 0,
+			color: "black",
+		}))),
+		chances2: Array.from({length: height}, () => Array.from({length: width}, () => ({
+			empty: -1, // 0.5, 0.333.., 0.666, 1.0... etc
+			mines: -1,
+			total: -1,
+			checked: 0,
+		}))),
 		map: Array.from({length: height}, () => Array.from({length: width}, () => ({
-			type: TYPE_EMPTY,
-			value: "", 
-			visible: 0, 
-			frame: 0,
-			owner: -1,
-			numbersAround: 0,
+			type: TYPE_EMPTY, // -1 = mine, 0 = empty, 1-8 = number
+			value: "", // not used
+			visible: 0,
+			frame: 0, // animation frame
+			owner: -1, // who has found the mine
+			numbersAround: 0, // for darker water calcuations
 			waternum: random(0,2)
 		}))),
 	};
-	
-	/*
-	states:
-	-3 ...
-	-2 other item (for later use)
-	-1 mine
-	0 empty
-	1 (number of mines around)
-	2 (number of mines around)
-	3...
-	*/
 	
 	// add mines:
 	let placed = 0;
@@ -801,20 +834,9 @@ function generate_map(width, height, total_mines){
 	}
 	
 
-
-
 	return data;
 }
 
-
-function count_map_numbers_around(data){
-	// check if this should be rendered as dark water (no visible numbers around it)
-	for(let y = 0; y < data.height; y++){
-		for(let x = 0; x < data.width; x++){
-			data.map[y][x].numbersAround = count_numbers_around(data, x, y);
-		}	
-	}
-}
 
 
 function count_mines_around(data, xp, yp){
@@ -838,6 +860,18 @@ function count_mines_around(data, xp, yp){
 	return count;
 }
 
+
+
+function count_map_numbers_around(data){
+	// check if this should be rendered as dark water (no visible numbers around it)
+	for(let y = 0; y < data.height; y++){
+		for(let x = 0; x < data.width; x++){
+			data.map[y][x].numbersAround = count_numbers_around(data, x, y);
+		}	
+	}
+}
+
+
 function count_numbers_around(data, xp, yp){
 	let count = 0;
 	for(let y = -1; y <= 1; y++){
@@ -858,6 +892,13 @@ function count_numbers_around(data, xp, yp){
 	}
 	return count;
 }
+
+
+
+
+
+
+
 
 
 function revealZeros(data, startX, startY, grid) {
@@ -1060,6 +1101,7 @@ let localPlayer = {
     name: "Player",
     symbol: '',
     isReady: false,
+	isAI: false,
 };
 
 let gameState = {
@@ -1119,6 +1161,994 @@ const chatMessages = document.getElementById("chatMessages");
 const gameStateList = document.getElementById("game-state-list");
 const chatInput = document.getElementById("chatInput");
 const chatSend = document.getElementById("chatSend");
+
+
+
+
+
+//////////////////////////////////////////////////
+//
+// AI functionality
+//
+
+const addAiBtn = document.getElementById('add-ai-btn');
+
+let ai_counter = 1;
+
+addAiBtn.addEventListener('click', () => {
+    if (!isHost) return;
+
+    const aiPlayer = {
+        id: `ai-${ai_counter}`,
+        name: `AI-${ai_counter}`,
+        symbol: '', // Not used for drawing, but good practice
+        isReady: true,
+        isAI: true,
+        color: newPlayerColor(),
+        minesFound: 0,
+        bombsUsed: 0,
+        lastMoveFailed: false,
+    };
+
+    gameState.players.push(aiPlayer);
+    ai_counter++;
+
+    // Update the UI for the host and broadcast the new state to all clients
+    updateLobbyUI();
+    broadcast({ type: 'game_state', state: gameState });
+});
+
+
+function checkForAITurn() {
+    // Only the host should control the AI
+    if (!isHost || gameState.gameOver) return;
+
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+
+    // If the current player is an AI, trigger their move
+    if (currentPlayer && currentPlayer.isAI) {
+        setTimeout(() => {
+            // Read the confusion factor from the input field
+            const confusionFactor = parseInt(document.getElementById('ai-confusion-input').value) || 0;
+            const bestMove = ai_find_best_move(confusionFactor);
+
+            if (bestMove) {
+                const aiMove = {
+                    x: bestMove.x,
+                    y: bestMove.y,
+                    playerId: currentPlayer.id,
+                    weapon: MOVE_TYPE_NORMAL // AI currently only does normal clicks
+                };
+                // Process the AI's move as if it came from a player
+                handlePlayerMove(aiMove);
+            }
+        }, random(400,700)); // delay to simulate thinking
+    }
+}
+
+
+
+
+
+/*
+function mark_nomine_around(data, xp, yp){
+	let visible = data.map[yp][xp].visible;
+	if(visible){
+		// 
+		let totalMinesCount = data.map[yp][xp].type;
+		if(totalMinesCount > 0){
+			// find empty squares around:
+			let emptyCount = find_nonvisible_around(data, xp, yp);
+			let foundMinesCount = find_visible_mines_around(data, xp, yp);
+			
+			// emptyCount = 3
+			// foundMinesCount = 2
+			// totalMinesCount = 3
+			// percentage = (totalMinesCount-foundMinesCount)/emptyCount
+			
+			// mark zero percentages:
+			for(let y = -1; y <= 1; y++){
+				for(let x = -1; x <= 1; x++){
+					let xx = xp+x;
+					let yy = yp+y;
+					if(x == 0 && y == 0){
+						continue; // skip middle square.
+					}
+					if(xx >= 0 && xx < data.width){
+						if(yy >= 0 && yy < data.height){
+							if(data.chances[yy][xx].type < TYPE_EMPTY){
+								count++;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}*/
+
+
+function mark_percentages(){
+	let data = gameState.minemap;
+	mark_absolute_chances(data);
+	// 6 passes should do it
+	mark_absolute_chances2(data, "#008800");
+	mark_absolute_chances2(data, "#000088");
+	mark_absolute_chances2(data, "#FF00FF");
+	mark_absolute_chances2(data, "#FFFFFF");
+	mark_absolute_chances2(data, "#FFFF88");
+	mark_absolute_chances2(data, "#FF8888");
+	
+	// check remaining percentages:
+	//mark_absolute_chances3(data, "#888888");
+
+	//mark_absolute_chances2(data);
+	//mark_absolute_chances2(data);
+	let secondPasses = 3; // 2 should be enough.
+	for(let i = 0; i < secondPasses; i++){
+		//mark_absolute_chances_second_pass(data);
+		//copychances();
+	}
+	console.log("data.chances");
+	console.log(data.chances);
+}
+
+function ai_find_best_move(confusion_factor = 0){
+	
+	for(let y = 0; y < gameState.minemap.height; y++){
+		for(let x = 0; x < gameState.minemap.width; x++){
+			if(!gameState.minemap.map[y][x].visible && gameState.minemap.chances[y][x].percent == 1.0){
+				return {x,y};
+			}
+		}
+	}
+
+	return ai_find_next_best_move(gameState.minemap, confusion_factor);
+	
+}
+
+
+function mark_chances(data, cells, percent, color = "black"){
+	for(let i = 0; i < cells.length; i++){
+		let square = cells[i];
+		let xx = square.x;
+		let yy = square.y;
+		// only change percent if its higher:
+		if(percent >= data.chances[yy][xx].percent){
+			data.chances[yy][xx].percent = percent;
+			data.chances[yy][xx].checked = 1;
+			data.chances[yy][xx].color = color;
+		}
+	}
+}
+
+
+function mark_chances_temp(data, cells, percent, color = "black"){
+	for(let i = 0; i < cells.length; i++){
+		let square = cells[i];
+		let xx = square.x;
+		let yy = square.y;
+		// only change percent if its higher:
+		if(percent >= data.chancesTemp[yy][xx].percent){
+			data.chancesTemp[yy][xx].percent = percent;
+			data.chancesTemp[yy][xx].checked = 1;
+			data.chancesTemp[yy][xx].color = color;
+		}
+	}
+}
+
+
+
+function mark_chances_temp2(data, cells, percent, color = "black"){
+	for(let i = 0; i < cells.length; i++){
+		let square = cells[i];
+		let xx = square.x;
+		let yy = square.y;
+		// only change percent if its higher:
+		if(!data.chancesTemp[yy][xx].checked){
+			data.chancesTemp[yy][xx].percent = percent;
+			data.chancesTemp[yy][xx].checked = 1;
+			data.chancesTemp[yy][xx].color = color;
+		}
+	}
+}
+
+
+
+function copy_temp_to_chances2(){
+	let data = gameState.minemap;
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			let olddata = Object.assign({}, data.chancesTemp[y][x]);
+			if(olddata.percent > data.chances[y][x].percent){
+				data.chances[y][x].percent = olddata.percent;
+				data.chances[y][x].checked = olddata.checked;
+				data.chances[y][x].color = olddata.color;
+			}
+		}
+	}
+}
+
+function copy_temp_to_chances(){
+	let data = gameState.minemap;
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			let olddata = Object.assign({}, data.chancesTemp[y][x]);
+			data.chances[y][x].percent = olddata.percent;
+			data.chances[y][x].checked = olddata.checked;
+			data.chances[y][x].color = olddata.color;
+		}
+	}
+}
+
+function copy_chances_totemp(){
+	let data = gameState.minemap;
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			let olddata = Object.assign({}, data.chances[y][x]);
+			data.chancesTemp[y][x].percent = olddata.percent;
+			data.chancesTemp[y][x].checked = olddata.checked;
+			data.chancesTemp[y][x].color = olddata.color;
+		}
+	}
+}
+
+
+
+
+// find visible mines around
+function mark_absolute_chances(data){
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_mines_around(data, x, y);
+					let empty = find_nonvisible_around(data, x, y);
+					
+					
+					if(mines.length == totalMinesCount){
+						// 0% chance (all mines found)
+						mark_chances(data, empty, 0);
+					}
+
+					if(false){
+						data.chances2[y][x].mines = mines.length;
+						data.chances2[y][x].empty = empty.length;
+						data.chances2[y][x].total = totalMinesCount;
+						data.chances2[y][x].checked = 1;
+					}
+				}
+			}
+		}
+	}
+	
+	
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_mines_around(data, x, y);
+					let empty = find_nonvisible_around(data, x, y);
+					
+
+					// empty+minesFound = minesTotal = all empty squares must be mines.
+					if(empty.length + mines.length == totalMinesCount){
+						// 100% chance of mines in the empty squares.
+						mark_chances(data, empty, 1.0);
+					}
+					
+
+					if(false){
+						data.chances2[y][x].mines = mines.length;
+						data.chances2[y][x].empty = empty.length;
+						data.chances2[y][x].total = totalMinesCount;
+						data.chances2[y][x].checked = 1;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+function find_nonvisible_around(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(!data.map[yy][xx].visible){
+						foundmines.push({x: xx, y:yy});
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+// find visible mines around
+function find_visible_mines_around(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(data.map[yy][xx].visible && data.map[yy][xx].type < TYPE_EMPTY){
+						foundmines.push({x: xx, y:yy});
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+
+
+
+function mark_absolute_chances2(data, color){
+	copy_chances_totemp();
+	
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_mines_around2(data, x, y);
+					let empty = find_nonvisible_around2(data, x, y);
+					
+					
+					if(mines.length == totalMinesCount){
+						// 0% chance (all mines found)
+						mark_chances_temp(data, empty, 0, color);
+					}
+
+					if(1){
+						data.chances2[y][x].mines = mines.length;
+						data.chances2[y][x].empty = empty.length;
+						data.chances2[y][x].total = totalMinesCount;
+						data.chances2[y][x].checked = 1;
+					}
+				}
+			}
+		}
+	}
+	
+	
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_mines_around2(data, x, y);
+					let empty = find_nonvisible_around2(data, x, y);
+					
+
+					// empty+minesFound = minesTotal = all empty squares must be mines.
+					if(empty.length + mines.length == totalMinesCount){
+						// 100% chance of mines in the empty squares.
+						mark_chances_temp(data, empty, 1.0, color);
+					}
+					
+
+					if(1){
+						data.chances2[y][x].mines = mines.length;
+						data.chances2[y][x].empty = empty.length;
+						data.chances2[y][x].total = totalMinesCount;
+						data.chances2[y][x].checked = 1;
+					}
+				}
+			}
+		}
+	}
+	
+	
+	
+	
+	copy_temp_to_chances();
+}
+
+
+
+
+
+
+function find_nonvisible_around2(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(!data.map[yy][xx].visible){
+						if(data.chances[yy][xx].percent != 0){
+							foundmines.push({x: xx, y:yy});
+						}
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+// find 100% mines around
+function find_visible_mines_around2(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					let minefound = 0;
+					if(data.map[yy][xx].visible && data.map[yy][xx].type < TYPE_EMPTY){
+						minefound = 1; // found mine already
+					}
+					if(!data.map[yy][xx].visible && data.chances[yy][xx].percent == 1.0){
+						minefound = 1; // 100% chance of mine in invisible area
+					}
+					if(minefound){
+						foundmines.push({x: xx, y:yy});
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+
+
+
+
+
+
+function mark_absolute_chances3(data, color){
+	copy_chances_totemp();
+	
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_mines_around2(data, x, y);
+					let empty = find_nonvisible_around2(data, x, y);
+					
+					
+					let minesRemaining = totalMinesCount-mines.length;
+					
+					if(minesRemaining <= totalMinesCount){
+						if(empty.length > 0){
+							let chance = minesRemaining/empty.length;
+							mark_chances_temp2(data, empty, chance, color);
+						}
+					}
+
+					if(0){
+						data.chances2[y][x].mines = mines.length;
+						data.chances2[y][x].empty = empty.length;
+						data.chances2[y][x].total = totalMinesCount;
+						data.chances2[y][x].checked = 1;
+					}
+				}
+			}
+		}
+	}
+	
+	/*
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_mines_around2(data, x, y);
+					let empty = find_nonvisible_around2(data, x, y);
+					
+
+					// empty+minesFound = minesTotal = all empty squares must be mines.
+					if(empty.length + mines.length == totalMinesCount){
+						// 100% chance of mines in the empty squares.
+						mark_chances_temp(data, empty, 1.0, color);
+					}
+					
+
+					if(1){
+						data.chances2[y][x].mines = mines.length;
+						data.chances2[y][x].empty = empty.length;
+						data.chances2[y][x].total = totalMinesCount;
+						data.chances2[y][x].checked = 1;
+					}
+				}
+			}
+		}
+	}
+	*/
+	
+	
+	
+	copy_temp_to_chances2();
+}
+
+
+
+
+function find_nonvisible_around3(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(!data.map[yy][xx].visible){
+						if(data.chances[yy][xx].percent != 0){
+							foundmines.push({x: xx, y:yy});
+						}
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+
+
+
+function mark_absolute_chances_second_pass(data){
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_or_absolute_mines_around(data, x, y);
+					let empty = find_nonvisible_nonabsolute_around(data, x, y);
+					if(mines.length == totalMinesCount){
+						// 0% chance (all mines found)
+						mark_chances(data, empty, 0, "green");
+						//console.log("0% "+Math.random());
+					}
+					let mines2 = find_visible_mines_around(data, x, y);
+					let empty2 = find_nonvisible_around(data, x, y);
+					
+
+
+					data.chances2[y][x].mines = mines2.length;
+					data.chances2[y][x].empty = empty2.length;
+					data.chances2[y][x].total = totalMinesCount;
+					data.chances2[y][x].checked = 1;
+				}
+			}
+		}
+	}
+	
+	
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_or_absolute_mines_around(data, x, y);
+					let empty = find_nonvisible_nonabsolute_around(data, x, y);
+					//let realEmpty = find_empty_non_zero_chances(data, x, y);
+					if(empty.length + mines.length == totalMinesCount){
+						// 100% chance of mines in the empty squares.
+						mark_chances(data, empty, 1, "green");
+						//console.log("100% "+Math.random());
+					}
+					let mines2 = find_visible_mines_around(data, x, y);
+					let empty2 = find_nonvisible_around(data, x, y);
+					
+
+					data.chances2[y][x].mines = mines2.length;
+					data.chances2[y][x].empty = empty2.length;
+					data.chances2[y][x].total = totalMinesCount;
+					data.chances2[y][x].checked = 1;
+				}
+			}
+		}
+	}
+}
+
+
+
+
+
+
+
+function mark_absolute_chances_second_pass2(data){
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_or_absolute_mines_around(data, x, y);
+					let empty = find_nonvisible_nonabsolute_around(data, x, y);
+					if(mines.length == totalMinesCount){
+						// 0% chance (all mines found)
+						mark_chances(data, empty, 0, "green");
+						//console.log("0% "+Math.random());
+					}
+					let mines2 = find_visible_mines_around(data, x, y);
+					let empty2 = find_nonvisible_around(data, x, y);
+					
+
+
+					data.chances2[y][x].mines = mines2.length;
+					data.chances2[y][x].empty = empty2.length;
+					data.chances2[y][x].total = totalMinesCount;
+					data.chances2[y][x].checked = 1;
+				}
+			}
+		}
+	}
+	
+	
+	for(let y = 0; y < gameState.gridSize.y; y++){
+		for(let x = 0; x < gameState.gridSize.x; x++){
+			// if a number (1-8) that we can see:
+			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
+				let totalMinesCount = data.map[y][x].type;
+				if(totalMinesCount > 0){
+					let mines = find_visible_or_absolute_mines_around(data, x, y);
+					let empty = find_nonvisible_nonabsolute_around(data, x, y);
+					
+					if(empty.length + mines.length == totalMinesCount){
+						// 100% chance of mines in the empty squares.
+						mark_chances(data, empty, 1, "green");
+						//console.log("100% "+Math.random());
+					}
+					let mines2 = find_visible_mines_around(data, x, y);
+					let empty2 = find_nonvisible_around(data, x, y);
+					
+
+					data.chances2[y][x].mines = mines2.length;
+					data.chances2[y][x].empty = empty2.length;
+					data.chances2[y][x].total = totalMinesCount;
+					data.chances2[y][x].checked = 1;
+				}
+			}
+		}
+	}
+}
+
+
+function find_empty_non_zero_chances(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(!data.map[yy][xx].visible){
+						if(data.chances[yy][xx].percent != 0){
+							foundmines.push({x: xx, y:yy});
+						}
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+
+
+
+
+function find_nonvisible_nonabsolute_around(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(!data.map[yy][xx].visible){
+						if(data.chances[yy][xx].percent != 0 && data.chances[yy][xx].percent != 1.0){
+							foundmines.push({x: xx, y:yy});
+						}
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+// find visible mines around
+function find_visible_or_absolute_mines_around(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					let mineOrAbsoluteMine = (data.map[yy][xx].type < TYPE_EMPTY) || (data.chances[yy][xx].percent >= 1.0);
+					
+					if(data.map[yy][xx].visible && mineOrAbsoluteMine){
+						foundmines.push({x: xx, y:yy});
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+
+function find_possible_places(data, xp, yp){
+	let foundmines = [];
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					// if a mine or a 0% or 100% chance
+					let possible = (data.map[yy][xx].type < TYPE_EMPTY) || (data.chances[yy][xx].percent != 1.0 && data.chances[yy][xx].percent != 0);
+					
+					if(data.map[yy][xx].visible && mineOrAbsoluteMine){
+						foundmines.push({x: xx, y:yy});
+					}
+				}
+			}
+		}
+	}
+	return foundmines;
+}
+
+
+
+/*
+function mark_empty_squares_chances(data, xp, yp, percent){
+	for(let y = -1; y <= 1; y++){
+		for(let x = -1; x <= 1; x++){
+			let xx = xp+x;
+			let yy = yp+y;
+			if(x == 0 && y == 0){
+				continue; // skip middle square.
+			}
+			if(xx >= 0 && xx < data.width){
+				if(yy >= 0 && yy < data.height){
+					if(!data.map[yy][xx].visible){
+						data.chances[yy][xx].percent = percent;
+						data.chances[yy][xx].checked = 1;
+					}
+				}
+			}
+		}
+	}
+}
+*/
+
+
+
+
+/**
+ * AI player function.
+ * Analyzes the game board to determine the best location to place a flag (i.e., find a mine).
+ * It first looks for guaranteed mines. If none are found, it makes a
+ * probabilistic guess to find the square with the highest chance of being a mine.
+ * @param {object} data - The current game data, including the map.
+ * @param {number} confusion_factor - A number from 0 to 3+ to control AI difficulty.
+ * 0: Perfect logic, no intentional mistakes.
+ * 1: Small chance of making a mistake.
+ * 2: Medium chance of making a mistake.
+ * 3: High chance of making a mistake.
+ * @returns {object|null} An object with {x, y} coordinates for the best move, or null if no moves are possible.
+ */
+function ai_find_next_best_move(data, confusion_factor = 0) {
+    // --- Helper functions ---
+    const containsCoord = (list, coord) => list.some(item => item.x === coord.x && item.y === coord.y);
+    const uniqueCoords = (list) => {
+        const seen = new Set();
+        return list.filter(item => {
+            const key = `${item.x},${item.y}`;
+            return seen.has(key) ? false : seen.add(key);
+        });
+    };
+
+    // --- Step 1: Scan the board to categorize squares ---
+    let unopened_squares = [];
+    let visible_numbered_squares = [];
+    for (let y = 0; y < data.height; y++) {
+        for (let x = 0; x < data.width; x++) {
+            if (!data.map[y][x].visible) {
+                unopened_squares.push({ x, y });
+            } else if (data.map[y][x].type > 0) {
+                visible_numbered_squares.push({ x, y, number: data.map[y][x].type });
+            }
+        }
+    }
+
+    if (unopened_squares.length === 0) return null; // Game is over
+
+    // --- Step 2: Use logic to find certainties ---
+    let certainly_safe = [];
+    let certainly_mines = [];
+    let changed_in_pass = true;
+
+    // This loop repeats the deduction process until no new information can be found.
+    while (changed_in_pass) {
+        changed_in_pass = false;
+        for (const square of visible_numbered_squares) {
+            const { x, y, number } = square;
+            let adjacent_unopened = [];
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const nx = x + dx, ny = y + dy;
+                    if (nx >= 0 && nx < data.width && ny >= 0 && ny < data.height && !data.map[ny][nx].visible) {
+                       adjacent_unopened.push({ x: nx, y: ny });
+                    }
+                }
+            }
+            
+            // Adjust for already identified certainties
+            let known_mine_neighbors_count = adjacent_unopened.filter(n => containsCoord(certainly_mines, n)).length;
+            let known_safe_neighbors_count = adjacent_unopened.filter(n => containsCoord(certainly_safe, n)).length;
+            let unknown_neighbors = adjacent_unopened.filter(n => !containsCoord(certainly_mines, n) && !containsCoord(certainly_safe, n));
+
+            // Rule 1: If a number equals its adjacent unopened neighbors (minus known safe ones), they must all be mines.
+            if (number === (adjacent_unopened.length - known_safe_neighbors_count) && unknown_neighbors.length > 0) {
+                unknown_neighbors.forEach(n => {
+                    if (!containsCoord(certainly_mines, n)) {
+                        certainly_mines.push(n);
+                        changed_in_pass = true;
+                    }
+                });
+            }
+
+            // Rule 2: If a number equals its known mine neighbors, all other unknown neighbors must be safe.
+            if (number === known_mine_neighbors_count && unknown_neighbors.length > 0) {
+                 unknown_neighbors.forEach(n => {
+                    if (!containsCoord(certainly_safe, n)) {
+                        certainly_safe.push(n);
+                        changed_in_pass = true;
+                    }
+                });
+            }
+        }
+    }
+    certainly_mines = uniqueCoords(certainly_mines).filter(mine => !containsCoord(certainly_safe, mine));
+
+
+    // --- Step 3: Decision Making (OBJECTIVE: FIND MINES) ---
+
+    // Case A: We found guaranteed mines. This is the best possible move.
+    if (certainly_mines.length > 0) {
+        // Apply confusion factor: chance to make a mistake instead of picking a guaranteed mine.
+        if (Math.random() < confusion_factor * 0.15) {
+            const possible_mistakes = unopened_squares.filter(sq => !containsCoord(certainly_mines, sq));
+            if (possible_mistakes.length > 0) {
+                 return possible_mistakes[Math.floor(Math.random() * possible_mistakes.length)];
+            }
+        }
+        // Otherwise, make the smart move and pick a guaranteed mine.
+        return certainly_mines[Math.floor(Math.random() * certainly_mines.length)];
+    }
+
+    // Case B: No certainties found, so make a probabilistic guess for the MOST likely mine.
+    let probabilities = {}; // key: "x,y", value: highest probability of being a mine
+    let candidates = unopened_squares.filter(sq => !containsCoord(certainly_safe, sq));
+    if (candidates.length === 0) return null; // All remaining squares are safe
+
+    for (const square of visible_numbered_squares) {
+        const { x, y, number } = square;
+        let adjacent_unknowns = [];
+        let known_mine_neighbors_count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const nx = x + dx, ny = y + dy;
+                if (nx >= 0 && nx < data.width && ny >= 0 && ny < data.height && !data.map[ny][nx].visible) {
+                    const neighbor_coord = { x: nx, y: ny };
+                    if (containsCoord(certainly_mines, neighbor_coord)) {
+                        // This case shouldn't happen if we return early, but for safety
+                        known_mine_neighbors_count++; 
+                    } else if (!containsCoord(certainly_safe, neighbor_coord)) {
+                        adjacent_unknowns.push(neighbor_coord);
+                    }
+                }
+            }
+        }
+
+        if (adjacent_unknowns.length > 0) {
+            const prob = (number - known_mine_neighbors_count) / adjacent_unknowns.length;
+            for (const unknown of adjacent_unknowns) {
+                const key = `${unknown.x},${unknown.y}`;
+                // We want the highest probability from any neighboring number.
+                if (!probabilities[key] || prob > probabilities[key]) {
+                     probabilities[key] = prob;
+                }
+            }
+        }
+    }
+
+    let best_guesses = [];
+    let max_prob = -1; // Probabilities are 0-1, so start at -1.
+    for (const cand of candidates) {
+        const key = `${cand.x},${cand.y}`;
+        const prob = probabilities[key] ?? 0; // Assume 0% chance if no info
+        if (prob > max_prob) {
+            max_prob = prob;
+            best_guesses = [cand];
+        } else if (prob === max_prob && max_prob > 0) { // Only add if it's a real possibility
+            best_guesses.push(cand);
+        }
+    }
+    
+    // If no square has a probability > 0, guess any candidate that isn't certainly safe.
+    if(best_guesses.length === 0) best_guesses = candidates; 
+
+    // Apply confusion factor: higher chance to make a mistake on a guess (pick a less likely mine).
+    if (Math.random() < confusion_factor * 0.25 && candidates.length > best_guesses.length) {
+        const worse_guesses = candidates.filter(cand => !containsCoord(best_guesses, cand));
+        if (worse_guesses.length > 0) {
+            return worse_guesses[Math.floor(Math.random() * worse_guesses.length)];
+        }
+    }
+
+    // Otherwise, make the best possible guess.
+    return best_guesses[Math.floor(Math.random() * best_guesses.length)];
+}
+
+
+//
+// AI functionality ends
+//
+//////////////////////////////////////////////////
+
+
 
 
 
@@ -1217,6 +2247,7 @@ function initializePeer(peerId) {
 
     peer.on('open', id => {
         console.log('My peer ID is: ' + id);
+		console.log(gameState);
     });
 
     peer.on('connection', conn => {
@@ -1281,6 +2312,7 @@ function hostGame() {
 	localPlayer.minesFound = 0;
 	localPlayer.bombsUsed = 0;
 	localPlayer.lastMoveFailed = false;
+	localPlayer.isAI = false;
     gameState.players.push(localPlayer); 
     
     showScreen('lobby');
@@ -1437,7 +2469,7 @@ function handleMessage(data, peerId) {
                     //console.warn(`Player ${data.player.id} tried to join again. Ignoring.`);
                     // Resend state just in case they missed it
                     connections[data.player.id]?.send({ type: 'game_state', state: gameState });
-                    return; 
+                    return;
                 }
 
                 let newPlayer = data.player;
@@ -1448,6 +2480,7 @@ function handleMessage(data, peerId) {
 				newPlayer.minesFound = 0;
 				newPlayer.bombsUsed = 0;
 				newPlayer.lastMoveFailed = false;
+				newPlayer.isAI = false;
                 
                 gameState.players.push(newPlayer);
                 broadcast({ type: 'game_state', state: gameState });
@@ -1556,6 +2589,34 @@ function addChatMessage(playerId, text) {
 
 
 
+function restartGame(){
+	location.reload();
+}
+
+
+
+
+function addRestartMessage() {
+
+	const div = document.createElement("div");
+
+	// Player name in color
+	const nameSpan = document.createElement("span");
+	nameSpan.style.color = "#FFFFFF";
+	nameSpan.innerHTML = `<button id="restartGameBtn" onclick="restartGame();">Restart game</button>`;
+
+	div.appendChild(nameSpan);
+
+
+	chatMessages.appendChild(div);
+
+
+	// scroll to bottom
+	chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+
+
 
 
 // ---------- GAME LOGIC ---------- //
@@ -1655,6 +2716,7 @@ function startGame() {
 
     broadcast({ type: 'game_state', state: gameState });
     handleMessage({ type: 'game_state', state: gameState }); // Update host locally
+    checkForAITurn(); // Check if the first player is an AI
 }
 
 
@@ -1808,9 +2870,11 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 	
 	// update darker water map:
 	count_map_numbers_around(gameState.minemap);
+	mark_percentages();
     
     broadcast({ type: 'game_state', state: gameState });
     handleMessage({ type: 'game_state', state: gameState });
+    checkForAITurn(); // Check if the next player is an AI
 }
 
 
@@ -2105,6 +3169,8 @@ function updateGameInfo() {
 			}
         }
 		
+		addRestartMessage();
+		
 		for(let i = 0; i < gameState.players.length; i++){
 			let playerMinesValue = document.getElementById(`gameStateValue-${gameState.players[i].id}`);
 			playerMinesValue.textContent = ": "+gameState.players[i].minesFound;
@@ -2342,6 +3408,9 @@ function drawTransparentSquare(ctx, x, y, size, color, alpha = 0.5) {
 
 let MAX_CELL_FRAMES = 10;
 
+let DEBUG_STATS = false;
+
+
 function draw() {
     if (!gameState.gameStarted) return;
 	
@@ -2434,26 +3503,50 @@ function draw() {
 				}
 				
 				if (gameState.grid[y] && gameState.grid[y][x]) {
-					const symbol = gameState.grid[y][x];
-					const playerIndex = gameState.players.findIndex(p => p.symbol === symbol);
-
-
 					let baseSize = cellSize * (scale*0.8);
 					let fontSize = baseSize;
 
-
 					ctx.font = `bold ${fontSize}px sans-serif`;
-
-					// Draw symbol
-					//ctx.fillStyle = playerIndex > -1 ? `hsl(${playerIndex * 60}, 80%, 70%)` : "black";
 					ctx.fillStyle = numbercolors[mapcell.type];
-					
-
 					ctx.fillText(
-					  symbol,
+					  gameState.grid[y][x],
 					  offsetX + x * cellSize + cellSize / 2,
 					  offsetY + y * cellSize + cellSize / 2+3
 					);
+				}
+				
+				
+				if(DEBUG_STATS){
+					if(gameState.minemap.chances[y][x].checked && !gameState.minemap.map[y][x].visible){
+						let percent = Math.round(gameState.minemap.chances[y][x].percent*100);
+						ctx.font = `bold 15px sans-serif`;
+						ctx.fillStyle = gameState.minemap.chances[y][x].color;
+						ctx.fillText(
+						  percent,
+						  offsetX + x * cellSize + cellSize / 2,
+						  offsetY + y * cellSize + cellSize / 2
+						);
+					}
+					
+					
+					if(gameState.minemap.chances2[y][x].checked){
+						ctx.font = `bold 13px sans-serif`;
+						ctx.fillStyle = "red";
+						ctx.fillText(
+						  gameState.minemap.chances2[y][x].mines,
+						  offsetX + x * cellSize + cellSize/2 - cellSize/3,
+						  offsetY + y * cellSize + cellSize/2 - cellSize/4
+						);
+						
+						ctx.font = `bold 13px sans-serif`;
+						ctx.fillStyle = "blue";
+						ctx.fillText(
+						  gameState.minemap.chances2[y][x].empty,
+						  offsetX + x * cellSize + cellSize/2 - cellSize/3,
+						  offsetY + y * cellSize + cellSize/2 + cellSize/4
+						);
+					}
+				
 				}
 			}
 			
