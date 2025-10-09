@@ -10,9 +10,10 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
-- korjaa pommi: ei päivity pisteet.
-- korjaa pommin logiikka: saa käyttää vain jos ei ole johdossa. tasapelissä ei saa käyttää.
 - lisää warning ääni jos enää pari miinaa jäljellä (6 jäljellä olevasta tuli ääni videossa)
+- lisää 2x14 pommitus lentokoneella x tai y suuntaisesti.
+- korjaa ruutujen animaatio: välillä animoi uudestaan jo kerran animoidut uudet näkyvät ruudut.
+- korjaa pommi: ei päivity pisteet.
 - estä gameState spämmäystä.
 
 - tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
@@ -45,7 +46,7 @@ body {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	height: 100vh;
+	----height: 100vh;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
@@ -63,13 +64,13 @@ body {
 
 .screen.active {
   display: flex;
-  /*
+
   flex-direction: column;
   align-items: center;
   justify-content: flex-start; /* instead of center */
   min-height: 100vh;
   overflow-y: auto;
-  */
+
 }
 
 
@@ -566,18 +567,17 @@ button.secondary {
 				</div>
 				<button id="add-ai-btn" class="aibutton">Add AI</button>
 
-			
-			<div class="input-group spec-wrap" style="display: flex; gap: 10px; align-items: center;">
-				<span>Spectate game:</span>
-				<input type="radio" id="spectate-yes" name="spectate-setting" value="1">
-				<label for="spectate-yes" class="spec-input">Yes</label>
-				<input type="radio" id="spectate-no" name="spectate-setting" value="0" checked>
-				<label for="spectate-no" class="spec-input">No</label>
-			 </div>
-			 
+				
+				<div class="input-group spec-wrap" style="display: flex; gap: 10px; align-items: center;">
+					<span>Spectate game:</span>
+					<input type="radio" id="spectate-yes" name="spectate-setting" value="1">
+					<label for="spectate-yes" class="spec-input">Yes</label>
+					<input type="radio" id="spectate-no" name="spectate-setting" value="0" checked>
+					<label for="spectate-no" class="spec-input">No</label>
+				 </div>
+				 
 			 
 				
-                <input type="number" id="win-condition-input" value="500" min="3" hidden>
             </div>
             <button id="start-game-btn">Start Game</button>
         </div>
@@ -1157,7 +1157,6 @@ let gameState = {
     players: [],
     grid: [],
     gridSize: { x: 10, y: 10 },
-    winCondition: 4,
 	totalMines: 30,
 	totalBombs: 1,
 	bombRadius: 2,
@@ -1169,6 +1168,7 @@ let gameState = {
 	lastMoveFailed: false,
 	minemap: [],
 	minesRemaining: 0,
+	history: [],
 };
 
 // ---------- UI ELEMENT REFERENCES ---------- //
@@ -1196,7 +1196,7 @@ const customSymbolInput = document.getElementById('custom-symbol-input');
 const lobbyError = document.getElementById('lobby-error');
 const gridXInput = document.getElementById('grid-x-input');
 const gridYInput = document.getElementById('grid-y-input');
-const winConditionInput = document.getElementById('win-condition-input');
+
 const totalMinesInput = document.getElementById('total-mines-input');
 const totalBombsInput = document.getElementById('total-bombs-input');
 const bombRadiusInput = document.getElementById('bomb-radius-input');
@@ -1248,7 +1248,6 @@ addAiBtn.addEventListener('click', () => {
         color: newPlayerColor(),
         minesFound: 0,
         bombsUsed: 0,
-        lastMoveFailed: false,
     };
 
     gameState.players.push(aiPlayer);
@@ -1299,43 +1298,6 @@ function checkForAITurn() {
 
 
 
-/*
-function mark_nomine_around(data, xp, yp){
-	let visible = data.map[yp][xp].visible;
-	if(visible){
-		// 
-		let totalMinesCount = data.map[yp][xp].type;
-		if(totalMinesCount > 0){
-			// find empty squares around:
-			let emptyCount = find_nonvisible_around(data, xp, yp);
-			let foundMinesCount = find_visible_mines_around(data, xp, yp);
-			
-			// emptyCount = 3
-			// foundMinesCount = 2
-			// totalMinesCount = 3
-			// percentage = (totalMinesCount-foundMinesCount)/emptyCount
-			
-			// mark zero percentages:
-			for(let y = -1; y <= 1; y++){
-				for(let x = -1; x <= 1; x++){
-					let xx = xp+x;
-					let yy = yp+y;
-					if(x == 0 && y == 0){
-						continue; // skip middle square.
-					}
-					if(xx >= 0 && xx < data.width){
-						if(yy >= 0 && yy < data.height){
-							if(data.chances[yy][xx].type < TYPE_EMPTY){
-								count++;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}*/
-
 
 function mark_percentages(){
 	let data = gameState.minemap;
@@ -1351,15 +1313,6 @@ function mark_percentages(){
 	// check remaining percentages:
 	//mark_absolute_chances3(data, "#888888");
 
-	//mark_absolute_chances2(data);
-	//mark_absolute_chances2(data);
-	let secondPasses = 3; // 2 should be enough.
-	for(let i = 0; i < secondPasses; i++){
-		//mark_absolute_chances_second_pass(data);
-		//copychances();
-	}
-	console.log("data.chances");
-	console.log(data.chances);
 }
 
 function ai_find_best_move(confusion_factor = 0){
@@ -1731,126 +1684,13 @@ function mark_absolute_chances3(data, color){
 		}
 	}
 	
-	/*
-	for(let y = 0; y < gameState.gridSize.y; y++){
-		for(let x = 0; x < gameState.gridSize.x; x++){
-			// if a number (1-8) that we can see:
-			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
-				let totalMinesCount = data.map[y][x].type;
-				if(totalMinesCount > 0){
-					let mines = find_visible_mines_around2(data, x, y);
-					let empty = find_nonvisible_around2(data, x, y);
-					
 
-					// empty+minesFound = minesTotal = all empty squares must be mines.
-					if(empty.length + mines.length == totalMinesCount){
-						// 100% chance of mines in the empty squares.
-						mark_chances_temp(data, empty, 1.0, color);
-					}
-					
-
-					if(1){
-						data.chances2[y][x].mines = mines.length;
-						data.chances2[y][x].empty = empty.length;
-						data.chances2[y][x].total = totalMinesCount;
-						data.chances2[y][x].checked = 1;
-					}
-				}
-			}
-		}
-	}
-	*/
-	
-	
-	
 	copy_temp_to_chances2();
 }
 
 
 
 
-function find_nonvisible_around3(data, xp, yp){
-	let foundmines = [];
-	for(let y = -1; y <= 1; y++){
-		for(let x = -1; x <= 1; x++){
-			let xx = xp+x;
-			let yy = yp+y;
-			if(x == 0 && y == 0){
-				continue; // skip middle square.
-			}
-			if(xx >= 0 && xx < data.width){
-				if(yy >= 0 && yy < data.height){
-					if(!data.map[yy][xx].visible){
-						if(data.chances[yy][xx].percent != 0){
-							foundmines.push({x: xx, y:yy});
-						}
-					}
-				}
-			}
-		}
-	}
-	return foundmines;
-}
-
-
-
-
-function mark_absolute_chances_second_pass(data){
-	for(let y = 0; y < gameState.gridSize.y; y++){
-		for(let x = 0; x < gameState.gridSize.x; x++){
-			// if a number (1-8) that we can see:
-			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
-				let totalMinesCount = data.map[y][x].type;
-				if(totalMinesCount > 0){
-					let mines = find_visible_or_absolute_mines_around(data, x, y);
-					let empty = find_nonvisible_nonabsolute_around(data, x, y);
-					if(mines.length == totalMinesCount){
-						// 0% chance (all mines found)
-						mark_chances(data, empty, 0, "green");
-						//console.log("0% "+Math.random());
-					}
-					let mines2 = find_visible_mines_around(data, x, y);
-					let empty2 = find_nonvisible_around(data, x, y);
-					
-
-
-					data.chances2[y][x].mines = mines2.length;
-					data.chances2[y][x].empty = empty2.length;
-					data.chances2[y][x].total = totalMinesCount;
-					data.chances2[y][x].checked = 1;
-				}
-			}
-		}
-	}
-	
-	
-	for(let y = 0; y < gameState.gridSize.y; y++){
-		for(let x = 0; x < gameState.gridSize.x; x++){
-			// if a number (1-8) that we can see:
-			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
-				let totalMinesCount = data.map[y][x].type;
-				if(totalMinesCount > 0){
-					let mines = find_visible_or_absolute_mines_around(data, x, y);
-					let empty = find_nonvisible_nonabsolute_around(data, x, y);
-					//let realEmpty = find_empty_non_zero_chances(data, x, y);
-					if(empty.length + mines.length == totalMinesCount){
-						// 100% chance of mines in the empty squares.
-						mark_chances(data, empty, 1, "green");
-						//console.log("100% "+Math.random());
-					}
-					let mines2 = find_visible_mines_around(data, x, y);
-					let empty2 = find_nonvisible_around(data, x, y);
-					
-
-					data.chances2[y][x].mines = mines2.length;
-					data.chances2[y][x].empty = empty2.length;
-					data.chances2[y][x].total = totalMinesCount;
-					data.chances2[y][x].checked = 1;
-				}
-			}
-		}
-	}
-}
 
 
 
@@ -1858,186 +1698,7 @@ function mark_absolute_chances_second_pass(data){
 
 
 
-function mark_absolute_chances_second_pass2(data){
-	for(let y = 0; y < gameState.gridSize.y; y++){
-		for(let x = 0; x < gameState.gridSize.x; x++){
-			// if a number (1-8) that we can see:
-			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
-				let totalMinesCount = data.map[y][x].type;
-				if(totalMinesCount > 0){
-					let mines = find_visible_or_absolute_mines_around(data, x, y);
-					let empty = find_nonvisible_nonabsolute_around(data, x, y);
-					if(mines.length == totalMinesCount){
-						// 0% chance (all mines found)
-						mark_chances(data, empty, 0, "green");
-						//console.log("0% "+Math.random());
-					}
-					let mines2 = find_visible_mines_around(data, x, y);
-					let empty2 = find_nonvisible_around(data, x, y);
-					
 
-
-					data.chances2[y][x].mines = mines2.length;
-					data.chances2[y][x].empty = empty2.length;
-					data.chances2[y][x].total = totalMinesCount;
-					data.chances2[y][x].checked = 1;
-				}
-			}
-		}
-	}
-	
-	
-	for(let y = 0; y < gameState.gridSize.y; y++){
-		for(let x = 0; x < gameState.gridSize.x; x++){
-			// if a number (1-8) that we can see:
-			if(data.map[y][x].visible && data.map[y][x].type > TYPE_EMPTY){
-				let totalMinesCount = data.map[y][x].type;
-				if(totalMinesCount > 0){
-					let mines = find_visible_or_absolute_mines_around(data, x, y);
-					let empty = find_nonvisible_nonabsolute_around(data, x, y);
-					
-					if(empty.length + mines.length == totalMinesCount){
-						// 100% chance of mines in the empty squares.
-						mark_chances(data, empty, 1, "green");
-						//console.log("100% "+Math.random());
-					}
-					let mines2 = find_visible_mines_around(data, x, y);
-					let empty2 = find_nonvisible_around(data, x, y);
-					
-
-					data.chances2[y][x].mines = mines2.length;
-					data.chances2[y][x].empty = empty2.length;
-					data.chances2[y][x].total = totalMinesCount;
-					data.chances2[y][x].checked = 1;
-				}
-			}
-		}
-	}
-}
-
-
-function find_empty_non_zero_chances(data, xp, yp){
-	let foundmines = [];
-	for(let y = -1; y <= 1; y++){
-		for(let x = -1; x <= 1; x++){
-			let xx = xp+x;
-			let yy = yp+y;
-			if(x == 0 && y == 0){
-				continue; // skip middle square.
-			}
-			if(xx >= 0 && xx < data.width){
-				if(yy >= 0 && yy < data.height){
-					if(!data.map[yy][xx].visible){
-						if(data.chances[yy][xx].percent != 0){
-							foundmines.push({x: xx, y:yy});
-						}
-					}
-				}
-			}
-		}
-	}
-	return foundmines;
-}
-
-
-
-
-
-function find_nonvisible_nonabsolute_around(data, xp, yp){
-	let foundmines = [];
-	for(let y = -1; y <= 1; y++){
-		for(let x = -1; x <= 1; x++){
-			let xx = xp+x;
-			let yy = yp+y;
-			if(x == 0 && y == 0){
-				continue; // skip middle square.
-			}
-			if(xx >= 0 && xx < data.width){
-				if(yy >= 0 && yy < data.height){
-					if(!data.map[yy][xx].visible){
-						if(data.chances[yy][xx].percent != 0 && data.chances[yy][xx].percent != 1.0){
-							foundmines.push({x: xx, y:yy});
-						}
-					}
-				}
-			}
-		}
-	}
-	return foundmines;
-}
-
-// find visible mines around
-function find_visible_or_absolute_mines_around(data, xp, yp){
-	let foundmines = [];
-	for(let y = -1; y <= 1; y++){
-		for(let x = -1; x <= 1; x++){
-			let xx = xp+x;
-			let yy = yp+y;
-			if(x == 0 && y == 0){
-				continue; // skip middle square.
-			}
-			if(xx >= 0 && xx < data.width){
-				if(yy >= 0 && yy < data.height){
-					let mineOrAbsoluteMine = (data.map[yy][xx].type < TYPE_EMPTY) || (data.chances[yy][xx].percent >= 1.0);
-					
-					if(data.map[yy][xx].visible && mineOrAbsoluteMine){
-						foundmines.push({x: xx, y:yy});
-					}
-				}
-			}
-		}
-	}
-	return foundmines;
-}
-
-
-function find_possible_places(data, xp, yp){
-	let foundmines = [];
-	for(let y = -1; y <= 1; y++){
-		for(let x = -1; x <= 1; x++){
-			let xx = xp+x;
-			let yy = yp+y;
-			if(x == 0 && y == 0){
-				continue; // skip middle square.
-			}
-			if(xx >= 0 && xx < data.width){
-				if(yy >= 0 && yy < data.height){
-					// if a mine or a 0% or 100% chance
-					let possible = (data.map[yy][xx].type < TYPE_EMPTY) || (data.chances[yy][xx].percent != 1.0 && data.chances[yy][xx].percent != 0);
-					
-					if(data.map[yy][xx].visible && mineOrAbsoluteMine){
-						foundmines.push({x: xx, y:yy});
-					}
-				}
-			}
-		}
-	}
-	return foundmines;
-}
-
-
-
-/*
-function mark_empty_squares_chances(data, xp, yp, percent){
-	for(let y = -1; y <= 1; y++){
-		for(let x = -1; x <= 1; x++){
-			let xx = xp+x;
-			let yy = yp+y;
-			if(x == 0 && y == 0){
-				continue; // skip middle square.
-			}
-			if(xx >= 0 && xx < data.width){
-				if(yy >= 0 && yy < data.height){
-					if(!data.map[yy][xx].visible){
-						data.chances[yy][xx].percent = percent;
-						data.chances[yy][xx].checked = 1;
-					}
-				}
-			}
-		}
-	}
-}
-*/
 
 
 
@@ -2381,7 +2042,6 @@ function hostGame() {
 	localPlayer.color = newPlayerColor();
 	localPlayer.minesFound = 0;
 	localPlayer.bombsUsed = 0;
-	localPlayer.lastMoveFailed = false;
 	localPlayer.isAI = false;
 	localPlayer.isSpec = false; // has to modify this when STARTING the game. getSpectateValue()
     gameState.players.push(localPlayer); 
@@ -2532,7 +2192,8 @@ function handleMessage(data, peerId) {
 					
 						let type = getMoveType(gameState.lastMove.x, gameState.lastMove.y);
 						let moveSound = "miss";
-						if(type < 0){
+						let playerHitMine = (type < 0);
+						if(playerHitMine){
 							moveSound = "hit";
 						}else if(type == 0){
 							moveSound = "miss_long";
@@ -2542,7 +2203,15 @@ function handleMessage(data, peerId) {
 							playSound(moveSound); // you made the move
 						} else {
 							playSound(moveSound); // opponent move
+							
+							if (!gameState.gameOver) {
+								if(playerHitMine && gameState.minesRemaining < 7){
+									playSound("warning");
+								}
+							}
 						}
+						
+						
 					}
 					
 					///updateGameUI(); // no effect on bombs score bug...
@@ -2582,7 +2251,6 @@ function handleMessage(data, peerId) {
 				newPlayer.color = newPlayer.isSpec ? '#FFFFFF' : newPlayerColor();
 				newPlayer.minesFound = 0;
 				newPlayer.bombsUsed = 0;
-				newPlayer.lastMoveFailed = false;
 				newPlayer.isAI = false;
                 
                 gameState.players.push(newPlayer);
@@ -2811,7 +2479,6 @@ function startGame() {
 	
 	
     gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
-    gameState.winCondition = parseInt(winConditionInput.value);
 	gameState.totalMines = Math.max(1, Math.min(parseInt(totalMinesInput.value), gameState.gridSize.x*gameState.gridSize.y)); // minimum = 1, max = w*h
 	gameState.totalBombs = Math.max(0, parseInt(totalBombsInput.value)); // minimum = 0
 	gameState.bombRadius = Math.max(1, parseInt(bombRadiusInput.value)); // minimum = 1
@@ -2833,6 +2500,7 @@ function startGame() {
 	gameState.lastMoveFailed = false;
 	gameState.minemap = generate_map(gameState.gridSize.x, gameState.gridSize.y, gameState.totalMines);
 	gameState.minesRemaining = get_remaining_mines();
+	gameState.history = [];
 
 
     broadcast({ type: 'game_state', state: gameState });
@@ -2893,7 +2561,43 @@ function advanceToNextPlayer() {
 }
 
 
-function handlePlayerMove({x, y, playerId, weapon}) {
+
+
+function add_log(move){
+	gameState.history.push(move);
+	console.log(gameState.history);
+}
+
+
+function isLosingPlayer(playerId) {
+  if (!gameState?.players?.length) return false;
+  
+  if(gameState.players.length == 1){
+	return true; // single player always allow bomb.
+  }
+
+  const player = gameState.players.find(p => p.id === playerId);
+  if (!player){
+	return false;
+  } // player not found
+
+  const playerMines = player.minesFound;
+
+  for (const other of gameState.players) {
+    if (other.playerId !== playerId && other.minesFound > playerMines) {
+      return true; // someone has more mines → losing
+    }
+  }
+
+  // No one has more mines (tie or leading)
+  return false;
+}
+
+
+
+
+function handlePlayerMove(move) {
+	let {x, y, playerId, weapon} = move;
 	
     if (gameState.gameOver){
 		return;
@@ -2901,7 +2605,8 @@ function handlePlayerMove({x, y, playerId, weapon}) {
     
     const player = gameState.players[gameState.currentPlayerIndex];
     if (player.id !== playerId) return;
-	
+
+
 	gameState.lastMoveFailed = false;
 	
 	if(weapon == MOVE_TYPE_NORMAL){
@@ -2929,8 +2634,9 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 		
 
 	}else if(weapon == MOVE_TYPE_BOMB){
-		
-		if(player.bombsUsed < gameState.totalBombs){
+
+		// allow bomb only when you are not leading.
+		if(isLosingPlayer(player.id) && player.bombsUsed < gameState.totalBombs){
 			revealBombZeros(gameState.minemap, x, y, gameState.grid);
 			
 			// set owner for found mines:
@@ -2963,6 +2669,10 @@ function handlePlayerMove({x, y, playerId, weapon}) {
 			
 			gameState.lastMoveFailed = true;
 		}
+	}
+	
+	if(!gameState.lastMoveFailed){
+		add_log(move);
 	}
 	
 	let endState = checkEndState();
