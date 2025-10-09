@@ -10,8 +10,14 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
-- lisää warning ääni jos enää pari miinaa jäljellä (6 jäljellä olevasta tuli ääni videossa)
-- lisää 2x14 pommitus lentokoneella x tai y suuntaisesti.
+- lisää nappi valikkoa varten mistä voi esim katsoa pelihistoriaa ja tallennettuja edellisiä pelejä ja toistaa ne uudestaan. 
+  lisää myös pomminapit ym.
+- lisää nappi pommin käytölle ja pommituksen tyylin valinta ennen peliä. tai sitten myös peliin.
+- lisää 2x14 pommitus lentokoneella x tai y suuntaisesti. lisää valinta pelin alussa että pelaaja voi valita kumman pommin haluaa.
+  revealBombAirplaneZeros()
+- tarkista advanceToNextPlayer() jos toimii järkevästi? kuitenkin peli nyt toimii jo...
+- muokkaa warning äänen logiikkaa niin että se varoittaa kun vihollinen tarvitsee voittaakseen enää 6 tai alle miinoja?
+
 - korjaa ruutujen animaatio: välillä animoi uudestaan jo kerran animoidut uudet näkyvät ruudut.
 - korjaa pommi: ei päivity pisteet.
 - estä gameState spämmäystä.
@@ -987,6 +993,12 @@ function revealZeros(data, startX, startY, grid) {
       }
     }
   }
+}
+
+
+function revealBombAirplaneZeros(data, startX, startY, grid) {
+	// make 2x14 strip of bombs, center is mouse cursor. 
+	// if part of bombing area goes outside of map, it will set it inside map automatically.
 }
 
 
@@ -2204,8 +2216,16 @@ function handleMessage(data, peerId) {
 						} else {
 							playSound(moveSound); // opponent move
 							
+							// set warning mines count max 10 and min 1:
+							let warningMines = Math.round(gameState.totalMines*(6/51));
+							if(warningMines > 10){
+								warningMines = 10;
+							}else if(warningMines < 1){
+								warningMines = 1;
+							}
+							
 							if (!gameState.gameOver) {
-								if(playerHitMine && gameState.minesRemaining < 7){
+								if(playerHitMine && gameState.minesRemaining <= warningMines){
 									playSound("warning");
 								}
 							}
