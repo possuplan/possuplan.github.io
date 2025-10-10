@@ -10,6 +10,7 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
+- korjaa pommin laitto niin ettei voi laittaa pommia jos on jo aloittanut vuoronsa.
 - tee tekoäly niin että se käy läpi vain merkitsevät ruudut eikä koko mappia jotta se on nopeampi isoilla mapeilla.
 - renderöi webgl:llä nopeuttaakseen renderöintiä.
 - lisää nappi valikkoa varten mistä voi esim katsoa pelihistoriaa ja tallennettuja edellisiä pelejä ja toistaa ne uudestaan. 
@@ -3222,7 +3223,7 @@ img_empty.src = "images/empty.png";
 const img_empty2 = new Image();
 img_empty2.src = "images/empty2.png";
 
-
+/*
 const img_flag_red = new Image();
 img_flag_red.src = "images/flag-red.png";
 const img_flag_blue = new Image();
@@ -3231,14 +3232,21 @@ const img_flag_yellow = new Image();
 img_flag_yellow.src = "images/flag-yellow.png";
 const img_flag_green = new Image();
 img_flag_green.src = "images/flag-green.png";
+*/
+
+const img_flag_red = new Image();
+img_flag_red.src = "newimgs/red.png";
+const img_flag_blue = new Image();
+img_flag_blue.src = "newimgs/blue.png";
+const img_flag_yellow = new Image();
+img_flag_yellow.src = "newimgs/yellow.png";
+const img_flag_green = new Image();
+img_flag_green.src = "newimgs/green.png";
+
 
 const img_mine = new Image();
-img_mine.src = "images/mine.png";
+img_mine.src = "images/mine-dark-rotated-small-pad.png";
 
-const img_turn_red = new Image();
-img_turn_red.src = "images/turn-red.png";
-const img_turn_blue = new Image();
-img_turn_blue.src = "images/turn-blue.png";
 const img_cursor = new Image();
 img_cursor.src = "images/cursor.png";
 
@@ -3265,10 +3273,6 @@ let images = {
 		green: img_flag_green,
 	},
 	mine: img_mine,
-	turn: {
-		red: img_turn_red,
-		blue: img_turn_blue,
-	},
 	cursor: img_cursor,
 };
 
