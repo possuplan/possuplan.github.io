@@ -3302,7 +3302,8 @@ function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale){
 }*/
 
 
-let add1 = 0; // was 1, didnt render symmetrically.
+// these renders differently on mobile and pc... had to put add1=0.5 so it looks better on mobile.
+let add1 = 0.5; // was 1, didnt render symmetrically.
 let add2 = 0; // was -0.5, useless... only adjusts font position basically.
 
 function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale = 1) {
