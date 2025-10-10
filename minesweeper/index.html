@@ -10,6 +10,8 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
+- tee tekoäly niin että se käy läpi vain merkitsevät ruudut eikä koko mappia jotta se on nopeampi isoilla mapeilla.
+- renderöi webgl:llä nopeuttaakseen renderöintiä.
 - lisää nappi valikkoa varten mistä voi esim katsoa pelihistoriaa ja tallennettuja edellisiä pelejä ja toistaa ne uudestaan. 
   lisää myös pomminapit ym.
 - lisää nappi pommin käytölle ja pommituksen tyylin valinta ennen peliä. tai sitten myös peliin.
@@ -25,6 +27,29 @@ todo:
 - tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
 
 -->
+<style>
+@font-face {
+    font-family: 'Nimbus Sans L';
+    src: url('fonts/NimbusSanL-Reg.woff2') format('woff2'),
+        url('fonts/NimbusSanL-Reg.woff') format('woff'),
+        url('fonts/NimbusSanL-Reg.ttf') format('truetype');
+    font-weight: 400; /*normal*/
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Nimbus Sans L';
+    src: url('fonts/NimbusSanL-Bol.woff2') format('woff2'),
+        url('fonts/NimbusSanL-Bol.woff') format('woff'),
+        url('fonts/NimbusSanL-Bol.ttf') format('truetype');
+    font-weight: 700; /*bold*/
+    font-style: normal;
+    font-display: swap;
+}
+
+
+
+</style>
 <style>
 :root {
 	--bg-color: #121212;
@@ -3065,15 +3090,46 @@ function hasMoveAt(x, y) {
 }
 
 
+
+const fps = 70;
 let lastTime = 0;
-const fps = 60;
-const frameDuration = 1000 / fps;
+let frameDuration = 1000 / fps; // target 60 FPS
+let frameCount = 0;
+let fpsSum = 0;
+let lastFpsUpdate = 0;
+let averageFps = 0;
+
+
+
 
 function gameLoop(timestamp) {
-  if (timestamp - lastTime >= frameDuration) {
+  // First frame setup
+  if (!lastTime) lastTime = timestamp;
+
+  // Calculate delta time
+  const delta = timestamp - lastTime;
+
+  // Update FPS calculations every frame
+  const fps = 1000 / delta;
+  fpsSum += fps;
+  frameCount++;
+
+  // Update average every second
+  if (timestamp - lastFpsUpdate >= 2000) {
+    averageFps = fpsSum / frameCount;
+    console.log("Average FPS:", averageFps.toFixed(1));
+    // reset counters
+    frameCount = 0;
+    fpsSum = 0;
+    lastFpsUpdate = timestamp;
+  }
+
+  // Game update
+  if (delta >= frameDuration) {
     lastTime = timestamp;
     draw();
   }
+
   requestAnimationFrame(gameLoop);
 }
 
@@ -3156,6 +3212,9 @@ img_water3.src = "images/water3.png";
 
 const img_empty = new Image();
 img_empty.src = "images/empty.png";
+const img_empty2 = new Image();
+img_empty2.src = "images/empty2.png";
+
 
 const img_flag_red = new Image();
 img_flag_red.src = "images/flag-red.png";
@@ -3176,9 +3235,22 @@ img_turn_blue.src = "images/turn-blue.png";
 const img_cursor = new Image();
 img_cursor.src = "images/cursor.png";
 
+/*
+const img_n1 = new Image(); img_n1.src = "images/numbers/1.png";
+const img_n2 = new Image(); img_n2.src = "images/numbers/2.png";
+const img_n3 = new Image(); img_n3.src = "images/numbers/3.png";
+const img_n4 = new Image(); img_n4.src = "images/numbers/4.png";
+const img_n5 = new Image(); img_n5.src = "images/numbers/5.png";
+const img_n6 = new Image(); img_n6.src = "images/numbers/6.png";
+const img_n7 = new Image(); img_n7.src = "images/numbers/7.png";
+const img_n8 = new Image(); img_n8.src = "images/numbers/8.png";
+*/
+
 let images = {
 	water: [img_water1, img_water2, img_water3],
 	empty: img_empty,
+	empty2: img_empty2,
+	//numbers: [null, img_n1, img_n2, img_n3, img_n4, img_n5, img_n6, img_n7, img_n8],
 	flag: {
 		red: img_flag_red,
 		blue: img_flag_blue,
@@ -3210,6 +3282,14 @@ function random(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+
+
+document.fonts.load('16px "Nimbus Sans L"').then(() => {console.log('font loaded: Nimbus Sans L (normal)');});
+document.fonts.load('bold 16px "Nimbus Sans L"').then(() => {console.log('font loaded: Nimbus Sans L (bold)');});
+
+
+
+  
 /*
 function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale){
 	ctx.drawImage(
@@ -3220,32 +3300,53 @@ function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale){
 		cellSize + 1
 	);
 }*/
+
+
+let add1 = 0; // was 1, didnt render symmetrically.
+let add2 = 0; // was -0.5, useless... only adjusts font position basically.
+
 function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale = 1) {
   // Target width/height after scaling
-  const drawSize = cellSize * scale+1;
+  const drawSize = cellSize * scale+add1;
 
   // Center the scaled image inside the square
-  const posX = offsetX + x * cellSize + (cellSize - drawSize) / 2-0.5;
-  const posY = offsetY + y * cellSize + (cellSize - drawSize) / 2-0.5;
+  const posX = offsetX + x * cellSize + (cellSize - drawSize) / 2+add2;
+  const posY = offsetY + y * cellSize + (cellSize - drawSize) / 2+add2;
 
   ctx.drawImage(image, posX, posY, drawSize, drawSize);
 }
+
+
+
+// for numbers drawing (not used)
+function drawImageCustom(ctx, image, offsetX, offsetY, x, y, cellSize, drawSizeX, drawSizeY, scale = 1) {
+  // Center the scaled image inside the square
+  const posX = offsetX + x * cellSize + (cellSize - drawSizeX) / 2-0.5;
+  const posY = offsetY + y * cellSize + (cellSize - drawSizeY) / 2-0.5;
+
+  ctx.drawImage(image, posX, posY, drawSizeX, drawSizeY);
+}
+
+
+let ad1 = -0.5; // was -1 for somer reason
+let ad2 = 0; // was 2 for somer reason
 
 function drawTransparentSquare(ctx, x, y, size, color, alpha = 0.5) {
   ctx.save();
   ctx.globalAlpha = alpha;  // set transparency
   ctx.fillStyle = color;    // e.g. "red" or "#00ff00"
-  ctx.fillRect(x-1, y-1, size+2, size+2);
+  ctx.fillRect(x+ad1, y+ad1, size+ad2, size+ad2);
   ctx.restore();
 }
 
 
 
-let MAX_CELL_FRAMES = 10;
+let MAX_CELL_FRAMES = 20;
 
-let DEBUG_STATS = false;
+let DEBUG_STATS = 0;
+let USE_FONT = 1;
 
-
+// render
 function draw() {
     if (!gameState.gameStarted) return;
 	
@@ -3303,14 +3404,23 @@ function draw() {
 			if(drawCell){
 
 				if(mapcell.visible){
-					// draw numbers
 				
+					// draw numbers or empty:
 					if (mapcell.type >= TYPE_EMPTY){
+						// draw water under the numbers first:
 						if(mapcell.frame < MAX_CELL_FRAMES){
 							drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
 						}
-						drawImage(ctx, images.empty, offsetX, offsetY, x, y, cellSize, scale);
+						// draw empty background under numbers:
+						if(mapcell.type == TYPE_EMPTY){
+							drawImage(ctx, images.empty2, offsetX, offsetY, x, y, cellSize, scale);
+						}else{
+							drawImage(ctx, images.empty, offsetX, offsetY, x, y, cellSize, scale);
+						}
 					}else{
+						// draw mines:
+						
+						// draw water first:
 						drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
 						if(mapcell.owner == 0){
 							drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize, scale);
@@ -3319,35 +3429,52 @@ function draw() {
 						}else if(mapcell.owner == 2){
 							drawImage(ctx, images.flag.yellow, offsetX, offsetY, x, y, cellSize, scale);
 						}else{
+							// rest of the players have same flag color:
 							drawImage(ctx, images.flag.green, offsetX, offsetY, x, y, cellSize, scale);
 						}
 					}
 
 				}else{
+					// draw water only:
 					drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
-						
+					
+					// draw remaining mines if game ended:
 					if(gameState.gameOver){
 						if(mapcell.type < TYPE_EMPTY){
 							drawImage(ctx, images.mine, offsetX, offsetY, x, y, cellSize, 1);
 						}
 					}
 					
+					// draw dark layer over dark water areas:
 					if(mapcell.numbersAround == 0){
 						drawTransparentSquare(ctx, offsetX+x*cellSize, offsetY+y*cellSize, cellSize, "#000088", alpha = 0.4); 
 					}
 				}
 				
-				if (gameState.grid[y] && gameState.grid[y][x]) {
-					let baseSize = cellSize * (scale*0.8);
-					let fontSize = baseSize;
+				
 
-					ctx.font = `bold ${fontSize}px sans-serif`;
-					ctx.fillStyle = numbercolors[mapcell.type];
-					ctx.fillText(
-					  gameState.grid[y][x],
-					  offsetX + x * cellSize + cellSize / 2,
-					  offsetY + y * cellSize + cellSize / 2+3
-					);
+
+				// draw numbers:
+				if (gameState.grid[y] && gameState.grid[y][x]) {
+					if(USE_FONT){
+						let baseSize = cellSize * (scale*0.8);
+						let fontSize = baseSize;
+
+						ctx.font = `bold ${fontSize}px Nimbus Sans L`;
+						ctx.fillStyle = numbercolors[mapcell.type];
+						ctx.fillText(
+						  gameState.grid[y][x],
+						  offsetX + x * cellSize + cellSize / 2,
+						  offsetY + y * cellSize + cellSize / 2+5
+						);
+					
+					}else{
+						let baseSize = cellSize * (scale*0.6);
+						let drawSizeX = (133/188)*baseSize;
+						let drawSizeY = baseSize;
+						//drawImageCustom(ctx, images.numbers[gameState.grid[y][x]], offsetX, offsetY, x, y, cellSize, drawSizeX, drawSizeY, scale);
+					
+					}
 				}
 				
 				
@@ -3589,7 +3716,6 @@ function onPointerMove(e) {
 
     viewport.x = (pos.x - panStart.x) / viewport.scale;
     viewport.y = (pos.y - panStart.y) / viewport.scale;
-    //draw();
 }
 
 function onPointerUp(e) {
@@ -3670,8 +3796,6 @@ function onTouchMove(e) {
         const newScale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
         viewport.scale = newScale;
         lastDist = newDist;
-		//console.log(newDist);
-        //draw();
     } else {
         onPointerMove(e);
     }
@@ -3692,7 +3816,6 @@ canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
     viewport.scale = Math.min(viewport.maxScale, Math.max(viewport.minScale, viewport.scale * scaleFactor));
-    //draw();
 }, { passive: false });
 
 
