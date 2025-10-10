@@ -887,7 +887,7 @@ function generate_map(width, height, total_mines){
 			frame: 0, // animation frame
 			owner: -1, // who has found the mine
 			numbersAround: 0, // for darker water calcuations
-			waternum: random(0,2)
+			waternum: random(0,100)
 		}))),
 	};
 	
@@ -3202,6 +3202,13 @@ function playSound(src) {
 }
 
 
+const img_water_tilemap = new Image();
+img_water_tilemap.src = "images/homm3-water-padded.webp";
+
+
+
+
+
 
 const img_water1 = new Image();
 img_water1.src = "images/water1.png";
@@ -3347,6 +3354,57 @@ let MAX_CELL_FRAMES = 20;
 let DEBUG_STATS = 0;
 let USE_FONT = 1;
 
+let WATER_STYLE = 1;
+
+function draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize){
+	if(WATER_STYLE == 0){
+		drawImage(ctx, images.water[mapcell.waternum%3], offsetX, offsetY, x, y, cellSize);
+	}else{
+		let destX = offsetX + x * cellSize;
+		let destY = offsetY + y * cellSize;
+		drawRandomTile(ctx, mapcell, img_water_tilemap, destX, destY, cellSize);
+	}
+}
+
+
+function drawRandomTile(ctx, mapcell, bigImage, destX, destY, destSize = 50) {
+	const tilesX = 7;
+	const tilesY = 7;
+	const tileSize = 128;
+	const padding = 1;
+	
+	let ran = mapcell.waternum % 49;
+
+	const randomX = ran % tilesX;    // x-coordinate in grid
+	const randomY = Math.floor(ran / tilesX); // y-coordinate in grid
+
+
+	const sourceX = padding + randomX * tileSize;
+	const sourceY = padding + randomY * tileSize;
+
+	ctx.drawImage(
+		bigImage,
+		sourceX, sourceY,
+		tileSize, tileSize,
+		destX, destY,
+		destSize, destSize
+	);
+}
+
+/*
+function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale = 1) {
+  // Target width/height after scaling
+  const drawSize = cellSize * scale+add1;
+
+  // Center the scaled image inside the square
+  const posX = offsetX + x * cellSize + (cellSize - drawSize) / 2+add2;
+  const posY = offsetY + y * cellSize + (cellSize - drawSize) / 2+add2;
+
+  ctx.drawImage(image, posX, posY, drawSize, drawSize);
+}
+
+*/
+
 // render
 function draw() {
     if (!gameState.gameStarted) return;
@@ -3410,7 +3468,8 @@ function draw() {
 					if (mapcell.type >= TYPE_EMPTY){
 						// draw water under the numbers first:
 						if(mapcell.frame < MAX_CELL_FRAMES){
-							drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+							//drawImage(ctx, images.water[mapcell.waternum%3], offsetX, offsetY, x, y, cellSize);
+							draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize);
 						}
 						// draw empty background under numbers:
 						if(mapcell.type == TYPE_EMPTY){
@@ -3422,7 +3481,9 @@ function draw() {
 						// draw mines:
 						
 						// draw water first:
-						drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+						//drawImage(ctx, images.water[mapcell.waternum%3], offsetX, offsetY, x, y, cellSize);
+						draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize);
+						
 						if(mapcell.owner == 0){
 							drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize, scale);
 						}else if(mapcell.owner == 1){
@@ -3437,7 +3498,8 @@ function draw() {
 
 				}else{
 					// draw water only:
-					drawImage(ctx, images.water[mapcell.waternum], offsetX, offsetY, x, y, cellSize);
+					//drawImage(ctx, images.water[mapcell.waternum%3], offsetX, offsetY, x, y, cellSize);
+					draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize);
 					
 					// draw remaining mines if game ended:
 					if(gameState.gameOver){
