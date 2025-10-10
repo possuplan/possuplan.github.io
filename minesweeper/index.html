@@ -3203,7 +3203,7 @@ function playSound(src) {
 
 
 const img_water_tilemap = new Image();
-img_water_tilemap.src = "images/homm3-water-padded.webp";
+//img_water_tilemap.src = "images/homm3-water-padded.webp";
 
 
 
@@ -3354,7 +3354,7 @@ let MAX_CELL_FRAMES = 20;
 let DEBUG_STATS = 0;
 let USE_FONT = 1;
 
-let WATER_STYLE = 1;
+let WATER_STYLE = 0;
 
 function draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize){
 	if(WATER_STYLE == 0){
@@ -3362,7 +3362,7 @@ function draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize){
 	}else{
 		let destX = offsetX + x * cellSize;
 		let destY = offsetY + y * cellSize;
-		drawRandomTile(ctx, mapcell, img_water_tilemap, destX, destY, cellSize);
+		//drawRandomTile(ctx, mapcell, img_water_tilemap, destX, destY, cellSize);
 	}
 }
 
