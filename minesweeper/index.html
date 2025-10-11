@@ -10,7 +10,14 @@
 <script src="sfxr.js"></script>
 <!--
 todo: 
-- korjaa pommin laitto niin ettei voi laittaa pommia jos on jo aloittanut vuoronsa.
+- lisää peerjs ilmoitukset näkyviin jos esim hostaus onnistui.
+
+- korjaa pommi: ei päivity pisteet.
+
+- tee lipuista heiluva animaatio rotaatiolla.
+- anna pelaajan valita oman pommin tyyli pelin alussa.
+
+- lisää range näkymä pommille että tietää mihin asti se osuu.
 - tee tekoäly niin että se käy läpi vain merkitsevät ruudut eikä koko mappia jotta se on nopeampi isoilla mapeilla.
 - renderöi webgl:llä nopeuttaakseen renderöintiä.
 - lisää nappi valikkoa varten mistä voi esim katsoa pelihistoriaa ja tallennettuja edellisiä pelejä ja toistaa ne uudestaan. 
@@ -18,12 +25,11 @@ todo:
 - lisää nappi pommin käytölle ja pommituksen tyylin valinta ennen peliä. tai sitten myös peliin.
 - lisää 2x14 pommitus lentokoneella x tai y suuntaisesti. lisää valinta pelin alussa että pelaaja voi valita kumman pommin haluaa.
   revealBombAirplaneZeros()
-- tarkista advanceToNextPlayer() jos toimii järkevästi? kuitenkin peli nyt toimii jo...
+
 - muokkaa warning äänen logiikkaa niin että se varoittaa kun vihollinen tarvitsee voittaakseen enää 6 tai alle miinoja?
 
-- korjaa ruutujen animaatio: välillä animoi uudestaan jo kerran animoidut uudet näkyvät ruudut.
-- korjaa pommi: ei päivity pisteet.
-- estä gameState spämmäystä.
+
+
 
 - tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
 
@@ -816,25 +822,6 @@ function drawCircle(ctx, offsetX, offsetY, cx, cy, radius, lineWidth = 10, strok
 
 
 
-const playerColors = [
-	"#e6194B", // red
-	"#4363d8", // blue
-	"#ffe119", // yellow
-	"#3cb44b", // dark green
-	"#f58231", // orange
-	"#911eb4", // purple
-	"#42d4f4", // cyan
-	"#f032e6", // magenta
-	"#bfef45", // lime
-	"#469990", // teal
-	"#9A6324", // brown
-	"#808000", // olive
-	"#000075", // navy
-	"#a9a9a9", // gray
-	"#000000"  // black
-];
-
-
 
 
 /*
@@ -857,7 +844,7 @@ let typeToValue = {
 
 function set_mine(data, x, y, type){
 	data.map[y][x].type = type;
-	data.map[y][x].value = typeToValue[data.map[y][x].type] ?? "X";
+	//data.map[y][x].value = typeToValue[data.map[y][x].type] ?? "X";
 }
 
 
@@ -883,9 +870,8 @@ function generate_map(width, height, total_mines){
 		}))),
 		map: Array.from({length: height}, () => Array.from({length: width}, () => ({
 			type: TYPE_EMPTY, // -1 = mine, 0 = empty, 1-8 = number
-			value: "", // not used
+			//value: "", // not used
 			visible: 0,
-			frame: 0, // animation frame
 			owner: -1, // who has found the mine
 			numbersAround: 0, // for darker water calcuations
 			waternum: random(0,100)
@@ -982,49 +968,125 @@ function count_numbers_around(data, xp, yp){
 
 
 function revealZeros(data, startX, startY, grid) {
-  let queue = [[startY, startX]];
+	let queue = [[startY, startX]];
 
-  while (queue.length > 0) {
-    let [y, x] = queue.shift();
+	while (queue.length > 0) {
+		let [y, x] = queue.shift();
 
-    // Bounds check
-    if (y < 0 || y >= data.height || x < 0 || x >= data.width) continue;
+		// Bounds check
+		if (y < 0 || y >= data.height || x < 0 || x >= data.width) continue;
 
-    let cell = data.map[y][x];
-	
-    // Already visible? skip
-    if (cell.visible) continue;
+		let cell = data.map[y][x];
 
-    // Reveal this cell
-    cell.visible = 1;
-	if(cell.type < TYPE_EMPTY){
-		grid[y][x] = cell.value;
-	}else{
-		if(cell.type === TYPE_EMPTY){
-			grid[y][x] = "";
-			
+		// Already visible? skip
+		if (cell.visible) continue;
+
+		// Reveal this cell
+		cell.visible = 1;
+		if(cell.type < TYPE_EMPTY){
+			grid[y][x] = ""; // set visible grid empty for mines.
 		}else{
-			grid[y][x] = cell.type;
+			if(cell.type === TYPE_EMPTY){
+				grid[y][x] = "";
+			}else{
+				grid[y][x] = cell.type;
+			}
+		}
+
+		// If it's not a zero, stop spreading from here
+		if (cell.type !== TYPE_EMPTY) continue;
+
+		// Spread to all 8 neighbors
+		for (let dy = -1; dy <= 1; dy++) {
+			for (let dx = -1; dx <= 1; dx++) {
+				if (dx === 0 && dy === 0) continue; // skip self
+				queue.push([y + dy, x + dx]);
+			}
 		}
 	}
-
-    // If it's not a zero, stop spreading from here
-    if (cell.type !== TYPE_EMPTY) continue;
-
-    // Spread to all 8 neighbors
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue; // skip self
-        queue.push([y + dy, x + dx]);
-      }
-    }
-  }
 }
 
 
 function revealBombAirplaneZeros(data, startX, startY, grid) {
 	// make 2x14 strip of bombs, center is mouse cursor. 
 	// if part of bombing area goes outside of map, it will set it inside map automatically.
+	let radiusX = 6;
+	let radiusY = 1;
+	let queue = [];
+	// -6 -5 -4 -3 -2 -1 0 1 2 3 4 5
+	// -1 0
+	for (let dy = -radiusY; dy < radiusY; dy++) {
+		for (let dx = -radiusX; dx < radiusX; dx++) {
+
+            const y = startY + dy;
+            const x = startX + dx;
+
+            if (y < 0 || y >= data.height || x < 0 || x >= data.width) continue;
+
+            let cell = data.map[y][x];
+            if (cell.visible) continue;
+
+            cell.visible = 1;
+            if (cell.type < TYPE_EMPTY) {
+                grid[y][x] = ""; // set visible grid empty for mines.
+            } else {
+                grid[y][x] = cell.type === TYPE_EMPTY ? "" : cell.type;
+            }
+
+            // If the cell is a zero, add it to the BFS queue
+            if (cell.type === TYPE_EMPTY) {
+                queue.push([y, x]);
+            }
+		}
+	}
+	
+	
+    // BFS for spreading zeros
+    while (queue.length > 0) {
+        let [y, x] = queue.shift();
+
+        // Spread to all 8 neighbors
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const ny = y + dy;
+                const nx = x + dx;
+
+                if (ny < 0 || ny >= data.height || nx < 0 || nx >= data.width) continue;
+                if (dx === 0 && dy === 0) continue;
+
+                let neighbor = data.map[ny][nx];
+                if (neighbor.visible) continue;
+
+                neighbor.visible = 1;
+                if (neighbor.type < TYPE_EMPTY) {
+                    grid[ny][nx] = ""; // set visible grid empty for mines.
+                } else {
+                    grid[ny][nx] = neighbor.type === TYPE_EMPTY ? "" : neighbor.type;
+                }
+
+                // If neighbor is zero, add to queue
+                if (neighbor.type === TYPE_EMPTY) {
+                    queue.push([ny, nx]);
+                }
+            }
+        }
+    }
+	
+	
+	// set owner for found mines:
+	for(let yy = -radiusY; yy < radiusY; yy++){
+		for(let xx = -radiusX; xx < radiusX; xx++){
+			let xp = xx+startX;
+			let yp = yy+startY;
+			if(xp >= 0 && xp < gameState.minemap.width){
+				if(yp >= 0 && yp < gameState.minemap.height){
+					if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
+						gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
+					}
+				}
+			}
+		}
+	}
 }
 
 
@@ -1045,7 +1107,7 @@ function revealBombZeros(data, startX, startY, grid) {
 
             cell.visible = 1;
             if (cell.type < TYPE_EMPTY) {
-                grid[y][x] = cell.value;
+                grid[y][x] = ""; // set visible grid empty for mines.
             } else {
                 grid[y][x] = cell.type === TYPE_EMPTY ? "" : cell.type;
             }
@@ -1075,7 +1137,7 @@ function revealBombZeros(data, startX, startY, grid) {
 
                 neighbor.visible = 1;
                 if (neighbor.type < TYPE_EMPTY) {
-                    grid[ny][nx] = neighbor.value;
+                    grid[ny][nx] = ""; // set visible grid empty for mines.
                 } else {
                     grid[ny][nx] = neighbor.type === TYPE_EMPTY ? "" : neighbor.type;
                 }
@@ -1087,6 +1149,21 @@ function revealBombZeros(data, startX, startY, grid) {
             }
         }
     }
+	
+	// set owner for found mines:
+	for(let yy = -radius; yy <= radius; yy++){
+		for(let xx = -radius; xx <= radius; xx++){
+			let xp = xx+startX;
+			let yp = yy+startY;
+			if(xp >= 0 && xp < gameState.minemap.width){
+				if(yp >= 0 && yp < gameState.minemap.height){
+					if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
+						gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
+					}
+				}
+			}
+		}
+	}
 }
 
 
@@ -1189,6 +1266,7 @@ let localPlayer = {
     isReady: false,
 	isAI: false,
 	isSpec: false,
+	firstMove: true,
 };
 
 let gameState = {
@@ -1204,10 +1282,18 @@ let gameState = {
     winner: null,
 	ties: null,
 	lastMoveFailed: false,
-	minemap: [],
+	minemap: {},
 	minesRemaining: 0,
 	history: [],
 };
+
+let localState = {
+	// used to only store animation data
+	animations: {
+		map: null, // initialize this on game start.
+	},
+};
+
 
 // ---------- UI ELEMENT REFERENCES ---------- //
 const screens = {
@@ -1255,6 +1341,7 @@ let isHostSpectating = false;
 document.querySelectorAll('input[name="spectate-setting"]').forEach(radio => {
 	radio.addEventListener('change', () => {
 		isHostSpectating = radio.value === "1";
+		attemptSetSpec();
 		console.log("Spectate changed:", isHostSpectating);
 	});
 });
@@ -1283,6 +1370,7 @@ addAiBtn.addEventListener('click', () => {
         isReady: true,
         isAI: true,
 		isSpec: false,
+		firstMove: true,
         color: newPlayerColor(),
         minesFound: 0,
         bombsUsed: 0,
@@ -1986,7 +2074,7 @@ function updateLobbyUI() {
     playerList.innerHTML = '';
     gameState.players.forEach(p => {
         const li = document.createElement('li');
-        const displayName = p.isSpec ? `${p.name} (spec)` : p.name;
+        const displayName = p.isSpec ? `${p.name} (Spectator)` : p.name;
 		const safeName = document.createTextNode(displayName);
 		li.innerHTML = `<span style="color:${p.color}"></span>`;
 		li.querySelector("span").appendChild(safeName);
@@ -2008,45 +2096,91 @@ function updateGameUI() {
     }
 }
 
-// ---------- NETWORKING (PeerJS) ---------- //
-function initializePeer(peerId) {
-    myPeerId = peerId || 'tictactoe-' + Math.random().toString(36).substr(2, 9);
-    localPlayer.id = myPeerId;
-    peer = new Peer(myPeerId, { debug: 2 });
 
-    peer.on('open', id => {
-        console.log('My peer ID is: ' + id);
-		console.log(gameState);
-    });
 
-    peer.on('connection', conn => {
-        setupConnection(conn);
-    });
 
-    peer.on('error', err => {
-        console.error("PeerJS Error:", err);
-        homeError.textContent = `Error: ${err.message}. Try a different Game Name.`;
-        joinBtn.disabled = false;
-        hostBtn.disabled = false;
-    });
+
+
+const playerColors = [
+	"#e6194B", // red
+	"#4363d8", // blue
+	"#ffe119", // yellow
+	"#3cb44b", // dark green
+	"#f58231", // orange
+	"#911eb4", // purple
+	"#42d4f4", // cyan
+	"#f032e6", // magenta
+	"#bfef45", // lime
+	"#469990", // teal
+	"#9A6324", // brown
+	"#808000", // olive
+	"#000075", // navy
+	"#a9a9a9", // gray
+	"#555588"  // grayis blue
+];
+
+let playerColorCounter = 0;
+
+function nextFreeColor(){
+	let found_free_color = 0;
+	let free_color = "#123456";
+	for(let i = 0; i < playerColors.length; i++){
+		let color = playerColors[i];
+		// check if any player has this color already:
+		let found = 0;
+		for(let p = 0; p < gameState.players.length; p++){
+			let player_color = gameState.players[p].color;
+			if(player_color == color){
+				found = 1;
+				break;
+			}
+		}
+		if(!found){
+			found_free_color = 1;
+			free_color = color;
+			break;
+		}
+	}
+	if(found_free_color){
+		return free_color;
+	}else{
+		// if all colors are taken, cycle by player count:
+		return playerColors[gameState.players.length % playerColors.length];
+	}
 }
 
-function setupConnection(conn) {
+function newPlayerColor(isSpec = false){
+	return isSpec ? '#FFFFFF' : nextFreeColor();
+}
+
+
+
+// ---------- NETWORKING (PeerJS) ---------- //
+
+function setupConnection(conn, hostSide) {
+	let hostStr = hostSide ? "(HOST)" : "(peer)";
+	
     conn.on('open', () => {
-        console.log(`Connected to ${conn.peer}`);
+        console.log(`${hostStr} > conn.on('open'): Connected to ${conn.peer}`);
         connections[conn.peer] = conn;
 
         if (isHost) {
+			console.log(`${hostStr} sent game_state:`);
             conn.send({ type: 'game_state', state: gameState });
         }
     });
 
-    conn.on('data', data => handleMessage(data, conn.peer));
+    conn.on('data', data => {
+		console.log(`${hostStr} > conn.on('data'): setupConnection: (${localPlayer.id}) ${conn.peer}`);
+		console.log(data);
+		handleMessage(data, conn.peer);
+	});
     conn.on('close', () => {
-        console.log(`Connection closed with ${conn.peer}`);
+        console.log(`${hostStr} > conn.on('close'): Connection closed with ${conn.peer}`);
         delete connections[conn.peer];
         if (isHost) {
             gameState.players = gameState.players.filter(p => p.id !== conn.peer);
+			console.log(`${hostStr} sent game_state:`);
             broadcast({ type: 'game_state', state: gameState });
             updateLobbyUI(); // Host updates its own view
         }
@@ -2054,38 +2188,69 @@ function setupConnection(conn) {
 }
 
 
+function initializePeer(hostSide, peerId = null) {
+	let hostStr = hostSide ? "(HOST)" : "(peer)";
+	
+    myPeerId = peerId || 'tictactoe-' + Math.random().toString(36).substr(2, 23);
+    localPlayer.id = myPeerId;
 
-function newPlayerColor(){
-	let colorIndex = gameState.players.length % playerColors.length;
-	return playerColors[colorIndex];
+    peer = new Peer(myPeerId, { debug: 2 }); // use debug 3 to see more.
+
+    peer.on('open', id => {
+		console.log(`${hostStr} > peer.on('open')`);
+        console.log('initializePeer: My peer ID is: ' + id);
+		console.log("current gameState:");
+		console.log(gameState);
+    });
+
+    peer.on('connection', conn => {
+		console.log(`${hostStr} > peer.on('connection')`);
+        setupConnection(conn, hostSide);
+    });
+
+    peer.on('error', err => {
+		console.log(`${hostStr} > peer.on('error')`);
+        console.error("PeerJS Error:", err);
+        homeError.textContent = `Error: ${err.message}. Try a different Game Name.`;
+        joinBtn.disabled = false;
+        hostBtn.disabled = false;
+    });
 }
-
 
 
 function hostGame() {
     const gameName = gameNameInput.value.trim();
     const playerName = playerNameInput.value.trim();
+	
     if (!gameName || !playerName) {
         homeError.textContent = "Game Name and Your Name cannot be empty.";
         return;
     }
+	
     localPlayer.name = playerName;
     isHost = true;
     hostBtn.disabled = true;
     joinBtn.disabled = true;
-    initializePeer(gameName); 
+	
+    initializePeer(true, gameName); 
 
-    localPlayer.symbol = PREDEFINED_SYMBOLS[0];
-    localPlayer.isReady = true;
-	localPlayer.color = newPlayerColor();
-	localPlayer.minesFound = 0;
-	localPlayer.bombsUsed = 0;
-	localPlayer.isAI = false;
-	localPlayer.isSpec = false; // has to modify this when STARTING the game. getSpectateValue()
-    gameState.players.push(localPlayer); 
-    
-    showScreen('lobby');
-    updateLobbyUI();
+
+    peer.on('open', id => {
+		localPlayer.symbol = PREDEFINED_SYMBOLS[0];
+		localPlayer.isReady = true;
+		localPlayer.color = newPlayerColor();
+		localPlayer.minesFound = 0;
+		localPlayer.bombsUsed = 0;
+		localPlayer.isAI = false;
+		localPlayer.isSpec = false; // has to modify this when STARTING the game. getSpectateValue()
+		localPlayer.firstMove = true;
+		gameState.players.push(localPlayer); 
+		
+		showScreen('lobby');
+		updateLobbyUI();
+    });
+	
+
 }
 
 
@@ -2093,37 +2258,45 @@ function hostGame() {
 function joinGame() {
     const gameName = gameNameInput.value.trim();
     const playerName = playerNameInput.value.trim();
+	
     if (!gameName || !playerName) {
         homeError.textContent = "Game Name and Your Name cannot be empty.";
         return;
     }
+	
     localPlayer.name = playerName;
     isHost = false;
     hostId = gameName;
     hostBtn.disabled = true;
     joinBtn.disabled = true;
-    initializePeer();
+	
+    initializePeer(false);
+
 
     setTimeout(() => { 
         if (!peer || !peer.id) return;
         const conn = peer.connect(hostId, { reliable: true });
         if(conn) {
-            setupConnection(conn);
+            setupConnection(conn, false);
         } else {
             homeError.textContent = "Could not connect to host. Check Game Name.";
             hostBtn.disabled = false;
             joinBtn.disabled = false;
         }
     }, 1000);
+	
+	
 }
 
 function joinAsSpectator() {
     const gameName = gameNameInput.value.trim();
     const playerName = playerNameInput.value.trim();
+	
     if (!gameName || !playerName) {
         homeError.textContent = "Game Name and Your Name cannot be empty.";
         return;
     }
+	
     localPlayer.name = playerName;
     localPlayer.isSpec = true; // Set spectator flag
     isHost = false;
@@ -2131,13 +2304,14 @@ function joinAsSpectator() {
     hostBtn.disabled = true;
     joinBtn.disabled = true;
     joinSpectatorBtn.disabled = true;
-    initializePeer();
+	
+    initializePeer(false);
 
     setTimeout(() => { 
         if (!peer || !peer.id) return;
         const conn = peer.connect(hostId, { reliable: true });
         if(conn) {
-            setupConnection(conn);
+            setupConnection(conn, false);
         } else {
             homeError.textContent = "Could not connect to host. Check Game Name.";
             hostBtn.disabled = false;
@@ -2185,13 +2359,36 @@ function getMoveType(x, y){
 
 
 
+function init_animation_map(){
+
+	if(localState.animations.map == null){
+		let width = gameState.minemap.width;
+		let height = gameState.minemap.height;
+		
+		localState = {
+			animations: {
+				map: Array.from({length: height}, () => Array.from({length: width}, () => ({
+					frame: 0, // animation frame
+				}))),
+			},
+		};
+		
+		//console.log("localState initialized:");
+		//console.log(localState);
+	}
+}
+
+
 function handleMessage(data, peerId) {
     //console.log('Received:', data.type);
 	
 	console.log(data.type+":");
 	
+	let hostStr = isHost ? "(HOST)" : "(peer)";
+	
     switch (data.type) {
         case 'game_state':
+			console.log("case: game_state "+hostStr);
             gameState = data.state;
 			console.log(gameState);
 			
@@ -2266,11 +2463,20 @@ function handleMessage(data, peerId) {
 
 			
             if (!isHost && !localPlayer.isReady) {
+				// important to set it first:
+				localPlayer.isReady = true; // had to set this first or it spammed player_join messages
+				
+				console.log(`sendToHost({ type: 'player_join', player: ${localPlayer.id} });`);
                 showScreen('lobby');
                 sendToHost({ type: 'player_join', player: localPlayer });
-                localPlayer.isReady = true; 
+                
             }
+			
+			// will trigger this every time a move is made...
             if (gameState.gameStarted) {
+				// initialize animations map only once:
+				init_animation_map();
+				
                 showScreen('game');
                 resizeCanvas();
                 updateGameUI();
@@ -2280,6 +2486,8 @@ function handleMessage(data, peerId) {
 			
             break;
         case 'player_join':
+		
+			console.log("case: player_join "+hostStr);
             if (isHost) {
                 // ** THE BUG FIX IS HERE **
                 // Check if player already exists before adding
@@ -2294,10 +2502,12 @@ function handleMessage(data, peerId) {
                 const usedSymbols = gameState.players.map(p => p.symbol);
                 const nextSymbol = PREDEFINED_SYMBOLS.find(s => !usedSymbols.includes(s));
                 newPlayer.symbol = nextSymbol || '';
-				newPlayer.color = newPlayer.isSpec ? '#FFFFFF' : newPlayerColor();
+				
+				newPlayer.color = newPlayerColor(newPlayer.isSpec);
 				newPlayer.minesFound = 0;
 				newPlayer.bombsUsed = 0;
 				newPlayer.isAI = false;
+				newPlayer.firstMove = true;
                 
                 gameState.players.push(newPlayer);
                 broadcast({ type: 'game_state', state: gameState });
@@ -2305,6 +2515,7 @@ function handleMessage(data, peerId) {
             }
             break;
         case 'player_update':
+			console.log("case: player_update "+hostStr);
              if (isHost) {
                 const playerIndex = gameState.players.findIndex(p => p.id === peerId);
                 if (playerIndex > -1) {
@@ -2319,24 +2530,45 @@ function handleMessage(data, peerId) {
                 }
             }
             break;
+        case 'player_update_spec':
+			console.log("case: player_update_spec "+hostStr);
+             if (isHost) {
+                const playerIndex = gameState.players.findIndex(p => p.id === peerId);
+                if (playerIndex > -1) {
+                    const isSpec = data.player.isSpec;
+					
+					
+
+					gameState.players[playerIndex].isSpec = isSpec;
+					gameState.players[playerIndex].color = newPlayerColor(isSpec);
+
+					broadcast({ type: 'game_state', state: gameState });
+					updateLobbyUI();
+
+                }
+            }
+            break;
         case 'symbol_taken':
+			console.log("case: symbol_taken "+hostStr);
             lobbyError.textContent = "Symbol is already taken!";
             setTimeout(() => lobbyError.textContent = "", 2000);
             break;
         case 'player_move':
+			console.log("case: player_move "+hostStr);
             if (isHost) {
                 handlePlayerMove(data.move);
             }
             break;
 		case "player_message":
-		  if (isHost) {
-			// Rebroadcast to everyone else, but NOT back to the original sender
-			broadcast(data, peerId); // assuming your broadcast supports excluding peerId
-		  }
+			console.log("case: player_message "+hostStr);
+			if (isHost) {
+				// Rebroadcast to everyone else, but NOT back to the original sender
+				broadcast(data, peerId); // assuming your broadcast supports excluding peerId
+			}
 
-		  // Show the message (all peers including host)
-		  addChatMessage(data.playerId, data.text);
-		  break;
+			// Show the message (all peers including host)
+			addChatMessage(data.playerId, data.text);
+			break;
     }
 }
 
@@ -2475,6 +2707,35 @@ function attemptSetSymbol() {
 
 
 
+function attemptSetSpec() {
+    const isSpec = getSpectateValue();
+
+    let updatedPlayer = { ...localPlayer, 
+		isSpec: isSpec, 
+		color: newPlayerColor(isSpec),
+	};
+    
+    const payload = { type: 'player_update_spec', player: updatedPlayer };
+
+    if (isHost) {
+		console.log("attemptSetSpec host");
+        const playerIndex = gameState.players.findIndex(p => p.id === localPlayer.id);
+        if (playerIndex > -1) {
+			gameState.players[playerIndex].isSpec = isSpec;
+			gameState.players[playerIndex].color = newPlayerColor(isSpec);
+
+			broadcast({ type: 'game_state', state: gameState });
+			console.log("set spec: "+isSpec);
+			updateLobbyUI();
+        }
+    } else {
+		console.log("attemptSetSpec peer");
+        sendToHost(payload);
+    }
+}
+
+
+
 function addGameStateElement(playerId, playerColor, playerName, text) {
 	const div = document.createElement("div");
 	div.id = `gameState-${playerId}`;
@@ -2515,14 +2776,14 @@ function createGameStateElements(){
 function startGame() {
     if (!isHost) return;
 
-
+/*	// not needed anymore since gameState is changed when spectator state is changed.
 	if(getSpectateValue()){
 		let player = getPlayerById(localPlayer.id);
 		player.isSpec = true; // has to modify this when STARTING the game. 
 		player.color = "#FFFFFF";
 		//player.name = player.name+" (spec)";
 	}
-	
+	*/
 	
     gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
 	gameState.totalMines = Math.max(1, Math.min(parseInt(totalMinesInput.value), gameState.gridSize.x*gameState.gridSize.y)); // minimum = 1, max = w*h
@@ -2598,7 +2859,7 @@ function advanceToNextPlayer() {
         gameState.ties = [];
         return;
     }
-
+	
     let nextIndex = gameState.currentPlayerIndex;
     do {
         nextIndex = (nextIndex + 1) % gameState.players.length;
@@ -2615,17 +2876,22 @@ function add_log(move){
 }
 
 
-function isLosingPlayer(playerId) {
+function isFirstMove(player){
+	return player.firstMove;
+}
+
+function isLosingPlayer(player) {
+  let playerId = player.id;
   if (!gameState?.players?.length) return false;
   
   if(gameState.players.length == 1){
 	return true; // single player always allow bomb.
   }
 
-  const player = gameState.players.find(p => p.id === playerId);
-  if (!player){
-	return false;
-  } // player not found
+  //const player = gameState.players.find(p => p.id === playerId);
+  //if (!player){
+	//return false;
+  //} // player not found
 
   const playerMines = player.minesFound;
 
@@ -2661,8 +2927,12 @@ function handlePlayerMove(move) {
 			revealZeros(gameState.minemap, x, y, gameState.grid);
 			
 			if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
+				// no mine hit, end turn, next turn is first move again:
+				player.firstMove = true;
                 advanceToNextPlayer();
 			}else{
+				// mine hit, no longer first move (cannot use bomb after found a mine)
+				player.firstMove = false;
 				gameState.minemap.map[y][x].owner = gameState.currentPlayerIndex;
 				gameState.minesRemaining = get_remaining_mines();
 				let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
@@ -2680,32 +2950,25 @@ function handlePlayerMove(move) {
 		
 
 	}else if(weapon == MOVE_TYPE_BOMB){
-
+		//console.warn("MOVE_TYPE_BOMB: player.firstMove = "+player.firstMove);
 		// allow bomb only when you are not leading.
-		if(isLosingPlayer(player.id) && player.bombsUsed < gameState.totalBombs){
-			revealBombZeros(gameState.minemap, x, y, gameState.grid);
-			
-			// set owner for found mines:
-			let radius = gameState.bombRadius;
-			for(let yy = -radius; yy <= radius; yy++){
-				for(let xx = -radius; xx <= radius; xx++){
-					let xp = xx+x;
-					let yp = yy+y;
-					if(xp >= 0 && xp < gameState.minemap.width){
-						if(yp >= 0 && yp < gameState.minemap.height){
-							if(gameState.minemap.map[yp][xp].type < TYPE_EMPTY){
-								gameState.minemap.map[yp][xp].owner = gameState.currentPlayerIndex;
-							}
-						}
-					}
-				}
+		if(isLosingPlayer(player) && isFirstMove(player) && player.bombsUsed < gameState.totalBombs){
+			let bombStyle = 0;
+			if(bombStyle == 0){
+				revealBombZeros(gameState.minemap, x, y, gameState.grid);
+			}else{
+				revealBombAirplaneZeros(gameState.minemap, x, y, gameState.grid);
 			}
+			
+
 			
 			gameState.minesRemaining = get_remaining_mines();
 			let currentPlayerMinesFound = get_mines_by_player_index(gameState.currentPlayerIndex);
 			player.minesFound = currentPlayerMinesFound;
 			player.bombsUsed++;
 
+			// end turn, next turn is first move again:
+			player.firstMove = true;
             advanceToNextPlayer();
 			
 			setLastMoveByPlayer(x, y, player.id, weapon);
@@ -3118,7 +3381,9 @@ function gameLoop(timestamp) {
   // Update average every second
   if (timestamp - lastFpsUpdate >= 2000) {
     averageFps = fpsSum / frameCount;
-    console.log("Average FPS:", averageFps.toFixed(1));
+	if(gameState.gameStarted){
+		console.log("Average FPS:", averageFps.toFixed(1));
+	}
     // reset counters
     frameCount = 0;
     fpsSum = 0;
@@ -3395,21 +3660,65 @@ function drawRandomTile(ctx, mapcell, bigImage, destX, destY, destSize = 50) {
 	);
 }
 
-/*
-function drawImage(ctx, image, offsetX, offsetY, x, y, cellSize, scale = 1) {
-  // Target width/height after scaling
-  const drawSize = cellSize * scale+add1;
 
-  // Center the scaled image inside the square
-  const posX = offsetX + x * cellSize + (cellSize - drawSize) / 2+add2;
-  const posY = offsetY + y * cellSize + (cellSize - drawSize) / 2+add2;
 
-  ctx.drawImage(image, posX, posY, drawSize, drawSize);
+
+function worldToScreen(wx, wy, viewport, canvas) {
+    // Apply same transforms in reverse
+    let sx = (wx + viewport.x) * viewport.scale + canvas.width / 2;
+    let sy = (wy + viewport.y) * viewport.scale + canvas.height / 2;
+    return { x: sx, y: sy };
 }
 
-*/
 
-// render
+function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize) {
+	ctx.save();
+
+	for (const playerId in gameState.lastMoves) {
+		const move = gameState.lastMoves[playerId];
+		let player = getPlayerById(playerId);
+	
+		let worldX = offsetX + move.x*cellSize + cellSize/2;
+		let worldY = offsetY + move.y*cellSize + cellSize/2;
+		
+		const { x, y } = worldToScreen(worldX, worldY, viewport, canvas);
+
+		// Check if outside screen
+		if (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height) {
+			continue; // it's visible, no need to draw edge indicator
+		}
+
+		// Find intersection point on canvas edge
+		let edgeX = x;
+		let edgeY = y;
+
+		// Clamp to screen bounds
+		if (x < 0) edgeX = 0;
+		if (x > canvas.width) edgeX = canvas.width;
+		if (y < 0) edgeY = 0;
+		if (y > canvas.height) edgeY = canvas.height;
+
+		// black edges for visibility:
+		ctx.beginPath();
+		ctx.arc(edgeX, edgeY, 20, 0, Math.PI * 2);
+		ctx.fillStyle = "rgba(0,0,0,1)";
+		ctx.fill();
+		
+		// draw with player color:
+		ctx.beginPath();
+		ctx.arc(edgeX, edgeY, 17, 0, Math.PI * 2);
+		ctx.fillStyle = hexToRgba(player.color, 1);
+		ctx.fill();
+	}
+	
+	ctx.restore();
+}
+
+
+
+
+
+// render()
 function draw() {
     if (!gameState.gameStarted) return;
 	
@@ -3457,12 +3766,14 @@ function draw() {
 			}
 	
 			const mapcell = gameState.minemap.map[y][x];
+			const animcell = localState.animations.map[y][x];
 			
 			let scale = 1;
 			
 			if(mapcell.visible){
-				scale = (mapcell.frame/MAX_CELL_FRAMES);
+				scale = (animcell.frame/MAX_CELL_FRAMES);
 			}
+			
 			
 			if(drawCell){
 
@@ -3471,7 +3782,7 @@ function draw() {
 					// draw numbers or empty:
 					if (mapcell.type >= TYPE_EMPTY){
 						// draw water under the numbers first:
-						if(mapcell.frame < MAX_CELL_FRAMES){
+						if(animcell.frame < MAX_CELL_FRAMES){
 							//drawImage(ctx, images.water[mapcell.waternum%3], offsetX, offsetY, x, y, cellSize);
 							draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize);
 						}
@@ -3581,9 +3892,9 @@ function draw() {
 			
 			
 			if(mapcell.visible){
-				mapcell.frame++;
-				if(mapcell.frame > MAX_CELL_FRAMES){
-					mapcell.frame = MAX_CELL_FRAMES;
+				animcell.frame++;
+				if(animcell.frame >= MAX_CELL_FRAMES){
+					animcell.frame = MAX_CELL_FRAMES;
 				}
 			}
         }
@@ -3627,7 +3938,11 @@ function draw() {
 	}
 
 
+
     ctx.restore();
+	
+	
+	drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize);
 }
 
 
