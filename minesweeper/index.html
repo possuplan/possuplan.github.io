@@ -23,6 +23,8 @@
 
 <!--
 todo: 
+- päivitä pelaajalista jos joku quittaa tai muuttuu spectaattoriksi.
+- timeout ei ehkä toimi kunnolla, spämmäsi joskus sitä viestiä. kokeilin korjata player.quitted arvolla ettei yritä poistaa uudestaan.
 - jos pelaaja quittaa niin anna pelin jatkua.
 - jos joinaa jo aloitettuun peliin niin vaihda joinaaja automaattisesti spectaattoriksi.
 - lisää mahdollisuus valita oma väri ennen aloitusta. huom: tsekkaa ettei väri ole jo käytössä.
@@ -57,6 +59,9 @@ todo:
 changelog:
 
 12.10.2025
+- fixed quit/join messages not being visible for all players.
+- added timeout functionality: checks periodically if player timed out: removes him.
+- added possibility to join only as spectator when game has already started.
 - lisätty quittausviesti chättiin jos pelaaja quittaa.
 - korjattu quittaus: tunnistaa quittauksen sivua suljettaessa ja laittaa pelaajan spectaattoriksi ja poistaa suuntimat ja viimeisen siirron merkin.
 - suuntimat animoitu ja laitettu valkoinen raita.
@@ -2278,10 +2283,16 @@ window.addEventListener('beforeunload', () => {
 });
 
 
-function remove_player(peer, hostSide){
+
+
+
+
+
+
+function remove_player(peer, hostSide, timedOut = false){
 	let hostStr = hostSide ? "(HOST)" : "(peer)";
 	
-	delete connections[peer];
+	
 	if (isHost) {
 		//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
 		// set disconnected players as spectators so game can continue:
@@ -2290,29 +2301,68 @@ function remove_player(peer, hostSide){
 		let removed_player = null;
 		for(let i = 0; i < gameState.players.length; i++){
 			let player = gameState.players[i];
-			if(player.id === peer){
+			if(!player.quitted && player.id === peer){
 				player.isSpec = true;
+				player.quitted = true;
 				removed_player_index = i;
 				removed_player = player;
 				break;
 			}
 		}
 		if(removed_player_index != -1){
+		
+			delete connections[peer];
+		
 			// let others play if quitter was in turn:
 			if(removed_player_index == gameState.currentPlayerIndex){
 				advanceToNextPlayer();
 				checkForAITurn(); // start AI turn if it is his turn.
 			}
+			if(timedOut){
+				
+				sendChatMessage(`Player "${removed_player.name}" timed out, set as spectator.`);
+			}else{
+				sendChatMessage(`Player "${removed_player.name}" has left the game.`);
+			}
 			
-			addChatMessage(`Player "${removed_player.name}" has left the game.`);
+			
+			
+			console.log(`${hostStr} sent game_state:`);
+			broadcast({ type: 'game_state', state: gameState });
+			updateLobbyUI(); // Host updates its own view
 		}
 		
-		
-		console.log(`${hostStr} sent game_state:`);
-		broadcast({ type: 'game_state', state: gameState });
-		updateLobbyUI(); // Host updates its own view
+	}
+	
+	if(pingTimer){
+		clearInterval(pingTimer);
+		pingTimer = null;
 	}
 }
+
+
+// check if player timed out:
+setInterval(() => {
+  const now = Date.now();
+  for(let i = 0; i < gameState.players.length; i++){
+	let player = gameState.players[i];
+	if(player.peerId){
+		if (now - player.lastPing > 3000) { // e.g., 10 seconds timeout
+		  console.log(`Player ${player.id} timed out`);
+		  if(isHost){
+			remove_player(player.peerId, isHost, true);
+		  }
+		  // Clean up connection
+		  //if (player.conn) player.conn.close();
+		  //delete players[peerId];
+		  // Optionally notify other players
+		}
+	}
+  }
+}, 3000); // check every 3 seconds
+
+
+let pingTimer = null;
 
 // ---------- NETWORKING (PeerJS) ---------- //
 
@@ -2324,17 +2374,42 @@ function setupConnection(conn, hostSide) {
         console.log(`${hostStr} > conn.on('open'): Connected to ${conn.peer}`);
         connections[conn.peer] = conn;
 
+
+		
         if (isHost) {
 			console.log(`${hostStr} sent game_state:`);
             conn.send({ type: 'game_state', state: gameState });
-        }
+        }else{
+			// avoid creating multiple timers:
+			if(pingTimer){
+				console.log("clearInterval(pingTimer)");
+				clearInterval(pingTimer);
+			}
+			pingTimer = setInterval(() => {
+				if (conn && conn.open) {
+					conn.send({ type: 'ping', t: Date.now() });
+				}
+			}, 3000);
+		}
     });
 
     conn.on('data', data => {
 		//hideLoader();
-		console.log(`${hostStr} > conn.on('data'): setupConnection: (${localPlayer.id}) ${conn.peer}`);
+		console.log(`${hostStr} > conn.on('data') at setupConnection(): (${localPlayer.id}) ${conn.peer}`);
 		console.log(data);
-		handleMessage(data, conn.peer);
+		
+		
+		if (data.type === 'ping') {
+			console.log("ping received from "+conn.peer);
+			
+			let player = getPlayerById(conn.peer);
+			if(player){
+				player.lastPing = Date.now();
+				player.peerId = conn.peer;
+			}
+		}else{
+			handleMessage(data, conn.peer);
+		}
 	});
 	peer.on('disconnect', () => {
         console.log(`${hostStr} > conn.on('disconnect'): disconnected with ${conn.peer}`);
@@ -2345,7 +2420,12 @@ function setupConnection(conn, hostSide) {
 		hideLoader();
         console.log(`${hostStr} > conn.on('close'): Connection closed with ${conn.peer}`);
 		remove_player(conn.peer, hostSide);
+
     });
+	
+	
+
+
 }
 
 
@@ -2686,6 +2766,12 @@ function handleMessage(data, peerId) {
                 }
 
                 let newPlayer = data.player;
+				if(gameState.gameStarted){
+					newPlayer.isSpec = true;
+
+					sendChatMessage(`Player "${newPlayer.name}" joined as spectator.`);					
+				}
+				
                 const usedSymbols = gameState.players.map(p => p.symbol);
                 const nextSymbol = PREDEFINED_SYMBOLS.find(s => !usedSymbols.includes(s));
                 newPlayer.symbol = nextSymbol || '';
@@ -2695,6 +2781,7 @@ function handleMessage(data, peerId) {
 				newPlayer.bombsUsed = 0;
 				newPlayer.isAI = false;
 				newPlayer.firstMove = true;
+
                 
                 gameState.players.push(newPlayer);
                 broadcast({ type: 'game_state', state: gameState });
@@ -2761,33 +2848,48 @@ function handleMessage(data, peerId) {
 
 
 // Send message when clicking the button
-chatSend.addEventListener("click", sendChatMessage);
+chatSend.addEventListener("click", () => sendChatMessage());
 
 // Or when pressing Enter
 chatInput.addEventListener("keydown", e => {
   if (e.key === "Enter") sendChatMessage();
 });
 
-function sendChatMessage() {
-  const text = chatInput.value.trim();
-  if (!text) return;
+function sendChatMessage(str = null) {
+	// If function was triggered by an event (PointerEvent, KeyboardEvent, etc.), ignore it
+	// note: fixed by "() => sendChatMessage()" in addEventListener
+	//if (str instanceof Event) {
+	//	str = null;
+	//}
+	let msg;
+	
+	if(str != null){
+		msg = {
+			type: "player_message",
+			playerId: -1,
+			text: str,
+		};
+	}else{
+		if(!chatInput.value.trim()){
+			return;
+		}
+		msg = {
+			type: "player_message",
+			playerId: localPlayer.id,
+			text: chatInput.value.trim(),
+		};
+	}
 
-  const msg = {
-    type: "player_message",
-    playerId: localPlayer.id,
-    text
-  };
+	if (isHost) {
+		// Host only needs to broadcast, not handleMessage directly
+		broadcast(msg);
+		addChatMessage(msg.text, msg.playerId); // add to host UI only
+	} else {
+		sendToHost(msg);
+		//addChatMessage(msg.text, msg.playerId); // add immediately for sender
+	}
 
-  if (isHost) {
-    // Host only needs to broadcast, not handleMessage directly
-    broadcast(msg);
-    addChatMessage(msg.text, msg.playerId); // add to host UI only
-  } else {
-    sendToHost(msg);
-    //addChatMessage(msg.text, msg.playerId); // add immediately for sender
-  }
-
-  chatInput.value = "";
+	chatInput.value = "";
 }
 
 function getPlayerById(id, myArray = null) {
@@ -2799,10 +2901,10 @@ function getPlayerById(id, myArray = null) {
 }
 
 
-function addChatMessage(text, playerId = null) {
+function addChatMessage(text, playerId = -1) {
 	const div = document.createElement("div");
 
-	if(playerId){
+	if(playerId != -1){
 		let player = getPlayerById(playerId);
 
 
@@ -3056,6 +3158,8 @@ function advanceToNextPlayer() {
         nextIndex = (nextIndex + 1) % gameState.players.length;
     } while (gameState.players[nextIndex].isSpec);
     gameState.currentPlayerIndex = nextIndex;
+	
+	updateGameInfo();
 }
 
 
@@ -3462,7 +3566,7 @@ function hexToRgba(hex, alpha = 1) {
 }
 
 
-
+// updateui update ui
 function updateGameInfo() {
     if (!gameState.gameStarted) return;
 
@@ -3509,12 +3613,14 @@ function updateGameInfo() {
 	// update scores for all players:
 	for(let i = 0; i < gameState.players.length; i++){
 		let playerMinesValue = document.getElementById(`gameStateValue-${gameState.players[i].id}`);
-		playerMinesValue.textContent = ": "+gameState.players[i].minesFound;
-		
-		let playerNameElem = document.getElementById(`gameStateName-${gameState.players[i].id}`);
-		playerNameElem.classList.remove("focusedPlayer");
-		if(gameState.currentPlayerIndex == i){
-			playerNameElem.classList.add("focusedPlayer");
+		if(playerMinesValue){
+			playerMinesValue.textContent = ": "+gameState.players[i].minesFound;
+			
+			let playerNameElem = document.getElementById(`gameStateName-${gameState.players[i].id}`);
+			playerNameElem.classList.remove("focusedPlayer");
+			if(gameState.currentPlayerIndex == i){
+				playerNameElem.classList.add("focusedPlayer");
+			}
 		}
 	}
 	
