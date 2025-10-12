@@ -13,7 +13,7 @@
 <script>
 //////////////////////////////////////////////
 //
-//  force local/public servers here for quick testing:
+//  force to public server here for quick testing:
 //
 //window.APP_CONFIG.LOCAL = false;
 </script>
@@ -3812,7 +3812,8 @@ function worldToScreen(wx, wy, viewport, canvas) {
 }
 
 
-function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize) {
+// draw circles pointers suuntimat
+function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize, pulse) {
 	ctx.save();
 
 	for (const playerId in gameState.lastMoves) {
@@ -3839,16 +3840,21 @@ function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize) {
 		if (y < 0) edgeY = 0;
 		if (y > canvas.height) edgeY = canvas.height;
 
+
+		let opacity = 1;
+		
 		// black edges for visibility:
 		ctx.beginPath();
-		ctx.arc(edgeX, edgeY, 20, 0, Math.PI * 2);
-		ctx.fillStyle = "rgba(0,0,0,1)";
+		ctx.arc(edgeX, edgeY, 25*pulse, 0, Math.PI * 2);
+		ctx.fillStyle = `rgba(0,0,0, ${opacity})`;
 		ctx.fill();
+		
+		drawCircle(ctx, 0, 0, edgeX, edgeY, 20*pulse, 3, `rgba(255,255,255, ${opacity})`);
 		
 		// draw with player color:
 		ctx.beginPath();
-		ctx.arc(edgeX, edgeY, 17, 0, Math.PI * 2);
-		ctx.fillStyle = hexToRgba(player.color, 1);
+		ctx.arc(edgeX, edgeY, 17*pulse, 0, Math.PI * 2);
+		ctx.fillStyle = hexToRgba(player.color, opacity);
 		ctx.fill();
 	}
 	
@@ -4083,7 +4089,7 @@ function draw() {
     ctx.restore();
 	
 	
-	drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize);
+	drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize, pulse*0.8);
 }
 
 
