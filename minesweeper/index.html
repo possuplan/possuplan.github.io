@@ -8,11 +8,30 @@
 
 <script src="riffwave.js"></script>
 <script src="sfxr.js"></script>
+<script src="config.js"></script> <!-- LOCAL=true on public, false on my pc config -->
+
+<script>
+//////////////////////////////////////////////
+//
+//  force local/public servers here for quick testing:
+//
+//window.APP_CONFIG.LOCAL = false;
+</script>
+
+
+
+
 <!--
 todo: 
-- lisää peerjs ilmoitukset näkyviin jos esim hostaus onnistui.
 
-- korjaa pommi: ei päivity pisteet.
+- lisää loader kun lataa hostin tekoa tai joinausta. todo: testaa toimiiko. showLoader hideLoader
+
+
+- lisää poistonappi pelaajille. varsinkin ai:lle jos vahingossa laittaa.
+
+
+- korjaa suuntima: peittyy chätin ym alle.
+  - tee canvas pienemmäksi jotenkin. yritin mutta vääntyy kuvasuhde...
 
 - tee lipuista heiluva animaatio rotaatiolla.
 - anna pelaajan valita oman pommin tyyli pelin alussa.
@@ -29,7 +48,46 @@ todo:
 - muokkaa warning äänen logiikkaa niin että se varoittaa kun vihollinen tarvitsee voittaakseen enää 6 tai alle miinoja?
 
 
+        /* --- START: Added Loader CSS --- */
+        #loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
 
+        .loader-spinner {
+            border: 8px solid var(--surface-color); 
+            border-top: 8px solid var(--primary-color); 
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* --- END: Added Loader CSS --- */
+    <div id="loader-overlay">
+        <div class="loader-spinner"></div>
+    </div>
+	
+	
+            // Fade out and then hide the loader
+            loaderOverlay.style.opacity = '0';
+            loaderOverlay.addEventListener('transitionend', () => {
+                loaderOverlay.style.display = 'none';
+            }, { once: true }); // 'once' ensures the event listener is removed after firing
+            // --- END: Added logic to hide loader ---
 
 - tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
 
@@ -55,6 +113,41 @@ todo:
 }
 
 
+/* --- START: Added Loader CSS --- */
+
+#loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+	background-color: rgba(0,0,0, 0.6);
+    display: none;
+	flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.loader-spinner {
+	border: 8px solid #0a0d0a; 
+	border-top: 8px solid #0a84ff; 
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+
+
+/* --- END: Added Loader CSS --- */
 
 </style>
 <style>
@@ -211,6 +304,8 @@ button.secondary {
 	background-color: #000;
 	width: 100%;
 	height: 100%;
+	---position:absolute;
+	---top:77px;
 }
 
 #game-info {
@@ -552,7 +647,11 @@ button.secondary {
 </head>
 <body>
 
-
+    <div id="loader-overlay">
+        <div class="loader-spinner"></div>
+		<div>Loading...</div>
+    </div>
+	
     <div id="home-screen" class="screen active">
         <h1>Wi-Fi Minesweeper</h1>
         <div class="input-group">
@@ -1325,11 +1424,28 @@ const totalMinesInput = document.getElementById('total-mines-input');
 const totalBombsInput = document.getElementById('total-bombs-input');
 const bombRadiusInput = document.getElementById('bomb-radius-input');
 
+const loaderOverlay = document.getElementById('loader-overlay'); 
+
+// Show the loader
+function showLoader() {
+    loaderOverlay.style.display = 'flex';
+	loaderOverlay.style.opacity = '1';
+}
+
+// Hide the loader
+function hideLoader() {
+	loaderOverlay.style.display = 'none';
+	loaderOverlay.style.opacity = '0';
+}
+
+
 
 const gameInfo = document.getElementById('game-status');
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+
+
 
 const chatMessages = document.getElementById("chatMessages");
 const gameStateList = document.getElementById("game-state-list");
@@ -2161,6 +2277,7 @@ function setupConnection(conn, hostSide) {
 	let hostStr = hostSide ? "(HOST)" : "(peer)";
 	
     conn.on('open', () => {
+		hideLoader();
         console.log(`${hostStr} > conn.on('open'): Connected to ${conn.peer}`);
         connections[conn.peer] = conn;
 
@@ -2171,11 +2288,13 @@ function setupConnection(conn, hostSide) {
     });
 
     conn.on('data', data => {
+		//hideLoader();
 		console.log(`${hostStr} > conn.on('data'): setupConnection: (${localPlayer.id}) ${conn.peer}`);
 		console.log(data);
 		handleMessage(data, conn.peer);
 	});
     conn.on('close', () => {
+		hideLoader();
         console.log(`${hostStr} > conn.on('close'): Connection closed with ${conn.peer}`);
         delete connections[conn.peer];
         if (isHost) {
@@ -2188,15 +2307,31 @@ function setupConnection(conn, hostSide) {
 }
 
 
+
+
 function initializePeer(hostSide, peerId = null) {
 	let hostStr = hostSide ? "(HOST)" : "(peer)";
 	
     myPeerId = peerId || 'tictactoe-' + Math.random().toString(36).substr(2, 23);
     localPlayer.id = myPeerId;
 
-    peer = new Peer(myPeerId, { debug: 2 }); // use debug 3 to see more.
+	if(window.APP_CONFIG.LOCAL){
+		peer = new Peer(myPeerId, {
+			host: 'localhost',
+			port: 9000,
+			path: '/',
+			secure: false,
+			debug: 2,
+		});
+	}else{
+		peer = new Peer(myPeerId, { debug: 2 }); // use debug 3 to see more.
+	}
+
+
+
 
     peer.on('open', id => {
+		hideLoader();
 		console.log(`${hostStr} > peer.on('open')`);
         console.log('initializePeer: My peer ID is: ' + id);
 		console.log("current gameState:");
@@ -2204,11 +2339,13 @@ function initializePeer(hostSide, peerId = null) {
     });
 
     peer.on('connection', conn => {
+		//hideLoader();
 		console.log(`${hostStr} > peer.on('connection')`);
         setupConnection(conn, hostSide);
     });
 
     peer.on('error', err => {
+		hideLoader();
 		console.log(`${hostStr} > peer.on('error')`);
         console.error("PeerJS Error:", err);
         homeError.textContent = `Error: ${err.message}. Try a different Game Name.`;
@@ -2231,6 +2368,8 @@ function hostGame() {
     isHost = true;
     hostBtn.disabled = true;
     joinBtn.disabled = true;
+	
+	showLoader();
 	
     initializePeer(true, gameName); 
 
@@ -2270,6 +2409,8 @@ function joinGame() {
     hostBtn.disabled = true;
     joinBtn.disabled = true;
 	
+	showLoader();
+	
     initializePeer(false);
 
 
@@ -2279,6 +2420,7 @@ function joinGame() {
         if(conn) {
             setupConnection(conn, false);
         } else {
+			hideLoader();
             homeError.textContent = "Could not connect to host. Check Game Name.";
             hostBtn.disabled = false;
             joinBtn.disabled = false;
@@ -2305,6 +2447,8 @@ function joinAsSpectator() {
     joinBtn.disabled = true;
     joinSpectatorBtn.disabled = true;
 	
+	showLoader();
+
     initializePeer(false);
 
     setTimeout(() => { 
@@ -2313,6 +2457,7 @@ function joinAsSpectator() {
         if(conn) {
             setupConnection(conn, false);
         } else {
+			hideLoader();
             homeError.textContent = "Could not connect to host. Check Game Name.";
             hostBtn.disabled = false;
             joinBtn.disabled = false;
@@ -2872,7 +3017,7 @@ function advanceToNextPlayer() {
 
 function add_log(move){
 	gameState.history.push(move);
-	console.log(gameState.history);
+	//console.log(gameState.history);
 }
 
 
@@ -3276,6 +3421,8 @@ function updateGameInfo() {
     if (!gameState.gameStarted) return;
 
 	const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+	
+	createGameStateElements();
 
     if (gameState.gameOver) {
 
@@ -3300,15 +3447,7 @@ function updateGameInfo() {
         }
 		
 		addRestartMessage();
-		
-		for(let i = 0; i < gameState.players.length; i++){
-			let playerMinesValue = document.getElementById(`gameStateValue-${gameState.players[i].id}`);
-			playerMinesValue.textContent = ": "+gameState.players[i].minesFound;
-		}
-		
-		let remainingMinesValue = document.getElementById(`gameStateValue-mines`);
-		remainingMinesValue.textContent = ": "+gameState.minesRemaining;
-		
+
     } else {
 		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.color, 0.6);
 		let turnText = "";
@@ -3318,15 +3457,17 @@ function updateGameInfo() {
 			turnText = `${currentPlayer.name}'s Turn`;
 		}
         gameInfo.textContent = `${turnText}`;
-		
-		createGameStateElements();
-		
-		let playerMinesValue = document.getElementById(`gameStateValue-${currentPlayer.id}`);
-		playerMinesValue.textContent = ": "+gameState.players[gameState.currentPlayerIndex].minesFound;
-		
-		let remainingMinesValue = document.getElementById(`gameStateValue-mines`);
-		remainingMinesValue.textContent = ": "+gameState.minesRemaining;
     }
+	
+	
+	// update scores for all players:
+	for(let i = 0; i < gameState.players.length; i++){
+		let playerMinesValue = document.getElementById(`gameStateValue-${gameState.players[i].id}`);
+		playerMinesValue.textContent = ": "+gameState.players[i].minesFound;
+	}
+	
+	let remainingMinesValue = document.getElementById(`gameStateValue-mines`);
+	remainingMinesValue.textContent = ": "+gameState.minesRemaining;
 }
 
 
@@ -4022,13 +4163,43 @@ function drawCorners(ctx, x, y, cellSize, color, scale = 1) {
 
 
 
+function adjustCanvasSize() {
+ const chat = document.getElementById('chat');
+  const canvas = document.getElementById('game-canvas');
+
+  // get height of chat box
+  const chatHeight = chat.offsetHeight;
+
+  // move canvas below it
+  canvas.style.top = chatHeight + 'px';
+
+  // set canvas display size
+  canvas.style.height = (window.innerHeight - chatHeight) + 'px';
+  canvas.style.width = '100%';
+
+  // match internal pixel size (this fixes stretching)
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+//window.addEventListener('load', adjustCanvasSize);
+
+
 
 function resizeCanvas() {
+
+
+
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+	
+	//adjustCanvasSize();
+
+	
     if (gameState.gameStarted) {
         draw();
     }
+	
+	
 }
 
 
@@ -4208,6 +4379,11 @@ joinSpectatorBtn.addEventListener('click', joinAsSpectator);
 startGameBtn.addEventListener('click', startGame);
 //changeSymbolBtn.addEventListener('click', attemptSetSymbol);
 window.addEventListener('resize', resizeCanvas);
+
+
+
+
+
 
 customSymbolInput.addEventListener('input', attemptSetSymbol);
 
