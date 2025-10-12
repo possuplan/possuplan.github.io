@@ -15,7 +15,7 @@
 //
 //  force to public server here for quick testing:
 //
-//window.APP_CONFIG.LOCAL = false;
+//window.APP_CONFIG.LOCAL = false; // this is true on my pc by default. on release version false.
 </script>
 
 
@@ -23,9 +23,6 @@
 
 <!--
 todo: 
-
-- lisää loader kun lataa hostin tekoa tai joinausta. todo: testaa toimiiko. showLoader hideLoader
-
 
 - lisää poistonappi pelaajille. varsinkin ai:lle jos vahingossa laittaa.
 
@@ -48,46 +45,6 @@ todo:
 - muokkaa warning äänen logiikkaa niin että se varoittaa kun vihollinen tarvitsee voittaakseen enää 6 tai alle miinoja?
 
 
-        /* --- START: Added Loader CSS --- */
-        #loader-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
-        }
-
-        .loader-spinner {
-            border: 8px solid var(--surface-color); 
-            border-top: 8px solid var(--primary-color); 
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* --- END: Added Loader CSS --- */
-    <div id="loader-overlay">
-        <div class="loader-spinner"></div>
-    </div>
-	
-	
-            // Fade out and then hide the loader
-            loaderOverlay.style.opacity = '0';
-            loaderOverlay.addEventListener('transitionend', () => {
-                loaderOverlay.style.display = 'none';
-            }, { once: true }); // 'once' ensures the event listener is removed after firing
-            // --- END: Added logic to hide loader ---
 
 - tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
 
@@ -2208,7 +2165,7 @@ function updateGameUI() {
     if (gameState.gameStarted) {
         updateGameInfo();
         draw();
-		console.log("updateGameUI draw()");
+		console.log("updateGameUI draw");
     }
 }
 
@@ -3812,13 +3769,18 @@ function worldToScreen(wx, wy, viewport, canvas) {
 }
 
 
-// draw circles pointers suuntimat
+// draw circles pointers suuntimat drawoverlay
 function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize, pulse) {
 	ctx.save();
 
 	for (const playerId in gameState.lastMoves) {
 		const move = gameState.lastMoves[playerId];
 		let player = getPlayerById(playerId);
+		
+		// dont show your own move pointer.
+		if(playerId == localPlayer.id){
+			continue;
+		}
 	
 		let worldX = offsetX + move.x*cellSize + cellSize/2;
 		let worldY = offsetY + move.y*cellSize + cellSize/2;
@@ -4054,7 +4016,7 @@ function draw() {
 		let player = getPlayerById(playerId);
 		drawCorners(ctx, 
 			offsetX+move.x*cellSize, 
-			offsetY+move.y*cellSize, cellSize, hexToRgba(player.color, 0.8), pulse*1.1
+			offsetY+move.y*cellSize, cellSize, player.color, pulse*0.9
 		);
 		
 		/*
@@ -4135,35 +4097,66 @@ function drawCorners(ctx, x, y, cellSize, color, scale = 1) {
 	const half = cellSize / 2;
 
 	ctx.save();
-	ctx.translate(x + half, y + half); // move origin to center
-	ctx.scale(scale, scale);           // scale relative to center
-	ctx.translate(-half, -half);       // move back
+	
+		ctx.translate(x + half, y + half); // move origin to center
+		ctx.scale(scale, scale);           // scale relative to center
+		ctx.translate(-half, -half);       // move back
 
-	ctx.strokeStyle = color;
-	ctx.lineWidth = lineWidth;
-	ctx.beginPath();
+		ctx.strokeStyle = "rgba(0,0,0, 1)";
+		ctx.lineWidth = lineWidth+2;
+		
+		ctx.beginPath();
 
-	// Top-left corner
-	ctx.moveTo(0, len);
-	ctx.lineTo(0, 0);
-	ctx.lineTo(len, 0);
+			// Top-left corner
+			ctx.moveTo(0, len);
+			ctx.lineTo(0, 0);
+			ctx.lineTo(len, 0);
 
-	// Top-right corner
-	ctx.moveTo(cellSize - len, 0);
-	ctx.lineTo(cellSize, 0);
-	ctx.lineTo(cellSize, len);
+			// Top-right corner
+			ctx.moveTo(cellSize - len, 0);
+			ctx.lineTo(cellSize, 0);
+			ctx.lineTo(cellSize, len);
 
-	// Bottom-right corner
-	ctx.moveTo(cellSize, cellSize - len);
-	ctx.lineTo(cellSize, cellSize);
-	ctx.lineTo(cellSize - len, cellSize);
+			// Bottom-right corner
+			ctx.moveTo(cellSize, cellSize - len);
+			ctx.lineTo(cellSize, cellSize);
+			ctx.lineTo(cellSize - len, cellSize);
 
-	// Bottom-left corner
-	ctx.moveTo(len, cellSize);
-	ctx.lineTo(0, cellSize);
-	ctx.lineTo(0, cellSize - len);
+			// Bottom-left corner
+			ctx.moveTo(len, cellSize);
+			ctx.lineTo(0, cellSize);
+			ctx.lineTo(0, cellSize - len);
 
-	ctx.stroke();
+		ctx.stroke();
+	
+	
+		ctx.strokeStyle = hexToRgba(color, 1);
+		ctx.lineWidth = lineWidth;
+		
+		ctx.beginPath();
+
+			// Top-left corner
+			ctx.moveTo(0, len);
+			ctx.lineTo(0, 0);
+			ctx.lineTo(len, 0);
+
+			// Top-right corner
+			ctx.moveTo(cellSize - len, 0);
+			ctx.lineTo(cellSize, 0);
+			ctx.lineTo(cellSize, len);
+
+			// Bottom-right corner
+			ctx.moveTo(cellSize, cellSize - len);
+			ctx.lineTo(cellSize, cellSize);
+			ctx.lineTo(cellSize - len, cellSize);
+
+			// Bottom-left corner
+			ctx.moveTo(len, cellSize);
+			ctx.lineTo(0, cellSize);
+			ctx.lineTo(0, cellSize - len);
+
+		ctx.stroke();
+		
 	ctx.restore();
 }
 
