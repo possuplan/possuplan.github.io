@@ -24,6 +24,7 @@
 <!--
 todo: 
 
+- lisää mahdollisuus valita oma väri ennen aloitusta. huom: tsekkaa ettei väri ole jo käytössä.
 - lisää poistonappi pelaajille. varsinkin ai:lle jos vahingossa laittaa.
 
 
@@ -47,6 +48,18 @@ todo:
 
 
 - tee sieniversio missä vältellään tappavan myrkyllisiä sieniä. siinä voisi kävellä metsässä ja kokeilla "kaivaa" jolloin se kertoo kuinka monta myrkkysientä on lähellä. tai sit niin että etitään kaikkia sieniä, mutta pitää osata välttää myrkkysieniä, ja sit puuston ja maaston perusteella voi mennä löytämään tiettyjä sieniä. ja sit pitää tehä ruokaa niistä että jaksaa etsiä lisää sieniä.
+
+
+
+
+
+changelog:
+
+12.10.2025
+- suuntimat animoitu ja laitettu valkoinen raita.
+- viimeinen siirto muokattu: musta reunus ja pienempi animaatio.
+- lipun värit korjattu: mätsää pelaajan värin kanssa. oli hardkoodattu aina tiettyyn pelaajaindeksiin. ei toiminut jos spec oli mukana ja lisätty sitten uusi pelaaja.
+
 
 -->
 <style>
@@ -1444,7 +1457,7 @@ addAiBtn.addEventListener('click', () => {
         isAI: true,
 		isSpec: false,
 		firstMove: true,
-        color: newPlayerColor(),
+        colors: newPlayerColor(),
         minesFound: 0,
         bombsUsed: 0,
     };
@@ -2149,7 +2162,7 @@ function updateLobbyUI() {
         const li = document.createElement('li');
         const displayName = p.isSpec ? `${p.name} (Spectator)` : p.name;
 		const safeName = document.createTextNode(displayName);
-		li.innerHTML = `<span style="color:${p.color}"></span>`;
+		li.innerHTML = `<span style="color:${p.colors.color}"></span>`;
 		li.querySelector("span").appendChild(safeName);
         playerList.appendChild(li);
     });
@@ -2175,21 +2188,21 @@ function updateGameUI() {
 
 
 const playerColors = [
-	"#e6194B", // red
-	"#4363d8", // blue
-	"#ffe119", // yellow
-	"#3cb44b", // dark green
-	"#f58231", // orange
-	"#911eb4", // purple
-	"#42d4f4", // cyan
-	"#f032e6", // magenta
-	"#bfef45", // lime
-	"#469990", // teal
-	"#9A6324", // brown
-	"#808000", // olive
-	"#000075", // navy
-	"#a9a9a9", // gray
-	"#555588"  // grayis blue
+	{color: "#e6194B", flag: "red"}, // red
+	{color: "#4363d8", flag: "blue"}, // blue
+	{color: "#ffe119", flag: "yellow"}, // yellow
+	{color: "#3cb44b", flag: "green"}, // dark green
+	{color: "#f58231", flag: "gray"}, // orange
+	{color: "#911eb4", flag: "gray"}, // purple
+	{color: "#42d4f4", flag: "gray"}, // cyan
+	{color: "#f032e6", flag: "gray"}, // magenta
+	{color: "#bfef45", flag: "gray"}, // lime
+	{color: "#469990", flag: "gray"}, // teal
+	{color: "#9A6324", flag: "gray"}, // brown
+	{color: "#808000", flag: "gray"}, // olive
+	{color: "#000075", flag: "gray"}, // navy
+	{color: "#a9a9a9", flag: "gray"}, // gray
+	{color: "#555588", flag: "gray"},  // grayis blue
 ];
 
 let playerColorCounter = 0;
@@ -2197,12 +2210,13 @@ let playerColorCounter = 0;
 function nextFreeColor(){
 	let found_free_color = 0;
 	let free_color = "#123456";
+	let colors_obj = {};
 	for(let i = 0; i < playerColors.length; i++){
-		let color = playerColors[i];
+		let color = playerColors[i].color;
 		// check if any player has this color already:
 		let found = 0;
 		for(let p = 0; p < gameState.players.length; p++){
-			let player_color = gameState.players[p].color;
+			let player_color = gameState.players[p].colors.color;
 			if(player_color == color){
 				found = 1;
 				break;
@@ -2211,19 +2225,25 @@ function nextFreeColor(){
 		if(!found){
 			found_free_color = 1;
 			free_color = color;
+			colors_obj = playerColors[i];
 			break;
 		}
 	}
 	if(found_free_color){
-		return free_color;
+		return colors_obj;
 	}else{
 		// if all colors are taken, cycle by player count:
 		return playerColors[gameState.players.length % playerColors.length];
 	}
 }
 
+
+// playerColors array contains all colors
+let specColors = {color: '#FFFFFF', flag: "pirate"}; // pirate = not found / spec
+
 function newPlayerColor(isSpec = false){
-	return isSpec ? '#FFFFFF' : nextFreeColor();
+	// specs doesnt actually need flag but using it anyway
+	return isSpec ? specColors : nextFreeColor();
 }
 
 
@@ -2334,7 +2354,7 @@ function hostGame() {
     peer.on('open', id => {
 		localPlayer.symbol = PREDEFINED_SYMBOLS[0];
 		localPlayer.isReady = true;
-		localPlayer.color = newPlayerColor();
+		localPlayer.colors = newPlayerColor();
 		localPlayer.minesFound = 0;
 		localPlayer.bombsUsed = 0;
 		localPlayer.isAI = false;
@@ -2605,7 +2625,7 @@ function handleMessage(data, peerId) {
                 const nextSymbol = PREDEFINED_SYMBOLS.find(s => !usedSymbols.includes(s));
                 newPlayer.symbol = nextSymbol || '';
 				
-				newPlayer.color = newPlayerColor(newPlayer.isSpec);
+				newPlayer.colors = newPlayerColor(newPlayer.isSpec);
 				newPlayer.minesFound = 0;
 				newPlayer.bombsUsed = 0;
 				newPlayer.isAI = false;
@@ -2642,7 +2662,7 @@ function handleMessage(data, peerId) {
 					
 
 					gameState.players[playerIndex].isSpec = isSpec;
-					gameState.players[playerIndex].color = newPlayerColor(isSpec);
+					gameState.players[playerIndex].colors = newPlayerColor(isSpec);
 
 					broadcast({ type: 'game_state', state: gameState });
 					updateLobbyUI();
@@ -2722,7 +2742,7 @@ function addChatMessage(playerId, text) {
 
 	// Player name in color
 	const nameSpan = document.createElement("span");
-	nameSpan.style.color = player.color;
+	nameSpan.style.color = player.colors.color;
 	nameSpan.textContent = player.name; // safe
 
 	div.appendChild(nameSpan);
@@ -2814,7 +2834,7 @@ function attemptSetSpec() {
 
     let updatedPlayer = { ...localPlayer, 
 		isSpec: isSpec, 
-		color: newPlayerColor(isSpec),
+		colors: newPlayerColor(isSpec),
 	};
     
     const payload = { type: 'player_update_spec', player: updatedPlayer };
@@ -2824,7 +2844,7 @@ function attemptSetSpec() {
         const playerIndex = gameState.players.findIndex(p => p.id === localPlayer.id);
         if (playerIndex > -1) {
 			gameState.players[playerIndex].isSpec = isSpec;
-			gameState.players[playerIndex].color = newPlayerColor(isSpec);
+			gameState.players[playerIndex].colors = newPlayerColor(isSpec);
 
 			broadcast({ type: 'game_state', state: gameState });
 			console.log("set spec: "+isSpec);
@@ -2868,7 +2888,7 @@ function createGameStateElements(){
 	if(!document.getElementById(`gameStateValue-mines`)){
 		addGameStateElement("mines", "white", "Remaining", `: ${gameState.totalMines}`);
 		for(let i = 0; i < gameState.players.length; i++){
-			addGameStateElement(gameState.players[i].id, gameState.players[i].color, gameState.players[i].name, ": 0");
+			addGameStateElement(gameState.players[i].id, gameState.players[i].colors.color, gameState.players[i].name, ": 0");
 		}
 		gameStateList.scrollTop = gameStateList.scrollHeight;
 	}
@@ -3384,7 +3404,7 @@ function updateGameInfo() {
     if (gameState.gameOver) {
 
         if (gameState.winner) {
-			gameInfo.style.backgroundColor = hexToRgba(gameState.winner.color, 0.6);
+			gameInfo.style.backgroundColor = hexToRgba(gameState.winner.colors.color, 0.6);
 			
 			if(gameState.winner.id === localPlayer.id){
 				gameInfo.textContent = `You won the game!`;
@@ -3406,7 +3426,7 @@ function updateGameInfo() {
 		addRestartMessage();
 
     } else {
-		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.color, 0.6);
+		gameInfo.style.backgroundColor = hexToRgba(currentPlayer.colors.color, 0.6);
 		let turnText = "";
 		if(currentPlayer.id === localPlayer.id){
 			turnText = "Your Turn";
@@ -3595,6 +3615,11 @@ const img_flag_yellow = new Image();
 img_flag_yellow.src = "images/yellow1.png";
 const img_flag_green = new Image();
 img_flag_green.src = "images/green1.png";
+const img_flag_gray = new Image();
+img_flag_gray.src = "images/gray.png";
+
+const img_flag_pirate = new Image();
+img_flag_pirate.src = "images/pirate.png";
 
 /*
 const img_flag_red = new Image();
@@ -3634,6 +3659,8 @@ let images = {
 		blue: img_flag_blue,
 		yellow: img_flag_yellow,
 		green: img_flag_green,
+		gray: img_flag_gray,
+		pirate: img_flag_pirate,
 	},
 	mine: img_mine,
 	cursor: img_cursor,
@@ -3816,7 +3843,7 @@ function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize, pulse) {
 		// draw with player color:
 		ctx.beginPath();
 		ctx.arc(edgeX, edgeY, 17*pulse, 0, Math.PI * 2);
-		ctx.fillStyle = hexToRgba(player.color, opacity);
+		ctx.fillStyle = hexToRgba(player.colors.color, opacity);
 		ctx.fill();
 	}
 	
@@ -3824,6 +3851,36 @@ function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize, pulse) {
 }
 
 
+
+
+function draw_flag(ctx, mapcell, animcell, offsetX, offsetY, x, y, cellSize, scale){
+	if(gameState.players[mapcell.owner]){
+		let playerFlag = gameState.players[mapcell.owner].colors.flag;
+		if(images.flag[playerFlag]){
+			drawImage(ctx, images.flag[playerFlag], offsetX, offsetY, x, y, cellSize, scale);
+		}else{
+			// pirate = not found
+			drawImage(ctx, images.flag["pirate"], offsetX, offsetY, x, y, cellSize, scale);
+		}
+	}else{
+		// pirate = not found
+		drawImage(ctx, images.flag["pirate"], offsetX, offsetY, x, y, cellSize, scale);
+	}
+	
+	/*
+	// todo: fix flag colors, will rely on player index, they can differ when specs added etc.
+	if(mapcell.owner == 0){
+		drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize, scale);
+	}else if(mapcell.owner == 1){
+		drawImage(ctx, images.flag.blue, offsetX, offsetY, x, y, cellSize, scale);
+	}else if(mapcell.owner == 2){
+		drawImage(ctx, images.flag.yellow, offsetX, offsetY, x, y, cellSize, scale);
+	}else{
+		// rest of the players have same flag color:
+		drawImage(ctx, images.flag.green, offsetX, offsetY, x, y, cellSize, scale);
+	}
+	*/
+}
 
 
 
@@ -3908,16 +3965,11 @@ function draw() {
 						//drawImage(ctx, images.water[mapcell.waternum%3], offsetX, offsetY, x, y, cellSize);
 						draw_water_tile(ctx, mapcell, offsetX, offsetY, x, y, cellSize);
 						
-						if(mapcell.owner == 0){
-							drawImage(ctx, images.flag.red, offsetX, offsetY, x, y, cellSize, scale);
-						}else if(mapcell.owner == 1){
-							drawImage(ctx, images.flag.blue, offsetX, offsetY, x, y, cellSize, scale);
-						}else if(mapcell.owner == 2){
-							drawImage(ctx, images.flag.yellow, offsetX, offsetY, x, y, cellSize, scale);
-						}else{
-							// rest of the players have same flag color:
-							drawImage(ctx, images.flag.green, offsetX, offsetY, x, y, cellSize, scale);
-						}
+						
+						draw_flag(ctx, mapcell, animcell, offsetX, offsetY, x, y, cellSize, scale);
+						
+						
+		
 					}
 
 				}else{
@@ -4016,7 +4068,7 @@ function draw() {
 		let player = getPlayerById(playerId);
 		drawCorners(ctx, 
 			offsetX+move.x*cellSize, 
-			offsetY+move.y*cellSize, cellSize, player.color, pulse*0.9
+			offsetY+move.y*cellSize, cellSize, player.colors.color, pulse*0.9
 		);
 		
 		/*
@@ -4034,7 +4086,7 @@ function draw() {
 			);
 			drawCircle(ctx, offsetX, offsetY, 
 				move.x*cellSize+cellSize/2, 
-				move.y*cellSize+cellSize/2, maxsize*pulse2, 3, hexToRgba(player.color, 1)
+				move.y*cellSize+cellSize/2, maxsize*pulse2, 3, hexToRgba(player.colors.color, 1)
 			);
 		}*/
 
