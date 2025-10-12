@@ -23,7 +23,8 @@
 
 <!--
 todo: 
-
+- jos pelaaja quittaa niin anna pelin jatkua.
+- jos joinaa jo aloitettuun peliin niin vaihda joinaaja automaattisesti spectaattoriksi.
 - lisää mahdollisuus valita oma väri ennen aloitusta. huom: tsekkaa ettei väri ole jo käytössä.
 - lisää poistonappi pelaajille. varsinkin ai:lle jos vahingossa laittaa.
 
@@ -56,9 +57,12 @@ todo:
 changelog:
 
 12.10.2025
+- lisätty quittausviesti chättiin jos pelaaja quittaa.
+- korjattu quittaus: tunnistaa quittauksen sivua suljettaessa ja laittaa pelaajan spectaattoriksi ja poistaa suuntimat ja viimeisen siirron merkin.
 - suuntimat animoitu ja laitettu valkoinen raita.
 - viimeinen siirto muokattu: musta reunus ja pienempi animaatio.
 - lipun värit korjattu: mätsää pelaajan värin kanssa. oli hardkoodattu aina tiettyyn pelaajaindeksiin. ei toiminut jos spec oli mukana ja lisätty sitten uusi pelaaja.
+- harmaa lippu ja pirate lippu lisätty. 
 
 
 -->
@@ -407,6 +411,9 @@ button.secondary {
 }
 
 
+.focusedPlayer {
+	border-bottom:1px dashed;
+}
 
 #chatInput {
 	width: 65px;           /* fixed sizes */
@@ -2158,7 +2165,7 @@ function updateLobbyUI() {
     }
 
     playerList.innerHTML = '';
-    gameState.players.forEach(p => {
+    gameState.players.forEach((p, playerIndex) => {
         const li = document.createElement('li');
         const displayName = p.isSpec ? `${p.name} (Spectator)` : p.name;
 		const safeName = document.createTextNode(displayName);
@@ -2245,8 +2252,67 @@ function newPlayerColor(isSpec = false){
 	// specs doesnt actually need flag but using it anyway
 	return isSpec ? specColors : nextFreeColor();
 }
+/*
+window.addEventListener('beforeunload', (e) => {
+  e.preventDefault(); // Required in some browsers
+  e.returnValue = 'sure?'; // Chrome shows default confirmation
+
+  if (conn && conn.open) {
+    conn.send({ type: 'disconnect' });
+    conn.close();
+  }
+  if (peer && !peer.destroyed) {
+    peer.destroy();
+  }
+});
+*/
+
+window.addEventListener('beforeunload', () => {
+
+  if (peer && !peer.destroyed) {
+    peer.destroy(); // closes local peer connection
+  }
+
+  // Notify your server immediately
+  navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
+});
 
 
+function remove_player(peer, hostSide){
+	let hostStr = hostSide ? "(HOST)" : "(peer)";
+	
+	delete connections[peer];
+	if (isHost) {
+		//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
+		// set disconnected players as spectators so game can continue:
+		// todo: or make them into AI's...?
+		let removed_player_index = -1;
+		let removed_player = null;
+		for(let i = 0; i < gameState.players.length; i++){
+			let player = gameState.players[i];
+			if(player.id === peer){
+				player.isSpec = true;
+				removed_player_index = i;
+				removed_player = player;
+				break;
+			}
+		}
+		if(removed_player_index != -1){
+			// let others play if quitter was in turn:
+			if(removed_player_index == gameState.currentPlayerIndex){
+				advanceToNextPlayer();
+				checkForAITurn(); // start AI turn if it is his turn.
+			}
+			
+			addChatMessage(`Player "${removed_player.name}" has left the game.`);
+		}
+		
+		
+		console.log(`${hostStr} sent game_state:`);
+		broadcast({ type: 'game_state', state: gameState });
+		updateLobbyUI(); // Host updates its own view
+	}
+}
 
 // ---------- NETWORKING (PeerJS) ---------- //
 
@@ -2270,16 +2336,15 @@ function setupConnection(conn, hostSide) {
 		console.log(data);
 		handleMessage(data, conn.peer);
 	});
+	peer.on('disconnect', () => {
+        console.log(`${hostStr} > conn.on('disconnect'): disconnected with ${conn.peer}`);
+		remove_player(conn.peer, hostSide);
+	});
+
     conn.on('close', () => {
 		hideLoader();
         console.log(`${hostStr} > conn.on('close'): Connection closed with ${conn.peer}`);
-        delete connections[conn.peer];
-        if (isHost) {
-            gameState.players = gameState.players.filter(p => p.id !== conn.peer);
-			console.log(`${hostStr} sent game_state:`);
-            broadcast({ type: 'game_state', state: gameState });
-            updateLobbyUI(); // Host updates its own view
-        }
+		remove_player(conn.peer, hostSide);
     });
 }
 
@@ -2689,7 +2754,7 @@ function handleMessage(data, peerId) {
 			}
 
 			// Show the message (all peers including host)
-			addChatMessage(data.playerId, data.text);
+			addChatMessage(data.text, data.playerId);
 			break;
     }
 }
@@ -2716,10 +2781,10 @@ function sendChatMessage() {
   if (isHost) {
     // Host only needs to broadcast, not handleMessage directly
     broadcast(msg);
-    addChatMessage(msg.playerId, msg.text); // add to host UI only
+    addChatMessage(msg.text, msg.playerId); // add to host UI only
   } else {
     sendToHost(msg);
-    //addChatMessage(msg.playerId, msg.text); // add immediately for sender
+    //addChatMessage(msg.text, msg.playerId); // add immediately for sender
   }
 
   chatInput.value = "";
@@ -2734,22 +2799,25 @@ function getPlayerById(id, myArray = null) {
 }
 
 
-function addChatMessage(playerId, text) {
-
-	let player = getPlayerById(playerId);
-
+function addChatMessage(text, playerId = null) {
 	const div = document.createElement("div");
 
-	// Player name in color
-	const nameSpan = document.createElement("span");
-	nameSpan.style.color = player.colors.color;
-	nameSpan.textContent = player.name; // safe
+	if(playerId){
+		let player = getPlayerById(playerId);
 
-	div.appendChild(nameSpan);
 
-	// Colon + message
-	div.appendChild(document.createTextNode(": " + text));
+		// Player name in color
+		const nameSpan = document.createElement("span");
+		nameSpan.style.color = player.colors.color;
+		nameSpan.textContent = player.name; // safe
 
+		div.appendChild(nameSpan);
+
+		// Colon + message
+		div.appendChild(document.createTextNode(": " + text));
+	}else{
+		div.appendChild(document.createTextNode(text));
+	}
 	chatMessages.appendChild(div);
 
 
@@ -2866,7 +2934,8 @@ function addGameStateElement(playerId, playerColor, playerName, text) {
 	const nameSpan = document.createElement("span");
 	nameSpan.style.color = playerColor;
 	nameSpan.textContent = playerName;
-
+	nameSpan.id = `gameStateName-${playerId}`;
+	
 	// Colon + message in white
 	const textSpan = document.createElement("span");
 	textSpan.style.color = "white";
@@ -3441,10 +3510,18 @@ function updateGameInfo() {
 	for(let i = 0; i < gameState.players.length; i++){
 		let playerMinesValue = document.getElementById(`gameStateValue-${gameState.players[i].id}`);
 		playerMinesValue.textContent = ": "+gameState.players[i].minesFound;
+		
+		let playerNameElem = document.getElementById(`gameStateName-${gameState.players[i].id}`);
+		playerNameElem.classList.remove("focusedPlayer");
+		if(gameState.currentPlayerIndex == i){
+			playerNameElem.classList.add("focusedPlayer");
+		}
 	}
 	
 	let remainingMinesValue = document.getElementById(`gameStateValue-mines`);
 	remainingMinesValue.textContent = ": "+gameState.minesRemaining;
+	
+	
 }
 
 
@@ -3808,6 +3885,10 @@ function drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize, pulse) {
 		if(playerId == localPlayer.id){
 			continue;
 		}
+		// dont show for quitters (set as specs)
+		if(player.isSpec){
+			continue;
+		}
 	
 		let worldX = offsetX + move.x*cellSize + cellSize/2;
 		let worldY = offsetY + move.y*cellSize + cellSize/2;
@@ -4066,10 +4147,13 @@ function draw() {
 	for (const playerId in gameState.lastMoves) {
 		const move = gameState.lastMoves[playerId];
 		let player = getPlayerById(playerId);
-		drawCorners(ctx, 
-			offsetX+move.x*cellSize, 
-			offsetY+move.y*cellSize, cellSize, player.colors.color, pulse*0.9
-		);
+		// dont show for quitters: (set as specs)
+		if(!player.isSpec){
+			drawCorners(ctx, 
+				offsetX+move.x*cellSize, 
+				offsetY+move.y*cellSize, cellSize, player.colors.color, pulse*0.9
+			);
+		}
 		
 		/*
 		if(!gameState.gameOver && player.id !== localPlayer.id){
