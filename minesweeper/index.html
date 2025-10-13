@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Wi-Fi Minesweeper</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/noisejs@2.1.0/index.min.js"></script>
+
 
 <script src="riffwave.js"></script>
 <script src="sfxr.js"></script>
@@ -23,6 +25,15 @@
 
 <!--
 todo: 
+- lisää ohjeisiin kuvituskuvia.
+- yksinpeluun tarkistus ei toimi jos joku pelaaja joinas huoneeseen ja sitten lähti pois. tarkista jo olemassaolevalla funktiolla kuinka monta non-spec pelaajaa on.
+- tee random muotoja karttaan: lisää mustia ruutuja johon ei voi klikata ja jossa ei ole miinoja.
+- korjaa help selkeämmäksi pommin säännöt: ei voi laittaa jos on jo tehnyt siirron, jos ei ole johdossa niin voi laittaa.
+- jatka: console.warn(`id:${player.id} ==? peerid:${peer} - quitted: ${player.quitted}`);
+  timed out viestit eivät mene läpi mutta kyllä loggaa ne.
+- jos hosti quittaa niin ilmoita pelaajille: tee jokin pingi hostia varten myös.
+
+- timeout ei taida toimia ollenkaan.
 - päivitä pelaajalista jos joku quittaa tai muuttuu spectaattoriksi.
 - timeout ei ehkä toimi kunnolla, spämmäsi joskus sitä viestiä. kokeilin korjata player.quitted arvolla ettei yritä poistaa uudestaan.
 - jos pelaaja quittaa niin anna pelin jatkua.
@@ -453,7 +464,7 @@ button.secondary {
 .infobutton {
     background-color: #468627;
     width: 150px;
-    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 .aibutton {
@@ -622,6 +633,10 @@ button.secondary {
 	width:100px;
 }
 
+
+.hiterm {
+	color:#FFFF00;
+}
   
 </style>
 
@@ -636,6 +651,7 @@ button.secondary {
 	
     <div id="home-screen" class="screen active">
         <h1>Wi-Fi Minesweeper</h1>
+		<button id="howtoplay-btn" class="infobutton">? How to play</button>
         <div class="input-group">
             <input type="text" id="game-name-input" value="DefaultGameName" placeholder="Enter Game Name">
         </div>
@@ -652,6 +668,7 @@ button.secondary {
 
     <div id="lobby-screen" class="screen">
         <h2 id="lobby-game-name"></h2>
+		<button id="howtoplay-btn" class="infobutton">? How to play</button>
 		
         <div id="host-controls">
             <h3>Game Settings</h3>
@@ -664,8 +681,15 @@ button.secondary {
             </div>
             <div class="input-group">
              
-				<label for="total-mines-input">Total mines:</label>
-                <input type="number" id="total-mines-input" value="51" min="1">
+				<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+					<label for="total-mines-input">Total mines:</label>
+					<input type="number" id="total-mines-input" value="51" min="1">
+					<label for="map-style-input">Map style:</label>
+					<select id="map-style-input">
+						<option value="0" selected>Rectangle</option>
+						<option value="1">Round</option>
+					</select>
+				</div>
 				
 				<span>Bombs:</span>
 				<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
@@ -682,7 +706,6 @@ button.secondary {
 					<input type="number" id="ai-confusion-input" value="0" min="0" max="3">
 					<label for="ai-delay-input">Delay:</label>
 					<input type="number" id="ai-delay-input" value="400" min="0">
-					
 				</div>
 				<button id="add-ai-btn" class="aibutton">Add AI</button>
 
@@ -701,7 +724,6 @@ button.secondary {
             <button id="start-game-btn">Start Game</button>
         </div>
 		
-		<button id="howtoplay-btn" class="infobutton">? How to play</button>
         
         <h3>Players in Lobby</h3>
         <ul id="player-list"></ul>
@@ -735,25 +757,25 @@ button.secondary {
         </div>
 		
 
-		<div id="howtoplay-modal" class="modal">
-		  <div class="modal-content">
+        <p id="lobby-error" style="color: red;"></p>
+    </div>
+	
+	
+	
+	<div id="howtoplay-modal" class="modal">
+		<div class="modal-content">
 			<span class="close">&times;</span>
 			<h2>How to Play</h2>
 			<div class="instructions">
-			  <p>1. Find the mines by Double Left Click or a Single Tap! You get a new turn if you found a mine. Mines are flagged with flags after they are found.</p>
-			  <p>2. The numbers tell how many mines are around that number: vertically, horizontally and diagonally (maximum of 8 possible mines around a number).</p>
-			  <p>3. Right Click or Long Press activates the bomb, which creates 5x5 explosion by default (radius = 2).</p>
-			  <p>4. Winner is the player who found most mines. A tie is also possible depending on settings.</p>
-			  <p>5. The game also ends if the other players doesn't have a chance anymore to find more mines than the leading player. Leading player becomes the winner and the remaining mines are revealed.</p>
-			  
-			  
+				<p>1. Find the mines by <span class="hiterm">Double Left Click</span> or a <span class="hiterm">Single Tap</span>. You get a new turn if you found a mine. Mines are flagged with flags after they are found.</p>
+				<p>2. The numbers tell you how many mines are around that number: vertically, horizontally and diagonally (maximum of 8 possible mines around a number).</p>
+				<p>3. <span class="hiterm">Right Click</span> or <span class="hiterm">Long Press</span> activates the bomb on that position, which creates 5x5 explosion by default (radius = 2). Bomb can be placed only if you are not the leading player and you didn't make a move yet on your turn.</p>
+				<p>4. Winner is the player who found most mines. A tie is also possible depending on settings.</p>
+				<p>5. The game also ends if the other players doesn't have a chance anymore to find more mines than the leading player. Leading player becomes the winner and the remaining mines are revealed.</p>
 			</div>
-		  </div>
 		</div>
-
-
-        <p id="lobby-error" style="color: red;"></p>
-    </div>
+	</div>
+	
 
     <div id="game-screen">
 		<div id="game-info">
@@ -953,11 +975,18 @@ function generate_map(width, height, total_mines){
 			type: TYPE_EMPTY, // -1 = mine, 0 = empty, 1-8 = number
 			//value: "", // not used
 			visible: 0,
+			isBlocked: 0,
 			owner: -1, // who has found the mine
 			numbersAround: 0, // for darker water calcuations
 			waternum: random(0,100)
 		}))),
 	};
+	
+	
+	//generateBlockedEdges(data);
+	if(isCircularMap){
+		generateCircularMap(data);
+	}
 	
 	// add mines:
 	let placed = 0;
@@ -965,7 +994,7 @@ function generate_map(width, height, total_mines){
 		let x = Math.floor(Math.random() * width);
 		let y = Math.floor(Math.random() * height);
 
-		if (data.map[y][x].type === TYPE_EMPTY) {
+		if (data.map[y][x].type === TYPE_EMPTY && !data.map[y][x].isBlocked) {
 			set_mine(data, x, y, TYPE_MINE);
 			placed++;
 		}
@@ -974,7 +1003,7 @@ function generate_map(width, height, total_mines){
 	// count mines around each spot:
 	for(let y = 0; y < height; y++){
 		for(let x = 0; x < width; x++){
-			if(data.map[y][x].type === TYPE_EMPTY){
+			if(data.map[y][x].type === TYPE_EMPTY && !data.map[y][x].isBlocked){
 				data.map[y][x].type = count_mines_around(data, x, y);
 			}
 		}	
@@ -983,6 +1012,197 @@ function generate_map(width, height, total_mines){
 
 	return data;
 }
+
+function generateCircularMap(data) {
+	const height = data.height;
+	const width = data.width;
+
+	const centerX = width / 2-0.5;
+	const centerY = height / 2-0.5;
+
+	// Radius along X and Y (half width/height)
+	const radiusX = width / 2;
+	const radiusY = height / 2;
+
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			// Ellipse equation: (dx^2 / rx^2) + (dy^2 / ry^2)
+			const dx = x - centerX;
+			const dy = y - centerY;
+			const value = (dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY);
+			// Inside ellipse (value <= 1) → unblocked; outside → blocked
+			data.map[y][x].isBlocked = value > 1 ? 1 : 0;
+		}
+	}
+}
+
+function calculate_circular_map_free_cells(width, height){
+	let count = 0;
+	const centerX = width / 2-0.5;
+	const centerY = height / 2-0.5;
+
+	// Radius along X and Y (half width/height)
+	const radiusX = width / 2;
+	const radiusY = height / 2;
+
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			// Ellipse equation: (dx^2 / rx^2) + (dy^2 / ry^2)
+			const dx = x - centerX;
+			const dy = y - centerY;
+			const value = (dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY);
+			if(value <= 1){
+				count++;
+			}
+		}
+	}
+	return count;
+}
+
+
+
+// Assuming you have perlin noise available, e.g. using 'noisejs' or similar library
+// import { Noise } from 'noisejs'; // if in module context
+// const noise = new Noise(Math.random());
+// generate_random_map
+
+function normalizeMap(map) {
+  let min = Infinity;
+  let max = -Infinity;
+
+  // Find min and max
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      const v = map[y][x];
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+  }
+
+  // Normalize to 0..1
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      map[y][x] = (map[y][x] - min) / (max - min);
+    }
+  }
+
+  return map;
+}
+
+function generateBlockedEdges(data, options = {}) {
+	let minsize = Math.round(Math.min(data.width, data.height)*0.25);
+  const {
+    edgeRadius = minsize,     // how far from edges to potentially block
+    threshold = 0.43,    // noise threshold for blocking
+    scale = 0.5,        // how rough/smooth the perlin pattern is
+    blurPasses = 1,     // how many blur/smooth passes to apply
+    seed = Math.random()
+  } = options;
+
+  const noise = new Noise(seed);
+
+  const height = data.height;
+  const width = data.width;
+
+  // Step 1: Create initial noise map
+  const noiseMap = [];
+  for (let y = 0; y < height; y++) {
+    noiseMap[y] = [];
+    for (let x = 0; x < width; x++) {
+      // Compute distance from nearest edge
+      const distToEdge = Math.min(x, y, width - 1 - x, height - 1 - y);
+
+      // Only apply noise within edge radius
+      //if (distToEdge <= edgeRadius) {
+        const nx = x * scale;
+        const ny = y * scale;
+        const value = noise.perlin2(nx, ny);
+        noiseMap[y][x] = (value + 1) / 2; // normalize to 0–1
+      //} else {
+      //  noiseMap[y][x] = 0;
+      //}
+    }
+  }
+  
+    let opacityMap = [];
+	// apply opacity gradient around edges:
+	for (let y = 0; y < height; y++) {
+		opacityMap[y] = [];
+		for (let x = 0; x < width; x++) {
+			let distToEdge = Math.min(x, y, width - 1 - x, height - 1 - y);
+			if(distToEdge > edgeRadius){
+				distToEdge = edgeRadius;
+			}
+			distToEdge++;
+			let opacity = 1-(distToEdge/(edgeRadius+1));
+			opacityMap[y][x] = opacity;
+			noiseMap[y][x] = noiseMap[y][x]*opacity;
+		}
+	}
+
+  console.log("opacityMap");
+  console.log(opacityMap);
+  
+  console.log("noiseMap");
+  console.log(noiseMap);
+  
+
+  // Step 2: Optional blur / smooth pass
+  const blur = (map) => {
+    const out = map.map(row => [...row]);
+	const blurRadius = 3;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let sum = 0;
+        let count = 0;
+        for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+          for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+			let xx = x+dx;
+			let yy = y+dy;
+			if(xx < 0 || yy < 0 || xx > width-1 || yy > height-1){
+				continue;
+			}
+            sum += map[yy][xx];
+            count++;
+          }
+        }
+        out[y][x] = (sum / count);
+      }
+    }
+    return out;
+  };
+
+  let blurredMap = noiseMap;
+  for (let i = 0; i < blurPasses; i++) {
+    blurredMap = blur(blurredMap);
+  }
+  console.log("blurredMap");
+  console.log(blurredMap);
+  
+ 
+
+
+  blurredMap = normalizeMap(blurredMap);
+
+  let blockedMap = [];
+  // Step 3: Apply threshold and set blocked tiles
+  for (let y = 0; y < height; y++) {
+    blockedMap[y] = [];
+    for (let x = 0; x < width; x++) {
+		//let testval = blurredMap[y][x]*opacityMap[y][x];
+		let testval = blurredMap[y][x];
+      if (testval > threshold) {
+        data.map[y][x].isBlocked = 1;
+		data.map[y][x].visible = 1; // fixes AI trying to make a move on blocked cells.
+      }
+	  blockedMap[y].push(data.map[y][x].isBlocked);
+    }
+  }
+  console.log("blockedMap");
+  console.log(blockedMap);
+
+}
+
 
 
 
@@ -1061,6 +1281,7 @@ function revealZeros(data, startX, startY, grid) {
 
 		// Already visible? skip
 		if (cell.visible) continue;
+		if (cell.isBlocked) continue;
 
 		// Reveal this cell
 		cell.visible = 1;
@@ -1106,6 +1327,7 @@ function revealBombAirplaneZeros(data, startX, startY, grid) {
 
             let cell = data.map[y][x];
             if (cell.visible) continue;
+			if (cell.isBlocked) continue;
 
             cell.visible = 1;
             if (cell.type < TYPE_EMPTY) {
@@ -1137,6 +1359,7 @@ function revealBombAirplaneZeros(data, startX, startY, grid) {
 
                 let neighbor = data.map[ny][nx];
                 if (neighbor.visible) continue;
+				if (neighbor.isBlocked) continue;
 
                 neighbor.visible = 1;
                 if (neighbor.type < TYPE_EMPTY) {
@@ -1185,6 +1408,7 @@ function revealBombZeros(data, startX, startY, grid) {
 
             let cell = data.map[y][x];
             if (cell.visible) continue;
+			if (cell.isBlocked) continue;
 
             cell.visible = 1;
             if (cell.type < TYPE_EMPTY) {
@@ -1215,6 +1439,7 @@ function revealBombZeros(data, startX, startY, grid) {
 
                 let neighbor = data.map[ny][nx];
                 if (neighbor.visible) continue;
+				if (neighbor.isBlocked) continue;
 
                 neighbor.visible = 1;
                 if (neighbor.type < TYPE_EMPTY) {
@@ -1402,6 +1627,19 @@ const lobbyError = document.getElementById('lobby-error');
 const gridXInput = document.getElementById('grid-x-input');
 const gridYInput = document.getElementById('grid-y-input');
 
+const mapStyleInput = document.getElementById("map-style-input");
+
+let isCircularMap = false;
+
+// Trigger when user changes the selection
+mapStyleInput.addEventListener("change", (event) => {
+	const selectedValue = event.target.value;
+	isCircularMap = (selectedValue == 1);
+	setTotalMines();
+	console.log("Selected map style:", selectedValue);
+});
+
+
 const totalMinesInput = document.getElementById('total-mines-input');
 const totalBombsInput = document.getElementById('total-bombs-input');
 const bombRadiusInput = document.getElementById('bomb-radius-input');
@@ -1451,7 +1689,7 @@ function getSpectateValue() {
 
 //////////////////////////////////////////////////
 //
-// AI functionality
+// AI functionality ai turn ai feature
 //
 
 const addAiBtn = document.getElementById('add-ai-btn');
@@ -1541,6 +1779,7 @@ function mark_percentages(){
 
 function ai_find_best_move(confusion_factor = 0){
 	
+	// choose the first 100% cell where to hit:
 	for(let y = 0; y < gameState.minemap.height; y++){
 		for(let x = 0; x < gameState.minemap.width; x++){
 			if(!gameState.minemap.map[y][x].visible && gameState.minemap.chances[y][x].percent == 1.0){
@@ -2106,13 +2345,24 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
 
 
 
-const howToPlayBtn = document.getElementById('howtoplay-btn');
+//const howToPlayBtn = document.getElementById('howtoplay-btn');
+
+const howToPlayBtns = document.querySelectorAll('.infobutton');
 const modal = document.getElementById('howtoplay-modal');
 const closeBtn = modal.querySelector('.close');
 
-howToPlayBtn.addEventListener('click', () => {
-	modal.style.display = 'block';
+// Loop through each button
+howToPlayBtns.forEach(button => {
+	button.addEventListener('click', () => {
+		console.log("hehe");
+		modal.style.display = 'block';
+	});
 });
+
+
+//howToPlayBtn.addEventListener('click', () => {
+//	modal.style.display = 'block';
+//});
 
 closeBtn.addEventListener('click', () => {
 	modal.style.display = 'none';
@@ -2137,9 +2387,17 @@ function setTotalMines() {
 	let width = parseInt(gridXInput.value);
 	let height = parseInt(gridYInput.value);
 	let ratio = 51/256;
-	let val = Math.round(width*height*ratio);
-	if(val < 0) val = 1;
+	let total = 0;
+	if(isCircularMap){
+		total = calculate_circular_map_free_cells(width, height);
+	}else{
+		total = width*height;
+	}
+	
+	let val = Math.round(total*ratio);
+	if(val < 1) val = 1;
 	totalMinesInput.value = val;
+	
 }
 
 gridXInput.addEventListener("input", setTotalMines);
@@ -2301,6 +2559,7 @@ function remove_player(peer, hostSide, timedOut = false){
 		let removed_player = null;
 		for(let i = 0; i < gameState.players.length; i++){
 			let player = gameState.players[i];
+			console.warn(`id:${player.id} ==? peerid:${peer} - quitted: ${player.quitted}`);
 			if(!player.quitted && player.id === peer){
 				player.isSpec = true;
 				player.quitted = true;
@@ -2309,6 +2568,8 @@ function remove_player(peer, hostSide, timedOut = false){
 				break;
 			}
 		}
+		console.warn("removed_player_index = "+removed_player_index);
+		
 		if(removed_player_index != -1){
 		
 			delete connections[peer];
@@ -2319,9 +2580,13 @@ function remove_player(peer, hostSide, timedOut = false){
 				checkForAITurn(); // start AI turn if it is his turn.
 			}
 			if(timedOut){
-				
+				console.warn("sendChatMessage timed out, set as spec");
+		
 				sendChatMessage(`Player "${removed_player.name}" timed out, set as spectator.`);
 			}else{
+			
+				console.warn("sendChatMessage has left the game");
+			
 				sendChatMessage(`Player "${removed_player.name}" has left the game.`);
 			}
 			
@@ -2350,6 +2615,7 @@ setInterval(() => {
 		if (now - player.lastPing > 3000) { // e.g., 10 seconds timeout
 		  console.log(`Player ${player.id} timed out`);
 		  if(isHost){
+			console.log("trying to remove player");
 			remove_player(player.peerId, isHost, true);
 		  }
 		  // Clean up connection
@@ -2659,6 +2925,13 @@ function handleMessage(data, peerId) {
             gameState = data.state;
 			console.log(gameState);
 			
+			if(gameState.gameStarted){
+				if(gameState.playStartSound){
+					gameState.playStartSound = false;
+					playSound("startgame");
+				}
+			}
+			
 			if (gameState.gameOver) {
 				if (gameState.winner) {
 					if(gameState.winner.id === localPlayer.id){
@@ -2738,6 +3011,7 @@ function handleMessage(data, peerId) {
                 sendToHost({ type: 'player_join', player: localPlayer });
                 
             }
+			
 			
 			// will trigger this every time a move is made...
             if (gameState.gameStarted) {
@@ -3094,6 +3368,7 @@ function startGame() {
     }
 
     gameState.gameStarted = true;
+	gameState.playStartSound = true;
     gameState.gameOver = gameState.gameOver || false;
     gameState.winner = null;
 	gameState.ties = null;
@@ -3101,6 +3376,7 @@ function startGame() {
 	gameState.minemap = generate_map(gameState.gridSize.x, gameState.gridSize.y, gameState.totalMines);
 	gameState.minesRemaining = get_remaining_mines();
 	gameState.history = [];
+	
 
 
     broadcast({ type: 'game_state', state: gameState });
@@ -3207,6 +3483,9 @@ function handlePlayerMove(move) {
 	let {x, y, playerId, weapon} = move;
 	
     if (gameState.gameOver){
+		return;
+	}
+	if(gameState.minemap.map[y][x].isBlocked){
 		return;
 	}
     
@@ -3717,6 +3996,7 @@ let sounds = {
 	bigsplash: {filename: "sounds/bigsplash.mp3", gain: 1,   filter: false},
 	victory:   {filename: "sounds/victory.mp3",   gain: 1,   filter: false},
 	warning:   {filename: "sounds/warning.mp3",   gain: 1,   filter: false},
+	startgame: {filename: "sounds/startgame.mp3", gain: 1,   filter: false},
 };
 
 // Preload all sounds
@@ -4107,6 +4387,9 @@ function draw() {
 			const screenY = (worldY + viewport.y) * viewport.scale + canvas.height / 2;
 			const screenSize = cellSize * viewport.scale;
 			
+			const mapcell = gameState.minemap.map[y][x];
+			const animcell = localState.animations.map[y][x];
+			
 			// check if square is inside visible screen area:
 			const margin = 0; 
 			if (
@@ -4117,9 +4400,11 @@ function draw() {
 			) {
 			  drawCell = false; // skip drawing this cell
 			}
+			
+			if(mapcell.isBlocked){
+				drawCell = false;
+			}
 	
-			const mapcell = gameState.minemap.map[y][x];
-			const animcell = localState.animations.map[y][x];
 			
 			let scale = 1;
 			
@@ -4172,13 +4457,14 @@ function draw() {
 					}
 					
 					// draw dark layer over dark water areas:
-					if(mapcell.numbersAround == 0){
+					if(mapcell.numbersAround == 0 && !mapcell.isBlocked){
 						drawTransparentSquare(ctx, offsetX+x*cellSize, offsetY+y*cellSize, cellSize, "#000088", alpha = 0.4); 
 					}
 				}
 				
-				
-
+				if(mapcell.isBlocked){
+					drawTransparentSquare(ctx, offsetX+x*cellSize, offsetY+y*cellSize, cellSize, "#000000", alpha = 0.8); 
+				}
 
 				// draw numbers:
 				if (gameState.grid[y] && gameState.grid[y][x]) {
@@ -4296,7 +4582,7 @@ function draw() {
 	drawMoveDirectionsOverlay(ctx, offsetX, offsetY, cellSize, pulse*0.8);
 }
 
-
+// randomname random name random nick
 function randomPlayerName() {
 	const prefixes = [
 		"al", "bel", "cor", "dar", "el", "fen", "gal", "hal", "jor", "kal",
@@ -4325,7 +4611,7 @@ function randomPlayerName() {
 	const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
 	const ending = endings[Math.floor(Math.random() * endings.length)];
 
-	return capitalize(prefix + middle + suffix + ending);
+	return capitalize(prefix + middle + suffix);
 }
 
 
