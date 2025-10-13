@@ -5,7 +5,15 @@
 	
 	<!--
 	TODO:
+	- laita sivutus kalenteriin: joku nappi "näytä lisää".
+	- finish: <a href="#" id="nav-styles" style="display:none">Tyylit</a>
 	- transfer data from kasteluapp into this app.
+	- add custom styles (renderstylespage finished with styles, continue from there and new db version etc.
+		continue: style-item-prototype
+	- tee kasteluun nouseva väri vasemmalta oikealle, 0,25,50,75,100% 4 klikkauksella 100%
+	- mahdollisuus kirjoittaa mitä tahansa arvoja, tuplaklikkaus avaa näppäimistön siihen arvon kirjoittamiseen.
+	- mahdollisuus leventää kentän leveyttä jotta tekstiarvot näkyvät paremmin.
+	
 	-->
  
  	<!-- note: remove slashes from filenames, also from manifest, and change bgcolors to black -->
@@ -246,7 +254,7 @@
 		
 		
 		
-        /* --- Plants Page --- */
+        /* --- groups Page --- */
         #group-list {
             list-style: none;
             padding: 0;
@@ -291,6 +299,84 @@
 
  
         #add-group-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+		
+		
+		
+		
+
+		
+        /* --- styles Page --- */
+        #style-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .style-row, #add-style-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: var(--surface-color);
+            border-radius: 5px;
+        }
+
+        .style-row.dragging {
+            opacity: 0.5;
+            background: var(--primary-color);
+        }
+
+        .style-name-input {
+            flex-grow: 1;
+			min-width: 50px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .style-type-input {
+            flex-grow: 1;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .style-items-input {
+            flex-grow: 1;
+			min-width: 50px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+		
+        .style-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 20px;
+            padding: 5px;
+        }
+
+ 
+        #add-style-btn {
             width: 100%;
             padding: 12px;
             background-color: var(--primary-color);
@@ -524,6 +610,7 @@
             <nav id="menu">
                 <a href="#" id="nav-plants">Teot</a>
                 <a href="#" id="nav-groups">Ryhmät</a>
+                <a href="#" id="nav-styles" style="display:none">Tyylit</a>
                 <a href="#" id="nav-calendar">Kalenteri</a>
             </nav>
         </header>
@@ -545,6 +632,25 @@
                     <input type="text" class="group-name-input" id="new-group-name" placeholder="Uuden ryhmän nimi...">
                 </div>
                 <button id="add-group-btn">Lisää ryhmä</button>
+            </div>
+			
+			<div id="styles-page" class="page">
+                <ul id="style-list"></ul>
+				
+				<li id="style-item-prototype" style="display:none">
+					<span class="reorder-handle style-btn">↕️</span>
+					<input type="text" class="style-name-input">
+					<select class="style-type-input"></select>
+					<input type="text" class="style-items-input" placeholder='"arvo1", "arvo2", "arvo3", ...'>
+					<button class="delete-btn style-btn">🗑️</button>
+				</li>
+
+                <div id="add-style-row">
+                    <input type="text" class="style-name-input" id="new-style-name" placeholder="Uuden tyylin nimi...">
+					<select class="style-type-input" id="default-style-type-input"></select>
+					<input type="text" class="style-items-input" id="new-style-items" placeholder="&quot;arvo1&quot;, &quot;arvo2&quot;, &quot;arvo3&quot;, ...">
+                </div>
+                <button id="add-style-btn">Lisää tyyli</button>
             </div>
 			
             <div id="calendar-page" class="page">
@@ -573,9 +679,14 @@
 		const SETTING_LAST_OPEN_TAB = "lastOpenTab";
 		let currentGroupOpen = -1;
 		let currentPageName = "";
-		const PAGE_PLANTS = "plants";
-		const PAGE_GROUPS = "groups";
-		const PAGE_CALENDAR = "calendar";
+
+		const PAGE = {
+			PLANTS: "plants",
+			GROUPS: "groups",
+			STYLES: "styles",
+			CALENDAR: "calendar",
+		};
+
 		let compactView = false;
 		
 		const deleteall = false;
@@ -655,7 +766,6 @@
 		
 	
 		
-		
 		let plantStyles = [
 			{id:0, text:"Numero", type:0},
 			{id:10, text:"✔", type:1},
@@ -666,9 +776,19 @@
 			{id:24, text:"■", type:1},
 			{id:25, text:"🍄", type:1},
 			{id:26, text:"⛺", type:1},
-			{id:30, text:"1 väri", colors: ["", "#022772"], type:2},
-			{id:40, text:"2 väriä", colors: ["", "#022772", "#046817"], type:2},
-			{id:50, text:"Emoji", list: ["", "😐", "😊", "😁", "😂", "😍", "🙁", "😭", "😡"], type:3},
+			{id:27, text:"⌗", type:1},
+			{id:28, text:"Ⓞ", type:1},
+			{id:30, text:"1 väri", type:2, list: ["", "#022772"]},
+			{id:40, text:"2 väriä", type:2, list: ["", "#022772", "#046817"]},
+			{id:50, text:"Emoji", type:3, list: ["", "😐", "😊", "😁", "😂", "😍", "🙁", "😭", "😡"]},
+		];
+
+		let plantStyleTypes = [
+			{id:0, text:"Numero", disabled: true}, // disabled = not possible to make new style with this type.
+			{id:1, text:"Merkki on/off"},
+			{id:3, text:"Merkkilista"},
+			{id:2, text:"Taustavärit"},
+			{id:4, text:"Taustavärit %"},
 		];
 		
 		/*
@@ -703,17 +823,7 @@
 			return "";
 		}
 		
-		// plantStyles.find(s => s.id == style)?.colors ?? null;
-		function findColors(style){
-			for(let i = 0; i < plantStyles.length; i++){
-				if(plantStyles[i].id == style){
-					return plantStyles[i].colors;
-				}
-			}
-			return null;
-		}
-		
-		// plantStyles.find(s => s.id == style)?.colors ?? null;
+		// plantStyles.find(s => s.id == style)?.list ?? null;
 		function findList(style){
 			for(let i = 0; i < plantStyles.length; i++){
 				if(plantStyles[i].id == style){
@@ -722,10 +832,25 @@
 			}
 			return null;
 		}
+		
+		function datetimeToTime(ts){
+			const date = new Date(ts);
+
+			// Option 1: Locale-aware string (respects device locale)
+			//const timeStr = date.toLocaleTimeString();
+			//console.log(timeStr); // e.g. "23:33:22"
+
+			// Option 2: Fixed format (HH:MM:SS, 24-hour)
+			const hh = String(date.getHours()).padStart(2, "0");
+			const mm = String(date.getMinutes()).padStart(2, "0");
+			const ss = String(date.getSeconds()).padStart(2, "0");
+			return `${hh}:${mm}:${ss}`;
+		}
 	
         // --- State ---
         let plants = [];
         let groups = [];
+        let styles = [];
         let wateringData = {};
         let tapTimer = null;
         let lastTapTarget = null;
@@ -741,10 +866,12 @@
         const menu = document.getElementById('menu');
         const navPlants = document.getElementById('nav-plants');
         const navGroups = document.getElementById('nav-groups');
+        const navStyles = document.getElementById('nav-styles');
         const navCalendar = document.getElementById('nav-calendar');
         const pages = {
             plants: document.getElementById('plants-page'),
             groups: document.getElementById('groups-page'),
+            styles: document.getElementById('styles-page'),
             calendar: document.getElementById('calendar-page'),
         };
         const plantListEl = document.getElementById('plant-list');
@@ -757,6 +884,13 @@
         const newGroupNameInput = document.getElementById('new-group-name');
         const addGroupBtn = document.getElementById('add-group-btn');
 		
+		
+		let templateStyleListEl = document.getElementById("style-item-prototype");
+		const styleListEl = document.getElementById('style-list');
+        const newStyleNameInput = document.getElementById('new-style-name');
+		const newStyleTypeSelect = document.getElementById('default-style-type-input');
+        const addStyleBtn = document.getElementById('add-style-btn');
+		
 		const topTabs = document.getElementById('top-tabs');
         const calendarHead = document.getElementById('calendar-head');
         const calendarBody = document.getElementById('calendar-body');
@@ -764,7 +898,10 @@
 
         const topTabsList = document.getElementById('top-tabs');
 
-
+		let input = `"value1", "value2, with comma", "value3"`;
+		// Match anything inside quotes, even if it contains commas
+		let arr = [...input.matchAll(/"([^"]*)"/g)].map(m => m[1]);
+		console.log(arr); 
 		
 
 		function showTopTabs(enabled){
@@ -850,18 +987,19 @@
 				case 1: // icon on/off
 					displayText = state > 0 ? icon : '';
 				break;
-				case 2: // bgcolor looping
+				case 2: { // bgcolor looping
 					// no text.
-					let colors = findColors(style);//plantStyles.find(s => s.id == style)?.colors ?? null;
-					if(colors){
-						if(state < colors.length){
-							bgcolor = colors[state];
+					let list = findList(style);//plantStyles.find(s => s.id == style)?.list ?? null;
+					if(list){
+						if(state < list.length){
+							bgcolor = list[state];
 						}else{
-							bgcolor = colors[colors.length-1];
+							bgcolor = list[list.length-1];
 						}
 					}
+				}
 				break;
-				case 3: // emoji looping
+				case 3: { // emoji looping
 					let list = findList(style);//plantStyles.find(s => s.id == style)?.list ?? null;
 					if(list){
 						if(state < list.length){
@@ -870,6 +1008,7 @@
 							displayText = list[list.length-1];
 						}
 					}
+				}
 				break;
 				default: // type 0
 					displayText = state > 0 ? state : '';
@@ -924,9 +1063,9 @@
 			setupEventListeners();
 
 			if (plants.length > 0) {
-				showPage(PAGE_CALENDAR);
+				showPage(PAGE.CALENDAR);
 			} else {
-				showPage(PAGE_PLANTS);
+				showPage(PAGE.PLANTS);
 			}
 			renderAll();
 			
@@ -1068,9 +1207,10 @@
             Object.values(pages).forEach(p => p.classList.remove('active'));
             pages[pageName].classList.add('active');
             
-            navPlants.classList.toggle('active', pageName === PAGE_PLANTS);
-            navGroups.classList.toggle('active', pageName === PAGE_GROUPS);
-            navCalendar.classList.toggle('active', pageName === PAGE_CALENDAR);
+            navPlants.classList.toggle('active', pageName === PAGE.PLANTS);
+            navGroups.classList.toggle('active', pageName === PAGE.GROUPS);
+            navStyles.classList.toggle('active', pageName === PAGE.STYLES);
+            navCalendar.classList.toggle('active', pageName === PAGE.CALENDAR);
 			
 			currentPageName = pageName;
 			console.log(`currentPageName = ${currentPageName}`);
@@ -1160,6 +1300,120 @@
         }
 		
 		
+        function renderStylesPage() {
+			console.time("renderStylesPage"); // start timer
+			
+			
+			// Generate options dynamically
+			let styleTypesOptionsHTML = plantStyleTypes
+				.filter(type => !type.disabled)
+				.map(type => {
+				return `<option value="${type.id}">${type.text}</option>`;
+			}).join('');
+			newStyleTypeSelect.innerHTML = styleTypesOptionsHTML;
+			
+			// read "a","b","c" into an array:
+			// let arr = [...input.matchAll(/"([^"]*)"/g)].map(m => m[1]);
+			
+
+			
+			/*
+			let plantStyles = [
+				{id:0, text:"Numero", type:0},
+				{id:10, text:"✔", type:1},
+				{id:20, text:"✖", type:1},
+				{id:21, text:"★", type:1},
+				{id:22, text:"✿", type:1},
+				{id:23, text:"●", type:1},
+				{id:24, text:"■", type:1},
+				{id:25, text:"🍄", type:1},
+				{id:26, text:"⛺", type:1},
+				{id:30, text:"1 väri", type:2, list: ["", "#022772"]},
+				{id:40, text:"2 väriä", type:2, list: ["", "#022772", "#046817"]},
+				{id:50, text:"Emoji", type:3, list: ["", "😐", "😊", "😁", "😂", "😍", "🙁", "😭", "😡"]},
+			];
+			
+			
+			let plantStyleTypes = [
+				{id:0, text:"Numero"},
+				{id:1, text:"Merkki on/off"},
+				{id:3, text:"Merkkilista"},
+				{id:2, text:"Taustaväri"},
+				{id:4, text:"Taustaväri %"},
+			];
+			*/
+		
+            styleListEl.innerHTML = '';
+			plantStyles.forEach(style => {
+			
+
+				let li = templateStyleListEl.cloneNode(true);
+				li.style.display = ""; // unhide
+                li.className = 'style-row';
+                li.dataset.id = style.id;
+                li.draggable = true;
+				
+				let listStr = "";
+				if(style.list && style.list.length > 0){
+					listStr = style.list.map(v => `"${v}"`).join(", ");
+					console.log(listStr);
+				}
+				
+				// Fill in data
+				li.querySelector(".style-name-input").value = style.text;
+				li.querySelector(".style-name-input").dataset.id = style.id;
+				li.querySelector(".style-type-input").value = 3+style.id;
+				li.querySelector(".style-items-input").value = listStr;
+				li.querySelector(".delete-btn").dataset.id = style.id;
+
+				styleListEl.appendChild(li);
+
+/*
+                const li = document.createElement('li');
+                li.className = 'style-row';
+                li.dataset.id = style.id;
+                li.draggable = true;
+				
+				let listStr = "";
+				if(style.list && style.list.length > 0){
+					listStr = style.list.map(v => `"${v}"`).join(", ").replace(/"/g, "&quot;");
+					console.log(listStr);
+				}
+
+				
+				
+                li.innerHTML = `
+                    <span class="reorder-handle style-btn">↕️</span>
+                    <input type="text" class="style-name-input" value="${style.name}" data-id="${style.id}">
+					<select class="style-type-input" id="default-style-type-input"></select>
+					<input type="text" class="style-items-input" id="style-items" placeholder="&quot;arvo1&quot;, &quot;arvo2&quot;, &quot;arvo3&quot;, ..." value="${listStr}">
+                    <button class="delete-btn style-btn" data-id="${style.id}">🗑️</button>
+                `;
+                styleListEl.appendChild(li);
+				*/
+            });
+			/*
+            styles.forEach(style => {
+                const li = document.createElement('li');
+                li.className = 'style-row';
+                li.dataset.id = style.id;
+                li.draggable = true;
+
+				
+                li.innerHTML = `
+                    <span class="reorder-handle style-btn">↕️</span>
+                    <input type="text" class="style-name-input" value="${style.name}" data-id="${style.id}">
+					<select class="style-type-input" id="style-type-input"></select>
+					<input type="text" class="style-items-input" id="style-items" placeholder="&quot;arvo1&quot;, &quot;arvo2&quot;, &quot;arvo3&quot;, ...">
+                    <button class="delete-btn style-btn" data-id="${style.id}">🗑️</button>
+                `;
+                styleListEl.appendChild(li);
+            });
+			*/
+			
+			console.timeEnd("renderStylesPage"); // end timer
+		
+		}
 		
         function renderGroupsPage() {
 			console.time("renderGroupsPage"); // start timer
@@ -1240,7 +1494,7 @@
                 return new Date(`20${yb}`, mb-1, db) - new Date(`20${ya}`, ma-1, da);
             });
 			
-			const maxRowsVisible = 31*1;
+			const maxRowsVisible = 31*3;
 
             sortedDates.some((date, index) => {
 				// render only part of the table if not in compact view:
@@ -1331,6 +1585,7 @@
             const name = newPlantNameInput.value.trim();
 			const style = newPlantStyleSelect.value.trim();
 			const group = newPlantGroupSelect.value.trim();
+			
             if (!name) return;
 
             const maxOrder = plants.length > 0 ? Math.max(...plants.map(p => p.order)) : -1;
@@ -1433,7 +1688,7 @@
 			renderTopTabs();
 			
             if (plants.length === 0) {
-                //showPage(PAGE_PLANTS); // TODO: WTF WHY THIS WAS HERE
+                //showPage(PAGE.PLANTS); // TODO: WTF WHY THIS WAS HERE
             }
         }
 
@@ -1511,7 +1766,7 @@
 			renderTopTabs();
 			
             if (groups.length === 0) {
-                //showPage(PAGE_GROUPS); // TODO: WTF WHY THIS WAS HERE
+                //showPage(PAGE.GROUPS); // TODO: WTF WHY THIS WAS HERE
             }
         }
 
@@ -1588,19 +1843,25 @@
             
             navPlants.addEventListener('click', (e) => {
 				e.preventDefault();
-				showPage(PAGE_PLANTS);
+				showPage(PAGE.PLANTS);
 				showTopTabs(true);
 				renderPlantsPage();
 			});
 			navGroups.addEventListener('click', (e) => {
 				e.preventDefault();
-				showPage(PAGE_GROUPS);
+				showPage(PAGE.GROUPS);
 				showTopTabs(false);
 				renderGroupsPage();
 			});
+			navStyles.addEventListener('click', (e) => {
+				e.preventDefault();
+				showPage(PAGE.STYLES);
+				showTopTabs(false);
+				renderStylesPage();
+			});
             navCalendar.addEventListener('click', (e) => {
 				e.preventDefault();
-				showPage(PAGE_CALENDAR);
+				showPage(PAGE.CALENDAR);
 				showTopTabs(true);
 				renderCalendarPage();
 			});
@@ -1745,16 +2006,8 @@
 						}
 					break;
 					case 2:
-						// array of colors:
-						let colors = findColors(style);//plantStyles.find(s => s.id == style)?.colors ?? null;
-						if(colors){
-							if(newState > colors.length-1){
-								newState = 0;
-							}
-						}
-					break;
 					case 3:
-						// array of emoji:
+						// array of colors:
 						let list = findList(style);//plantStyles.find(s => s.id == style)?.list ?? null;
 						if(list){
 							if(newState > list.length-1){
@@ -1879,8 +2132,11 @@
 			
 
 
+		
             // Drag and Drop for Plant Reordering
             let draggedItem = null;
+
+
             plantListEl.addEventListener('dragstart', (e) => {
                 if (e.target.classList.contains('plant-row')) {
                     draggedItem = e.target;
@@ -1911,6 +2167,8 @@
                     plantListEl.insertBefore(draggedItem, afterElement);
                 }
             });
+			
+			
 			
 			function getDragAfterElement(container, y) {
 				const draggableElements = [...container.querySelectorAll('.plant-row:not(.dragging)')];
