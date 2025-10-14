@@ -1035,6 +1035,7 @@ function generateCircularMap(data) {
 			const value = (dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY);
 			// Inside ellipse (value <= 1) → unblocked; outside → blocked
 			data.map[y][x].isBlocked = value > 1 ? 1 : 0;
+			data.map[y][x].visible = data.map[y][x].isBlocked; // fixes AI trying to make a move on blocked cells.
 		}
 	}
 }
@@ -1786,6 +1787,8 @@ function ai_find_best_move(confusion_factor = 0){
 	for(let y = 0; y < gameState.minemap.height; y++){
 		for(let x = 0; x < gameState.minemap.width; x++){
 			if(!gameState.minemap.map[y][x].visible && gameState.minemap.chances[y][x].percent == 1.0){
+			
+				console.log("found 100% chance at ",x,y);
 				return {x,y};
 			}
 		}
@@ -2184,6 +2187,8 @@ function mark_absolute_chances3(data, color){
  */
 function ai_find_next_best_move(data, confusion_factor = 0) {
     // --- Helper functions ---
+	
+	console.log("ai_find_next_best_move 1");
     const containsCoord = (list, coord) => list.some(item => item.x === coord.x && item.y === coord.y);
     const uniqueCoords = (list) => {
         const seen = new Set();
@@ -2192,6 +2197,8 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
             return seen.has(key) ? false : seen.add(key);
         });
     };
+	
+	console.log("ai_find_next_best_move 2");
 
     // --- Step 1: Scan the board to categorize squares ---
     let unopened_squares = [];
@@ -2207,6 +2214,8 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
     }
 
     if (unopened_squares.length === 0) return null; // Game is over
+	
+	console.log("ai_find_next_best_move 3");
 
     // --- Step 2: Use logic to find certainties ---
     let certainly_safe = [];
@@ -2257,6 +2266,7 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
     }
     certainly_mines = uniqueCoords(certainly_mines).filter(mine => !containsCoord(certainly_safe, mine));
 
+console.log("ai_find_next_best_move 4");
 
     // --- Step 3: Decision Making (OBJECTIVE: FIND MINES) ---
 
@@ -2272,11 +2282,15 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
         // Otherwise, make the smart move and pick a guaranteed mine.
         return certainly_mines[Math.floor(Math.random() * certainly_mines.length)];
     }
+	
+	console.log("ai_find_next_best_move 5");
 
     // Case B: No certainties found, so make a probabilistic guess for the MOST likely mine.
     let probabilities = {}; // key: "x,y", value: highest probability of being a mine
     let candidates = unopened_squares.filter(sq => !containsCoord(certainly_safe, sq));
     if (candidates.length === 0) return null; // All remaining squares are safe
+	
+	console.log("ai_find_next_best_move 6");
 
     for (const square of visible_numbered_squares) {
         const { x, y, number } = square;
@@ -2309,6 +2323,8 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
             }
         }
     }
+	
+	console.log("ai_find_next_best_move 7");
 
     let best_guesses = [];
     let max_prob = -1; // Probabilities are 0-1, so start at -1.
@@ -2325,6 +2341,8 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
     
     // If no square has a probability > 0, guess any candidate that isn't certainly safe.
     if(best_guesses.length === 0) best_guesses = candidates; 
+	
+	console.log("ai_find_next_best_move 8");
 
     // Apply confusion factor: higher chance to make a mistake on a guess (pick a less likely mine).
     if (Math.random() < confusion_factor * 0.25 && candidates.length > best_guesses.length) {
@@ -2333,9 +2351,13 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
             return worse_guesses[Math.floor(Math.random() * worse_guesses.length)];
         }
     }
+	
+	console.log("ai_find_next_best_move 9");
 
     // Otherwise, make the best possible guess.
-    return best_guesses[Math.floor(Math.random() * best_guesses.length)];
+    let bestmove = best_guesses[Math.floor(Math.random() * best_guesses.length)];
+	console.log("ai_find_next_best_move:", bestmove);
+	return bestmove;
 }
 
 
