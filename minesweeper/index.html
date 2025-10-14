@@ -2767,7 +2767,7 @@ let serversList = [
 		secure: true,
 		debug: 2,
 	}},
-	{name: "peerjs.com (Wi-Fi only)", onlyLocal: false, config: {
+	{name: "peerjs.com", onlyLocal: false, config: {
 		debug: 2
 	}},
 ];
@@ -2801,7 +2801,7 @@ function initializePeer(hostSide, peerId = null) {
 	if(selectedServer.config.host){
 		console.warn(`connecting to ${selectedServer.config.host}${selectedServer.config.path}`);
 	}else{
-		console.warn(`connecting to wifi server (peerjs.com)`);
+		console.warn(`connecting to peerjs.com`);
 	}
 	console.warn(selectedServer.config);
 	
