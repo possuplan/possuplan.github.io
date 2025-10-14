@@ -641,11 +641,20 @@ button.secondary {
     <div id="home-screen" class="screen active">
         <h1>Wi-Fi Minesweeper</h1>
 		<button id="howtoplay-btn" class="infobutton">? How to play</button>
-        <div class="input-group">
-            <input type="text" id="game-name-input" value="DefaultGameName" placeholder="Enter Game Name">
+
+        <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+            <label for="game-name-input" style="white-space: nowrap;">Game ID:</label>
+			<input type="text" id="game-name-input" value="DefaultGameName" placeholder="Enter Game Name">
         </div>
-        <div class="input-group">
-            <input type="text" id="player-name-input" placeholder="Enter Your Name">
+        <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+             <label for="player-name-input" style="white-space: nowrap;">Your name:</label>
+			 <input type="text" id="player-name-input" placeholder="Enter Your Name">
+        </div>
+        <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+            <label for="server-name-input">Server:</label>
+			<select id="server-name-input">
+			
+			</select>
         </div>
         <button id="host-btn">Host Game</button>
         <br>
@@ -1636,6 +1645,9 @@ const lobbyError = document.getElementById('lobby-error');
 const gridXInput = document.getElementById('grid-x-input');
 const gridYInput = document.getElementById('grid-y-input');
 
+
+
+
 const mapStyleInput = document.getElementById("map-style-input");
 
 let isCircularMap = false;
@@ -1744,12 +1756,12 @@ function checkForAITurn() {
 		
 
 		
-		let delay = Math.max(parseInt(document.getElementById('ai-delay-input').value), 0); // min = 0
+		let delay = Math.max(parseInt(document.getElementById('ai-delay-input').value,10), 0); // min = 0
 		
 		
         setTimeout(() => {
             // Read the confusion factor from the input field
-            const confusionFactor = parseInt(document.getElementById('ai-confusion-input').value) || 0;
+            const confusionFactor = parseInt(document.getElementById('ai-confusion-input').value,10) || 0;
             const bestMove = ai_find_best_move(confusionFactor);
 
             if (bestMove) {
@@ -2415,8 +2427,8 @@ window.addEventListener('keydown', (e) => {
 
 
 function setTotalMines() {
-	let width = parseInt(gridXInput.value);
-	let height = parseInt(gridYInput.value);
+	let width = parseInt(gridXInput.value,10);
+	let height = parseInt(gridYInput.value,10);
 	let ratio = 51/256;
 	let total = 0;
 	if(isCircularMap){
@@ -2733,7 +2745,46 @@ function setupConnection(conn, hostSide) {
 }
 
 
+let selectedServerIndex = 1; // default to render.com
 
+// select local server if local server is forced in config:
+if(window.APP_CONFIG.LOCAL == true){
+	selectedServerIndex = 0;
+}
+
+// onlyLocal = only visible if window.APP_CONFIG.LOCAL = true
+let serversList = [
+	{name: "local", onlyLocal: true, config: {
+		host: 'localhost',
+		port: 9000,
+		path: '/peerjs',
+		secure: false,
+		debug: 2,
+	}}, // dont show this if testing locally.
+	{name: "render.com", onlyLocal: false, config: {
+		host: 'peerjs-server-j9al.onrender.com',
+		path: '/peerjs',
+		secure: true,
+		debug: 2,
+	}},
+	{name: "peerjs.com (Wi-Fi only)", onlyLocal: false, config: {
+		debug: 2
+	}},
+];
+
+
+const serverNameInput = document.getElementById("server-name-input");
+serverNameInput.value = selectedServerIndex;
+
+serversList.forEach((server, index) => {
+	// if onlyLocal is false or config local is true, then add line:
+	if(!server.onlyLocal || window.APP_CONFIG.LOCAL){
+		const option = document.createElement("option");
+		option.value = index;  // value attribute
+		option.textContent = server.name;  // visible text
+		serverNameInput.appendChild(option);
+	}
+});
 
 function initializePeer(hostSide, peerId = null) {
 	let hostStr = hostSide ? "(HOST)" : "(peer)";
@@ -2741,17 +2792,38 @@ function initializePeer(hostSide, peerId = null) {
     myPeerId = peerId || 'tictactoe-' + Math.random().toString(36).substr(2, 23);
     localPlayer.id = myPeerId;
 
-	if(window.APP_CONFIG.LOCAL){
+
+	selectedServerIndex = parseInt(serverNameInput.value, 10);
+	let selectedServer = serversList[selectedServerIndex];
+
+	peer = new Peer(myPeerId, selectedServer.config);
+	
+	if(selectedServer.config.host){
+		console.warn(`connecting to ${selectedServer.config.host}${selectedServer.config.path}`);
+	}else{
+		console.warn(`connecting to wifi server (peerjs.com)`);
+	}
+	console.warn(selectedServer.config);
+	
+	/*
+	if(selectedServer == "local"){
 		peer = new Peer(myPeerId, {
 			host: 'localhost',
 			port: 9000,
-			path: '/',
+			path: '/peerjs',
 			secure: false,
 			debug: 2,
 		});
-	}else{
+	}else if(selectedServer == "public-peerjs"){
 		peer = new Peer(myPeerId, { debug: 2 }); // use debug 3 to see more.
-	}
+	}else if(){
+		peer = new Peer(myPeerId, {
+			host: 'peerjs-server-j9al.onrender.com',
+			path: '/peerjs',
+			secure: true,
+			debug: 2,
+		});
+	}*/
 
 
 
@@ -3404,10 +3476,10 @@ function startGame() {
 	}
 	*/
 	
-    gameState.gridSize = { x: parseInt(gridXInput.value), y: parseInt(gridYInput.value) };
-	gameState.totalMines = Math.max(1, Math.min(parseInt(totalMinesInput.value), gameState.gridSize.x*gameState.gridSize.y)); // minimum = 1, max = w*h
-	gameState.totalBombs = Math.max(0, parseInt(totalBombsInput.value)); // minimum = 0
-	gameState.bombRadius = Math.max(1, parseInt(bombRadiusInput.value)); // minimum = 1
+    gameState.gridSize = { x: parseInt(gridXInput.value,10), y: parseInt(gridYInput.value,10) };
+	gameState.totalMines = Math.max(1, Math.min(parseInt(totalMinesInput.value,10), gameState.gridSize.x*gameState.gridSize.y)); // minimum = 1, max = w*h
+	gameState.totalBombs = Math.max(0, parseInt(totalBombsInput.value,10)); // minimum = 0
+	gameState.bombRadius = Math.max(1, parseInt(bombRadiusInput.value,10)); // minimum = 1
     gameState.grid = Array(gameState.gridSize.y).fill(null).map(() => Array(gameState.gridSize.x).fill(null));
     
     const activePlayers = gameState.players.filter(p => !p.isSpec);
