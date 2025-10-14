@@ -25,6 +25,10 @@
 
 <!--
 todo: 
+- tee mappieditori jossa voi piirtää pelialueen lisäämällä mustia ruutuja johon ei voi pelissä klikata.
+  - lisää myös ominaisuus joka tallentaa oman selaimen muistiin omat mapit uudelleenkäyttöä varten.
+- lisää tallennettuja ennaltaluotuja perusmappeja eri muodoilla.
+
 - lisää ohjeisiin kuvituskuvia.
 - yksinpeluun tarkistus ei toimi jos joku pelaaja joinas huoneeseen ja sitten lähti pois. tarkista jo olemassaolevalla funktiolla kuinka monta non-spec pelaajaa on.
 
@@ -66,22 +70,6 @@ todo:
 
 
 
-changelog:
-13.10.2025
-- lisätty aloitusääni pelin alkuun.
-- lisätty ympyrän muotonen karttamahdollisuus.
-- kirjoitettu ohjeet paremmin ja näkyy kaikilla sivuilla nyt.
-
-12.10.2025
-- fixed quit/join messages not being visible for all players.
-- added timeout functionality: checks periodically if player timed out: removes him.
-- added possibility to join only as spectator when game has already started.
-- lisätty quittausviesti chättiin jos pelaaja quittaa.
-- korjattu quittaus: tunnistaa quittauksen sivua suljettaessa ja laittaa pelaajan spectaattoriksi ja poistaa suuntimat ja viimeisen siirron merkin.
-- suuntimat animoitu ja laitettu valkoinen raita.
-- viimeinen siirto muokattu: musta reunus ja pienempi animaatio.
-- lipun värit korjattu: mätsää pelaajan värin kanssa. oli hardkoodattu aina tiettyyn pelaajaindeksiin. ei toiminut jos spec oli mukana ja lisätty sitten uusi pelaaja.
-- harmaa lippu ja pirate lippu lisätty. 
 
 
 -->
@@ -638,7 +626,7 @@ button.secondary {
 
 
 .hiterm {
-	color:#FFFF00;
+	color:#c3ff4e;
 }
   
 </style>
@@ -763,15 +751,33 @@ button.secondary {
         <p id="lobby-error" style="color: red;"></p>
     </div>
 	
-	
-	
+	<style>
+  .instructions p.twocells {
+    display: grid;
+    grid-template-columns: 1fr auto; /* text takes remaining space, image only as wide as needed */
+    align-items: start;
+    gap: 10px; /* space between text and image */
+    margin: 0 0 1em 0;
+  }
+
+  .instructions p.twocells img {
+    width: 75px;
+    height: auto;
+  }
+</style>
+	<!-- help section -->
 	<div id="howtoplay-modal" class="modal">
 		<div class="modal-content">
 			<span class="close">&times;</span>
-			<h2>How to Play</h2>
+			<!--<h2>How to Play</h2>-->
 			<div class="instructions">
 				<p>1. Find the mines by <span class="hiterm">Double Left Click</span> or a <span class="hiterm">Single Tap</span>. You get a new turn if you found a mine. Mines are flagged with flags after they are found.</p>
-				<p>2. The numbers tell you how many mines are around that number: vertically, horizontally and diagonally (maximum of 8 possible mines around a number).</p>
+				<p class="twocells">
+					<span>2. The numbers tell you how many mines are around that number: vertically, horizontally and diagonally (max 8 mines around).</span>
+					<img src="images/help-mines.webp" width="75" title="2 mines around number 2">
+				</p>
+
+
 				<p>3. <span class="hiterm">Right Click</span> or <span class="hiterm">Long Press</span> activates the bomb on that position, which creates 5x5 explosion by default (radius = 2). Bomb can be placed only if you are not the leading player and you didn't make a move yet on your turn.</p>
 				<p>4. Winner is the player who found most mines. A tie is also possible depending on settings.</p>
 				<p>5. The game also ends if the other players doesn't have a chance anymore to find more mines than the leading player. Leading player becomes the winner and the remaining mines are revealed.</p>
@@ -2188,7 +2194,7 @@ function mark_absolute_chances3(data, color){
 function ai_find_next_best_move(data, confusion_factor = 0) {
     // --- Helper functions ---
 	
-	console.log("ai_find_next_best_move 1");
+	//console.log("ai_find_next_best_move 1");
     const containsCoord = (list, coord) => list.some(item => item.x === coord.x && item.y === coord.y);
     const uniqueCoords = (list) => {
         const seen = new Set();
@@ -2198,7 +2204,7 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
         });
     };
 	
-	console.log("ai_find_next_best_move 2");
+	//console.log("ai_find_next_best_move 2");
 
     // --- Step 1: Scan the board to categorize squares ---
     let unopened_squares = [];
@@ -2215,7 +2221,7 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
 
     if (unopened_squares.length === 0) return null; // Game is over
 	
-	console.log("ai_find_next_best_move 3");
+	//console.log("ai_find_next_best_move 3");
 
     // --- Step 2: Use logic to find certainties ---
     let certainly_safe = [];
@@ -2266,7 +2272,7 @@ function ai_find_next_best_move(data, confusion_factor = 0) {
     }
     certainly_mines = uniqueCoords(certainly_mines).filter(mine => !containsCoord(certainly_safe, mine));
 
-console.log("ai_find_next_best_move 4");
+	//console.log("ai_find_next_best_move 4");
 
     // --- Step 3: Decision Making (OBJECTIVE: FIND MINES) ---
 
@@ -2283,14 +2289,14 @@ console.log("ai_find_next_best_move 4");
         return certainly_mines[Math.floor(Math.random() * certainly_mines.length)];
     }
 	
-	console.log("ai_find_next_best_move 5");
+	//console.log("ai_find_next_best_move 5");
 
     // Case B: No certainties found, so make a probabilistic guess for the MOST likely mine.
     let probabilities = {}; // key: "x,y", value: highest probability of being a mine
     let candidates = unopened_squares.filter(sq => !containsCoord(certainly_safe, sq));
     if (candidates.length === 0) return null; // All remaining squares are safe
 	
-	console.log("ai_find_next_best_move 6");
+	//console.log("ai_find_next_best_move 6");
 
     for (const square of visible_numbered_squares) {
         const { x, y, number } = square;
@@ -2324,7 +2330,7 @@ console.log("ai_find_next_best_move 4");
         }
     }
 	
-	console.log("ai_find_next_best_move 7");
+	//console.log("ai_find_next_best_move 7");
 
     let best_guesses = [];
     let max_prob = -1; // Probabilities are 0-1, so start at -1.
@@ -2342,7 +2348,7 @@ console.log("ai_find_next_best_move 4");
     // If no square has a probability > 0, guess any candidate that isn't certainly safe.
     if(best_guesses.length === 0) best_guesses = candidates; 
 	
-	console.log("ai_find_next_best_move 8");
+	//console.log("ai_find_next_best_move 8");
 
     // Apply confusion factor: higher chance to make a mistake on a guess (pick a less likely mine).
     if (Math.random() < confusion_factor * 0.25 && candidates.length > best_guesses.length) {
@@ -2352,7 +2358,7 @@ console.log("ai_find_next_best_move 4");
         }
     }
 	
-	console.log("ai_find_next_best_move 9");
+	//console.log("ai_find_next_best_move 9");
 
     // Otherwise, make the best possible guess.
     let bestmove = best_guesses[Math.floor(Math.random() * best_guesses.length)];
