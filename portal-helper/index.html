@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Portal Map</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --surface-color: #2a2a2a;
+            --canvas-bg: #2E4B1C;
+            --text-color: #f0f0f0;
+            --primary-color: #4a90e2;
+            --danger-color: #e24a4a;
+            --control-bg: #444;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #map-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color); /* Match page background */
+            cursor: grab;
+            touch-action: none; 
+        }
+        
+        #map-canvas.grabbing { cursor: grabbing; }
+        #map-canvas.placing { cursor: crosshair; }
+        #map-canvas.moving { cursor: move; }
+
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: var(--surface-color);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            box-sizing: border-box;
+            gap: 10px;
+            z-index: 10;
+            border-bottom: 1px solid #444;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:hover {
+            background-color: #5a9ee8;
+        }
+        
+        #place-btn.cancel { background-color: var(--danger-color); }
+        #place-btn.cancel:hover { background-color: #e85a5a; }
+        #delete-btn {
+            background-color: var(--danger-color);
+            display: none;
+        }
+        
+        #portal-select {
+            background: var(--control-bg);
+            color: var(--text-color);
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 8px;
+            font-size: 16px;
+            flex-grow: 1;
+            max-width: 200px;
+        }
+
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: -260px;
+            width: 250px;
+            height: 100%;
+            background-color: var(--surface-color);
+            z-index: 20;
+            transition: left 0.3s ease-in-out;
+            padding-top: 60px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        }
+        #sidebar.open { left: 0; }
+        #sidebar ul { list-style: none; padding: 0; margin: 0; }
+        #sidebar li { padding: 15px 20px; border-bottom: 1px solid #444; cursor: pointer; }
+        #sidebar li:hover { background-color: var(--primary-color); }
+    </style>
+</head>
+<body>
+    <div id="top-bar">
+        <button id="settings-btn" class="btn">☰</button>
+        <select id="portal-select"></select>
+        <button id="place-btn" class="btn">Place</button>
+        <button id="delete-btn" class="btn">Delete</button>
+    </div>
+
+    <div id="sidebar">
+        <ul>
+            <li id="edit-mode-btn">Edit Map</li>
+            <li id="new-map-btn">New Map</li>
+        </ul>
+    </div>
+    <canvas id="map-canvas"></canvas>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('map-canvas');
+        const ctx = canvas.getContext('2d');
+        const settingsBtn = document.getElementById('settings-btn');
+        const sidebar = document.getElementById('sidebar');
+        const newMapBtn = document.getElementById('new-map-btn');
+        const portalSelect = document.getElementById('portal-select');
+        const placeBtn = document.getElementById('place-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+
+        // --- MAP CONFIG ---
+        const MAP_WIDTH = 4000;
+        const MAP_HEIGHT = 4000;
+
+        let db;
+        
+        const portalList = [
+            { name:"OneWay1", oneWay:true, imagePath1:"images/ow1-en.png", imagePath2:"images/ow1-ex.png", image1:null, image2:null },
+			{ name:"OneWay2", oneWay:true, imagePath1:"images/ow2-en.png", imagePath2:"images/ow2-ex.png", image1:null, image2:null },
+			{ name:"OneWay3", oneWay:true, imagePath1:"images/ow3-en.png", imagePath2:"images/ow3-ex.png", image1:null, image2:null },
+			{ name:"OneWay4", oneWay:true, imagePath1:"images/ow4-en.png", imagePath2:"images/ow4-ex.png", image1:null, image2:null },
+			{ name:"OneWay5", oneWay:true, imagePath1:"images/ow5-en.png", imagePath2:"images/ow5-ex.png", image1:null, image2:null },
+			{ name:"OneWay6", oneWay:true, imagePath1:"images/ow6-en.png", imagePath2:"images/ow6-ex.png", image1:null, image2:null },
+			{ name:"OneWay7", oneWay:true, imagePath1:"images/ow7-en.png", imagePath2:"images/ow7-ex.png", image1:null, image2:null },
+			{ name:"OneWay8", oneWay:true, imagePath1:"images/ow8-en.png", imagePath2:"images/ow8-ex.png", image1:null, image2:null },
+            { name: "TwoWay1", oneWay: false, imagePath1: "images/bw1.png", image1: null, image2: null },
+			{ name: "TwoWay2", oneWay: false, imagePath1: "images/bw2.png", image1: null, image2: null },
+			{ name: "TwoWay3", oneWay: false, imagePath1: "images/bw3.png", image1: null, image2: null },
+			{ name: "TwoWay4", oneWay: false, imagePath1: "images/bw4.png", image1: null, image2: null },
+			{ name: "TwoWay5", oneWay: false, imagePath1: "images/bw5.png", image1: null, image2: null },
+			{ name: "TwoWay6", oneWay: false, imagePath1: "images/bw6.png", image1: null, image2: null },
+			{ name: "TwoWay7", oneWay: false, imagePath1: "images/bw7.png", image1: null, image2: null },
+			{ name: "TwoWay8", oneWay: false, imagePath1: "images/bw8.png", image1: null, image2: null },
+			{ name: "Whirpool", oneWay: false, imagePath1: "images/whirpool.png", image1: null, image2: null },
+        ];
+        
+        let portals = [];
+        let transform = { scale: 1, offsetX: 0, offsetY: 0 };
+        let isPlacing = false;
+        let placementStep = 0;
+        let tempStartPos = null;
+        let selectedPortalId = null;
+        let pointer = { last: { x: 0, y: 0 }, start: { x: 0, y: 0 } };
+        let lastPinchDist = 0;
+        let dragState = { target: null, hasMoved: false };
+
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            preloadImages(() => {
+                populatePortalSelect();
+                initDB();
+                setupEventListeners();
+                requestAnimationFrame(draw);
+            });
+        }
+
+        function preloadImages(callback) {
+            let loaded = 0;
+            const toLoad = portalList.flatMap(p => [p.imagePath1, p.imagePath2]).filter(Boolean);
+            if (toLoad.length === 0) return callback();
+            
+            portalList.forEach(p => {
+                p.image1 = new Image(32, 32); p.image1.src = p.imagePath1;
+                p.image1.onload = () => { if (++loaded === toLoad.length) callback(); };
+
+                if (p.imagePath2) {
+                    p.image2 = new Image(32, 32); p.image2.src = p.imagePath2;
+                    p.image2.onload = () => { if (++loaded === toLoad.length) callback(); };
+                } else {
+                    p.image2 = p.image1;
+                }
+            });
+        }
+
+        function populatePortalSelect() {
+            portalList.forEach((p, index) => {
+                const option = new Option(p.name, index);
+                portalSelect.add(option);
+            });
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            //clampPan();
+            draw();
+        }
+
+        // --- INDEXEDDB ---
+        function initDB() {
+            const request = indexedDB.open('PortalMapDB', 1);
+            request.onerror = (e) => console.error("DB Error:", e.target.error);
+            request.onupgradeneeded = (e) => e.target.result.createObjectStore('portalsStore', { keyPath: 'id' });
+            request.onsuccess = (e) => {
+                db = e.target.result;
+                loadPortals();
+            };
+        }
+
+        function loadPortals() {
+            if (!db) return;
+            const store = db.transaction('portalsStore', 'readonly').objectStore('portalsStore');
+            store.getAll().onsuccess = (e) => {
+                portals = e.target.result;
+                portals.forEach(p => {
+                    const template = portalList.find(pl => pl.name === p.name);
+                    if (template) { p.image1 = template.image1; p.image2 = template.image2; }
+                });
+                draw();
+            };
+        }
+
+        function savePortal(portal) {
+            if (!db) return;
+            const store = db.transaction('portalsStore', 'readwrite').objectStore('portalsStore');
+            const portalToSave = { ...portal };
+            delete portalToSave.image1;
+            delete portalToSave.image2;
+            store.put(portalToSave);
+        }
+
+        function deletePortalFromDB(portalId) {
+            if (!db) return;
+            db.transaction('portalsStore', 'readwrite').objectStore('portalsStore').delete(portalId);
+        }
+
+        function clearAllPortalsDB() {
+            if (!db) return;
+            db.transaction('portalsStore', 'readwrite').objectStore('portalsStore').clear();
+        }
+
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            settingsBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+            document.getElementById('edit-mode-btn').addEventListener('click', () => sidebar.classList.remove('open'));
+            newMapBtn.addEventListener('click', () => {
+                if (confirm('Are you sure? This will delete the entire map.')) {
+                    clearAllPortalsDB();
+                    portals = [];
+                    selectedPortalId = null;
+                    updateDeleteBtnVisibility();
+                    sidebar.classList.remove('open');
+                    draw();
+                }
+            });
+            placeBtn.addEventListener('click', togglePlacementMode);
+            deleteBtn.addEventListener('click', handleDeleteSelected);
+            ['mousedown', 'touchstart'].forEach(evt => canvas.addEventListener(evt, onPointerDown, { passive: false }));
+            ['mousemove', 'touchmove'].forEach(evt => canvas.addEventListener(evt, onPointerMove, { passive: false }));
+            ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(evt => canvas.addEventListener(evt, onPointerUp, { passive: false }));
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+        }
+
+        // --- UI ACTIONS ---
+        function togglePlacementMode() {
+            isPlacing = !isPlacing;
+            //placeBtn.textContent = isPlacing ? 'Cancel' : 'Place';
+            //placeBtn.classList.toggle('cancel', isPlacing);
+            //canvas.classList.toggle('placing', isPlacing);
+            if (isPlacing) {
+                placementStep = 1;
+                placeBtn.textContent = 'Cancel';
+                placeBtn.classList.add('cancel');
+                canvas.classList.add('placing');
+				selectedPortalId = null;
+                updateDeleteBtnVisibility();
+            } else {
+                resetPlacement();
+            }
+        }
+        function resetPlacement() {
+			isPlacing = false;
+			placementStep = 0;
+			tempStartPos = null; 
+            placeBtn.textContent = 'Place';
+            placeBtn.classList.remove('cancel');
+            canvas.classList.remove('placing');
+		}
+        function handleDeleteSelected() {
+            if (selectedPortalId !== null) {
+                deletePortalFromDB(selectedPortalId);
+                portals = portals.filter(p => p.id !== selectedPortalId);
+                selectedPortalId = null;
+                updateDeleteBtnVisibility();
+                draw();
+            }
+        }
+        function updateDeleteBtnVisibility() { deleteBtn.style.display = selectedPortalId !== null ? 'block' : 'none'; }
+
+        // --- POINTER & TOUCH HANDLERS ---
+        function getPointerPos(e) {
+            if (e.touches) {
+                if (e.touches.length === 1) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                if (e.touches.length > 1) return { x: (e.touches[0].clientX + e.touches[1].clientX) / 2, y: (e.touches[0].clientY + e.touches[1].clientY) / 2 };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+        
+        function onPointerDown(e) {
+            e.preventDefault();
+            const pos = getPointerPos(e);
+            pointer.start = { ...pos };
+            pointer.last = { ...pos };
+            dragState = { target: null, hasMoved: false };
+
+            if (e.touches && e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastPinchDist = Math.hypot(dx, dy);
+                return;
+            }
+            if (isPlacing) return;
+            
+            const worldPos = screenToWorld(pos.x, pos.y);
+            const target = findDragTarget(worldPos);
+
+            if (target) {
+                dragState.target = target;
+                if (selectedPortalId === target.portal.id) canvas.classList.add('moving');
+            } else {
+                dragState.target = { type: 'canvas' };
+                canvas.classList.add('grabbing');
+            }
+        }
+
+        function onPointerMove(e) {
+            e.preventDefault();
+            const pos = getPointerPos(e);
+            if (Math.hypot(pos.x - pointer.start.x, pos.y - pointer.start.y) > 5) {
+                dragState.hasMoved = true;
+            }
+
+            if (e.touches && e.touches.length === 2 && lastPinchDist > 0) {
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                handleZoom(pos, dist / lastPinchDist);
+                lastPinchDist = dist;
+                return;
+            }
+
+            if (!dragState.target) return;
+            
+            const worldPos = screenToWorld(pos.x, pos.y);
+            const lastWorldPos = screenToWorld(pointer.last.x, pointer.last.y);
+            
+            if (dragState.hasMoved) {
+                switch (dragState.target.type) {
+                    case 'canvas':
+                        transform.offsetX += pos.x - pointer.last.x;
+                        transform.offsetY += pos.y - pointer.last.y;
+                        //clampPan();
+                        break;
+                    case 'portal_start':
+                        if (selectedPortalId === dragState.target.portal.id) {
+                            dragState.target.portal.start.pos = clampToMap(worldPos);
+                        }
+                        break;
+                    case 'portal_end':
+                        if (selectedPortalId === dragState.target.portal.id) {
+                            dragState.target.portal.end.pos = clampToMap(worldPos);
+                        }
+                        break;
+                    case 'portal_full':
+                        if (selectedPortalId === dragState.target.portal.id) {
+                            const worldDelta = { x: worldPos.x - lastWorldPos.x, y: worldPos.y - lastWorldPos.y };
+                            const newStart = { x: dragState.target.portal.start.pos.x + worldDelta.x, y: dragState.target.portal.start.pos.y + worldDelta.y };
+                            const newEnd = { x: dragState.target.portal.end.pos.x + worldDelta.x, y: dragState.target.portal.end.pos.y + worldDelta.y };
+                            if(isInBounds(newStart) && isInBounds(newEnd)) {
+                                dragState.target.portal.start.pos = newStart;
+                                dragState.target.portal.end.pos = newEnd;
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            pointer.last = pos;
+            draw();
+        }
+
+        function onPointerUp(e) {
+            e.preventDefault();
+            
+            if (!dragState.hasMoved) {
+                if (isPlacing) {
+                    handlePlacementClick();
+                } else {
+                    if (dragState.target?.portal) {
+                        selectedPortalId = (selectedPortalId === dragState.target.portal.id) ? null : dragState.target.portal.id;
+                    } else {
+                        selectedPortalId = null;
+                    }
+                    updateDeleteBtnVisibility();
+                }
+            }
+            
+            if (dragState.target?.portal && dragState.hasMoved) {
+                savePortal(dragState.target.portal);
+            }
+            
+            canvas.classList.remove('grabbing', 'moving');
+            dragState = { target: null, hasMoved: false };
+            lastPinchDist = 0;
+            draw();
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            handleZoom({ x: e.clientX, y: e.clientY }, e.deltaY > 0 ? 0.9 : 1.1);
+        }
+        
+        // --- LOGIC: Placement, Movement, Boundaries ---
+        function handleZoom(mousePos, scaleAmount) {
+            const worldPos = screenToWorld(mousePos.x, mousePos.y);
+            transform.scale = Math.max(0.1, Math.min(10, transform.scale * scaleAmount));
+            transform.offsetX = mousePos.x - worldPos.x * transform.scale;
+            transform.offsetY = mousePos.y - worldPos.y * transform.scale;
+            //clampPan();
+            draw();
+        }
+
+        function handlePlacementClick() {
+            const pos = screenToWorld(pointer.last.x, pointer.last.y);
+            if (!isInBounds(pos)) return;
+
+            const selectedTemplate = portalList[portalSelect.value];
+            
+            if (placementStep === 1) {
+                tempStartPos = pos;
+                placementStep = 2;
+            } else if (placementStep === 2) {
+                const newPortal = {
+                    id: Date.now(), name: selectedTemplate.name, oneWay: selectedTemplate.oneWay,
+                    start: { pos: tempStartPos }, end: { pos: pos },
+                    image1: selectedTemplate.image1, image2: selectedTemplate.image2
+                };
+                portals.push(newPortal);
+                savePortal(newPortal);
+                resetPlacement();
+            }
+            draw();
+        }
+        
+        function findDragTarget(worldPos) {
+            const pointRadius = 20 / transform.scale;
+            const lineThreshold = 10 / transform.scale;
+            for (const portal of [...portals].reverse()) {
+                if (Math.hypot(worldPos.x - portal.start.pos.x, worldPos.y - portal.start.pos.y) < pointRadius) return { type: 'portal_start', portal };
+                if (Math.hypot(worldPos.x - portal.end.pos.x, worldPos.y - portal.end.pos.y) < pointRadius) return { type: 'portal_end', portal };
+                const p1 = portal.start.pos, p2 = portal.end.pos, l2 = (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
+                if (l2 > 0) {
+                    let t = Math.max(0, Math.min(1, ((worldPos.x - p1.x) * (p2.x - p1.x) + (worldPos.y - p1.y) * (p2.y - p1.y)) / l2));
+                    const closestPoint = { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+                    if (Math.hypot(worldPos.x - closestPoint.x, worldPos.y - closestPoint.y) < lineThreshold) return { type: 'portal_full', portal };
+                }
+            }
+            return null;
+        }
+
+        function clampToMap(pos) { return { x: Math.max(0, Math.min(MAP_WIDTH, pos.x)), y: Math.max(0, Math.min(MAP_HEIGHT, pos.y)) }; }
+        function isInBounds(pos) { return pos.x >= 0 && pos.x <= MAP_WIDTH && pos.y >= 0 && pos.y <= MAP_HEIGHT; }
+        function clampPan() {
+            const scaledWidth = MAP_WIDTH * transform.scale;
+            const scaledHeight = MAP_HEIGHT * transform.scale;
+            transform.offsetX = (scaledWidth < canvas.width) ? (canvas.width - scaledWidth) / 2 : Math.min(0, Math.max(canvas.width - scaledWidth, transform.offsetX));
+            transform.offsetY = (scaledHeight < canvas.height) ? (canvas.height - scaledHeight) / 2 : Math.min(0, Math.max(canvas.height - scaledHeight, transform.offsetY));
+        }
+
+
+let bgImage = new Image();
+let bgPattern = null;
+
+bgImage.src = 'images/bg.png';
+bgImage.onload = () => {
+    bgPattern = ctx.createPattern(bgImage, 'repeat');
+    //draw(); // optional initial draw
+};
+
+        // --- DRAWING ---
+        function draw() {
+		
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(transform.offsetX, transform.offsetY);
+    ctx.scale(transform.scale, transform.scale);
+
+    // Draw map background
+    if (bgPattern) {
+        ctx.fillStyle = bgPattern;
+    } else {
+        // fallback while image is loading
+        ctx.fillStyle = getComputedStyle(canvas).getPropertyValue('--canvas-bg');
+    }
+    ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+    // Draw other elements
+    portals.forEach(p => drawPortal(p));
+    if (isPlacing) drawPlacementPreview();
+
+    ctx.restore();
+	/*
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(transform.offsetX, transform.offsetY);
+            ctx.scale(transform.scale, transform.scale);
+ 
+            // Draw map background
+            ctx.fillStyle = getComputedStyle(canvas).getPropertyValue('--canvas-bg');
+            ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+            portals.forEach(p => drawPortal(p));
+            if (isPlacing) drawPlacementPreview();
+            
+            ctx.restore();
+			*/
+        }
+        
+        function drawPortal(portal) {
+            const isSelected = portal.id === selectedPortalId;
+            drawLine(portal.start.pos, portal.end.pos, portal.oneWay, isSelected);
+			
+			let offsetX = 30;
+			let offsetY = 30;
+            if (portal.image1) ctx.drawImage(portal.image1, portal.start.pos.x - offsetX, portal.start.pos.y - offsetY);
+            if (portal.image2) ctx.drawImage(portal.image2, portal.end.pos.x - offsetX, portal.end.pos.y - offsetY);
+            
+            if (isSelected) {
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2 / transform.scale;
+                ctx.beginPath(); ctx.arc(portal.start.pos.x, portal.start.pos.y, 20 / transform.scale, 0, 2 * Math.PI); ctx.stroke();
+                ctx.beginPath(); ctx.arc(portal.end.pos.x, portal.end.pos.y, 20 / transform.scale, 0, 2 * Math.PI); ctx.stroke();
+            }
+        }
+
+        function drawLine(startPos, endPos, isOneWay, isSelected) {
+            const dx = endPos.x - startPos.x, dy = endPos.y - startPos.y, dist = Math.hypot(dx, dy);
+            if (dist < 41) return;
+            const unitX = dx / dist, unitY = dy / dist, radius = 20;
+            const lineStart = { x: startPos.x + unitX * radius, y: startPos.y + unitY * radius };
+            const lineEnd = { x: endPos.x - unitX * radius, y: endPos.y - unitY * radius };
+
+            ctx.beginPath(); ctx.moveTo(lineStart.x, lineStart.y); ctx.lineTo(lineEnd.x, lineEnd.y);
+            ctx.lineWidth = 4 / transform.scale;
+            ctx.strokeStyle = isSelected ? 'white' : (isOneWay ? '#e24a4a' : '#e2d44a');
+            ctx.stroke();
+
+            if (isOneWay) drawArrowhead(lineEnd, unitX, unitY);
+        }
+        
+        function drawArrowhead(pos, unitX, unitY) {
+            const arrowSize = 15 / transform.scale;
+            ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
+            ctx.lineTo(pos.x - unitX * arrowSize + unitY * arrowSize / 2, pos.y - unitY * arrowSize - unitX * arrowSize / 2);
+            ctx.moveTo(pos.x, pos.y);
+            ctx.lineTo(pos.x - unitX * arrowSize - unitY * arrowSize / 2, pos.y - unitY * arrowSize + unitX * arrowSize / 2);
+            ctx.stroke();
+        }
+        
+        function drawPlacementPreview() {
+            const mouseWorldPos = screenToWorld(pointer.last.x, pointer.last.y);
+            if (!isInBounds(mouseWorldPos)) return;
+
+            const selectedTemplate = portalList[portalSelect.value];
+            let imageToPreview = (placementStep === 1) ? selectedTemplate.image1 : selectedTemplate.image2;
+
+            if (placementStep === 2) drawLine(tempStartPos, mouseWorldPos, selectedTemplate.oneWay, false);
+            if(imageToPreview) {
+                ctx.globalAlpha = 0.5;
+                ctx.drawImage(imageToPreview, mouseWorldPos.x - 16, mouseWorldPos.y - 16);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+        
+        function screenToWorld(x, y) { return { x: (x - transform.offsetX) / transform.scale, y: (y - transform.offsetY) / transform.scale }; }
+
+        init();
+    });
+    </script>
+</body>
+</html>
