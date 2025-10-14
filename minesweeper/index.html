@@ -29,19 +29,18 @@ todo:
   - lisää myös ominaisuus joka tallentaa oman selaimen muistiin omat mapit uudelleenkäyttöä varten.
 - lisää tallennettuja ennaltaluotuja perusmappeja eri muodoilla.
 
-- lisää ohjeisiin kuvituskuvia.
-- yksinpeluun tarkistus ei toimi jos joku pelaaja joinas huoneeseen ja sitten lähti pois. tarkista jo olemassaolevalla funktiolla kuinka monta non-spec pelaajaa on.
+
 
 - jatka: console.warn(`id:${player.id} ==? peerid:${peer} - quitted: ${player.quitted}`);
-  timed out viestit eivät mene läpi mutta kyllä loggaa ne.
+  timed out chat viestit eivät mene läpi mutta kyllä loggaa ne.
+ - timeout ei ehkä toimi kunnolla, spämmäsi joskus sitä viestiä. kokeilin korjata player.quitted arvolla ettei yritä poistaa uudestaan.
+ 
 - jos hosti quittaa niin ilmoita pelaajille: tee jokin pingi hostia varten myös.
 
-- timeout ei taida toimia ollenkaan.
-- päivitä pelaajalista jos joku quittaa tai muuttuu spectaattoriksi.
-- timeout ei ehkä toimi kunnolla, spämmäsi joskus sitä viestiä. kokeilin korjata player.quitted arvolla ettei yritä poistaa uudestaan.
-- jos pelaaja quittaa niin anna pelin jatkua.
-- jos joinaa jo aloitettuun peliin niin vaihda joinaaja automaattisesti spectaattoriksi.
+
 - lisää mahdollisuus valita oma väri ennen aloitusta. huom: tsekkaa ettei väri ole jo käytössä.
+- lisää valinta pelin alussa että pelaaja voi valita kumman pommin haluaa.
+  revealBombAirplaneZeros()
 - lisää poistonappi pelaajille. varsinkin ai:lle jos vahingossa laittaa.
 
 
@@ -57,8 +56,7 @@ todo:
 - lisää nappi valikkoa varten mistä voi esim katsoa pelihistoriaa ja tallennettuja edellisiä pelejä ja toistaa ne uudestaan. 
   lisää myös pomminapit ym.
 - lisää nappi pommin käytölle ja pommituksen tyylin valinta ennen peliä. tai sitten myös peliin.
-- lisää 2x14 pommitus lentokoneella x tai y suuntaisesti. lisää valinta pelin alussa että pelaaja voi valita kumman pommin haluaa.
-  revealBombAirplaneZeros()
+
 
 - muokkaa warning äänen logiikkaa niin että se varoittaa kun vihollinen tarvitsee voittaakseen enää 6 tai alle miinoja?
 
@@ -460,9 +458,9 @@ button.secondary {
 
 .aibutton {
     background-color: #4686FF;
-    width: 100%;
+    width: 63px;
     margin-top: 0px;
-	margin-bottom:20px;
+	----margin-bottom:20px;
 }
 
 
@@ -697,8 +695,8 @@ button.secondary {
 					<input type="number" id="ai-confusion-input" value="0" min="0" max="3">
 					<label for="ai-delay-input">Delay:</label>
 					<input type="number" id="ai-delay-input" value="400" min="0">
+					<button id="add-ai-btn" class="aibutton">Add</button>
 				</div>
-				<button id="add-ai-btn" class="aibutton">Add AI</button>
 
 				
 				<div class="input-group spec-wrap" style="display: flex; gap: 10px; align-items: center;">
@@ -1583,6 +1581,7 @@ let localPlayer = {
 	isAI: false,
 	isSpec: false,
 	firstMove: true,
+	quitted: false,
 };
 
 let gameState = {
@@ -1716,6 +1715,7 @@ addAiBtn.addEventListener('click', () => {
         isReady: true,
         isAI: true,
 		isSpec: false,
+		quitted: false,
 		firstMove: true,
         colors: newPlayerColor(),
         minesFound: 0,
@@ -2590,7 +2590,7 @@ function remove_player(peer, hostSide, timedOut = false){
 		let removed_player = null;
 		for(let i = 0; i < gameState.players.length; i++){
 			let player = gameState.players[i];
-			console.warn(`id:${player.id} ==? peerid:${peer} - quitted: ${player.quitted}`);
+			//console.warn(`id:${player.id} ==? peerid:${peer} - quitted: ${player.quitted} - index=${i}`);
 			if(!player.quitted && player.id === peer){
 				player.isSpec = true;
 				player.quitted = true;
@@ -2599,9 +2599,9 @@ function remove_player(peer, hostSide, timedOut = false){
 				break;
 			}
 		}
-		console.warn("removed_player_index = "+removed_player_index);
 		
 		if(removed_player_index != -1){
+			console.warn("removed_player_index = "+removed_player_index);
 		
 			delete connections[peer];
 		
@@ -2630,32 +2630,39 @@ function remove_player(peer, hostSide, timedOut = false){
 		
 	}
 	
+	updateGameInfo();
+	
 	if(pingTimer){
 		clearInterval(pingTimer);
 		pingTimer = null;
 	}
+	
+	
+	
 }
 
 
 // check if player timed out:
 setInterval(() => {
-  const now = Date.now();
-  for(let i = 0; i < gameState.players.length; i++){
-	let player = gameState.players[i];
-	if(player.peerId){
-		if (now - player.lastPing > 3000) { // e.g., 10 seconds timeout
-		  console.log(`Player ${player.id} timed out`);
-		  if(isHost){
-			console.log("trying to remove player");
-			remove_player(player.peerId, isHost, true);
-		  }
-		  // Clean up connection
-		  //if (player.conn) player.conn.close();
-		  //delete players[peerId];
-		  // Optionally notify other players
+	if(isHost){
+		const now = Date.now();
+		for(let i = 0; i < gameState.players.length; i++){
+			let player = gameState.players[i];
+			if(player.peerId && !player.quitted){
+				if (now - player.lastPing > 3000) { // e.g., 10 seconds timeout
+					console.warn(`Player ${player.id} timed out (interval check)`);
+
+					console.warn("trying to remove player");
+					remove_player(player.peerId, isHost, true);
+
+					// Clean up connection
+					//if (player.conn) player.conn.close();
+					//delete players[peerId];
+					// Optionally notify other players
+				}
+			}
 		}
 	}
-  }
 }, 3000); // check every 3 seconds
 
 
@@ -2802,6 +2809,7 @@ function hostGame() {
 		localPlayer.isAI = false;
 		localPlayer.isSpec = false; // has to modify this when STARTING the game. getSpectateValue()
 		localPlayer.firstMove = true;
+		localPlayer.quitted = false;
 		gameState.players.push(localPlayer); 
 		
 		showScreen('lobby');
@@ -3086,12 +3094,16 @@ function handleMessage(data, peerId) {
 				newPlayer.bombsUsed = 0;
 				newPlayer.isAI = false;
 				newPlayer.firstMove = true;
+				newPlayer.quitted = false;
 
                 
                 gameState.players.push(newPlayer);
                 broadcast({ type: 'game_state', state: gameState });
                 updateLobbyUI();
             }
+			
+			updateGameInfo();
+			
             break;
         case 'player_update':
 			console.log("case: player_update "+hostStr);
@@ -3358,16 +3370,25 @@ function addGameStateElement(playerId, playerColor, playerName, text) {
 
 	// Scroll to bottom
 	gameStateList.scrollTop = gameStateList.scrollHeight;
+	
+	console.log("list: added "+playerName);
 }
 
 function createGameStateElements(){
-	if(!document.getElementById(`gameStateValue-mines`)){
-		addGameStateElement("mines", "white", "Remaining", `: ${gameState.totalMines}`);
-		for(let i = 0; i < gameState.players.length; i++){
+	// always empty so players update every time ui updates:
+	gameStateList.innerHTML = "";
+	//if(!document.getElementById(`gameStateValue-mines`)){
+	addGameStateElement("mines", "white", "Remaining", `: ${gameState.totalMines}`);
+	for(let i = 0; i < gameState.players.length; i++){
+		if(!gameState.players[i].quitted){
 			addGameStateElement(gameState.players[i].id, gameState.players[i].colors.color, gameState.players[i].name, ": 0");
+		}else{
+			console.log("list: failed to add "+gameState.players[i].name);
+		
 		}
-		gameStateList.scrollTop = gameStateList.scrollHeight;
 	}
+	gameStateList.scrollTop = gameStateList.scrollHeight;
+	//}
 }
 	
 
@@ -3449,9 +3470,19 @@ function get_mines_by_player_index(player_index){
 	return mines;
 }
 
+
+function get_active_players(){
+	return gameState.players.filter(p => !p.isSpec);
+}
+
+function active_players_count(){
+	let active = get_active_players();
+	return active.length;
+}
+
 function advanceToNextPlayer() {
     if (gameState.players.length === 0) return;
-    const activePlayers = gameState.players.filter(p => !p.isSpec);
+    const activePlayers = get_active_players();
     if (activePlayers.length === 0) {
         // No active players left, end the game.
         gameState.gameOver = true;
@@ -3485,8 +3516,11 @@ function isFirstMove(player){
 function isLosingPlayer(player) {
   let playerId = player.id;
   if (!gameState?.players?.length) return false;
+  console.log("active_players_count()");
+  console.log(active_players_count());
   
-  if(gameState.players.length == 1){
+  if(active_players_count() == 1){
+	player.firstMove = true; // set this as first move so bomb placement rules work always.
 	return true; // single player always allow bomb.
   }
 
@@ -3516,9 +3550,7 @@ function handlePlayerMove(move) {
     if (gameState.gameOver){
 		return;
 	}
-	if(gameState.minemap.map[y][x].isBlocked){
-		return;
-	}
+
     
     const player = gameState.players[gameState.currentPlayerIndex];
     if (player.id !== playerId) return;
@@ -3527,8 +3559,8 @@ function handlePlayerMove(move) {
 	gameState.lastMoveFailed = false;
 	
 	if(weapon == MOVE_TYPE_NORMAL){
-		
-		if(!gameState.minemap.map[y][x].visible){
+		// dont allow clicking on blocked cell
+		if(!gameState.minemap.map[y][x].visible && !gameState.minemap.map[y][x].isBlocked){
 			revealZeros(gameState.minemap, x, y, gameState.grid);
 			
 			if(gameState.minemap.map[y][x].type >= TYPE_EMPTY){
@@ -3587,26 +3619,29 @@ function handlePlayerMove(move) {
 	
 	if(!gameState.lastMoveFailed){
 		add_log(move);
+	
+		
+		let endState = checkEndState();
+		
+		if(endState.winner){
+			gameState.gameOver = true;
+			gameState.winner = endState.winner;
+		}else if(endState.ties && endState.ties.length > 0){
+			gameState.gameOver = true;
+			gameState.winner = null;
+			gameState.ties = endState.ties;
+		}
+		
+		// update darker water map:
+		count_map_numbers_around(gameState.minemap);
+		mark_percentages();
+		
+		broadcast({ type: 'game_state', state: gameState });
+		handleMessage({ type: 'game_state', state: gameState });
+		checkForAITurn(); // Check if the next player is an AI
+	}else{
+		console.log("lastMoveFailed");
 	}
-	
-	let endState = checkEndState();
-	
-	if(endState.winner){
-		gameState.gameOver = true;
-		gameState.winner = endState.winner;
-	}else if(endState.ties && endState.ties.length > 0){
-		gameState.gameOver = true;
-		gameState.winner = null;
-		gameState.ties = endState.ties;
-	}
-	
-	// update darker water map:
-	count_map_numbers_around(gameState.minemap);
-	mark_percentages();
-    
-    broadcast({ type: 'game_state', state: gameState });
-    handleMessage({ type: 'game_state', state: gameState });
-    checkForAITurn(); // Check if the next player is an AI
 }
 
 
@@ -3721,6 +3756,7 @@ function checkEndState(testData = null){
 		playersListRaw = gameState.players;
 	}
 
+	// get only active players:
     const playersList = playersListRaw.filter(p => !p.isSpec);
 
     if (playersList.length === 0) {
