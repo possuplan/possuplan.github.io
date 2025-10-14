@@ -182,7 +182,10 @@ body {
   overflow-y: auto;
 
 }
-
+#servernamepart {
+	color: gray;
+	margin-left:5px;
+}
 
 h1, h2 {
 	margin-top: 0;
@@ -665,7 +668,7 @@ button.secondary {
     </div>
 
     <div id="lobby-screen" class="screen">
-        <h2 id="lobby-game-name"></h2>
+        <h2 id="lobby-game-name"><span id="gamenamepart"></span><span id="servernamepart"></span></h2>
 		<button id="howtoplay-btn" class="infobutton">? How to play</button>
 		
         <div id="host-controls">
@@ -1634,7 +1637,11 @@ const joinBtn = document.getElementById('join-btn');
 const joinSpectatorBtn = document.getElementById('join-spectator-btn');
 const homeError = document.getElementById('home-error');
 
-const lobbyGameName = document.getElementById('lobby-game-name');
+const lobbyGameName = document.getElementById('gamenamepart');
+const lobbyServerName = document.getElementById('servernamepart');
+
+
+
 const hostControls = document.getElementById('host-controls');
 const startGameBtn = document.getElementById('start-game-btn');
 const playerList = document.getElementById('player-list');
@@ -2462,7 +2469,9 @@ function showScreen(screenName) {
 }
 
 function updateLobbyUI() {
+	let serverName = serversList[parseInt(serverNameInput.value,10)].name;
     lobbyGameName.textContent = `Game: ${gameNameInput.value}`;
+    lobbyServerName.textContent = `(${serverName})`;
     hostControls.style.display = isHost ? 'block' : 'none';
     
     const me = gameState.players.find(p => p.id === localPlayer.id);
