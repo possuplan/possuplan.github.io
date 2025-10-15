@@ -2807,6 +2807,44 @@ let serversList = [
 ];
 
 
+let eventSource = null;
+
+function connectToServer(serverUrl) {
+  // 1. Close existing EventSource if any
+  if (eventSource) {
+    eventSource.close(); // stops listening and frees resources
+    console.log('Closed previous EventSource');
+  }
+
+  // 2. Create new EventSource
+  eventSource = new EventSource(`${serverUrl}/events`);
+
+  // 3. Listen for messages
+  eventSource.onmessage = (event) => {
+    if (event.data === 'games_updated') {
+      console.log('Games updated — reloading list...');
+      fetchOpenGames(currentServerIndex); // or your own function
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error('EventSource error', err);
+  };
+
+  console.log('Connected to EventSource at', serverUrl);
+}
+
+/*
+const eventSource = new EventSource('https://peerjs-server-j9al.onrender.com/events');
+
+eventSource.onmessage = (event) => {
+  if (event.data === 'games_updated') {
+    console.log('Games updated — reloading list...');
+    fetchOpenGames(currentServerIndex); // or your own function
+  }
+};
+*/
+
 
 const gamesListInput = document.getElementById("games-list-input");
 
@@ -2854,12 +2892,30 @@ serverNameInput.addEventListener("change", function() {
 	const selectedValue = this.value;
 	console.log("Selected server:", selectedValue);
 	selectedServerIndex = selectedValue;
-	fetchOpenGames(selectedValue);
+	
+	let server = serversList[selectedServerIndex];
+	if(server.serverListEnabled){
+		connectToServer(server.fetchUrl);
+		fetchOpenGames(selectedValue);
+	}else{
+		gamesListInput.innerHTML = '';
+		const option = document.createElement("option");
+		option.value = "";  // value attribute
+		option.textContent = "--Not available--";  // visible text
+		gamesListInput.appendChild(option);
+	}
 });
 
 
-fetchOpenGames(selectedServerIndex);
+function initServerOpen(){
+	let server = serversList[selectedServerIndex];
+	if(server.serverListEnabled){
+		fetchOpenGames(selectedServerIndex);
+		connectToServer(server.fetchUrl);
+	}
+}
 
+initServerOpen();
 
 
 serversList.forEach((server, index) => {
