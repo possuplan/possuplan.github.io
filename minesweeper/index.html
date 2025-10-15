@@ -659,6 +659,12 @@ button.secondary {
 			
 			</select>
         </div>
+		<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+            <label for="games-list-input">Gamelist:</label>
+			<select id="games-list-input">
+			
+			</select>
+        </div>
         <button id="host-btn">Host Game</button>
         <br>
 		
@@ -2643,6 +2649,18 @@ function remove_player(peer, hostSide, timedOut = false){
 			}
 			
 			
+			/*
+			todo: handle players list on server:
+			let server = getSelectedServer();
+			fetch(`${server.fetchUrl}/player-leave`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ peerId: removed_player.id, hostId: localPlayer.id }),
+				keepalive: true, // So it works during unload
+			});
+			*/
+
+			
 			
 			console.log(`${hostStr} sent game_state:`);
 			broadcast({ type: 'game_state', state: gameState });
@@ -2761,29 +2779,88 @@ if(window.APP_CONFIG.LOCAL == true){
 	selectedServerIndex = 0;
 }
 
+
+
 // onlyLocal = only visible if window.APP_CONFIG.LOCAL = true
+// serverlist
 let serversList = [
-	{name: "local", onlyLocal: true, config: {
-		host: 'localhost',
-		port: 9000,
-		path: '/peerjs',
-		secure: false,
-		debug: 2,
+	{name: "local", onlyLocal: true, serverListEnabled: true, 
+		fetchUrl: "http://localhost:9000",
+		config: {
+			host: 'localhost',
+			port: 9000,
+			path: '/peerjs',
+			secure: false,
+			debug: 2,
 	}}, // dont show this if testing locally.
-	{name: "render.com", onlyLocal: false, config: {
-		host: 'peerjs-server-j9al.onrender.com',
-		path: '/peerjs',
-		secure: true,
-		debug: 2,
+	{name: "render.com", onlyLocal: false, serverListEnabled: true, 
+		fetchUrl: "https://peerjs-server-j9al.onrender.com",
+		config: {
+			host: 'peerjs-server-j9al.onrender.com',
+			path: '/peerjs',
+			secure: true,
+			debug: 2,
 	}},
-	{name: "peerjs.com", onlyLocal: false, config: {
+	{name: "peerjs.com", onlyLocal: false, serverListEnabled: false, config: {
 		debug: 2
 	}},
 ];
 
 
+
+const gamesListInput = document.getElementById("games-list-input");
+
+gamesListInput.addEventListener("change", function() {
+	const selectedValue = this.value;
+	console.log("Selected game:", selectedValue);
+	gameNameInput.value = selectedValue;
+});
+
+async function fetchOpenGames(serverIndex) {
+	let server = serversList[serverIndex];
+	
+	if(server.serverListEnabled){
+		const res = await fetch(`${server.fetchUrl}/games`);
+		const games = await res.json();
+		console.warn('Open games:');
+		console.warn(games);
+		
+		gamesListInput.innerHTML = '';
+		const option = document.createElement("option");
+		option.value = "";  // value attribute
+		option.textContent = "--Select game--";  // visible text
+		gamesListInput.appendChild(option);
+		for (const key in games) {
+			if (games.hasOwnProperty(key)) {
+				let gameName = games[key].name;
+				const option = document.createElement("option");
+				option.value = gameName;  // value attribute
+				option.textContent = gameName;  // visible text
+				gamesListInput.appendChild(option);
+			}
+		}
+
+	}
+}
+
+
+
+
+
 const serverNameInput = document.getElementById("server-name-input");
 serverNameInput.value = selectedServerIndex;
+
+serverNameInput.addEventListener("change", function() {
+	const selectedValue = this.value;
+	console.log("Selected server:", selectedValue);
+	selectedServerIndex = selectedValue;
+	fetchOpenGames(selectedValue);
+});
+
+
+fetchOpenGames(selectedServerIndex);
+
+
 
 serversList.forEach((server, index) => {
 	// if onlyLocal is false or config local is true, then add line:
@@ -2862,6 +2939,13 @@ function initializePeer(hostSide, peerId = null) {
 }
 
 
+function getSelectedServer(){
+	selectedServerIndex = parseInt(serverNameInput.value, 10);
+	return serversList[selectedServerIndex];
+}
+
+
+
 function hostGame() {
     const gameName = gameNameInput.value.trim();
     const playerName = playerNameInput.value.trim();
@@ -2892,6 +2976,28 @@ function hostGame() {
 		localPlayer.firstMove = true;
 		localPlayer.quitted = false;
 		gameState.players.push(localPlayer); 
+		
+		
+		
+		let server = getSelectedServer();
+		console.log(server);
+		
+		// todo: You could also send a DELETE /unregister-game request when the host manually closes the game.
+		
+		// only allow games list on servers that is possible:
+		if(server.serverListEnabled){
+			fetch(`${server.fetchUrl}/register-game`, {
+			  method: 'POST',
+			  headers: { 'Content-Type': 'application/json' },
+			  body: JSON.stringify({
+				peerId: localPlayer.id,
+				name: gameName,
+				hostName: localPlayer.name,
+				maxPlayers: 400, // todo: allow changing this some day.
+			  }),
+			});
+		}
+
 		
 		showScreen('lobby');
 		updateLobbyUI();
@@ -2934,6 +3040,34 @@ function joinGame() {
             joinBtn.disabled = false;
         }
     }, 1000);
+	
+	/*
+	// todo: this is used for keeping track of joined players:
+	setTimeout(() => { 
+		if (!peer || !peer.id) return;
+		const conn = peer.connect(hostId, { reliable: true });
+		if (conn) {
+			setupConnection(conn, false);
+
+			// Notify the server that a player joined
+			fetch('https://<your-render-app>.onrender.com/player-join', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					peerId: peer.id,
+					playerName: localPlayer.name,
+					hostId: hostId
+				}),
+			}).catch(err => console.error('Join notify failed:', err));
+		} else {
+			hideLoader();
+			homeError.textContent = "Could not connect to host. Check Game Name.";
+			hostBtn.disabled = false;
+			joinBtn.disabled = false;
+		}
+	}, 1000);
+
+	*/
 	
 	
 }
@@ -3452,7 +3586,7 @@ function addGameStateElement(playerId, playerColor, playerName, text) {
 	// Scroll to bottom
 	gameStateList.scrollTop = gameStateList.scrollHeight;
 	
-	console.log("list: added "+playerName);
+	//console.log("list: added "+playerName);
 }
 
 function createGameStateElements(){
