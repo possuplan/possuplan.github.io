@@ -2823,7 +2823,7 @@ function connectToServer(serverUrl) {
   eventSource.onmessage = (event) => {
     if (event.data === 'games_updated') {
       console.log('Games updated — reloading list...');
-      fetchOpenGames(currentServerIndex); // or your own function
+      fetchOpenGames(selectedServerIndex); // or your own function
     }
   };
 
