@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Wi-Fi Minesweeper</title>
+<title>Minesweeper Online</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/noisejs@2.1.0/index.min.js"></script>
 
@@ -25,6 +25,10 @@
 
 <!--
 todo: 
+- lisää restart game nappiing ominaisuus että se vain tyhjää gameState tiedot ja siten aloittaa heti uuden pelin.
+
+- tarkista game end check vain aktiivisille pelaajille jotta quitanneen pelaajan miinat eivät vaikuta pelin loppumistarkistukseen.
+
 - tee mappieditori jossa voi piirtää pelialueen lisäämällä mustia ruutuja johon ei voi pelissä klikata.
   - lisää myös ominaisuus joka tallentaa oman selaimen muistiin omat mapit uudelleenkäyttöä varten.
 - lisää tallennettuja ennaltaluotuja perusmappeja eri muodoilla.
@@ -642,7 +646,7 @@ button.secondary {
     </div>
 	
     <div id="home-screen" class="screen active">
-        <h1>Wi-Fi Minesweeper</h1>
+        <h1>Minesweeper Online</h1>
 		<button id="howtoplay-btn" class="infobutton">? How to play</button>
 
         <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
