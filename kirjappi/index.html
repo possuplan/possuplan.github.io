@@ -158,7 +158,7 @@
         #books-table td:nth-child(2) { width: 45%; }
         #books-table td:nth-child(3) { width: 15%; text-align: center; }
         #books-table td:nth-child(4) { width: 10%; text-align: center; }
-        #books-table td:nth-child(5) { width: 15%; text-align: center; font-size: 20px; }
+        #books-table td:nth-child(5) { width: 15%; text-align: center; font-size: 28px; }
 
 
         /* --- Modals & Popups --- */
@@ -226,7 +226,20 @@
         .grid-item:hover {
             border-color: var(--text-color);
         }
-
+		
+		.status-cell {
+			width:40px;
+			height:40px;
+			background-size: cover;
+			background-repeat: no-repeat;
+			background-position: center;
+		}
+		.status-cell2 {
+			background-size: 30px 30px;
+			background-repeat: no-repeat;
+			background-position: center;
+		}
+		
         #status-popup-grid { grid-template-columns: 50px 1fr; }
         #score-popup-grid { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); }
         #feeling-popup-grid { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); font-size: 24px; }
@@ -306,7 +319,7 @@
             color: #aaa;
         }
         .stat-item .value {
-            font-size: 18px;
+            font-size: 28px;
             font-weight: bold;
             white-space: nowrap;
             overflow: hidden;
@@ -494,7 +507,7 @@
                         <label for="edit-status">Status</label>
                         <select id="edit-status"></select>
                     </div>
-                     <div class="stat-item" id="edit-book-stats-btn">
+                    <div class="stat-item" id="edit-book-stats-btn" style="display:none">
                         <label>&#128202; Statistics</label>
                         <div class="value">View Stats</div>
                     </div>
@@ -594,11 +607,11 @@
         let db;
 
         const bookStatuses = [
-            { name: "unread", id: 0, order: 0 },
-            { name: "active", id: 1, order: 1 },
-            { name: "paused", id: 2, order: 2 },
-            { name: "read", id: 3, order: 3 },
-            { name: "next", id: 4, order: 4 },
+            { name: "Unread", image: "images/unread.png", id: 0, order: 0 },
+            { name: "Active", image: "images/active.png",  id: 1, order: 1 },
+            { name: "Paused", image: "images/paused.png",  id: 2, order: 2 },
+            { name: "Read", image: "images/read.png",  id: 3, order: 3 },
+            { name: "Next", image: "images/next.png",  id: 4, order: 4 },
         ];
         
         const emojiList = ['😀', '😍', '🤔', '😴', '😭', '🤯', '👍', '👎', '❤️', '🔥', '😂', '💡'];
@@ -669,6 +682,39 @@
             get: (id) => dbOperation(BOOK_STORE_NAME, 'readonly', store => store.get(id)),
             update: (data) => dbOperation(BOOK_STORE_NAME, 'readwrite', store => store.put(data)),
         };
+		
+		/*
+// Browser / Node (Node 18+ supports fetch natively)
+async function getBookFromGoogleBooks(isbn) {
+  const clean = isbn.replace(/[^0-9Xx]/g, '');
+  const url = `https://www.googleapis.com/books/v1/volumes?q=isbn:${encodeURIComponent(clean)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const item = data.items?.[0];
+  if (!item) return null;
+  const info = item.volumeInfo;
+  return {
+    title: info.title,
+    subtitle: info.subtitle,
+    authors: info.authors || [],
+    publisher: info.publisher,
+    publishedDate: info.publishedDate,
+    description: info.description,
+    pageCount: info.pageCount,
+    categories: info.categories || [],
+    language: info.language,
+    identifiers: info.industryIdentifiers, // includes ISBN_10 / ISBN_13
+    thumbnail: info.imageLinks?.thumbnail || null,
+  };
+}
+
+// usage
+getBookFromGoogleBooks('9780140449136')
+  .then(b => console.log(b))
+  .catch(err => console.error(err));
+
+*/
 
         // --- Rendering & UI ---
         function showPage(pageId) {
@@ -688,7 +734,7 @@
             allStatuses.forEach(status => {
                 const item = document.createElement('div');
                 item.className = 'status-item';
-                item.textContent = status.name.charAt(0).toUpperCase() + status.name.slice(1);
+                item.textContent = status.name;
                 item.dataset.statusId = status.id;
                 if (status.id === currentStatus) {
                     item.classList.add('active');
@@ -721,12 +767,13 @@
             filteredBooks.forEach(book => {
                 const row = document.createElement('tr');
                 row.dataset.bookId = book.id;
+				let status = getStatus(book.status);
                 row.innerHTML = `
-                    <td data-action="status">${getStatusName(book.status)}</td>
+                    <td data-action="status" class="status-cell2" style="background-image:url('${status.image}')">&nbsp;</td>
                     <td data-action="edit">${book.name}</td>
                     <td data-action="note">${book.currentPage || 0} / ${book.pages}</td>
-                    <td data-action="score">${book.score != null ? book.score.toFixed(1) : 'N/A'}</td>
-                    <td data-action="feeling">${book.feeling || '...'}</td>
+                    <td data-action="score">${book.score != null ? book.score.toFixed(1) : '&nbsp;'}</td>
+                    <td data-action="feeling">${book.feeling || '&nbsp;'}</td>
                 `;
                 booksTableBody.appendChild(row);
             });
@@ -796,7 +843,7 @@
             const grid = popup.querySelector('#status-popup-grid');
             grid.innerHTML = '';
             bookStatuses.forEach(status => {
-                grid.innerHTML += `<div class="grid-item">${status.id}</div><div class="grid-item" data-status-id="${status.id}">${status.name}</div>`;
+                grid.innerHTML += `<div class="grid-item status-cell" data-status-id="${status.id}" style="background-image:url('${status.image}')">&nbsp;</div><div class="grid-item" data-status-id="${status.id}">${status.name}</div>`;
             });
             showModal('status-popup');
         }
@@ -1022,9 +1069,15 @@
 
         function getStatusName(statusId) {
             const status = bookStatuses.find(s => s.id == statusId);
-            return status ? status.name.charAt(0).toUpperCase() + status.name.slice(1) : 'Unknown';
+            return status ? status.name : 'Unknown';
         }
-
+        function getStatus(statusId) {
+            const status = bookStatuses.find(s => s.id == statusId);
+			if(status){
+				return status;
+			}
+            return {name:"unknown", image: "", id: -1};
+        }
         // --- Event Listeners ---
         function setupEventListeners() {
             // Menu
