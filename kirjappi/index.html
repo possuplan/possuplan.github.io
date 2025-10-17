@@ -891,10 +891,16 @@
                 return;
             }
 
-            book.notes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach((note, index) => {
+            // Create a temporary array that includes the original index of each note
+            const sortedNotes = book.notes
+                .map((note, index) => ({ ...note, originalIndex: index }))
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            sortedNotes.forEach(note => {
                 const noteEl = document.createElement('div');
                 noteEl.className = 'note';
-                noteEl.dataset.noteIndex = book.notes.indexOf(note); // Use original index for updates
+                // Use the saved original index to ensure we update the correct note later
+                noteEl.dataset.noteIndex = note.originalIndex; 
                 noteEl.innerHTML = `
                     <p class="note-date">${new Date(note.date).toLocaleString()}</p>
                     <div class="form-group">
