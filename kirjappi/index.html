@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Logger</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #bb86fc;
+            --primary-variant-color: #3700b3;
+            --secondary-color: #03dac6;
+            --text-color: #e1e1e1;
+            --border-color: #444;
+            --active-color: #2962ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* --- Layout & Structure --- */
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            background-color: var(--surface-color);
+            padding: 8px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        main {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* --- Header --- */
+        #menu-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 24px;
+            cursor: pointer;
+            width: 50px;
+            flex-shrink: 0;
+        }
+
+        #status-filter {
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+        }
+        #status-filter::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+
+        .status-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 0 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .status-item:hover {
+            background-color: var(--border-color);
+        }
+        .status-item.active {
+            background-color: var(--active-color);
+            color: white;
+        }
+        
+        #search-container {
+            display: none;
+            padding: 8px;
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        #search-container.active {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* --- Menu --- */
+        #menu {
+            display: none;
+            position: absolute;
+            top: 55px;
+            left: 8px;
+            background-color: #2a2a2a;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 200;
+        }
+        #menu.active {
+            display: block;
+        }
+        .menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            width: 150px;
+        }
+        .menu-item:hover {
+            background-color: var(--border-color);
+        }
+
+        /* --- Book List Table --- */
+        #books-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        #books-table th, #books-table td {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: left;
+            vertical-align: middle;
+        }
+        #books-table th {
+            background-color: var(--surface-color);
+            position: sticky;
+            top: 0;
+        }
+        #books-table td {
+            cursor: pointer;
+        }
+        #books-table td:nth-child(1) { width: 15%; text-align: center; }
+        #books-table td:nth-child(2) { width: 45%; }
+        #books-table td:nth-child(3) { width: 15%; text-align: center; }
+        #books-table td:nth-child(4) { width: 10%; text-align: center; }
+        #books-table td:nth-child(5) { width: 15%; text-align: center; font-size: 20px; }
+
+
+        /* --- Modals & Popups --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .popup-content, .modal-content {
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 90%;
+            width: 500px;
+            position: relative;
+        }
+        .modal-content {
+             width: 100%;
+             height: 100%;
+             max-width: 100%;
+             border-radius: 0;
+             overflow-y: auto;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+        .popup-title {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        .popup-subtitle {
+            font-size: 1em;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+        
+        .grid-selector {
+            display: grid;
+            gap: 5px;
+        }
+        .grid-item {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .grid-item:hover {
+            border-color: var(--text-color);
+        }
+
+        #status-popup-grid { grid-template-columns: 50px 1fr; }
+        #score-popup-grid { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); }
+        #feeling-popup-grid { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); font-size: 24px; }
+
+        /* --- Forms & Inputs --- */
+        h1, h2, h3 {
+            margin-bottom: 16px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            background-color: #333;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            font-size: 16px;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--active-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--primary-color);
+            color: #000;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #d0aaff;
+        }
+        button.secondary {
+            background-color: var(--border-color);
+            color: var(--text-color);
+        }
+        button.secondary:hover {
+             background-color: #555;
+        }
+
+        /* --- Edit Book Page --- */
+        .edit-book-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .stat-item label {
+            font-size: 12px;
+            color: #aaa;
+        }
+        .stat-item .value {
+            font-size: 18px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #feeling-history {
+            cursor: default;
+        }
+
+        #previous-notes-container .note {
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        #previous-notes-container .note .note-date {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #previous-notes-container .note input:focus,
+        #previous-notes-container .note textarea:focus {
+            border-color: var(--text-color);
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <header>
+            <button id="menu-btn">&#9776;</button>
+            <div id="status-filter"></div>
+        </header>
+
+        <div id="search-container">
+             <input type="text" id="search-input" placeholder="Search by name or writer...">
+             <button id="search-action-btn" class="secondary" style="width: auto; padding: 10px 15px;">Search</button>
+             <button id="search-cancel-btn" class="secondary" style="width: auto; padding: 10px 15px;">Cancel</button>
+        </div>
+
+        <nav id="menu">
+            <div class="menu-item" data-page="books">Books</div>
+            <div class="menu-item" data-page="new-book">New Book</div>
+            <div class="menu-item" data-page="stats">Stats</div>
+            <div class="menu-item" data-page="settings">Settings</div>
+        </nav>
+
+        <main id="main-content">
+            <div id="page-books" class="page">
+                <div style="overflow-x:auto;">
+                    <table id="books-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Name</th>
+                                <th>Page</th>
+                                <th>Score</th>
+                                <th>Feeling</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-new-book" class="page">
+                <h1>New Book</h1>
+                <div class="form-group">
+                    <label for="new-name">Name</label>
+                    <input type="text" id="new-name">
+                </div>
+                <div class="form-group">
+                    <label for="new-writer">Writer</label>
+                    <input type="text" id="new-writer">
+                </div>
+                <div class="form-group">
+                    <label for="new-genre">Genre</label>
+                    <input type="text" id="new-genre">
+                </div>
+                <div class="form-group">
+                    <label for="new-pages">Page Count</label>
+                    <input type="number" id="new-pages">
+                </div>
+                <div class="form-group">
+                    <label for="new-language">Language</label>
+                    <input type="text" id="new-language">
+                </div>
+                <div class="form-group">
+                    <label for="new-publishDate">Publish Date</label>
+                    <input type="date" id="new-publishDate">
+                </div>
+                <div class="form-group">
+                    <label for="new-edition">Edition</label>
+                    <input type="text" id="new-edition">
+                </div>
+                <div class="form-group">
+                    <label for="new-isbn">ISBN</label>
+                    <input type="text" id="new-isbn">
+                </div>
+                <div class="form-group">
+                    <label for="new-status">Status</label>
+                    <select id="new-status"></select>
+                </div>
+                <div class="form-group">
+                    <label for="new-startDate">Start Date</label>
+                    <input type="date" id="new-startDate">
+                </div>
+                <button id="add-book-btn">Add Book</button>
+            </div>
+
+            <div id="page-stats" class="page">
+                <h1>Stats</h1>
+                <div id="stats-container"></div>
+            </div>
+
+            <div id="page-settings" class="page">
+                <h1>Settings</h1>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-container">
+        <div id="status-popup" class="modal-overlay">
+            <div class="popup-content">
+                <h2 class="popup-title"></h2>
+                <p class="popup-subtitle">Change Status</p>
+                <div id="status-popup-grid" class="grid-selector"></div>
+            </div>
+        </div>
+        <div id="score-popup" class="modal-overlay">
+            <div class="popup-content">
+                <h2 class="popup-title"></h2>
+                <p class="popup-subtitle">Total Score</p>
+                <div id="score-popup-grid" class="grid-selector"></div>
+            </div>
+        </div>
+        <div id="feeling-popup" class="modal-overlay">
+            <div class="popup-content">
+                <h2 class="popup-title"></h2>
+                <p class="popup-subtitle">Feeling</p>
+                <div id="feeling-popup-grid" class="grid-selector"></div>
+            </div>
+        </div>
+        <div id="new-note-modal" class="modal-overlay">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2 class="popup-title"></h2>
+                <p class="popup-subtitle">New Note</p>
+                <div class="form-group">
+                    <label for="note-page">Page Number</label>
+                    <input type="number" id="note-page">
+                </div>
+                <div class="form-group">
+                    <label for="note-score">Score (0-10)</label>
+                    <input type="number" id="note-score" min="0" max="10">
+                </div>
+                <div class="form-group">
+                    <label for="note-feeling">Feeling</label>
+                    <input type="text" id="note-feeling" placeholder="Enter an emoji">
+                </div>
+                <div class="form-group">
+                    <label for="note-comment">Comment</label>
+                    <textarea id="note-comment"></textarea>
+                </div>
+                <div id="end-date-container" class="form-group" style="display: none;">
+                    <label for="note-endDate">End Date</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="note-endDate">
+                        <button id="cancel-end-book-btn" class="secondary" style="width: auto; padding: 10px 15px;">Cancel</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button id="end-book-btn" class="secondary">End Book</button>
+                </div>
+                <button id="add-note-btn">Add Note</button>
+            </div>
+        </div>
+        <div id="edit-book-modal" class="modal-overlay">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2 id="edit-book-title">Edit Book</h2>
+                <div class="edit-book-stats">
+                    <div class="form-group">
+                        <label for="edit-status">Status</label>
+                        <select id="edit-status"></select>
+                    </div>
+                     <div class="stat-item" id="edit-book-stats-btn">
+                        <label>&#128202; Statistics</label>
+                        <div class="value">View Stats</div>
+                    </div>
+                    <div class="stat-item" id="edit-score-container">
+                        <label>Total Score</label>
+                        <div id="edit-score-value" class="value"></div>
+                    </div>
+                    <div class="stat-item" id="edit-feeling-container">
+                        <label>Total Feeling</label>
+                        <div id="edit-feeling-value" class="value"></div>
+                    </div>
+                </div>
+                 <div class="stat-item" id="feeling-history">
+                    <label>Feeling History</label>
+                    <div id="feeling-history-value" class="value"></div>
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 20px 0;">
+
+                <div class="form-group">
+                    <label for="edit-name">Name</label>
+                    <input type="text" id="edit-name">
+                </div>
+                <div class="form-group">
+                    <label for="edit-writer">Writer</label>
+                    <input type="text" id="edit-writer">
+                </div>
+                <div class="form-group">
+                    <label for="edit-genre">Genre</label>
+                    <input type="text" id="edit-genre">
+                </div>
+                <div class="form-group">
+                    <label for="edit-pages">Page Count</label>
+                    <input type="number" id="edit-pages">
+                </div>
+                <div class="form-group">
+                    <label for="edit-language">Language</label>
+                    <input type="text" id="edit-language">
+                </div>
+                <div class="form-group">
+                    <label for="edit-publishDate">Publish Date</label>
+                    <input type="date" id="edit-publishDate">
+                </div>
+                <div class="form-group">
+                    <label for="edit-edition">Edition</label>
+                    <input type="text" id="edit-edition">
+                </div>
+                <div class="form-group">
+                    <label for="edit-isbn">ISBN</label>
+                    <input type="text" id="edit-isbn">
+                </div>
+                <div class="form-group">
+                    <label for="edit-startDate">Start Date</label>
+                    <input type="date" id="edit-startDate">
+                </div>
+                 <div class="form-group">
+                    <label>Current Page</label>
+                    <p id="edit-currentPage" style="font-size: 1.2em;"></p>
+                </div>
+
+                <hr style="border-color: var(--border-color); margin: 20px 0;">
+                
+                <h3>Add Note</h3>
+                 <div class="form-group">
+                    <label for="edit-note-page">Page Number</label>
+                    <input type="number" id="edit-note-page">
+                </div>
+                <div class="form-group">
+                    <label for="edit-note-score">Score (0-10)</label>
+                    <input type="number" id="edit-note-score" min="0" max="10">
+                </div>
+                <div class="form-group">
+                    <label for="edit-note-feeling">Feeling</label>
+                    <input type="text" id="edit-note-feeling" placeholder="Enter an emoji">
+                </div>
+                <div class="form-group">
+                    <label for="edit-note-comment">Comment</label>
+                    <textarea id="edit-note-comment"></textarea>
+                </div>
+                <button id="edit-add-note-btn">Add Note</button>
+
+                <hr style="border-color: var(--border-color); margin: 20px 0;">
+                
+                <h3>Previous Notes</h3>
+                <div id="previous-notes-container"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- State & Constants ---
+        const DB_NAME = 'BookLoggerDB';
+        const DB_VERSION = 1;
+        const BOOK_STORE_NAME = 'books';
+        let db;
+
+        const bookStatuses = [
+            { name: "unread", id: 0, order: 0 },
+            { name: "active", id: 1, order: 1 },
+            { name: "paused", id: 2, order: 2 },
+            { name: "read", id: 3, order: 3 },
+            { name: "next", id: 4, order: 4 },
+        ];
+        
+        const emojiList = ['😀', '😍', '🤔', '😴', '😭', '🤯', '👍', '👎', '❤️', '🔥', '😂', '💡'];
+        const scoreList = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+
+        let currentStatus = -1; // -1 for "all"
+        let activeBookId = null;
+        let books = [];
+
+        // --- DOM Elements ---
+        const menuBtn = document.getElementById('menu-btn');
+        const menu = document.getElementById('menu');
+        const statusFilterContainer = document.getElementById('status-filter');
+        const pages = document.querySelectorAll('.page');
+        const booksTableBody = document.querySelector('#books-table tbody');
+        const addBookBtn = document.getElementById('add-book-btn');
+        const modalContainer = document.getElementById('modal-container');
+        const searchContainer = document.getElementById('search-container');
+        const searchActionBtn = document.getElementById('search-action-btn');
+        const searchCancelBtn = document.getElementById('search-cancel-btn');
+        const searchInput = document.getElementById('search-input');
+
+        // --- IndexedDB ---
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(BOOK_STORE_NAME)) {
+                        db.createObjectStore(BOOK_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error('Database error:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        function dbOperation(storeName, mode, operation) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject("DB not initialized");
+                    return;
+                }
+                const transaction = db.transaction(storeName, mode);
+                const store = transaction.objectStore(storeName);
+                const request = operation(store);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => {
+                    console.error('DB Operation Error:', event.target.error);
+                    reject(event.target.error)
+                };
+            });
+        }
+        
+        const dbActions = {
+            add: (data) => dbOperation(BOOK_STORE_NAME, 'readwrite', store => store.add(data)),
+            getAll: () => dbOperation(BOOK_STORE_NAME, 'readonly', store => store.getAll()),
+            get: (id) => dbOperation(BOOK_STORE_NAME, 'readonly', store => store.get(id)),
+            update: (data) => dbOperation(BOOK_STORE_NAME, 'readwrite', store => store.put(data)),
+        };
+
+        // --- Rendering & UI ---
+        function showPage(pageId) {
+            pages.forEach(page => {
+                page.classList.toggle('active', page.id === `page-${pageId}`);
+            });
+            menu.classList.remove('active');
+        }
+
+        function renderStatusFilter() {
+            statusFilterContainer.innerHTML = '';
+            const allStatuses = [
+                { name: 'search', id: 'search' },
+                { name: 'all', id: -1 },
+                ...bookStatuses.sort((a,b) => a.order - b.order)
+            ];
+            allStatuses.forEach(status => {
+                const item = document.createElement('div');
+                item.className = 'status-item';
+                item.textContent = status.name.charAt(0).toUpperCase() + status.name.slice(1);
+                item.dataset.statusId = status.id;
+                if (status.id === currentStatus) {
+                    item.classList.add('active');
+                }
+                statusFilterContainer.appendChild(item);
+            });
+        }
+
+        function renderBooks() {
+            let filteredBooks = books;
+            if (currentStatus != -1) {
+                filteredBooks = books.filter(b => b.status == currentStatus);
+            }
+            
+            const searchTerm = searchInput.value.toLowerCase();
+            if (searchContainer.classList.contains('active') && searchTerm) {
+                 filteredBooks = filteredBooks.filter(b => 
+                    b.name.toLowerCase().includes(searchTerm) || 
+                    b.writer.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            filteredBooks.sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate));
+
+            booksTableBody.innerHTML = '';
+            if (filteredBooks.length === 0) {
+                booksTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No books found.</td></tr>`;
+                return;
+            }
+            filteredBooks.forEach(book => {
+                const row = document.createElement('tr');
+                row.dataset.bookId = book.id;
+                row.innerHTML = `
+                    <td data-action="status">${getStatusName(book.status)}</td>
+                    <td data-action="edit">${book.name}</td>
+                    <td data-action="note">${book.currentPage || 0} / ${book.pages}</td>
+                    <td data-action="score">${book.score != null ? book.score.toFixed(1) : 'N/A'}</td>
+                    <td data-action="feeling">${book.feeling || '...'}</td>
+                `;
+                booksTableBody.appendChild(row);
+            });
+        }
+        
+        function renderStats() {
+            const container = document.getElementById('stats-container');
+            container.innerHTML = '';
+            const booksByMonth = {};
+            
+            books.filter(b => b.endDate).forEach(book => {
+                const endDate = new Date(book.endDate);
+                const monthKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+                if (!booksByMonth[monthKey]) {
+                    booksByMonth[monthKey] = [];
+                }
+                booksByMonth[monthKey].push(book);
+            });
+
+            const sortedMonths = Object.keys(booksByMonth).sort().reverse();
+            if (sortedMonths.length === 0) {
+                 container.innerHTML = '<p>No books finished yet.</p>';
+                 return;
+            }
+
+            sortedMonths.forEach(monthKey => {
+                const [year, month] = monthKey.split('-');
+                const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+                
+                const monthEl = document.createElement('div');
+                monthEl.innerHTML = `<h3>${monthName} ${year} (${booksByMonth[monthKey].length} books)</h3>`;
+                const listEl = document.createElement('ul');
+                booksByMonth[monthKey].forEach(book => {
+                    const itemEl = document.createElement('li');
+                    itemEl.textContent = `${book.name} by ${book.writer}`;
+                    listEl.appendChild(itemEl);
+                });
+                monthEl.appendChild(listEl);
+                container.appendChild(monthEl);
+            });
+        }
+
+        function populateSelect(selectEl, options) {
+            selectEl.innerHTML = '';
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.id;
+                option.textContent = opt.name.charAt(0).toUpperCase() + opt.name.slice(1);
+                selectEl.appendChild(option);
+            });
+        }
+
+        // --- Popups & Modals ---
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function hideAllModals() {
+            document.querySelectorAll('.modal-overlay').forEach(modal => modal.classList.remove('active'));
+            activeBookId = null;
+        }
+
+        async function openStatusPopup() {
+            const book = await dbActions.get(activeBookId);
+            const popup = document.getElementById('status-popup');
+            popup.querySelector('.popup-title').textContent = book.name;
+            const grid = popup.querySelector('#status-popup-grid');
+            grid.innerHTML = '';
+            bookStatuses.forEach(status => {
+                grid.innerHTML += `<div class="grid-item">${status.id}</div><div class="grid-item" data-status-id="${status.id}">${status.name}</div>`;
+            });
+            showModal('status-popup');
+        }
+        
+        async function openScorePopup() {
+            const book = await dbActions.get(activeBookId);
+            const popup = document.getElementById('score-popup');
+            popup.querySelector('.popup-title').textContent = book.name;
+            const grid = popup.querySelector('#score-popup-grid');
+            grid.innerHTML = '';
+            scoreList.forEach(score => {
+                grid.innerHTML += `<div class="grid-item" data-score="${score}">${score.toFixed(1)}</div>`;
+            });
+            showModal('score-popup');
+        }
+        
+        async function openFeelingPopup() {
+            const book = await dbActions.get(activeBookId);
+            const popup = document.getElementById('feeling-popup');
+            popup.querySelector('.popup-title').textContent = book.name;
+            const grid = popup.querySelector('#feeling-popup-grid');
+            grid.innerHTML = '';
+            emojiList.forEach(emoji => {
+                grid.innerHTML += `<div class="grid-item" data-feeling="${emoji}">${emoji}</div>`;
+            });
+            showModal('feeling-popup');
+        }
+
+        async function openNewNoteModal() {
+            const book = await dbActions.get(activeBookId);
+            const modal = document.getElementById('new-note-modal');
+            modal.querySelector('.popup-title').textContent = `${book.name} (${book.pages} pages)`;
+            document.getElementById('note-page').value = '';
+            document.getElementById('note-score').value = '';
+            document.getElementById('note-feeling').value = '';
+            document.getElementById('note-comment').value = '';
+            document.getElementById('note-endDate').value = '';
+            document.getElementById('end-date-container').style.display = 'none';
+            document.getElementById('end-book-btn').style.display = 'block';
+            showModal('new-note-modal');
+        }
+        
+        async function openEditBookModal() {
+            const book = await dbActions.get(activeBookId);
+            const modal = document.getElementById('edit-book-modal');
+            
+            // Populate fields
+            modal.querySelector('#edit-name').value = book.name || '';
+            modal.querySelector('#edit-writer').value = book.writer || '';
+            modal.querySelector('#edit-genre').value = book.genre || '';
+            modal.querySelector('#edit-pages').value = book.pages || '';
+            modal.querySelector('#edit-language').value = book.language || '';
+            modal.querySelector('#edit-publishDate').value = book.publishDate || '';
+            modal.querySelector('#edit-edition').value = book.edition || '';
+            modal.querySelector('#edit-isbn').value = book.ISBN || '';
+            modal.querySelector('#edit-startDate').value = book.startDate || '';
+            modal.querySelector('#edit-status').value = book.status;
+            modal.querySelector('#edit-currentPage').textContent = `${book.currentPage || 0} / ${book.pages}`;
+            modal.querySelector('#edit-score-value').textContent = book.score != null ? book.score.toFixed(1) : 'N/A';
+            modal.querySelector('#edit-feeling-value').textContent = book.feeling || '...';
+
+            renderFeelingHistory(book);
+            renderPreviousNotes(book);
+
+            showModal('edit-book-modal');
+        }
+
+        function renderFeelingHistory(book) {
+            const historyContainer = document.getElementById('feeling-history-value');
+            if (!book.notes || book.notes.length === 0) {
+                historyContainer.textContent = 'No feelings recorded yet.';
+                return;
+            }
+            const uniqueFeelings = book.notes
+                .map(note => note.feeling)
+                .filter(feeling => feeling)
+                .reduce((acc, feeling) => {
+                    if (acc.length === 0 || acc[acc.length - 1] !== feeling) {
+                        acc.push(feeling);
+                    }
+                    return acc;
+                }, []);
+            
+            historyContainer.textContent = uniqueFeelings.join(' ');
+        }
+        
+        function renderPreviousNotes(book) {
+            const container = document.getElementById('previous-notes-container');
+            container.innerHTML = '';
+            if (!book.notes || book.notes.length === 0) {
+                container.innerHTML = '<p>No notes added yet.</p>';
+                return;
+            }
+
+            book.notes.sort((a,b) => new Date(b.date) - new Date(a.date)).forEach((note, index) => {
+                const noteEl = document.createElement('div');
+                noteEl.className = 'note';
+                noteEl.dataset.noteIndex = book.notes.indexOf(note); // Use original index for updates
+                noteEl.innerHTML = `
+                    <p class="note-date">${new Date(note.date).toLocaleString()}</p>
+                    <div class="form-group">
+                        <label>Page</label>
+                        <input type="number" class="note-input" data-field="page" value="${note.page || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Score</label>
+                        <input type="number" class="note-input" data-field="score" value="${note.score || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Feeling</label>
+                        <input type="text" class="note-input" data-field="feeling" value="${note.feeling || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Comment</label>
+                        <textarea class="note-input" data-field="comment">${note.comment || ''}</textarea>
+                    </div>
+                `;
+                container.appendChild(noteEl);
+            });
+        }
+
+        // --- Data Handling ---
+        async function handleAddBook() {
+            const newBook = {
+                type: 0,
+                status: parseInt(document.getElementById('new-status').value, 10),
+                score: null,
+                feeling: '',
+                name: document.getElementById('new-name').value,
+                writer: document.getElementById('new-writer').value,
+                genre: document.getElementById('new-genre').value,
+                pages: parseInt(document.getElementById('new-pages').value, 10),
+                language: document.getElementById('new-language').value,
+                publishDate: document.getElementById('new-publishDate').value,
+                edition: document.getElementById('new-edition').value,
+                ISBN: document.getElementById('new-isbn').value,
+                startDate: document.getElementById('new-startDate').value,
+                endDate: null,
+                currentPage: 0,
+                creationDate: new Date().toISOString(),
+                notes: []
+            };
+
+            if (!newBook.name) {
+                alert('Book name is required.');
+                return;
+            }
+
+            await dbActions.add(newBook);
+            await fetchBooks();
+            currentStatus = -1;
+            renderStatusFilter();
+            showPage('books');
+            renderBooks();
+            
+            // Clear form
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-writer').value = '';
+            document.getElementById('new-genre').value = '';
+            document.getElementById('new-pages').value = '';
+            document.getElementById('new-language').value = '';
+            document.getElementById('new-publishDate').value = '';
+            document.getElementById('new-edition').value = '';
+            document.getElementById('new-isbn').value = '';
+            document.getElementById('new-startDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        async function handleAddNote(source) {
+            const page = document.getElementById(`${source}-page`).value;
+            const score = document.getElementById(`${source}-score`).value;
+            const feeling = document.getElementById(`${source}-feeling`).value;
+            const comment = document.getElementById(`${source}-comment`).value;
+
+            if (!page) {
+                alert('Page number is required for a note.');
+                return;
+            }
+
+            const book = await dbActions.get(activeBookId);
+            const newNote = {
+                page: parseInt(page, 10),
+                score: score ? parseInt(score, 10) : null,
+                feeling: feeling,
+                comment: comment,
+                date: new Date().toISOString()
+            };
+
+            book.notes.push(newNote);
+
+            // Update book's current page
+            const maxPage = Math.max(...book.notes.map(n => n.page));
+            book.currentPage = maxPage;
+            
+            // Handle book end date
+            if (source === 'note') { // from new note modal
+                const endDate = document.getElementById('note-endDate').value;
+                if (endDate) {
+                    book.endDate = endDate;
+                    book.status = 3; // 'read'
+                }
+            }
+
+            await dbActions.update(book);
+            await fetchBooks();
+            
+            if (source === 'note') {
+                hideAllModals();
+                renderBooks();
+            } else { // from edit modal
+                openEditBookModal(); // re-render modal with new data
+            }
+        }
+
+        async function fetchBooks() {
+            books = await dbActions.getAll();
+        }
+
+        function getStatusName(statusId) {
+            const status = bookStatuses.find(s => s.id == statusId);
+            return status ? status.name.charAt(0).toUpperCase() + status.name.slice(1) : 'Unknown';
+        }
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            // Menu
+            menuBtn.addEventListener('click', () => menu.classList.toggle('active'));
+            document.addEventListener('click', (e) => {
+                if (!menu.contains(e.target) && !menuBtn.contains(e.target)) {
+                    menu.classList.remove('active');
+                }
+            });
+            menu.addEventListener('click', (e) => {
+                if (e.target.matches('.menu-item')) {
+                    const pageId = e.target.dataset.page;
+                    showPage(pageId);
+                    if (pageId === 'stats') renderStats();
+                }
+            });
+
+            // Status Filter
+            statusFilterContainer.addEventListener('click', (e) => {
+                if (e.target.matches('.status-item')) {
+                    const statusId = e.target.dataset.statusId;
+                    if (statusId === 'search') {
+                         searchContainer.classList.add('active');
+                         document.querySelectorAll('.status-item').forEach(el => el.classList.remove('active'));
+                         e.target.classList.add('active');
+                         return;
+                    }
+                    searchContainer.classList.remove('active');
+                    currentStatus = parseInt(statusId, 10);
+                    renderStatusFilter();
+                    renderBooks();
+                }
+            });
+            
+            // Search
+            searchActionBtn.addEventListener('click', () => {
+                showPage('books');
+                renderBooks();
+            });
+            searchCancelBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                searchContainer.classList.remove('active');
+                currentStatus = -1;
+                renderStatusFilter();
+                renderBooks();
+            });
+
+            // New Book Page
+            addBookBtn.addEventListener('click', handleAddBook);
+
+            // Book Table Clicks
+            booksTableBody.addEventListener('click', (e) => {
+                const cell = e.target.closest('td');
+                if (!cell) return;
+                
+                const row = cell.closest('tr');
+                activeBookId = parseInt(row.dataset.bookId, 10);
+                const action = cell.dataset.action;
+
+                if (action === 'status') openStatusPopup();
+                if (action === 'edit') openEditBookModal();
+                if (action === 'note') openNewNoteModal();
+                if (action === 'score') openScorePopup();
+                if (action === 'feeling') openFeelingPopup();
+            });
+
+            // Modal & Popup Closing
+            modalContainer.addEventListener('click', (e) => {
+                if (e.target.matches('.modal-overlay') || e.target.matches('.close-btn')) {
+                    hideAllModals();
+                }
+            });
+            
+            // Popup Actions
+            document.getElementById('status-popup-grid').addEventListener('click', async (e) => {
+                if (e.target.matches('.grid-item')) {
+                    const statusId = parseInt(e.target.dataset.statusId, 10);
+                    const book = await dbActions.get(activeBookId);
+                    book.status = statusId;
+                    await dbActions.update(book);
+                    await fetchBooks();
+                    renderBooks();
+                    hideAllModals();
+                }
+            });
+            
+            document.getElementById('score-popup-grid').addEventListener('click', async (e) => {
+                if (e.target.matches('.grid-item')) {
+                    const score = parseFloat(e.target.dataset.score);
+                    const book = await dbActions.get(activeBookId);
+                    book.score = score;
+                    await dbActions.update(book);
+                    await fetchBooks();
+                    renderBooks();
+                    hideAllModals();
+                }
+            });
+
+            document.getElementById('feeling-popup-grid').addEventListener('click', async (e) => {
+                if (e.target.matches('.grid-item')) {
+                    const feeling = e.target.dataset.feeling;
+                    const book = await dbActions.get(activeBookId);
+                    book.feeling = feeling;
+                    await dbActions.update(book);
+                    await fetchBooks();
+                    renderBooks();
+                    hideAllModals();
+                }
+            });
+            
+            // New Note Modal
+            document.getElementById('add-note-btn').addEventListener('click', () => handleAddNote('note'));
+            document.getElementById('end-book-btn').addEventListener('click', () => {
+                document.getElementById('end-date-container').style.display = 'block';
+                document.getElementById('note-endDate').valueAsDate = new Date();
+                document.getElementById('end-book-btn').style.display = 'none';
+            });
+            document.getElementById('cancel-end-book-btn').addEventListener('click', () => {
+                document.getElementById('end-date-container').style.display = 'none';
+                document.getElementById('note-endDate').value = '';
+                document.getElementById('end-book-btn').style.display = 'block';
+            });
+            
+            // Edit Book Modal - Autosave & Actions
+            const editModal = document.getElementById('edit-book-modal');
+            editModal.addEventListener('change', async (e) => {
+                if (!activeBookId) return;
+                const book = await dbActions.get(activeBookId);
+                const targetId = e.target.id;
+                
+                if (targetId.startsWith('edit-')) {
+                    const field = targetId.replace('edit-', '');
+                    const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+                    if (book.hasOwnProperty(field)) {
+                         book[field] = value;
+                         await dbActions.update(book);
+                         await fetchBooks();
+                         renderBooks(); // Update main list in background
+                    }
+                }
+            });
+
+            document.getElementById('edit-score-container').addEventListener('click', openScorePopup);
+            document.getElementById('edit-feeling-container').addEventListener('click', openFeelingPopup);
+            document.getElementById('edit-add-note-btn').addEventListener('click', () => handleAddNote('edit-note'));
+
+            document.getElementById('previous-notes-container').addEventListener('change', async (e) => {
+                if (e.target.matches('.note-input')) {
+                    const noteEl = e.target.closest('.note');
+                    const noteIndex = parseInt(noteEl.dataset.noteIndex, 10);
+                    const field = e.target.dataset.field;
+                    const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+                    
+                    const book = await dbActions.get(activeBookId);
+                    if (book && book.notes[noteIndex]) {
+                        book.notes[noteIndex][field] = value;
+                        await dbActions.update(book);
+                        await fetchBooks();
+                        renderFeelingHistory(book); // Update feeling history in modal
+                    }
+                }
+            });
+        }
+        
+        // --- Initialization ---
+        async function initializeApp() {
+            await initDB();
+            await fetchBooks();
+            populateSelect(document.getElementById('new-status'), bookStatuses);
+            populateSelect(document.getElementById('edit-status'), bookStatuses);
+            document.getElementById('new-startDate').valueAsDate = new Date();
+            renderStatusFilter();
+            showPage('books');
+            renderBooks();
+            setupEventListeners();
+        }
+
+        initializeApp();
+    });
+    </script>
+</body>
+</html>
