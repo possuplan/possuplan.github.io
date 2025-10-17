@@ -363,8 +363,8 @@
         <nav id="menu">
             <div class="menu-item" data-page="books">Books</div>
             <div class="menu-item" data-page="new-book">New Book</div>
-            <div class="menu-item" data-page="stats">Stats</div>
-            <div class="menu-item" data-page="settings">Settings</div>
+            <div class="menu-item" data-page="stats" style="display:none">Stats</div>
+            <div class="menu-item" data-page="settings" style="display:none">Settings</div>
         </nav>
 
         <main id="main-content">
@@ -397,12 +397,12 @@
                     <input type="text" id="new-writer">
                 </div>
                 <div class="form-group">
-                    <label for="new-genre">Genre</label>
-                    <input type="text" id="new-genre">
-                </div>
-                <div class="form-group">
                     <label for="new-pages">Page Count</label>
                     <input type="number" id="new-pages">
+                </div>
+                <div class="form-group">
+                    <label for="new-genre">Genre</label>
+                    <input type="text" id="new-genre">
                 </div>
                 <div class="form-group">
                     <label for="new-language">Language</label>
@@ -727,8 +727,8 @@ getBookFromGoogleBooks('9780140449136')
         function renderStatusFilter() {
             statusFilterContainer.innerHTML = '';
             const allStatuses = [
-                { name: 'search', id: 'search' },
-                { name: 'all', id: -1 },
+                { name: 'Search', id: 'search' },
+                { name: 'All', id: -1 },
                 ...bookStatuses.sort((a,b) => a.order - b.order)
             ];
             allStatuses.forEach(status => {
