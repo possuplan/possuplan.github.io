@@ -25,6 +25,15 @@
 
 <!--
 todo: 
+
+- Explosion Animations – every 5×5 bomb reveal could have a small, quick particle burst.
+
+- ideas:
+	- Power Cells – randomly scattered “bonus” tiles that give special actions when uncovered (extra turn, double points, see opponent’s flag, etc.).
+	- AI Emotion / Bluff Feedback – e.g. AI “taunts” or reacts (subtly or humorously) when you make a smart or risky move.
+	- Puzzle Challenges – static boards with known layouts to solve optimally.
+	- Ranked Ladder or Elo System – for serious players.
+
 - lisää restart game nappiing ominaisuus että se vain tyhjää gameState tiedot ja siten aloittaa heti uuden pelin.
 
 - tarkista game end check vain aktiivisille pelaajille jotta quitanneen pelaajan miinat eivät vaikuta pelin loppumistarkistukseen.
@@ -2859,31 +2868,57 @@ gamesListInput.addEventListener("change", function() {
 });
 
 async function fetchOpenGames(serverIndex) {
-	let server = serversList[serverIndex];
-	
-	if(server.serverListEnabled){
-		const res = await fetch(`${server.fetchUrl}/games`);
-		const games = await res.json();
-		console.warn('Open games:');
-		console.warn(games);
-		
-		gamesListInput.innerHTML = '';
-		const option = document.createElement("option");
-		option.value = "";  // value attribute
-		option.textContent = "--Select game--";  // visible text
-		gamesListInput.appendChild(option);
-		for (const key in games) {
-			if (games.hasOwnProperty(key)) {
-				let gameName = games[key].name;
-				const option = document.createElement("option");
-				option.value = gameName;  // value attribute
-				option.textContent = gameName;  // visible text
-				gamesListInput.appendChild(option);
-			}
-		}
+  let server = serversList[serverIndex];
 
-	}
+  if (!server.serverListEnabled) return;
+
+  try {
+    const res = await fetch(`${server.fetchUrl}/games`);
+
+    // Check for HTTP errors (non-2xx responses)
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status} ${res.statusText}`);
+    }
+
+    const games = await res.json();
+    let totalGames = Object.keys(games).length;
+
+    console.warn('Open games:');
+    console.warn(games);
+
+    // Clear existing options
+    gamesListInput.innerHTML = '';
+
+    // Add header option
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = `-- Select game (${totalGames}) --`;
+    gamesListInput.appendChild(defaultOption);
+
+    // Add each game
+    for (const key in games) {
+      if (games.hasOwnProperty(key)) {
+        let gameName = games[key].name;
+        const option = document.createElement("option");
+        option.value = gameName;
+        option.textContent = gameName;
+        gamesListInput.appendChild(option);
+      }
+    }
+
+  } catch (error) {
+    console.error("Failed to fetch open games:", error);
+
+    // If any error occurs, modify select list
+    gamesListInput.innerHTML = '';
+
+    const errorOption = document.createElement("option");
+    errorOption.value = "";
+    errorOption.textContent = "-- Server down --";
+    gamesListInput.appendChild(errorOption);
+  }
 }
+
 
 
 
@@ -2905,7 +2940,7 @@ serverNameInput.addEventListener("change", function() {
 		gamesListInput.innerHTML = '';
 		const option = document.createElement("option");
 		option.value = "";  // value attribute
-		option.textContent = "--Not available--";  // visible text
+		option.textContent = "-- Not available --";  // visible text
 		gamesListInput.appendChild(option);
 	}
 });
@@ -3670,14 +3705,6 @@ function createGameStateElements(){
 function startGame() {
     if (!isHost) return;
 
-/*	// not needed anymore since gameState is changed when spectator state is changed.
-	if(getSpectateValue()){
-		let player = getPlayerById(localPlayer.id);
-		player.isSpec = true; // has to modify this when STARTING the game. 
-		player.color = "#FFFFFF";
-		//player.name = player.name+" (spec)";
-	}
-	*/
 	
     gameState.gridSize = { x: parseInt(gridXInput.value,10), y: parseInt(gridYInput.value,10) };
 	gameState.totalMines = Math.max(1, Math.min(parseInt(totalMinesInput.value,10), gameState.gridSize.x*gameState.gridSize.y)); // minimum = 1, max = w*h
@@ -3685,7 +3712,7 @@ function startGame() {
 	gameState.bombRadius = Math.max(1, parseInt(bombRadiusInput.value,10)); // minimum = 1
     gameState.grid = Array(gameState.gridSize.y).fill(null).map(() => Array(gameState.gridSize.x).fill(null));
     
-    const activePlayers = gameState.players.filter(p => !p.isSpec);
+    const activePlayers = get_active_players();
     if (activePlayers.length > 0) {
         const randomActivePlayer = activePlayers[Math.floor(Math.random() * activePlayers.length)];
         gameState.currentPlayerIndex = gameState.players.findIndex(p => p.id === randomActivePlayer.id);
@@ -3791,8 +3818,6 @@ function isFirstMove(player){
 function isLosingPlayer(player) {
   let playerId = player.id;
   if (!gameState?.players?.length) return false;
-  console.log("active_players_count()");
-  console.log(active_players_count());
   
   if(active_players_count() == 1){
 	player.firstMove = true; // set this as first move so bomb placement rules work always.
@@ -4031,7 +4056,7 @@ function checkEndState(testData = null){
 		playersListRaw = gameState.players;
 	}
 
-	// get only active players:
+	// get only active players so game end doesnt care about high score of player who quit:
     const playersList = playersListRaw.filter(p => !p.isSpec);
 
     if (playersList.length === 0) {
@@ -4209,9 +4234,14 @@ function updateGameInfo() {
 			gameInfo.style.backgroundColor = hexToRgba("#000000", 0.6);
 			
 			if(gameState.ties && gameState.ties.length > 0){
-				let tieListStr = "It's a tie for players: ";
-				let tieListNames = gameState.ties.map(p => p.name);
-				gameInfo.textContent = tieListStr + tieListNames.join(", ");
+				
+				if(active_players_count() == 2){
+					gameInfo.textContent = "It's a tie!";
+				}else{
+					let tieListStr = "It's a tie for players: ";
+					let tieListNames = gameState.ties.map(p => p.name);
+					gameInfo.textContent = tieListStr + tieListNames.join(", ");
+				}
 			} else {
                 gameInfo.textContent = "Game Over. No winner.";
             }
