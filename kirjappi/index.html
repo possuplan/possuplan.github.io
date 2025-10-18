@@ -28,6 +28,8 @@
 <!--
 
 todo:
+- installation doesnt work, maybe because possuplan already has installation manifest file?
+- preview image ei toimi jos lähettää linkin whatsappiin ym.
 - päivitö kirjalista jos lisättiin merkintä: ei päivity viimeisin sivunumero siihen kirjaan listassa.
 - lisää nappi merkinnän lisäämiseen onko se loppumerkintä eli loppuarvostelu vai ei. sitten näytä jotenkin eri tavalla tuo loppuarvostelu.
 
@@ -630,7 +632,7 @@ button.secondary:hover {
 	
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('service-worker.js')
+  navigator.serviceWorker.register('service-worker.js', { scope: './' })
     .then(registration => {
       console.log('Service Worker registered with scope:', registration.scope);
     })
