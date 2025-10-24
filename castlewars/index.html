@@ -8,6 +8,7 @@
 	
 	<!-- 
 	TODO:
+	- make map loader, customMaps has all map data (compact version) and base64 imagedata ready to inject into img tags directly.
 	- when killing enemy unit by adding new soldier on top of it, and then undoing, it will not give the land of enemy back to him.
 	- when player left the room (disconnect), it shouldnt be shown in the list anymore. so disconnect set quitted true and filter quitted plyers from list.
 	- show protected radiuses of units with white edges.
@@ -443,7 +444,10 @@
 			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1;">Spectate</button>
 		</div>
 		
-		<button id="load-game-btn">Load Game</button>
+		<div class="input-group">
+			<button id="load-map-btn">Load Map</button>
+			<button id="load-game-btn">Load Game</button>
+		</div>
 		<div id="loaded-game-info-container" class="loaded-game-info" style="display: none;">
 			<p><strong>Saved Game:</strong> <span id="load-game-date"></span></p>
 			<p><strong>Players:</strong></p>
@@ -713,8 +717,9 @@ let GAME_STATE = {
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
 	map: { // Using axial coordinates (q, r)
-		// tiles[q][r] = { type: 'land'/'water', ownerId: null, object: 'tree'/'grass'/null, savings: 0 }
+		// tiles[`${q},${r}`] = { type: 'land'/'water', ownerId: null, object: 'tree'/'grass'/null, savings: 0 }
 		tiles: {}, 
+		outlines: {}, // tiles[`${q},${r}`] = [0,4,5] (show outlines for: bottom left, bottom, bottom right)
 	},
 	units: [], // { id, type: 'Peasant', ownerId, level, q, r, hasMoved }
 	turn: {
@@ -840,6 +845,7 @@ const mapHeightInput = document.getElementById('map-height');
 const startMoneyInput = document.getElementById('start-money');
 const addAiBtn = document.getElementById('add-ai-btn');
 const spectateHostBtn = document.getElementById('spectate-host-btn');
+const loadMapBtn = document.getElementById('load-map-btn');
 const loadGameBtn = document.getElementById('load-game-btn');
 const loadedGameInfoContainer = document.getElementById('loaded-game-info-container');
 const loadGameDate = document.getElementById('load-game-date');
@@ -1074,13 +1080,9 @@ function drawHexagonPath(px, py, drawLines = null) {
 			ctx.beginPath();
 			for(let i = 0; i < drawLines.length; i++){
 				let ival = neighToi[drawLines[i]];
-				// for 3d effect for map:
-				//if(ival > 0 && ival < 4 ){
-				//	continue;
-				//}
 				drawHexLine(ival, px, py);
 			}
-			ctx.closePath();
+			//ctx.closePath(); // only needed for drawing filled hex.
 		}
 	}else{
 		ctx.beginPath();
@@ -1097,6 +1099,8 @@ function drawHexagonPath(px, py, drawLines = null) {
 		ctx.closePath();
 	}
 }
+
+
 
 
 function drawHexagonOutlines(q, r, myId = -1){
@@ -1120,9 +1124,10 @@ function drawHexagonOutlines(q, r, myId = -1){
 }
 
 
-// renderinfinitewater
+// renderinfinitewater 
 let drawInfiniteWater = 1;
 
+// rendermap
 function render() {
 	if (!GAME_STATE.gameStarted) return;
 	
@@ -1320,13 +1325,7 @@ function render() {
 					
 					ctx.drawImage(img, dx, dy, dw, dh);
 				}
-					
-					
-				/*ctx.fillStyle = 'green';
-				ctx.font = `${HEX_SIZE * 0.8}px sans-serif`;
-				ctx.textAlign = 'center';
-				ctx.textBaseline = 'middle';
-				ctx.fillText('🌳', x, y);*/
+
 			} else if (tile.object === 'grass') {
 				let imageKey = tile.object;
 				const img = getImage(imageKey);
@@ -1347,13 +1346,48 @@ function render() {
 					
 					ctx.drawImage(img, dx, dy, dw, dh);
 				}
-				/*ctx.fillStyle = '#7CFC00';
-				ctx.font = `${HEX_SIZE * 0.8}px sans-serif`;
-				ctx.textAlign = 'center';
-				ctx.textBaseline = 'middle';
-				ctx.fillText('🌾', x, y);
-				*/
 			}
+		}
+	}
+	
+	// renderoutlines render outlines
+	// draw map outlines:
+	for (let r = rMin; r <= rMax; r++) {
+		for (let q = qMin; q <= qMax; q++) {
+			const tile = getTileAt(q, r);
+			if (!tile) continue; // Out of map bounds
+
+			const { x, y } = axialToPixel(q, r);
+
+			// --- Culling Check ---
+			const screenX = x * viewport.zoom + viewport.x;
+			const screenY = y * viewport.zoom + viewport.y;
+			if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
+				screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+				continue;
+			}
+			
+			if (tile.type === 'water') {
+				if(drawInfiniteWater){
+					continue; // skip water tiles.
+				}
+			}
+
+			// --- Start Drawing Hex ---
+			
+			const outline = getOutlineAt(q, r);
+			
+			if(outline.length > 0){
+			
+				//ctx.save();
+				drawHexagonPath(x, y, outline);
+				ctx.strokeStyle = 'rgba(0,0,0, 0.7)';
+				ctx.lineWidth = 5;
+				ctx.lineCap = 'round'; 
+				ctx.stroke();
+				//ctx.restore();
+			}
+			
 		}
 	}
 	
@@ -1362,7 +1396,7 @@ function render() {
 	// Draw selected pool
 	for (const hex of highlightedPool) {
 		drawHexagonOutlines(hex.q, hex.r, localPlayer.id);
-		ctx.strokeStyle = 'rgba(255,255,0,0.7)';
+		ctx.strokeStyle = 'rgba(255,255,0, 0.7)';
 		ctx.lineWidth = 3;
 		ctx.stroke();
 	}
@@ -1647,6 +1681,14 @@ function getTileAt(q, r) {
 
 function setTileAt(q, r, tileData) {
 	GAME_STATE.map.tiles[`${q},${r}`] = tileData;
+}
+
+function getOutlineAt(q, r) {
+	return GAME_STATE.map.outlines[`${q},${r}`];
+}
+
+function setOutlineAt(q, r, lines) {
+	GAME_STATE.map.outlines[`${q},${r}`] = lines;
 }
 
 function getUnitAt(q, r) {
@@ -3075,10 +3117,235 @@ values:
 
 let loadedmap = null;
 
-parseMap("maps/mapn1.dat");
+let customMaps = {
+	/*
+	small: [
+		{
+			name: "mapname",
+			width: 24,
+			height: 24,
+			data: null, // parsed map data ready to use ingame.
+			preview: "path/to/image.jpg",
+			imageData: null,
+		},
+	],
+	normal: [
+		{
+			width: 24,
+			height: 24,
+			data: null, // parsed map data ready to use ingame.
+			preview: "path/to/image.jpg",
+			imageData: null,
+		},
+	],
+	*/
+
+};
+//parseMap("maps/mapn1.dat"); // testmap
+//parseMap("maps/normal/mapn16.dat");
+
+
+
+
+/*
+const mapImages = [
+  '/images/map1.jpg',
+  '/images/map2.jpg',
+  '/images/map3.jpg'
+];
+
+function preloadImages(urls) {
+  urls.forEach(url => {
+    const img = new Image();
+    img.src = url; // browser will cache it if not already
+  });
+}
+
+// Run once at page load
+preloadImages(mapImages);
+*/
+
+// todo test and use pngs
+
+async function buildMapList(mapSizeName) {
+  const t = mapSizeName[0];
+  const totalMaps = 40;
+
+  const promises = Array.from({ length: totalMaps }, async (_, i) => {
+    const n = i + 1;
+    const name = `map${t}${n}`;
+    const mapBasePath = `maps/${mapSizeName}/${name}`;
+    const mapFile = `${mapBasePath}.dat`;
+    const mapImageFile = `${mapBasePath}.png`;
+
+    try {
+      const mapdata = await parseMap(mapFile, true);
+      if (!mapdata) return null;
+
+      // Convert image to base64
+      const imageResponse = await fetch(mapImageFile);
+      if (!imageResponse.ok) throw new Error(`Image not found: ${mapImageFile}`);
+
+      const blob = await imageResponse.blob();
+      const imageData = await blobToBase64(blob); // convert blob → base64
+
+      mapdata.preview = mapImageFile; // original URL (optional)
+      mapdata.name = name;
+      mapdata.imageData = imageData; // base64 string ready for <img src="...">
+      return mapdata;
+
+    } catch (err) {
+      console.error(`Error loading map ${name}:`, err);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(promises);
+  customMaps[mapSizeName] = results.filter(Boolean);
+
+  console.log(`✅ Loaded ${customMaps[mapSizeName].length}/${totalMaps} maps successfully.`);
+}
+
+// Helper to convert Blob → Base64 string
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result); // returns a Data URL (base64)
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function loadmaps(){
+	/*
+await Promise.all([
+  buildMapList("normal"),
+  buildMapList("small")
+]);
+	*/
+	await buildMapList("normal");
+	console.log("buildMapList normal finished");
+	await buildMapList("small");
+	console.log("buildMapList small finished");
+	
+	
+	const jsonString = JSON.stringify(customMaps);
+	console.log("customMaps");
+	console.log(customMaps);
+	console.warn("jsonString");
+	console.warn(jsonString);
+}
+//loadmaps(); // used only to recompile maps again into one file.
+
+
+
+async function loadMapsFromJSON() {
+  try {
+    const response = await fetch('maps/all-compiled.json');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const allmaps = await response.json(); // parses JSON into JS object
+    //console.log('Loaded maps:', allmaps);
+
+    // now you can use allmaps normally
+    return allmaps;
+
+  } catch (err) {
+    console.error('Failed to load JSON file:', err);
+    return null;
+  }
+}
+
+// Example usage
+(async () => {
+  customMaps = await loadMapsFromJSON();
+  console.warn(customMaps);
+  console.warn(customMaps.normal[0]);
+  loadedmap = customMaps.normal[12];
+})();
+
+
+
+/*
+async function buildMapList(mapSizeName) {
+  //const mapSizeName = "normal";
+  const t = mapSizeName[0];
+  const totalMaps = 40;
+
+  const promises = Array.from({ length: totalMaps }, async (_, i) => {
+    const n = i + 1;
+	const name = `map${t}${n}`;
+    const mapBasePath = `maps/${mapSizeName}/${name}`;
+    const mapFile = `${mapBasePath}.dat`;
+    const mapImageFile = `${mapBasePath}.png`;
+
+    try {
+      const mapdata = await parseMap(mapFile);
+      if (!mapdata) return null;
+      mapdata.preview = mapImageFile;
+	  mapdata.name = name;
+	  mapdata.imageData = ""; // base64 encoded imagedata here
+      return mapdata;
+    } catch (err) {
+      console.error(`Error loading map ${mapFile}:`, err);
+      return null;
+    }
+  });
+
+  const results = await Promise.all(promises);
+  customMaps[mapSizeName] = results.filter(Boolean);
+
+  console.log(`✅ Loaded ${customMaps[mapSizeName].length}/${totalMaps} maps successfully.`);
+}
+*/
+
+
+
+/*
+
+async function buildMapList(mapSizeName) {
+  //const mapSizeName = "normal";
+  const t = mapSizeName[0];
+  const totalMaps = 40;
+
+  // make sure the category exists
+  if (!customMaps[mapSizeName]) {
+    customMaps[mapSizeName] = [];
+  }
+
+  for (let i = 0; i < totalMaps; i++) {
+    const n = i + 1;
+    const mapBasePath = `maps/${mapSizeName}/map${t}${n}`;
+    const mapFile = `${mapBasePath}.dat`;
+    const mapImageFile = `${mapBasePath}.jpg`;
+
+    try {
+      const mapdata = await parseMap(mapFile);
+
+      if (!mapdata) {
+        console.warn(`Skipping map ${mapFile}: parseMap returned null/undefined`);
+        continue;
+      }
+
+      mapdata.preview = mapImageFile;
+      customMaps[mapSizeName].push(mapdata);
+
+    } catch (err) {
+      console.error(`Error loading map ${mapFile}:`, err);
+      // skip problematic map
+      continue;
+    }
+  }
+
+  console.log(`Loaded ${customMaps[mapSizeName].length} maps successfully.`);
+}
+
+
+*/
+
 
 // loadmap
-async function parseMap(mapFilePath){
+async function parseMap(mapFilePath, compact = false){
 	const response = await fetch(mapFilePath);
 	if (!response.ok) {
 		console.error("Failed to load file:", response.statusText);
@@ -3112,7 +3379,7 @@ async function parseMap(mapFilePath){
 		// process cell values:
 		for(let i = 0; i < lineValues.length; i++){
 			//console.log(lineValues[i]);
-			let info = getMapValueInfo(lineValues[i]);
+			let info = getMapValueInfo(lineValues[i], compact);
 			//console.log(info);
 			parsedRowArr.push(info);
 		}
@@ -3124,13 +3391,14 @@ async function parseMap(mapFilePath){
 	console.log(parsedMap);
 	
 	loadedmap = parsedMap;
+	return parsedMap;
 }
 
 
 
 
 // {type: land/water, object: null/tree/peasant, owner: 0-6}
-function getMapValueInfo(valueStr){
+function getMapValueInfo(valueStr, compact = false){
 	// set default type to land, so we dont need to modify it for player owned tiles.
 	let info = {type: "land", object: null, owner: 0};
 	let value = parseInt(valueStr, 10);
@@ -3188,11 +3456,43 @@ function getMapValueInfo(valueStr){
 			info.object = "peasant";
 		break;
 	}
-	return info;
+	if(compact){
+		//let info2 = {type: "land", object: null, owner: 0};
+		let type = "L"; // L = land, W = water
+		let obj = "0"; // T = tree, P = peasant, 0 = none
+		let owner = info.owner; // 0 = nobody, 1-6 = players.
+		if(info.type == "water"){
+			type = "W";
+		}
+		if(info.object == "peasant"){
+			obj = "P";
+		}else if(info.object == "tree"){
+			obj = "T";
+		}
+		return `${type}${obj}${owner}`; // "LT3" etc
+	}else{
+		return info;
+	}
 }
 
+function compactToExpandedInfo(str){
+	let type = "land"; // L = land, W = water
+	let obj = null; // T = tree, P = peasant, 0 = none
+	let owner = parseInt(str[2], 10); // 0 = nobody, 1-6 = players.
+	
+	if(str[0] === "W"){
+		type = "water";
+	}
+	if(str[1] === "T"){
+		obj = "tree";
+	}else if(str[1] === "P"){
+		obj = "peasant";
+	}
+	
+	return {type: type, object: obj, owner: owner};
+}
 
-function loadParsedMap(parsedMap){
+function loadParsedMap(parsedMap, compact = false){
 	let width = parsedMap.width+8;
 	let height = parsedMap.height+8;
 	console.error(parsedMap);
@@ -3210,8 +3510,14 @@ function loadParsedMap(parsedMap){
 			let yy = y;
 			
 			//yy = (parsedMap.height-1)-y;
+			// todo: add compact map format into expanded function here:
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
-				let info = parsedMap.data[yy][xx];
+				let info;
+				if(compact){
+					info = compactToExpandedInfo(parsedMap.data[yy][xx]);
+				}else{
+					info = parsedMap.data[yy][xx];
+				}
 				let tree = null;
 				if(info.object == "tree"){
 					tree = "tree";
@@ -3235,7 +3541,7 @@ function generateMap(width, height) {
 	GAME_STATE.settings.mapWidth = width;
 	GAME_STATE.settings.mapHeight = height;
 	
-	loadParsedMap(loadedmap);
+	loadParsedMap(loadedmap, true);
 	
 	console.log(`Generating map ${width}x${height}`);
 	/*
@@ -3270,6 +3576,36 @@ function generateMap(width, height) {
 		}
 	}
 	*/
+	
+
+	// generate outlines for all land pieces in the map:
+	for (const key in GAME_STATE.map.tiles) {
+		const [q, r] = key.split(',').map(Number);
+		//const lines = GAME_STATE.map.outlines[key];
+		let lines = [];
+		let neigh = getHexNeighbors(q, r);
+		for(let i = 0; i < neigh.length; i++){
+			// skip topleft,top,topright neighbours:
+			if(i > 0 && i < 4){
+				continue;
+			}
+			let n = neigh[i];
+			const nTile = getTileAt(n.q, n.r);
+			let addline = 0;
+			if (nTile && nTile.type === 'water') {
+				addline = 1;
+			}
+			// if out of bounds, add outlines also:
+			if (!nTile){
+				addline = 1;
+			}
+			if(addline){
+				lines.push(i);
+			}
+		}
+		setOutlineAt(q, r, lines);
+	}  
+	
 }
 
 function spawnPlayers() {
