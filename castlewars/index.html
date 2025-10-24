@@ -8,7 +8,10 @@
 	
 	<!-- 
 	TODO:
-	- player can put html in his name!!! and chat message!! players list on host room doesnt show html names.
+	- when killing enemy unit by adding new soldier on top of it, and then undoing, it will not give the land of enemy back to him.
+	- when player left the room (disconnect), it shouldnt be shown in the list anymore. so disconnect set quitted true and filter quitted plyers from list.
+	- show protected radiuses of units with white edges.
+	- load game doesnt work for interrupted game. perhaps save doesnt work?
 	- moving an unit gives instantly the income from your pool??? some crazy math there, gives more than 1 per tile.
 	- undoing move doesnt update the possible tiles where you can move if the unit is still selected.
 	- undoing fucks up the savings when moving to tile where not moved before. if i move again on same tile i moved on same turn after undo, it doesnt reduce savings anymore from that undo.
@@ -22,13 +25,10 @@
 	- allow placing new higher level unit on top of lower level unit and kill it.
 	- add map loader from original game maps. show preview of each map in selector list.
 
-	- useimages = 1, for rendering textures. check if its much slower than without. check if their render makes any sense or is it doing useless things. ADD different color lands for different players. maybe multiply effect with player color, or colorize effect, or hue/sat/lightness effect.
+	- useimages = 1, for rendering textures. check if its much slower than without. check if their render makes any sense or is it doing useless things.
 
-    - fix land textures not showing player colors, and add dirt color for unclaimed land.
 	- dont allow moving castles lol XD
 
-	- add sounds.
-	- add only edges visible from selected pool.
 	- allow selecting enemy pools as well. (with red edges).
 	- dont close soldier add popup if the move was invalid, just play invalid move sound.
 	
@@ -924,16 +924,32 @@ function broadcast(data) {
 }
 
 function addChatMessage(from, message, color = '#FFF') {
-	const msgEl = document.createElement('div');
-	msgEl.innerHTML = `<strong style="color: ${color};">${from}:</strong> ${message}`;
-	chatMessages.appendChild(msgEl);
+	const item = document.createElement('div');
+	item.innerHTML = `<strong style="color: ${color};" class="msgfromtext"></strong><span class="msgtext"></span>`;
+	
+	const safeMsgFrom = document.createTextNode(`${from}:`);
+	const safeMsg = document.createTextNode(` ${message}`);
+	item.querySelector(".msgfromtext").appendChild(safeMsgFrom);
+	item.querySelector(".msgtext").appendChild(safeMsg);
+
+	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 }
-
+		/*
+    playerList.innerHTML = '';
+    gameState.players.forEach((p, playerIndex) => {
+        const li = document.createElement('li');
+        const displayName = p.isSpec ? `${p.name} (Spectator)` : p.name;
+		const safeName = document.createTextNode(displayName);
+		li.innerHTML = `<span style="color:${p.colors.color}"></span>`;
+		li.querySelector("span").appendChild(safeName);
+        playerList.appendChild(li);
+    });
+	*/
 function addSystemChatMessage(message, color = '#FFF') {
-	const msgEl = document.createElement('div');
-	msgEl.innerHTML = `<strong style="color: ${color};">${message}</strong>`;
-	chatMessages.appendChild(msgEl);
+	const item = document.createElement('div');
+	item.innerHTML = `<strong style="color: ${color};">${message}</strong>`;
+	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -1052,12 +1068,17 @@ function drawHexLine(i, px, py){
 // 4 = bottom right
 // 5 = bottom
 function drawHexagonPath(px, py, drawLines = null) {
-	const itoi = [4, 3, 2, 1, 0, 5]; // convert angle calc i index for neighbour hex index.
+	const neighToi = [4, 3, 2, 1, 0, 5]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
 	if(drawLines){
 		if(drawLines.length > 0){
 			ctx.beginPath();
 			for(let i = 0; i < drawLines.length; i++){
-				drawHexLine(itoi[drawLines[i]], px, py);
+				let ival = neighToi[drawLines[i]];
+				// for 3d effect for map:
+				//if(ival > 0 && ival < 4 ){
+				//	continue;
+				//}
+				drawHexLine(ival, px, py);
 			}
 			ctx.closePath();
 		}
@@ -1099,7 +1120,8 @@ function drawHexagonOutlines(q, r, myId = -1){
 }
 
 
-let drawInfiniteWater = 0;
+// renderinfinitewater
+let drawInfiniteWater = 1;
 
 function render() {
 	if (!GAME_STATE.gameStarted) return;
@@ -1650,30 +1672,29 @@ function updateGameUI() {
 	
 	// Update player list
 	playerUIList.innerHTML = '';
-	GAME_STATE.players
-		.forEach(p => {
-			const item = document.createElement('div');
-			item.className = 'player-list-item';
-			if (p.id === myTurnPlayer?.id) {
-				item.classList.add('current-turn');
-			}
-			let color = p.color;
-			let tag = "";
-			if(p.isSpectator){
-				color = "white";
-				tag = "(spec)";
-			}
-			if(!p.quitted){
-				item.innerHTML = `
-					<span class="player-turn-indicator"></span>
-					<span style="color: ${color}; font-weight: bold;">
-						${p.name} ${tag}
-					</span>
-				`;
-				playerUIList.appendChild(item);
-			}
-		});
-	
+	GAME_STATE.players.forEach(p => {
+		const item = document.createElement('div');
+		item.className = 'player-list-item';
+		if (p.id === myTurnPlayer?.id) {
+			item.classList.add('current-turn');
+		}
+		let color = p.color;
+		let specTag = "";
+		if(p.isSpectator){
+			color = "white";
+			specTag = "(spec)";
+		}
+		if(!p.quitted){
+			item.innerHTML = `
+				<span class="player-turn-indicator"></span>
+				<span style="color: ${color}; font-weight: bold;" class="namevals"></span>
+			`;
+			const safeName = document.createTextNode(`${p.name} ${specTag}`);
+			item.querySelector("span.namevals").appendChild(safeName);
+			playerUIList.appendChild(item);
+		}
+	});
+
 	// Update turn info
 	turnInfo.textContent = `Turn ${GAME_STATE.turn.turnNumber}`;
 	
@@ -2883,7 +2904,17 @@ function updateLobbyUI() {
 		lobbyPlayerList.appendChild(item);
 		if (p.color) usedColors.push(p.color);
 	});
-	
+	/*
+    playerList.innerHTML = '';
+    gameState.players.forEach((p, playerIndex) => {
+        const li = document.createElement('li');
+        const displayName = p.isSpec ? `${p.name} (Spectator)` : p.name;
+		const safeName = document.createTextNode(displayName);
+		li.innerHTML = `<span style="color:${p.colors.color}"></span>`;
+		li.querySelector("span").appendChild(safeName);
+        playerList.appendChild(li);
+    });
+	*/
 	// Update color picker
 	lobbyColorPicker.innerHTML = '';
 	if (localPlayer.isSpectator) {
@@ -3166,13 +3197,18 @@ function loadParsedMap(parsedMap){
 	let height = parsedMap.height+8;
 	console.error(parsedMap);
 	for (let q = -Math.floor(width/2), y = 0; q <= Math.floor(width/2); q++, y++) {
+		let roff = 0;
+	
 		for (let r = -Math.floor(height/2), x = 0; r <= Math.floor(height/2); r++, x++) {
+			if((x % 2) == 1){
+				roff++;
+			}
 			let isEven = ((x%2) == 0);
 			let add1 = isEven ? 1 : 0;
 			let xx = x; // todo: fix reading rows, has to place different offsets...
-			let yy = y;
-
 			//xx = (parsedMap.width-1)-x;
+			let yy = y;
+			
 			//yy = (parsedMap.height-1)-y;
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
 				let info = parsedMap.data[yy][xx];
@@ -3180,8 +3216,11 @@ function loadParsedMap(parsedMap){
 				if(info.object == "tree"){
 					tree = "tree";
 				}
-				setTileAt(r, q, { type: info.type, ownerId: null, object: tree, savings: 0 });
+				setTileAt(q-roff, r, { type: info.type, ownerId: null, object: tree, savings: 0 });
 			}
+			
+	
+			
 		}
 	}
 }
