@@ -18,6 +18,9 @@
 	
 	<!-- 
 	TODO:
+	- move top right ui to bottom, also gives more space for more buttons like sell button.
+	- use game name when publishing game on peerjs server, dont display different games on the list, only castlewars games.
+	- fix starting player index, increments it at start? make it choose random player index to start.
 	- make ai players IDs more random so it wont conflict with human player id if he uses name like AI-1
 	- make map loader, customMaps has all map data (compact version) and base64 imagedata ready to inject into img tags directly.
 	- when killing enemy unit by adding new soldier on top of it, and then undoing, it will not give the land of enemy back to him.
@@ -304,10 +307,15 @@ label {
 }
 
 #ui-right {
+	position:absolute;
+	bottom:0;
+	right:0;
 	display: flex;
 	flex-direction: column; /* stack rows vertically */
 	---gap: 10px;
-	width:500px;
+
+    max-width: 500px;
+    width: 100%;
 	height: 96px; /* let it grow naturally */
 	
 	overflow-y: hidden;
@@ -363,7 +371,7 @@ label {
 #chat-ui {
 	display: flex;
 	flex-direction: column;
-	height: 200px;
+	height: 100px;
 	
 	border-top-right-radius: 8px;
 	border-bottom-right-radius: 8px;
