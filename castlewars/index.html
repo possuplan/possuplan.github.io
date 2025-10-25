@@ -18,6 +18,12 @@
 	
 	<!-- 
 	TODO:
+	- player color is not "selected" when player joins. shows it disabled instead, shows selected glow when new color selected.
+
+	- player color becomes gray if player joins a game and doesnt choose color but instead changes his name and unfocuses the input.
+	  bug doesnt happen again if player changes name. only at first time.
+	- fix bottom ui rounded left bottom corner to non-rounded. fix some paddings too. height doesnt seem to need to be set, so maybe remove it so it auto adjusts?
+	- fix game name getting hidden when page is too long. also allow selecting the name and copy.
 	- calculate cropped map width/height, so it makes more sense. i dont think the original maps were cropped to land edges, might be some water tiles padding.
 	- use game name when publishing game on peerjs server, dont display different games on the list, only castlewars games.
 	- fix starting player index, increments it at start? make it choose random player index to start.
@@ -227,7 +233,9 @@ label {
 	height: 30px;
 	border-radius: 50%;
 	cursor: pointer;
-	border: 2px solid transparent;
+	---border: 2px solid transparent;
+	position: relative;
+	display: inline-block;
 }
 
 .color-box.selected {
@@ -236,9 +244,19 @@ label {
 }
 
 .color-box.disabled {
-	opacity: 0.3;
+	---opacity: 0.3;
 	cursor: not-allowed;
+	
+	background: repeating-linear-gradient(
+		45deg,            /* angle of the stripes */
+		rgba(0, 0, 0, 0.5), /* dark stripe color with transparency */
+		rgba(0, 0, 0, 0.6) 4px,
+		transparent 4px,
+		transparent 7px
+	);
 }
+
+
 
 .loaded-game-info {
 	font-size: 14px;
@@ -588,7 +606,14 @@ label {
 	<div class="container">
 		<h2 id="host-room-name-title">Hosting: default-room</h2>
 		
-		<div class="input-group">
+		<label for="host-room-player-name">Your Name</label>
+		<input type="text" id="host-room-player-name" value="Player">
+		
+		<label>Choose Color</label>
+		<div id="host-room-color-picker" class="color-picker"></div>
+		
+		<!-- todo: later when random map generator is added, or map editor, then enable these inputs: -->
+		<div class="input-group" style="display:none">
 			<div>
 				<label for="map-width">Map Width</label>
 				<input type="number" id="map-width" value="24">
@@ -636,9 +661,11 @@ label {
 		<h2 id="lobby-room-name-title">Joining: default-room</h2>
 		
 		<div id="lobby-game-settings">
-			<p><strong>Map:</strong> <span id="lobby-map-size">...</span></p>
+			<p style="display:none"><strong>Map:</strong> <span id="lobby-map-size">...</span></p>
 			<p><strong>Money:</strong> <span id="lobby-start-money">...</span></p>
 		</div>
+		
+		<img id="lobby-loaded-map" src="" width="100">
 		
 		<label for="lobby-player-name">Your Name</label>
 		<input type="text" id="lobby-player-name" value="Player">
@@ -886,6 +913,7 @@ const closeBtn = document.getElementById('popup-close');
 const mapList = document.getElementById('map-list');
 const categoryBtns = document.querySelectorAll('.category-btn');
 const loadedMapImg = document.getElementById('loaded-map');
+const lobbyLoadedMapImg = document.getElementById('lobby-loaded-map');
 
 let currentCategory = 'small';
 
@@ -919,6 +947,8 @@ let currentCategory = 'small';
       `;
       div.addEventListener('click', () => {
         loadMap(category, index);
+		console.log("map loaded: "+category+index);
+		
         closePopup();
       });
       mapList.appendChild(div);
@@ -1290,6 +1320,13 @@ const pages = {
 	game: document.getElementById('game-page'),
 };
 const playerNameInput = document.getElementById('player-name');
+playerNameInput.value = randomPlayerName();
+
+const hostRoomPlayerNameInput = document.getElementById('host-room-player-name');
+
+
+
+
 const gameNameInput = document.getElementById('game-name-input');
 const hostBtn = document.getElementById('host-btn');
 const joinBtn = document.getElementById('join-btn');
@@ -1301,6 +1338,10 @@ const hostRoomNameTitle = document.getElementById('host-room-name-title');
 const mapWidthInput = document.getElementById('map-width');
 const mapHeightInput = document.getElementById('map-height');
 const startMoneyInput = document.getElementById('start-money');
+
+
+
+
 
 const spectateHostBtn = document.getElementById('spectate-host-btn');
 const loadMapBtn = document.getElementById('load-map-btn');
@@ -1316,7 +1357,11 @@ const lobbyRoomNameTitle = document.getElementById('lobby-room-name-title');
 const lobbyMapSize = document.getElementById('lobby-map-size');
 const lobbyStartMoney = document.getElementById('lobby-start-money');
 const lobbyPlayerNameInput = document.getElementById('lobby-player-name');
+lobbyPlayerNameInput.value = randomPlayerName();
+
 const lobbyColorPicker = document.getElementById('lobby-color-picker');
+const hostRoomColorPicker = document.getElementById('host-room-color-picker');
+
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const lobbyStatus = document.getElementById('lobby-status');
 
@@ -1340,6 +1385,40 @@ const buildPopupClose = document.getElementById('build-popup-close');
 
 const uiRight = document.getElementById('ui-right');
 
+
+
+
+// randomname random name random nick
+function randomPlayerName() {
+	const prefixes = [
+		"al", "bel", "cor", "dar", "el", "fen", "gal", "hal", "jor", "kal",
+		"lin", "mor", "nor", "or", "pel", "quil", "ron", "sel", "tor", "val"
+	];
+
+	const middles = [
+		"a", "e", "i", "o", "u", "ae", "ia", "eo", "ou", "ai"
+	];
+
+	const suffixes = [
+		"dor", "mar", "ric", "tan", "ven", "win", "bar", "dris", "lith", "zor",
+		"thus", "mir", "gorn", "las", "thar", "mond"
+	];
+
+	const endings = [
+		"son", "ton", "ley", "well", "ford", "smith", "shire", "worth", "more", "vell"
+	];
+
+	function capitalize(word) {
+		return word.charAt(0).toUpperCase() + word.slice(1);
+	}
+
+	const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+	const middle = middles[Math.floor(Math.random() * middles.length)];
+	const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+	const ending = endings[Math.floor(Math.random() * endings.length)];
+
+	return capitalize(prefix + middle + suffix);
+}
 
 
 
@@ -3278,6 +3357,13 @@ function handleHostData(data) {
 		case 'lobby_update':
 			gameState.settings = data.settings;
 			gameState.players = data.players;
+			gameState.map = data.map;
+			lobbyLoadedMapImg.src = data.map.imageData;
+			updateLobbyUI();
+			break;
+		case 'map_update':
+			gameState.map = data.map;
+			lobbyLoadedMapImg.src = data.map.imageData;
 			updateLobbyUI();
 			break;
 		case 'chat':
@@ -3600,6 +3686,7 @@ function hostGame() {
 			gameState.settings.roomName = gameName;
 			// This was the line overwriting your input, it's now correct.
 			gameNameInput.value = gameName; 
+			hostRoomPlayerNameInput.value = localPlayer.name;
 			hostRoomNameTitle.textContent = `Hosting: ${gameName}`;
 			
 			// Reset player list and add host
@@ -3664,6 +3751,7 @@ function hostGame() {
 function updateHostLobbyUI() {
 	// for host player:
 	hostPlayerList.innerHTML = '';
+	const usedColors = [];
 	gameState.players.forEach(p => {
 		if(!p.quitted){
 			const item = document.createElement('div');
@@ -3672,8 +3760,46 @@ function updateHostLobbyUI() {
 			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
 			item.textContent = `${p.name}${specTag}`;
 			hostPlayerList.appendChild(item);
+			if (p.color) usedColors.push(p.color);
 		}
 	});
+	
+	
+	// Update color picker
+	hostRoomColorPicker.innerHTML = '';
+	if (localPlayer.isSpectator) {
+		hostRoomColorPicker.innerHTML = '<i>Spectators cannot change color.</i>';
+		lobbyPlayerNameInput.disabled = true;
+	} else {
+		lobbyPlayerNameInput.disabled = false;
+		console.log("usedColors");
+		console.log(usedColors);
+		PLAYER_COLORS.forEach(color => {
+			const box = document.createElement('div');
+			box.className = 'color-box';
+			box.style.backgroundColor = color;
+			
+			if (localPlayer.color === color) {
+				box.classList.add('selected');
+			}
+			if (usedColors.includes(color) && localPlayer.color !== color) {
+				console.log(usedColors);
+				box.classList.add('disabled');
+			} else {
+				box.onclick = () => {
+					console.log("tried to change color");
+					localPlayer.color = color;
+					sendToHost({
+						type: 'player_update',
+						name: localPlayer.name,
+						color: localPlayer.color
+					});
+					updateLobbyUI(); // Re-render
+				};
+			}
+			hostRoomColorPicker.appendChild(box);
+		});
+	}
 }
 
 function updateLobbyUI() {
@@ -3752,7 +3878,19 @@ function broadcastLobbyState() {
 	broadcast({
 		type: 'lobby_update',
 		settings: gameState.settings,
-		players: gameState.players
+		players: gameState.players,
+		map: gameState.map,
+	});
+}
+
+function broadcastMapState() {
+	if (!localPlayer.isHost) return;
+	// Update host's own UI
+	updateHostLobbyUI();
+	// Send to all clients
+	broadcast({
+		type: 'map_update',
+		map: gameState.map,
 	});
 }
 
@@ -4025,8 +4163,12 @@ function loadMap(category, index) {
 	const map = customMaps[category][index];
 	console.log('Loading map:', category, index, map.name);
 	loadedMapImg.src = map.imageData;
+	
 
 	loadedmap = customMaps[category][index];
+	loadParsedMap(loadedmap, true);
+	
+	broadcastMapState();
 }
   
 
@@ -4261,6 +4403,10 @@ function compactToExpandedInfo(str){
 function loadParsedMap(parsedMap, compact = false){
 	let width = parsedMap.width+8;
 	let height = parsedMap.height+8;
+	gameState.map.width = parsedMap.width;
+	gameState.map.height = parsedMap.height;
+	gameState.map.imageData = parsedMap.imageData;
+	gameState.map.name = parsedMap.name;
 	console.error(parsedMap);
 	for (let q = -Math.floor(width/2), y = 0; q <= Math.floor(width/2); q++, y++) {
 		let roff = 0;
@@ -4307,7 +4453,7 @@ function generateMap(width, height) {
 	gameState.settings.mapWidth = width;
 	gameState.settings.mapHeight = height;
 	
-	loadParsedMap(loadedmap, true);
+	//loadParsedMap(loadedmap, true);
 	
 	console.log(`Generating map ${width}x${height}`);
 	/*
@@ -4569,6 +4715,17 @@ function startGame() {
 	});
 }
 
+// safer parseInt so it wont allow any text to cause extreme large values.
+function getInt(str) {
+	let parsed = str.replace(/[^0-9-]/g, '');
+	return (parsed.length > 0) ? parseInt(parsed, 10) : 0;
+}
+
+// same but force to unsigned.
+function getUint(str) {
+	let parsed = str.replace(/[^0-9]/g, '');
+	return (parsed.length > 0) ? parseInt(parsed, 10) : 0;
+}
 
 // =================================================================
 // --- EVENT LISTENERS
@@ -4587,11 +4744,32 @@ window.addEventListener('DOMContentLoaded', () => {
 	joinBtn.onclick = () => joinGame(false);
 	spectateBtn.onclick = () => joinGame(true);
 	playerNameInput.onchange = (e) => localPlayer.name = e.target.value;
+	
+
 
 	// --- Host Page ---
-	mapWidthInput.onchange = () => gameState.settings.mapWidth = parseInt(mapWidthInput.value, 10);
-	mapHeightInput.onchange = () => gameState.settings.mapHeight = parseInt(mapHeightInput.value, 10);
-	startMoneyInput.onchange = () => gameState.settings.startingMoney = parseInt(startMoneyInput.value, 10);
+	hostRoomPlayerNameInput.onchange = () => {
+		localPlayer.name = hostRoomPlayerNameInput.value;
+		broadcastLobbyState();
+	}
+	
+	mapWidthInput.onchange = () => {
+		gameState.settings.mapWidth = getUint(mapWidthInput.value);
+		mapWidthInput.value = gameState.settings.mapWidth;
+		broadcastLobbyState();
+	}
+	mapHeightInput.onchange = () => {
+		gameState.settings.mapHeight = getUint(mapHeightInput.value);
+		mapHeightInput.value = gameState.settings.mapHeight;
+		broadcastLobbyState();
+	}
+
+	startMoneyInput.onchange = () => {
+		gameState.settings.startingMoney = getUint(startMoneyInput.value);
+		startMoneyInput.value = gameState.settings.startingMoney;
+		broadcastLobbyState();
+	};
+
 	
 	spectateHostBtn.onclick = () => {
 		localPlayer.isSpectator = !localPlayer.isSpectator;
