@@ -18,7 +18,7 @@
 	
 	<!-- 
 	TODO:
-	- move top right ui to bottom, also gives more space for more buttons like sell button.
+	- calculate cropped map width/height, so it makes more sense. i dont think the original maps were cropped to land edges, might be some water tiles padding.
 	- use game name when publishing game on peerjs server, dont display different games on the list, only castlewars games.
 	- fix starting player index, increments it at start? make it choose random player index to start.
 	- make ai players IDs more random so it wont conflict with human player id if he uses name like AI-1
@@ -672,10 +672,10 @@ label {
 				<div id="player-savings">Savings: 0 G</div>
 			</div>
 			<div class="button-row">
-				<button id="build-soldier-btn" class="gamebutton">Soldier</button>
+			    <button id="undo-btn" class="gamebutton" style="background-color:#d03535">Undo</button>
 				<button id="build-castle-btn" class="gamebutton">Castle</button>
+				<button id="build-soldier-btn" class="gamebutton">Soldier</button>
 				<button id="end-turn-btn" class="gamebutton primary">End<br>Turn</button>
-				<button id="undo-btn" class="gamebutton">Undo</button>
 			</div>
 		</div>
 	</div>
