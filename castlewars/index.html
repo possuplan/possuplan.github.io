@@ -6,8 +6,19 @@
     <title>Castle Wars</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 	
+	<script src="config.js"></script> <!-- LOCAL=true on public, false on my pc config -->
+
+	<script>
+	//////////////////////////////////////////////
+	//
+	//  force to public server here for quick testing:
+	//
+	//window.APP_CONFIG.LOCAL = false; // this is true on my pc by default. on release version false.
+	</script>
+	
 	<!-- 
 	TODO:
+	- make ai players IDs more random so it wont conflict with human player id if he uses name like AI-1
 	- make map loader, customMaps has all map data (compact version) and base64 imagedata ready to inject into img tags directly.
 	- when killing enemy unit by adding new soldier on top of it, and then undoing, it will not give the land of enemy back to him.
 	- when player left the room (disconnect), it shouldnt be shown in the list anymore. so disconnect set quitted true and filter quitted plyers from list.
@@ -35,375 +46,508 @@
 	
 	-->
     
-    <style>
-        /* --- GLOBAL STYLES --- */
-        :root {
-            --bg-color: #1a1a1a;
-            --text-color: #eee;
-            --primary-color: #0a84ff;
-            --border-color: #444;
-            --input-bg: #2c2c2e;
-            --btn-bg: #3a3a3c;
-            --btn-hover-bg: #4a4a4c;
-            --danger-color: #ff3b30;
-            --warn-color: #ffcc00;
-            --spec-color: #ffffff;
-            --unclaimed-color: #555;
-            --water-color: #003366;
-            --land-color: #224422;
-        }
+<style>
+/* --- GLOBAL STYLES --- */
+:root {
+	--bg-color: #1a1a1a;
+	--text-color: #eee;
+	--primary-color: #0a84ff;
+	--border-color: #444;
+	--input-bg: #2c2c2e;
+	--btn-bg: #3a3a3c;
+	--btn-hover-bg: #4a4a4c;
+	--danger-color: #ff3b30;
+	--warn-color: #ffcc00;
+	--spec-color: #ffffff;
+	--unclaimed-color: #555;
+	--water-color: #003366;
+	--land-color: #224422;
+}
 
-        * {
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            user-select: none;
-        }
+* {
+	box-sizing: border-box;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	user-select: none;
+}
 
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
+html, body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background-color: var(--bg-color);
+	color: var(--text-color);
+}
 
-        .page {
-            display: none;
-            width: 100%;
-            height: 100%;
-            padding: 20px;
-            overflow-y: auto;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
+.page {
+	display: none;
+	width: 100%;
+	height: 100%;
+	padding: 20px;
+	overflow-y: auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
 
-        .page.active {
-            display: flex;
-        }
+.page.active {
+	display: flex;
+}
 
-        .container {
-            width: 100%;
-            max-width: 400px;
-            padding: 20px;
-            background: #222;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-        
-        h1, h2, h3 {
-            margin-top: 0;
-            text-align: center;
-            font-weight: 500;
-        }
+.container {
+	width: 100%;
+	max-width: 400px;
+	padding: 20px;
+	background: #222;
+	border-radius: 8px;
+	border: 1px solid var(--border-color);
+}
 
-        input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            border-radius: 6px;
-            font-size: 16px;
-        }
+h1, h2, h3 {
+	margin-top: 0;
+	text-align: center;
+	font-weight: 500;
+}
 
-        button {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            background: var(--btn-bg);
-            color: var(--text-color);
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-		
-		.gamebutton {
-		    padding:4px;
-			font-size: 12px;
-		}
+input[type="text"], input[type="number"], select {
+	width: 100%;
+	padding: 12px;
+	margin-bottom: 15px;
+	background: var(--input-bg);
+	border: 1px solid var(--border-color);
+	color: var(--text-color);
+	border-radius: 6px;
+	font-size: 16px;
+}
+/*
+input[type="text"], input[type="number"], select {
+	width: 100%;
+	padding: 12px;
+	background-color: var(--surface-color);
+	border: 1px solid var(--border-color);
+	border-radius: 8px;
+	color: var(--primary-text);
+	font-size: 16px;
+}
+*/
 
-        button:hover {
-            background: var(--btn-hover-bg);
-        }
+button {
+	width: 100%;
+	padding: 12px;
+	margin-bottom: 10px;
+	background: var(--btn-bg);
+	color: var(--text-color);
+	border: none;
+	border-radius: 6px;
+	font-size: 16px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
 
-        button:active {
-            transform: scale(0.98);
-        }
-        
-        button.primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        button.primary:hover {
-            background-color: #007aff;
-        }
-        
-        button.danger {
-            background-color: var(--danger-color);
-            color: white;
-        }
-        
-        button.toggle-btn.active {
-            background-color: var(--warn-color);
-            color: #000;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-            color: #aaa;
-        }
+.gamebutton {
+	padding:4px;
+	font-size: 12px;
+}
 
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .input-group > div {
-            flex: 1;
-        }
-        
-        .player-list {
-            width: 100%;
-            padding: 10px;
-            background: var(--input-bg);
-            border-radius: 6px;
-            min-height: 100px;
-            margin-top: 15px;
-        }
-        
-        .player-list-item {
-            padding: 5px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .player-list-item:last-child {
-            border-bottom: none;
-        }
-        
-        .color-picker {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-        
-        .color-box {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid transparent;
-        }
-        
-        .color-box.selected {
-            border-color: white;
-            box-shadow: 0 0 8px white;
-        }
-        
-        .color-box.disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
+button:hover {
+	background: var(--btn-hover-bg);
+}
 
-        .loaded-game-info {
-            font-size: 14px;
-            background: var(--input-bg);
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-        
-        .loaded-player {
-            cursor: pointer;
-        }
-        .loaded-player:hover {
-            text-decoration: underline;
-        }
-        .loaded-player.taken {
-            cursor: not-allowed;
-            opacity: 0.5;
-            text-decoration: line-through;
-        }
+button:active {
+	transform: scale(0.98);
+}
 
-        /* --- GAME PAGE --- */
-        #game-page {
-            padding: 0;
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-        }
+button.primary {
+	background-color: var(--primary-color);
+	color: white;
+}
 
-        #game-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
+button.primary:hover {
+	background-color: #007aff;
+}
 
-        #game-ui {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: flex;
-            justify-content: space-between;
-            padding: 0px;
-        }
-        
-        .ui-panel {
-            pointer-events: auto;
-            background: rgba(34, 34, 34, 0.8);
-            backdrop-filter: blur(5px);
-            border: 1px solid var(--border-color);
-			padding: 2px 6px 2px 6px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
+button.danger {
+	background-color: var(--danger-color);
+	color: white;
+}
 
-        #ui-left {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 200px;
-        }
+button.toggle-btn.active {
+	background-color: var(--warn-color);
+	color: #000;
+}
 
-		#ui-right {
-			display: flex;
-			flex-direction: column; /* stack rows vertically */
-			---gap: 10px;
-			width:500px;
-			height: 96px; /* let it grow naturally */
-			
-			overflow-y: hidden;
-			
-			border-bottom-left-radius: 8px;
-		}
+label {
+	display: block;
+	margin-bottom: 5px;
+	font-size: 14px;
+	color: #aaa;
+}
 
-		/* Top row: texts side by side */
-		#ui-right .top-row {
-			display: flex;
-			flex-direction: row;
-			justify-content: space-between; /* turn-info left, savings right */
-			align-items: center;
-			gap: 10px;
-		}
+.input-group {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 15px;
+}
 
-		/* Optional: style buttons as a row */
-		#ui-right .button-row {
-			display: flex;
-			flex-direction: row;
-			gap: 10px;
-		}
+.input-group > div {
+	flex: 1;
+}
 
-		/* Make buttons stretch evenly */
-		#ui-right .button-row button {
-			flex: 1;  /* each button takes equal width */
-		}
+.player-list {
+	width: 100%;
+	padding: 10px;
+	background: var(--input-bg);
+	border-radius: 6px;
+	min-height: 100px;
+	margin-top: 15px;
+}
 
-		#player-ui-list {
-			border-bottom-right-radius: 8px;
-		}
-		
-        #player-ui-list .player-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .player-turn-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--warn-color);
-            margin-right: 5px;
-            visibility: hidden;
-        }
-        
-        .player-list-item.current-turn .player-turn-indicator {
-            visibility: visible;
-        }
-        
-        #chat-ui {
-            display: flex;
-            flex-direction: column;
-            height: 200px;
-			
-			border-top-right-radius: 8px;
-			border-bottom-right-radius: 8px;
-			
-			padding-left: 4px;
-        }
-        
-        #chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            font-size: 13px;
-            padding: 5px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 4px;
-            margin-bottom: 5px;
-			margin-top: 3px;
-        }
-        
-        #chat-input {
-            width: 100%;
-            padding: 8px;
-            font-size: 14px;
-			margin-bottom: 4px;
-        }
-        
-        #build-popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 100;
-            pointer-events: auto;
-            width: 300px;
-        }
-        
-        .build-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px;
-            background: var(--btn-bg);
-            border-radius: 4px;
-            margin-bottom: 5px;
-            cursor: pointer;
-        }
-        
-        .build-item:hover {
-            background: var(--btn-hover-bg);
-        }
-        
-        .build-item.disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            background: #222;
-        }
-        
-        .build-item .cost {
-            color: var(--warn-color);
-        }
+.player-list-item {
+	padding: 5px;
+	border-bottom: 1px solid var(--border-color);
+}
+.player-list-item:last-child {
+	border-bottom: none;
+}
 
-    </style>
+.color-picker {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 15px;
+}
+
+.color-box {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	cursor: pointer;
+	border: 2px solid transparent;
+}
+
+.color-box.selected {
+	border-color: white;
+	box-shadow: 0 0 8px white;
+}
+
+.color-box.disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+}
+
+.loaded-game-info {
+	font-size: 14px;
+	background: var(--input-bg);
+	padding: 10px;
+	border-radius: 4px;
+	margin-bottom: 10px;
+}
+
+.loaded-player {
+	cursor: pointer;
+}
+.loaded-player:hover {
+	text-decoration: underline;
+}
+.loaded-player.taken {
+	cursor: not-allowed;
+	opacity: 0.5;
+	text-decoration: line-through;
+}
+
+/* --- GAME PAGE --- */
+#game-page {
+	padding: 0;
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	background: #000;
+}
+
+#game-canvas {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+
+#game-ui {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	display: flex;
+	justify-content: space-between;
+	padding: 0px;
+}
+
+.ui-panel {
+	pointer-events: auto;
+	background: rgba(34, 34, 34, 0.8);
+	backdrop-filter: blur(5px);
+	border: 1px solid var(--border-color);
+	padding: 2px 6px 2px 6px;
+	max-height: 90vh;
+	overflow-y: auto;
+}
+
+#ui-left {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 200px;
+}
+
+#ui-right {
+	display: flex;
+	flex-direction: column; /* stack rows vertically */
+	---gap: 10px;
+	width:500px;
+	height: 96px; /* let it grow naturally */
+	
+	overflow-y: hidden;
+	
+	border-bottom-left-radius: 8px;
+}
+
+/* Top row: texts side by side */
+#ui-right .top-row {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between; /* turn-info left, savings right */
+	align-items: center;
+	gap: 10px;
+}
+
+/* Optional: style buttons as a row */
+#ui-right .button-row {
+	display: flex;
+	flex-direction: row;
+	gap: 10px;
+}
+
+/* Make buttons stretch evenly */
+#ui-right .button-row button {
+	flex: 1;  /* each button takes equal width */
+}
+
+#player-ui-list {
+	border-bottom-right-radius: 8px;
+}
+
+#player-ui-list .player-list-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.player-turn-indicator {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--warn-color);
+	margin-right: 5px;
+	visibility: hidden;
+}
+
+.player-list-item.current-turn .player-turn-indicator {
+	visibility: visible;
+}
+
+#chat-ui {
+	display: flex;
+	flex-direction: column;
+	height: 200px;
+	
+	border-top-right-radius: 8px;
+	border-bottom-right-radius: 8px;
+	
+	padding-left: 4px;
+}
+
+#chat-messages {
+	flex-grow: 1;
+	overflow-y: auto;
+	font-size: 13px;
+	padding: 5px;
+	background: rgba(0,0,0,0.2);
+	border-radius: 4px;
+	margin-bottom: 5px;
+	margin-top: 3px;
+}
+
+#chat-input {
+	width: 100%;
+	padding: 8px;
+	font-size: 14px;
+	margin-bottom: 4px;
+}
+
+#build-popup {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 100;
+	pointer-events: auto;
+	width: 300px;
+}
+
+.build-item {
+	display: flex;
+	justify-content: space-between;
+	padding: 10px;
+	background: var(--btn-bg);
+	border-radius: 4px;
+	margin-bottom: 5px;
+	cursor: pointer;
+}
+
+.build-item:hover {
+	background: var(--btn-hover-bg);
+}
+
+.build-item.disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+	background: #222;
+}
+
+.build-item .cost {
+	color: var(--warn-color);
+}
+
+
+
+
+  /* Popup backdrop */
+  .popup-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Popup box */
+  .popup {
+    background: black;
+    border-radius: 12px;
+    width: 100%;
+
+    max-height: 100%;
+    overflow-y: auto;
+    position: relative;
+    padding: 16px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* Close (X) button */
+  .popup-close {
+
+    position: fixed;
+    top: 8px;
+    right: 12px;
+    border: none;
+    font-size: 29px;
+    cursor: pointer;
+    width: 50px;
+    padding: 0;
+    line-height: 43px;
+  }
+
+  /* Category buttons */
+  .category-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    margin-top: 15px;
+  }
+
+  .category-btn {
+    padding: 8px 16px;
+    border: 1px solid #ccc;
+    background: #f7f7f7;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: bold;
+	color:#555555;
+  }
+
+  .category-btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+
+  /* Map list */
+
+  .map-item {
+    ---border: 1px solid #333;
+    border-radius: 8px;
+    ---padding: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.15s;
+	
+    margin-bottom: 18px;
+
+  }
+
+  .map-item:hover {
+    background: #333333;
+    transform: scale(1.03);
+  }
+
+  .map-item img {
+    width: 140px;
+    border-radius: 6px;
+  }
+  
+  .map-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 0px;
+  }
+
+
+  #loaded-map {
+    margin-top: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  
+</style>
 </head>
 <body>
+
+<!-- Popup -->
+<div class="popup-overlay" id="map-popup-overlay">
+  <div class="popup" id="map-popup">
+	<div style="font-size:24px">Load map</div>
+	<button class="popup-close" id="popup-close">&times;</button>
+	<div class="category-tabs">
+	  <button class="category-btn active" data-category="small">Small</button>
+	  <button class="category-btn" data-category="normal">Normal</button>
+	  
+	</div>
+	<div class="map-list" id="map-list"></div>
+  </div>
+</div>
 
 <div id="start-page" class="page active">
 	<div class="container">
@@ -411,9 +555,20 @@
 		<label for="player-name">Player Name</label>
 		<input type="text" id="player-name" value="Player">
 		
-		<label for="room-name">Game Room Name</label>
-		<input type="text" id="room-name" value="default-room">
-		
+		<label for="game-name-input">Game Room Name</label>
+		<input type="text" id="game-name-input" value="default-room">
+        <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+            <label for="server-name-input">Server:</label>
+			<select id="server-name-input">
+			
+			</select>
+        </div>
+		<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+            <label for="games-list-input">Gamelist:</label>
+			<select id="games-list-input">
+			
+			</select>
+        </div>
 		<button id="host-btn" class="primary">Host Game</button>
 		<button id="join-btn">Join Game</button>
 		<button id="spectate-btn">Join as Spectator</button>
@@ -448,6 +603,9 @@
 			<button id="load-map-btn">Load Map</button>
 			<button id="load-game-btn">Load Game</button>
 		</div>
+		
+		<img id="loaded-map" src="" width="100">
+		
 		<div id="loaded-game-info-container" class="loaded-game-info" style="display: none;">
 			<p><strong>Saved Game:</strong> <span id="load-game-date"></span></p>
 			<p><strong>Players:</strong></p>
@@ -458,7 +616,11 @@
 		
 		<h3>Joined Players:</h3>
 		<div id="host-player-list" class="player-list"></div>
+			
+			
+			
 	</div>
+	
 </div>
 
 <div id="lobby-page" class="page">
@@ -520,6 +682,251 @@
 </div>
 
 <script>
+
+
+let selectedServerIndex = 1; // default to render.com
+
+// select local server if local server is forced in config:
+if(window.APP_CONFIG.LOCAL == true){
+	selectedServerIndex = 0;
+}
+
+// onlyLocal = only visible if window.APP_CONFIG.LOCAL = true
+// serverlist
+let serversList = [
+	{name: "local", onlyLocal: true, serverListEnabled: true, 
+		fetchUrl: "http://localhost:9000",
+		config: {
+			host: 'localhost',
+			port: 9000,
+			path: '/peerjs',
+			secure: false,
+			debug: 2,
+	}}, // dont show this if testing locally.
+	{name: "render.com", onlyLocal: false, serverListEnabled: true, 
+		fetchUrl: "https://peerjs-server-j9al.onrender.com",
+		config: {
+			host: 'peerjs-server-j9al.onrender.com',
+			path: '/peerjs',
+			secure: true,
+			debug: 2,
+	}},
+	{name: "peerjs.com", onlyLocal: false, serverListEnabled: false, config: {
+		debug: 2
+	}},
+];
+
+
+let eventSource = null;
+
+function connectToServer(serverUrl) {
+  // 1. Close existing EventSource if any
+  if (eventSource) {
+    eventSource.close(); // stops listening and frees resources
+    console.log('Closed previous EventSource');
+  }
+
+  // 2. Create new EventSource
+  eventSource = new EventSource(`${serverUrl}/events`);
+
+  // 3. Listen for messages
+  eventSource.onmessage = (event) => {
+    if (event.data === 'games_updated') {
+      console.log('Games updated — reloading list...');
+      fetchOpenGames(selectedServerIndex); // or your own function
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error('EventSource error', err);
+  };
+
+  console.log('Connected to EventSource at', serverUrl);
+}
+
+/*
+const eventSource = new EventSource('https://peerjs-server-j9al.onrender.com/events');
+
+eventSource.onmessage = (event) => {
+  if (event.data === 'games_updated') {
+    console.log('Games updated — reloading list...');
+    fetchOpenGames(currentServerIndex); // or your own function
+  }
+};
+*/
+
+
+const gamesListInput = document.getElementById("games-list-input");
+
+gamesListInput.addEventListener("change", function() {
+	const selectedValue = this.value;
+	console.log("Selected game:", selectedValue);
+	gameNameInput.value = selectedValue;
+});
+
+async function fetchOpenGames(serverIndex) {
+  let server = serversList[serverIndex];
+
+  if (!server.serverListEnabled) return;
+
+  try {
+    const res = await fetch(`${server.fetchUrl}/games`);
+
+    // Check for HTTP errors (non-2xx responses)
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status} ${res.statusText}`);
+    }
+
+    const games = await res.json();
+    let totalGames = Object.keys(games).length;
+
+    console.warn('Open games:');
+    console.warn(games);
+
+    // Clear existing options
+    gamesListInput.innerHTML = '';
+
+    // Add header option
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = `-- Select game (${totalGames}) --`;
+    gamesListInput.appendChild(defaultOption);
+
+    // Add each game
+    for (const key in games) {
+      if (games.hasOwnProperty(key)) {
+        let gameName = games[key].name;
+        const option = document.createElement("option");
+        option.value = gameName;
+        option.textContent = gameName;
+        gamesListInput.appendChild(option);
+      }
+    }
+
+  } catch (error) {
+    console.error("Failed to fetch open games:", error);
+
+    // If any error occurs, modify select list
+    gamesListInput.innerHTML = '';
+
+    const errorOption = document.createElement("option");
+    errorOption.value = "";
+    errorOption.textContent = "-- Server down --";
+    gamesListInput.appendChild(errorOption);
+  }
+}
+
+
+
+
+
+
+const serverNameInput = document.getElementById("server-name-input");
+serverNameInput.value = selectedServerIndex;
+
+serverNameInput.addEventListener("change", function() {
+	const selectedValue = this.value;
+	console.log("Selected server:", selectedValue);
+	selectedServerIndex = selectedValue;
+	
+	let server = serversList[selectedServerIndex];
+	if(server.serverListEnabled){
+		connectToServer(server.fetchUrl);
+		fetchOpenGames(selectedValue);
+	}else{
+		gamesListInput.innerHTML = '';
+		const option = document.createElement("option");
+		option.value = "";  // value attribute
+		option.textContent = "-- Not available --";  // visible text
+		gamesListInput.appendChild(option);
+	}
+});
+
+
+function initServerOpen(){
+	let server = serversList[selectedServerIndex];
+	if(server.serverListEnabled){
+		fetchOpenGames(selectedServerIndex);
+		connectToServer(server.fetchUrl);
+	}
+}
+
+initServerOpen();
+
+serversList.forEach((server, index) => {
+	// if onlyLocal is false or config local is true, then add line:
+	if(!server.onlyLocal || window.APP_CONFIG.LOCAL){
+		const option = document.createElement("option");
+		option.value = index;  // value attribute
+		option.textContent = server.name;  // visible text
+		serverNameInput.appendChild(option);
+	}
+});
+
+
+function getSelectedServer(){
+	selectedServerIndex = parseInt(serverNameInput.value, 10);
+	return serversList[selectedServerIndex];
+}
+
+
+
+const popupOverlay = document.getElementById('map-popup-overlay');
+const popup = document.getElementById('map-popup');
+const loadBtn = document.getElementById('load-map-btn');
+const closeBtn = document.getElementById('popup-close');
+const mapList = document.getElementById('map-list');
+const categoryBtns = document.querySelectorAll('.category-btn');
+const loadedMapImg = document.getElementById('loaded-map');
+
+let currentCategory = 'small';
+
+
+  // Open popup
+  loadBtn.addEventListener('click', () => {
+    popupOverlay.style.display = 'flex';
+    renderMapList(currentCategory);
+  });
+
+  // Close popup (X or outside click)
+  closeBtn.addEventListener('click', closePopup);
+  popupOverlay.addEventListener('click', (e) => {
+    if (e.target === popupOverlay) closePopup();
+  });
+
+  function closePopup() {
+    popupOverlay.style.display = 'none';
+  }
+
+  // Render map list
+  function renderMapList(category) {
+    mapList.innerHTML = '';
+    const maps = customMaps[category];
+    maps.forEach((map, index) => {
+      const div = document.createElement('div');
+      div.className = 'map-item';
+      div.innerHTML = `
+        <img src="${map.imageData}" alt="${map.name}">
+        <div>${map.width} x ${map.height}</div>
+      `;
+      div.addEventListener('click', () => {
+        loadMap(category, index);
+        closePopup();
+      });
+      mapList.appendChild(div);
+    });
+  }
+
+  // Handle category switching
+  categoryBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      categoryBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentCategory = btn.dataset.category;
+      renderMapList(currentCategory);
+    });
+  });
+
 let useimages = 1;
 let GS = 1.16; // hex texture size multi
 
@@ -666,6 +1073,46 @@ const PLAYER_COLORS = [
 	'#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#00C7BE', '#30B0C7', 
 	'#32ADE6', '#007AFF', '#5856D6', '#AF52DE', '#FF2D55', '#A2845E'
 ];
+
+function randomColor() {
+  const h = Math.floor(Math.random() * 360);
+  const s = Math.floor(Math.random() * 41) + 60; // 60–100%
+  const l = Math.floor(Math.random() * 51) + 50; // 50–100%
+
+  // Convert HSL → RGB → HEX
+  const a = s * Math.min(l / 100, 1 - l / 100) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l / 100 - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function getNextFreeColor(player = null){
+	
+	let usedColors = [];
+	for(let i = 0; i < gameState.players.length; i++){
+		let p = gameState.players[i];
+		if(!player || p.id !== player.id){
+			if(!p.quitted && !p.isSpectator){
+				usedColors.push(p.color);
+			}
+		}
+	}
+	
+	for(let i = 0; i < PLAYER_COLORS.length; i++){
+		let color = PLAYER_COLORS[i];
+		if(!usedColors.includes(color)){
+			return color;
+		}
+	}
+	console.log("random color returned");
+	return randomColor();
+}
+
+
 const SPECTATOR_COLOR = '#FFFFFF';
 const UNCLAIMED_COLOR = '#555555';
 const WATER_COLOR = '#003366';
@@ -699,16 +1146,19 @@ let connections = new Map(); // key: peerId, value: DataConnection
 let localPlayer = {
 	id: null,
 	name: 'Player',
-	color: PLAYER_COLORS[0],
+	color: "#888888", // debug color
 	isSpectator: false,
-	isHost: false
+	isHost: false,
+	isDead: false,
+	isAI: false,
 };
 let db = null;
 let loadedGameState = null;
 
 // --- GAME STATE (synced by host) ---
-let GAME_STATE = {
+let gameState = {
 	gameStarted: false,
+	gameOver: false,
 	settings: {
 		mapWidth: 50,
 		mapHeight: 50,
@@ -832,7 +1282,7 @@ const pages = {
 	game: document.getElementById('game-page'),
 };
 const playerNameInput = document.getElementById('player-name');
-const roomNameInput = document.getElementById('room-name');
+const gameNameInput = document.getElementById('game-name-input');
 const hostBtn = document.getElementById('host-btn');
 const joinBtn = document.getElementById('join-btn');
 const spectateBtn = document.getElementById('spectate-btn');
@@ -843,7 +1293,7 @@ const hostRoomNameTitle = document.getElementById('host-room-name-title');
 const mapWidthInput = document.getElementById('map-width');
 const mapHeightInput = document.getElementById('map-height');
 const startMoneyInput = document.getElementById('start-money');
-const addAiBtn = document.getElementById('add-ai-btn');
+
 const spectateHostBtn = document.getElementById('spectate-host-btn');
 const loadMapBtn = document.getElementById('load-map-btn');
 const loadGameBtn = document.getElementById('load-game-btn');
@@ -881,6 +1331,35 @@ const buildPopupClose = document.getElementById('build-popup-close');
 
 
 const uiRight = document.getElementById('ui-right');
+
+
+
+
+const addAiBtn = document.getElementById('add-ai-btn');
+
+let ai_counter = 1;
+
+addAiBtn.addEventListener('click', () => {
+    if (!localPlayer.isHost) return;
+
+
+    const aiPlayer = {
+        id: `ai-${ai_counter}`,
+        name: `AI-${ai_counter}`,
+		color: getNextFreeColor(),
+		isSpectator: false,
+		isAI: true,
+		isDead: false,
+    };
+
+    gameState.players.push(aiPlayer);
+    ai_counter++;
+
+    // Update the UI for the host and broadcast the new state to all clients
+	broadcastLobbyState();
+});
+
+
 
 // =================================================================
 // --- UTILITY FUNCTIONS
@@ -964,7 +1443,7 @@ function getUID() {
 }
 
 function getPlayer(playerId) {
-	return GAME_STATE.players.find(p => p.id === playerId);
+	return gameState.players.find(p => p.id === playerId);
 }
 
 function getMyPlayer() {
@@ -1038,11 +1517,10 @@ function initCanvas() {
 	canvas.height = window.innerHeight;
 	
 	// Center map initially
-	const centerQ = Math.floor(GAME_STATE.settings.mapWidth / 2);
-	const centerR = Math.floor(GAME_STATE.settings.mapHeight / 2);
+	const centerQ = Math.floor(gameState.settings.mapWidth / 2);
+	const centerR = Math.floor(gameState.settings.mapHeight / 2);
 	// This axial coordinate isn't the *center* of a rectangular map,
 	// but it's good enough for a starting point.
-	// A true center for an odd-q vertical layout is more complex.
 	// Let's just center on 0,0.
 	const centerPx = axialToPixel(0, 0); 
 	viewport.x = canvas.width / 2 - centerPx.x;
@@ -1129,7 +1607,7 @@ let drawInfiniteWater = 1;
 
 // rendermap
 function render() {
-	if (!GAME_STATE.gameStarted) return;
+	if (!gameState.gameStarted) return;
 	
 	//ctx.fillStyle = '#000'; // Clear with black
 	//ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1446,7 +1924,7 @@ function render() {
 	
 	let myPlayer = getMyTurnPlayer();
 	
-	for (const unit of GAME_STATE.units) {
+	for (const unit of gameState.units) {
 		let { x, y } = axialToPixel(unit.q, unit.r);
 		const owner = getPlayer(unit.ownerId);
 		if (!owner) continue;
@@ -1676,28 +2154,28 @@ function handleWheel(e) {
 // =================================================================
 
 function getTileAt(q, r) {
-	return GAME_STATE.map.tiles[`${q},${r}`];
+	return gameState.map.tiles[`${q},${r}`];
 }
 
 function setTileAt(q, r, tileData) {
-	GAME_STATE.map.tiles[`${q},${r}`] = tileData;
+	gameState.map.tiles[`${q},${r}`] = tileData;
 }
 
 function getOutlineAt(q, r) {
-	return GAME_STATE.map.outlines[`${q},${r}`];
+	return gameState.map.outlines[`${q},${r}`];
 }
 
 function setOutlineAt(q, r, lines) {
-	GAME_STATE.map.outlines[`${q},${r}`] = lines;
+	gameState.map.outlines[`${q},${r}`] = lines;
 }
 
 function getUnitAt(q, r) {
-	return GAME_STATE.units.find(u => u.q === q && u.r === r);
+	return gameState.units.find(u => u.q === q && u.r === r);
 }
 
 function getMyTurnPlayer() {
-	if (!GAME_STATE.gameStarted) return null;
-	const player = GAME_STATE.players[GAME_STATE.turn.currentPlayerIndex];
+	if (!gameState.gameStarted) return null;
+	const player = gameState.players[gameState.turn.currentPlayerIndex];
 	return player;
 }
 
@@ -1707,14 +2185,14 @@ function isMyTurn() {
 }
 
 function updateGameUI() {
-	if (!GAME_STATE.gameStarted) return;
+	if (!gameState.gameStarted) return;
 	
 	const myPlayer = getMyPlayer();
 	const myTurnPlayer = getMyTurnPlayer();
 	
 	// Update player list
 	playerUIList.innerHTML = '';
-	GAME_STATE.players.forEach(p => {
+	gameState.players.forEach(p => {
 		const item = document.createElement('div');
 		item.className = 'player-list-item';
 		if (p.id === myTurnPlayer?.id) {
@@ -1738,7 +2216,7 @@ function updateGameUI() {
 	});
 
 	// Update turn info
-	turnInfo.textContent = `Turn ${GAME_STATE.turn.turnNumber}`;
+	turnInfo.textContent = `Turn ${gameState.turn.turnNumber}`;
 	
 	// Update buttons
 	const canPlay = isMyTurn() && !myPlayer.isSpectator;
@@ -1862,6 +2340,86 @@ function handleHexClick(hex) {
 	
 	updateHighlights();
 }
+
+function findUnitPossibleMoves(this_selectedUnit, player){
+	let this_poolStartHex = this_selectedUnit;
+	let this_highlightedPool = [];
+	let this_validMoveHexes = [];
+	let this_invalidMoveHexes = [];
+	
+	const tile = getTileAt(this_poolStartHex.q, this_poolStartHex.r);
+	if (tile && tile.ownerId === player.id) {
+		// Run BFS to find all connected friendly hexes
+		const queue = [{q: this_poolStartHex.q, r: this_poolStartHex.r}];
+		const visited = new Set([`${this_poolStartHex.q},${this_poolStartHex.r}`]);
+		
+		while (queue.length > 0) {
+			const current = queue.shift();
+			this_highlightedPool.push(current);
+			
+			for (const n of getHexNeighbors(current.q, current.r)) {
+				const nKey = `${n.q},${n.r}`;
+				const nTile = getTileAt(n.q, n.r);
+				if (nTile && nTile.ownerId === player.id && !visited.has(nKey)) {
+					visited.add(nKey);
+					queue.push(n);
+				}
+			}
+		}
+	}
+	
+	const borderHexes = new Map(); // Use Map to avoid duplicates, key 'q,r'
+	
+	// Add all empty hexes *in* the pool as valid moves
+	for (const hex of this_highlightedPool) {
+		// removing this fixes bug not allowing moving around selected unit:
+		//if (hex.q === selectedUnit.q && hex.r === selectedUnit.r) continue;
+		if (!getUnitAt(hex.q, hex.r)) {
+			this_validMoveHexes.push(hex);
+		}
+		
+		// While we're here, find all neighbors to build the border set
+		for (const n of getHexNeighbors(hex.q, hex.r)) {
+			const nKey = `${n.q},${n.r}`;
+			const nTile = getTileAt(n.q, n.r);
+			// If neighbor exists, is not water, and is not in our pool
+			if (nTile && nTile.type !== 'water' && !this_highlightedPool.some(p => p.q === n.q && p.r === n.r)) {
+				borderHexes.set(nKey, n);
+			}
+		}
+	}
+	
+	// Now check all border hexes for validity
+	for (const [key, hex] of borderHexes.entries()) {
+		const toTile = getTileAt(hex.q, hex.r); // We know this tile exists and isn't water
+		const targetUnit = getUnitAt(hex.q, hex.r);
+		const shieldLevel = getShieldLevel(hex.q, hex.r, player.id);
+
+		if (targetUnit) {
+			if (targetUnit.ownerId === player.id) continue; // Should be impossible
+			if (this_selectedUnit.level > shieldLevel && this_selectedUnit.level > targetUnit.level) {
+				this_validMoveHexes.push(hex);
+			} else {
+				this_invalidMoveHexes.push(hex);
+			}
+		} else { // No target unit
+			if (toTile.ownerId !== null) { // Enemy land
+				if (this_selectedUnit.level > shieldLevel) {
+					this_validMoveHexes.push(hex);
+				} else {
+					this_invalidMoveHexes.push(hex);
+				}
+			} else { // Unowned land
+				// Shields don't apply to unowned land
+				this_validMoveHexes.push(hex);
+			}
+		}
+	}
+	console.warn("this_validMoveHexes");
+	console.warn(this_validMoveHexes);
+	return this_validMoveHexes;
+}
+
 
 function updateHighlights() {
 	// Clear all highlights
@@ -2125,7 +2683,7 @@ function executeAction(playerId, action) {
 	switch (action.type) {
 		case 'action_move': {
 			const { unitId, toQ, toR } = action;
-			const unit = GAME_STATE.units.find(u => u.id === unitId);
+			const unit = gameState.units.find(u => u.id === unitId);
 			if (!unit || unit.ownerId !== playerId) return;
 			
 			const moveCheck = isMoveValid(unit, { q: toQ, r: toR }, player);
@@ -2149,7 +2707,7 @@ function executeAction(playerId, action) {
 				if (moveCheck.action === 'attack') {
 					const targetUnit = moveCheck.target;
 					actionForUndo.killedUnit = { ...targetUnit }; // Store copy
-					GAME_STATE.units = GAME_STATE.units.filter(u => u.id !== targetUnit.id);
+					gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 					sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
 				}
@@ -2209,7 +2767,9 @@ function executeAction(playerId, action) {
 						hasMoved: true,
 						isCastle: !!CASTLE_DATA[unitType]
 					};
-					GAME_STATE.units.push(newUnit);
+					console.log("action_build: gameState.units.push(newUnit);");
+					console.log(newUnit);
+					//gameState.units.push(newUnit); // if used here then host gets the unit double!
 					
 					let didClaim = false;
 					
@@ -2243,7 +2803,7 @@ function executeAction(playerId, action) {
 			if (!lastAction) break;
 			
 			if (lastAction.type === 'move') {
-				const unit = GAME_STATE.units.find(u => u.id === lastAction.unitId);
+				const unit = gameState.units.find(u => u.id === lastAction.unitId);
 				if (unit) {
 					unit.q = lastAction.fromQ;
 					unit.r = lastAction.fromR;
@@ -2265,7 +2825,7 @@ function executeAction(playerId, action) {
 					}
 				}
 				if (lastAction.killedUnit) {
-					GAME_STATE.units.push(lastAction.killedUnit);
+					gameState.units.push(lastAction.killedUnit);
 					updates.push({ type: 'unit_added', unit: lastAction.killedUnit });
 				}
 				
@@ -2276,7 +2836,7 @@ function executeAction(playerId, action) {
 				}
 				
 			} else if (lastAction.type === 'build') {
-				GAME_STATE.units = GAME_STATE.units.filter(u => u.id !== lastAction.unit.id);
+				gameState.units = gameState.units.filter(u => u.id !== lastAction.unit.id);
 				updates.push({ type: 'unit_removed', unitId: lastAction.unit.id });
 				
 				const pools = findEconomyPools(playerId);
@@ -2348,8 +2908,8 @@ function findEconomyPools(playerId) {
 	const pools = [];
 	const visited = new Set(); // 'q,r'
 	
-	for (const key in GAME_STATE.map.tiles) {
-		const tile = GAME_STATE.map.tiles[key];
+	for (const key in gameState.map.tiles) {
+		const tile = gameState.map.tiles[key];
 		if (tile.ownerId !== playerId || visited.has(key)) {
 			continue;
 		}
@@ -2369,7 +2929,7 @@ function findEconomyPools(playerId) {
 		while (queue.length > 0) {
 			const currentKey = queue.shift();
 			const [q, r] = currentKey.split(',').map(Number);
-			const currentTile = GAME_STATE.map.tiles[currentKey];
+			const currentTile = gameState.map.tiles[currentKey];
 			
 			pool.hexes.push({ q, r, tile: currentTile });
 			pool.totalSavings += currentTile.savings;
@@ -2389,7 +2949,7 @@ function findEconomyPools(playerId) {
 			// Check neighbors
 			for (const n of getHexNeighbors(q, r)) {
 				const nKey = `${n.q},${n.r}`;
-				const nTile = GAME_STATE.map.tiles[nKey];
+				const nTile = gameState.map.tiles[nKey];
 				if (nTile && nTile.ownerId === playerId && !visited.has(nKey)) {
 					visited.add(nKey);
 					queue.push(nKey);
@@ -2447,32 +3007,157 @@ function addCost(pools, cost) {
 
 
 function advanceToNextPlayer(){
-	let nextIndex = GAME_STATE.turn.currentPlayerIndex;
+	let nextIndex = gameState.turn.currentPlayerIndex;
     do {
-        nextIndex = (nextIndex + 1) % GAME_STATE.players.length;
-    } while (GAME_STATE.players[nextIndex].isSpectator);
+        nextIndex = (nextIndex + 1) % gameState.players.length;
+    } while (gameState.players[nextIndex].isSpectator);
 	
-    GAME_STATE.turn.currentPlayerIndex = nextIndex;
+    gameState.turn.currentPlayerIndex = nextIndex;
 	
 	let firstPlayerIndex = 0;
-	for(let i = 0; i < GAME_STATE.players.length; i++){
-		if(!GAME_STATE.players[i].isSpectator){
+	for(let i = 0; i < gameState.players.length; i++){
+		if(!gameState.players[i].isSpectator){
 			firstPlayerIndex = i;
 			break;
 		}
 	}
 	
-	if (GAME_STATE.turn.currentPlayerIndex === firstPlayerIndex) {
-		GAME_STATE.turn.turnNumber++;
+	if (gameState.turn.currentPlayerIndex === firstPlayerIndex) {
+		gameState.turn.turnNumber++;
 	}
 	
 	updateGameUI();
 }
 
-function checkForAITurn(){
-	
-	
+function random(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+function randomItem(arr){
+	return arr[random(0, arr.length-1)];
+}
+
+// this function doesnt need polishing, its very rudimentary AI that just moves not yet moved units to free hex.
+function ai_find_best_move(player){
+	console.log("ai_find_best_move");
+	
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+		// skip already moved units:
+		if(unit.hasMoved){
+			continue;
+		}
+		// only allow own units movement:
+		if(unit.ownerId === player.id){
+			// handle only ai units.
+			let neigh = getHexNeighbors(unit.q, unit.r);
+			
+			console.log("neigh");
+			console.log(neigh);
+			
+			let possibleMovesTemp = findUnitPossibleMoves(unit, player);
+			let possibleMoves = [];
+			// remove your owned tiles from possible moves, dont make ai just move in his own land:
+			for(let t = 0; t < possibleMovesTemp.length; t++){
+				let possibleMove = possibleMovesTemp[t];
+				let possibleTile = getTileAt(possibleMove.q, possibleMove.r);
+				if(possibleTile.ownerId !== player.id){
+					let move = {q: possibleMove.q, r: possibleMove.r};
+					const moveCheck = isMoveValid(unit, move, player);
+					if (moveCheck.valid) {
+						possibleMoves.push(move);
+					}
+				}
+			}
+			if(possibleMoves.length > 0){
+				let randomMove = randomItem(possibleMoves);
+				return {
+					type: 'action_move',
+					unitId: unit.id,
+					toQ: randomMove.q,
+					toR: randomMove.r
+				};
+			}
+			/*
+			let possibleMoves = [];
+			for(let n = 0; n < neigh.length; n++){
+				let nq = neigh[n].q;
+				let nr = neigh[n].r;
+				// MODIFICATION: Pass the actual player object to isMoveValid
+				const moveCheck = isMoveValid(unit, {q: nq, r: nr}, player);
+				if (moveCheck.valid) {
+					possibleMoves.push({q: nq, r: nr});
+				}
+			}
+			if(possibleMoves.length > 0){
+				let randomMove = randomItem(possibleMoves);
+				return {
+					type: 'action_move',
+					unitId: unit.id,
+					toQ: randomMove.q,
+					toR: randomMove.r
+				};
+			}*/
+		}
+	}
+	
+	return null; // no valid move found. turn will end.
+}
+
+
+// *** NEW FUNCTION ***
+// This function recursively calls itself with a delay to execute AI moves sequentially.
+// moveai
+function executeAIMoveSequentially(player) {
+    if (!localPlayer.isHost || gameState.gameOver) return;
+
+    // Double-check if it's still this AI's turn
+    const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
+    if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
+        console.log("AI turn interrupted or changed.");
+        return; 
+    }
+
+    console.log(`AI ${player.name} is thinking...`);
+
+    const bestMove = ai_find_best_move(player);
+    console.warn("AI bestMove:", bestMove);
+
+    if (bestMove) {
+        // If a move is found, execute it
+        // handleClientData is correct, as the host is simulating the AI's action
+        handleClientData(player.id, bestMove);
+        
+        // Schedule the next move check after a delay
+        setTimeout(() => {
+            executeAIMoveSequentially(player); // Recursive call for the next move
+        }, 100); // delay between moves
+    } else {
+        // No more moves found, end the turn
+        console.log(`AI ${player.name} has no more moves. Ending turn.`);
+        handleClientData(player.id, { type: "action_end_turn" });
+    }
+}
+
+
+function checkForAITurn(){
+	// Only the host should control the AI
+    if (!localPlayer.isHost || gameState.gameOver) return;
+
+    const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
+
+    // If the current player is an AI, trigger their move sequence
+    if (currentPlayer && currentPlayer.isAI && !currentPlayer.isDead) {
+		console.log(`Starting AI turn for: ${currentPlayer.name}`);
+        
+        // Start the sequential move execution
+        // Add a small initial delay to allow the "turn changed" message to settle
+        setTimeout(() => {
+            executeAIMoveSequentially(currentPlayer);
+        }, 100); // Small delay before first move
+	}
+}
+
 
 function executeEndTurn(playerId) {
 	// --- 1. Apply income and wages for current player ---
@@ -2508,12 +3193,12 @@ function executeEndTurn(playerId) {
 			tile.object = 'grass'; // Turn to grass
 			broadcast({ type: 'tile_changed', q: soldier.q, r: soldier.r, object: 'grass' });
 		}
-		GAME_STATE.units = GAME_STATE.units.filter(u => u.id !== soldier.id);
+		gameState.units = gameState.units.filter(u => u.id !== soldier.id);
 		broadcast({ type: 'unit_removed', unitId: soldier.id });
 	}
 	
 	// --- 3. Reset "hasMoved" for all *this player's* units ---
-	GAME_STATE.units.forEach(u => {
+	gameState.units.forEach(u => {
 		if (u.ownerId === playerId) {
 			if (u.hasMoved) {
 				u.hasMoved = false;
@@ -2528,20 +3213,24 @@ function executeEndTurn(playerId) {
 	// --- 5. Advance Turn ---
 
 	advanceToNextPlayer();
-	console.log("GAME_STATE.turn.currentPlayerIndex");
-	console.log(GAME_STATE.turn.currentPlayerIndex);
+	
+	console.log("gameState.turn.currentPlayerIndex");
+	console.log(gameState.turn.currentPlayerIndex);
 	
 	
 	currentTurnActions = []; // Clear undo stack
 	
 	broadcast({ 
 		type: 'turn_changed', 
-		currentPlayerIndex: GAME_STATE.turn.currentPlayerIndex, 
-		turnNumber: GAME_STATE.turn.turnNumber 
+		currentPlayerIndex: gameState.turn.currentPlayerIndex, 
+		turnNumber: gameState.turn.turnNumber 
 	});
 	
+	
+	
 	// --- 6. Check for AI turn ---
-	// TODO: If new player is AI, run AI logic
+	// NEW: This will now start the AI's sequential turn
+	checkForAITurn(); // start AI turn if it is his turn.
 }
 
 
@@ -2560,12 +3249,13 @@ function handleHostData(data) {
 	
 	switch (data.type) {
 		case 'game_start':
-			GAME_STATE = data.state;
+			gameState = data.state;
 			showPage('game');
 			updateGameUI();
 			break;
 		case 'full_state':
-			GAME_STATE = data.state;
+			gameState = data.state;
+			console.warn("handleHostData full_state");
 			if (!localPlayer.isSpectator) {
 				localPlayer.isSpectator = true;
 				localPlayer.color = SPECTATOR_COLOR;
@@ -2578,8 +3268,8 @@ function handleHostData(data) {
 			updateGameUI();
 			break;
 		case 'lobby_update':
-			GAME_STATE.settings = data.settings;
-			GAME_STATE.players = data.players;
+			gameState.settings = data.settings;
+			gameState.players = data.players;
 			updateLobbyUI();
 			break;
 		case 'chat':
@@ -2594,15 +3284,17 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			break;
 		case 'unit_added':
-			GAME_STATE.units.push(data.unit);
+			console.log("unit_added: gameState.units.push(data.unit);");
+			console.log(data.unit);
+			gameState.units.push(data.unit);
 			needsUIUpdate = true;
 			break;
 		case 'unit_removed':
-			GAME_STATE.units = GAME_STATE.units.filter(u => u.id !== data.unitId);
+			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
 			needsUIUpdate = true;
 			break;
 		case 'unit_moved':
-			const unit = GAME_STATE.units.find(u => u.id === data.unitId);
+			const unit = gameState.units.find(u => u.id === data.unitId);
 			if (unit) {
 				unit.q = data.q;
 				unit.r = data.r;
@@ -2615,7 +3307,7 @@ function handleHostData(data) {
 			playSound('protect'); // stub
 			break;
 		case 'turn_changed':
-			GAME_STATE.turn = {
+			gameState.turn = {
 				currentPlayerIndex: data.currentPlayerIndex,
 				turnNumber: data.turnNumber
 			};
@@ -2623,7 +3315,7 @@ function handleHostData(data) {
 			selectedHex = null;
 			updateHighlights();
 			updateGameUI();
-			addSystemChatMessage(`Turn ${GAME_STATE.turn.turnNumber}: ${getMyTurnPlayer().name}'s turn.`);
+			addSystemChatMessage(`Turn ${gameState.turn.turnNumber}: ${getMyTurnPlayer().name}'s turn.`);
 			break;
 		case 'sound':
 			playSound(data.name);
@@ -2648,8 +3340,8 @@ function handleClientData(peerId, data) {
 		case 'join':
 			player.name = data.name;
 			
-			if (!GAME_STATE.gameStarted) {
-				player.color = data.color;
+			if (!gameState.gameStarted) {
+				player.color = getNextFreeColor();
 				player.isSpectator = data.isSpectator;
 			} else {
 				player.color = "#FFFFFF";
@@ -2682,11 +3374,27 @@ function handleClientData(peerId, data) {
 		case 'action_build':
 		case 'action_undo':
 		case 'action_end_turn':
-			if (GAME_STATE.gameStarted) {
+			if (gameState.gameStarted) {
 				executeAction(peerId, data);
 			}
 			break;
 	}
+}
+
+
+function newPeer(myPeerId = null){
+	selectedServerIndex = parseInt(serverNameInput.value, 10);
+	let selectedServer = serversList[selectedServerIndex];
+
+	peer = new Peer(myPeerId, selectedServer.config);
+	
+	if(selectedServer.config.host){
+		console.warn(`connecting to ${selectedServer.config.host}${selectedServer.config.path}`);
+	}else{
+		console.warn(`connecting to peerjs.com`);
+	}
+	console.warn(selectedServer.config);
+	
 }
 
 // =================================================================
@@ -2694,10 +3402,13 @@ function handleClientData(peerId, data) {
 // =================================================================
 function initPeerJS() {
 	try {
+		
+		
 		// This peer is for clients, or for the host to override
-		peer = new Peer(null, {
-			debug: 2 // Set to 0 for production
-		});
+		newPeer();
+		//peer = new Peer(null, {
+		//	debug: 2 // Set to 0 for production
+		//});
 		
 		peer.on('open', (id) => {
 			myPeerId = id;
@@ -2736,18 +3447,19 @@ function setupConnection(conn) {
 			const newPlayer = {
 				id: conn.peer,
 				name: 'Joining...', // Will be updated by 'join' message
-				color: null,
+				color: "gray",
 				isSpectator: false,
-				isAI: false
+				isAI: false,
+				isDead: false,
 			};
-			GAME_STATE.players.push(newPlayer);
+			gameState.players.push(newPlayer);
 			
-			if (GAME_STATE.gameStarted) {
+			if (gameState.gameStarted) {
 				// Send full game state to new player (who will join as spec)
-				conn.send({ type: 'full_state', state: GAME_STATE });
+				conn.send({ type: 'full_state', state: gameState });
 			} else {
 				// Send lobby state
-				conn.send({ type: 'lobby_update', settings: GAME_STATE.settings, players: GAME_STATE.players });
+				conn.send({ type: 'lobby_update', settings: gameState.settings, players: gameState.players });
 			}
 		}
 	});
@@ -2768,13 +3480,13 @@ function setupConnection(conn) {
 			const player = getPlayer(conn.peer);
 			if (player) {
 				addSystemChatMessage(`${player.name} has left.`);
-				//GAME_STATE.players = GAME_STATE.players.filter(p => p.id !== conn.peer);
-				GAME_STATE.players = GAME_STATE.players.map(p =>
+				//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
+				gameState.players = gameState.players.map(p =>
 					p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
 				);
-				if (GAME_STATE.gameStarted) {
+				if (gameState.gameStarted) {
 					// let others play if quitter was in turn:
-					if(conn.peer == GAME_STATE.players[GAME_STATE.turn.currentPlayerIndex].id){
+					if(conn.peer == gameState.players[gameState.turn.currentPlayerIndex].id){
 						advanceToNextPlayer();
 						checkForAITurn(); // start AI turn if it is his turn.
 					}else{
@@ -2808,7 +3520,7 @@ function executeJoin(hostPeerId) {
 		conn.send({
 			type: 'join',
 			name: localPlayer.name,
-			color: localPlayer.color,
+			color: getNextFreeColor(),
 			isSpectator: localPlayer.isSpectator
 		});
 		
@@ -2832,7 +3544,7 @@ function joinGame(isSpectator) {
 		hideUiRight();
 	}
 	
-	hostPeerId = roomNameInput.value.trim();
+	hostPeerId = gameNameInput.value.trim();
 	if (!hostPeerId) {
 		alert('Please enter a Game Room Name (which is the Host\'s ID).');
 		return;
@@ -2853,8 +3565,8 @@ function joinGame(isSpectator) {
 }
 
 function hostGame() {
-	const desiredRoomId = roomNameInput.value.trim();
-	if (!desiredRoomId) {
+	const gameName = gameNameInput.value.trim();
+	if (!gameName) {
 		alert("Please enter a Game Room Name.");
 		return;
 	}
@@ -2863,30 +3575,55 @@ function hostGame() {
 		peer.destroy();
 	}
 	
-	console.log(`Attempting to host with ID: ${desiredRoomId}`);
+	console.log(`Attempting to host with ID: ${gameName}`);
 	try {
-		peer = new Peer(desiredRoomId, { debug: 2 });
+		//peer = new Peer(gameName, { debug: 2 });
+		newPeer(gameName);
 
 		peer.on('open', (id) => {
 			myPeerId = id;
 			localPlayer.id = id;
 			localPlayer.isHost = true;
 			localPlayer.name = playerNameInput.value;
+			localPlayer.color = getNextFreeColor();
 			hostPeerId = myPeerId;
 			
 			// Use the desired ID, not the one from the 'open' event (which should be the same)
-			GAME_STATE.settings.roomName = desiredRoomId;
+			gameState.settings.roomName = gameName;
 			// This was the line overwriting your input, it's now correct.
-			roomNameInput.value = desiredRoomId; 
-			hostRoomNameTitle.textContent = `Hosting: ${desiredRoomId}`;
+			gameNameInput.value = gameName; 
+			hostRoomNameTitle.textContent = `Hosting: ${gameName}`;
 			
 			// Reset player list and add host
-			GAME_STATE.players = []; 
-			GAME_STATE.players.push(localPlayer);
+			gameState.players = []; 
+			gameState.players.push(localPlayer);
+			
+			
+
+			let server = getSelectedServer();
+			console.log(server);
+			
+			// todo: You could also send a DELETE /unregister-game request when the host manually closes the game.
+			
+			// only allow games list on servers that is possible:
+			if(server.serverListEnabled){
+				fetch(`${server.fetchUrl}/register-game`, {
+				  method: 'POST',
+				  headers: { 'Content-Type': 'application/json' },
+				  body: JSON.stringify({
+					peerId: localPlayer.id,
+					name: gameName,
+					hostName: localPlayer.name,
+					maxPlayers: 400, // todo: allow changing this some day.
+				  }),
+				});
+			}
+
+
 			
 			updateHostLobbyUI();
 			showPage('host');
-			connectionStatus.textContent = `Hosting at ${desiredRoomId}. Ready for players.`;
+			connectionStatus.textContent = `Hosting at ${gameName}. Ready for players.`;
 		});
 		
 		// Host MUST listen for connections
@@ -2899,7 +3636,7 @@ function hostGame() {
 			console.error('PeerJS Error:', err);
 			connectionStatus.textContent = `Error: ${err.message}`;
 			if (err.type === 'unavailable-id') {
-				alert(`Game Room "${desiredRoomId}" is already taken. Please choose another name.`);
+				alert(`Game Room "${gameName}" is already taken. Please choose another name.`);
 				showPage('start');
 				peer.destroy();
 				initPeerJS(); // Re-init with a random client ID
@@ -2917,34 +3654,39 @@ function hostGame() {
 // =================================================================
 
 function updateHostLobbyUI() {
+	// for host player:
 	hostPlayerList.innerHTML = '';
-	GAME_STATE.players.forEach(p => {
-		const item = document.createElement('div');
-		item.className = 'player-list-item';
-		let specTag = p.isSpectator ? ' (spec)' : '';
-		item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
-		item.textContent = `${p.name}${specTag}`;
-		hostPlayerList.appendChild(item);
+	gameState.players.forEach(p => {
+		if(!p.quitted){
+			const item = document.createElement('div');
+			item.className = 'player-list-item';
+			let specTag = p.isSpectator ? ' (spec)' : '';
+			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
+			item.textContent = `${p.name}${specTag}`;
+			hostPlayerList.appendChild(item);
+		}
 	});
 }
 
 function updateLobbyUI() {
 	// Update settings info
-	lobbyRoomNameTitle.textContent = `Joining: ${GAME_STATE.settings.roomName}`;
-	lobbyMapSize.textContent = `${GAME_STATE.settings.mapWidth} x ${GAME_STATE.settings.mapHeight}`;
-	lobbyStartMoney.textContent = `${GAME_STATE.settings.startingMoney} G`;
+	lobbyRoomNameTitle.textContent = `Joining: ${gameState.settings.roomName}`;
+	lobbyMapSize.textContent = `${gameState.settings.mapWidth} x ${gameState.settings.mapHeight}`;
+	lobbyStartMoney.textContent = `${gameState.settings.startingMoney} G`;
 	
-	// Update player list
+	// Update player list for non-host players:
 	lobbyPlayerList.innerHTML = '';
 	const usedColors = [];
-	GAME_STATE.players.forEach(p => {
-		const item = document.createElement('div');
-		item.className = 'player-list-item';
-		let specTag = p.isSpectator ? ' (spec)' : '';
-		item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
-		item.textContent = `${p.name}${specTag}`;
-		lobbyPlayerList.appendChild(item);
-		if (p.color) usedColors.push(p.color);
+	gameState.players.forEach(p => {
+		if(!p.quitted){
+			const item = document.createElement('div');
+			item.className = 'player-list-item';
+			let specTag = p.isSpectator ? ' (spec)' : '';
+			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
+			item.textContent = `${p.name}${specTag}`;
+			lobbyPlayerList.appendChild(item);
+			if (p.color) usedColors.push(p.color);
+		}
 	});
 	/*
     playerList.innerHTML = '';
@@ -3001,8 +3743,8 @@ function broadcastLobbyState() {
 	// Send to all clients
 	broadcast({
 		type: 'lobby_update',
-		settings: GAME_STATE.settings,
-		players: GAME_STATE.players
+		settings: gameState.settings,
+		players: gameState.players
 	});
 }
 
@@ -3261,8 +4003,24 @@ async function loadMapsFromJSON() {
   customMaps = await loadMapsFromJSON();
   console.warn(customMaps);
   console.warn(customMaps.normal[0]);
-  loadedmap = customMaps.normal[12];
+  
+  // todo: remove this:
+  loadMap("normal", 11);
 })();
+
+function openMapLoadDialog(){
+	
+	
+}
+
+function loadMap(category, index) {
+	const map = customMaps[category][index];
+	console.log('Loading map:', category, index, map.name);
+	loadedMapImg.src = map.imageData;
+
+	loadedmap = customMaps[category][index];
+}
+  
 
 
 
@@ -3538,14 +4296,14 @@ function generateMap(width, height) {
 	height = loadedmap.height+8;
 	
 		
-	GAME_STATE.settings.mapWidth = width;
-	GAME_STATE.settings.mapHeight = height;
+	gameState.settings.mapWidth = width;
+	gameState.settings.mapHeight = height;
 	
 	loadParsedMap(loadedmap, true);
 	
 	console.log(`Generating map ${width}x${height}`);
 	/*
-	GAME_STATE.map.tiles = {};
+	gameState.map.tiles = {};
 	
 	
 	
@@ -3579,9 +4337,9 @@ function generateMap(width, height) {
 	
 
 	// generate outlines for all land pieces in the map:
-	for (const key in GAME_STATE.map.tiles) {
+	for (const key in gameState.map.tiles) {
 		const [q, r] = key.split(',').map(Number);
-		//const lines = GAME_STATE.map.outlines[key];
+		//const lines = gameState.map.outlines[key];
 		let lines = [];
 		let neigh = getHexNeighbors(q, r);
 		for(let i = 0; i < neigh.length; i++){
@@ -3609,24 +4367,26 @@ function generateMap(width, height) {
 }
 
 function spawnPlayers() {
-	const playersToSpawn = GAME_STATE.players.filter(p => !p.isSpectator && !p.isAI);
+	const playersToSpawn = gameState.players.filter(p => !p.isSpectator); // && !p.isAI
 	let landHexes = [];
 	
 	// Get all available land hexes
-	for (const key in GAME_STATE.map.tiles) {
-		if (GAME_STATE.map.tiles[key].type === 'land') {
+	for (const key in gameState.map.tiles) {
+		if (gameState.map.tiles[key].type === 'land') {
 			const [q, r] = key.split(',').map(Number);
 			landHexes.push({q, r});
 		}
 	}
-	
+	console.warn("playersToSpawn");
+	console.warn(playersToSpawn);
 	// Shuffle
 	landHexes.sort(() => Math.random() - 0.5);
 	
 	for (const player of playersToSpawn) {
 		let spawnHex = null;
 		let neighbors = [];
-		
+		console.warn("player of playersToSpawn");
+		console.warn(player);
 		// Find a spawn point with at least 4 land neighbors
 		let found = false;
 		while (!found && landHexes.length > 0) {
@@ -3646,33 +4406,51 @@ function spawnPlayers() {
 			if (!spawnHex) continue; // No land hexes left?
 		}
 		
+		console.warn("player of playersToSpawn111");
+		console.warn(player);
+		
 		// Claim center hex
 		const centerTile = getTileAt(spawnHex.q, spawnHex.r);
 		centerTile.ownerId = player.id;
 		centerTile.object = null;
-		centerTile.savings = GAME_STATE.settings.startingMoney / 5; // Split money
+		centerTile.savings = gameState.settings.startingMoney / 5; // Split money
 		
 		// Claim 4 neighbors
+		let claimedHexes = [];
 		for (let i = 0; i < 4; i++) {
 			const n = neighbors[i];
 			n.tile.ownerId = player.id;
 			n.tile.object = null;
-			n.tile.savings = GAME_STATE.settings.startingMoney / 5;
+			n.tile.savings = gameState.settings.startingMoney / 5;
+			claimedHexes.push(n);
 		}
 		
-		// Add Peasant on one of them
-		const soldierHex = neighbors[0];
-		const peasant = {
-			id: getUID(),
-			type: 'Peasant',
-			ownerId: player.id,
-			level: 1,
-			q: soldierHex.q,
-			r: soldierHex.r,
-			hasMoved: false
-		};
-		GAME_STATE.units.push(peasant);
+		// Add Peasants
+		let total_start_units = 2;
+		if(claimedHexes.length < total_start_units){
+			total_start_units = claimedHexes.length;
+		}
+
+		for(let i = 0; i < total_start_units; i++){
+			const soldierHex = claimedHexes[i];
+			const peasant = {
+				id: getUID(),
+				type: 'Peasant',
+				ownerId: player.id,
+				level: 1,
+				q: soldierHex.q,
+				r: soldierHex.r,
+				hasMoved: false
+			};
+			
+			console.warn("peasant of playersToSpawn222");
+			console.warn(peasant);
+			gameState.units.push(peasant);
+		}
 	}
+	
+	console.warn("gameState.units ");
+	console.warn(gameState.units);
 }
 
 function startGame() {
@@ -3682,12 +4460,12 @@ function startGame() {
 	
 	if (loadedGameState) {
 		console.log("Starting from loaded state.");
-		GAME_STATE = loadedGameState;
-		GAME_STATE.gameStarted = true;
+		gameState = loadedGameState;
+		gameState.gameStarted = true;
 		
 		// Match current players to loaded players
 		const newPlayerList = [];
-		const loadedPlayers = GAME_STATE.players.filter(p => !p.isSpectator);
+		const loadedPlayers = gameState.players.filter(p => !p.isSpectator);
 		
 		// Add all current spectators
 		for (const p of connections.keys()) {
@@ -3699,7 +4477,7 @@ function startGame() {
 		// Match players
 		for (const loadedP of loadedPlayers) {
 			// Find a current player who 'took' this name
-			const matchingCurrentPlayer = [...GAME_STATE.players, localPlayer].find(
+			const matchingCurrentPlayer = [...gameState.players, localPlayer].find(
 				p => p.name === loadedP.name && p.color === loadedP.color && !p.isSpectator
 			);
 			
@@ -3714,22 +4492,31 @@ function startGame() {
 				newPlayerList.push(loadedP);
 			}
 		}
-		GAME_STATE.players = newPlayerList;
+		gameState.players = newPlayerList;
 		
 	} else {
 		console.log("Starting new game.");
 		// Set settings from inputs
-		GAME_STATE.settings.mapWidth = parseInt(mapWidthInput.value);
-		GAME_STATE.settings.mapHeight = parseInt(mapHeightInput.value);
-		GAME_STATE.settings.startingMoney = parseInt(startMoneyInput.value);
+		gameState.settings.mapWidth = parseInt(mapWidthInput.value, 10);
+		gameState.settings.mapHeight = parseInt(mapHeightInput.value, 10);
+		gameState.settings.startingMoney = parseInt(startMoneyInput.value, 10);
 		
-		// Filter out spectators from play
-		GAME_STATE.players = GAME_STATE.players.filter(p => p.id === localPlayer.id || connections.has(p.id));
-		const playingPlayers = GAME_STATE.players.filter(p => !p.isSpectator);
+		// Filter out players without connection from play (unless they are host or ai):
+		gameState.players = gameState.players.filter(p => p.id === localPlayer.id || connections.has(p.id) || p.isAI);
+		
+		
+
+		// list playing players for colors: (not sure what is this for)
+		const playingPlayers = gameState.players.filter(p => !p.isSpectator);
+		
+		// dont allow starting game without players (crash).
+		if(playingPlayers.length == 0){
+			return;
+		}
 		
 		// Assign first colors to any uncolored players
 		let colorIdx = 0;
-		const usedColors = GAME_STATE.players.map(p => p.color);
+		const usedColors = gameState.players.map(p => p.color);
 		for (const p of playingPlayers) {
 			if (!p.color) {
 				while(usedColors.includes(PLAYER_COLORS[colorIdx])) {
@@ -3740,8 +4527,8 @@ function startGame() {
 			}
 		}
 		
-		GAME_STATE.gameStarted = true;
-		generateMap(GAME_STATE.settings.mapWidth, GAME_STATE.settings.mapHeight);
+		gameState.gameStarted = true;
+		generateMap(gameState.settings.mapWidth, gameState.settings.mapHeight);
 		spawnPlayers();
 		
 		let myPlayer = getMyPlayer();
@@ -3750,8 +4537,8 @@ function startGame() {
 		}
 		
 		// Set initial turn
-		GAME_STATE.turn.currentPlayerIndex = 0;
-		GAME_STATE.turn.turnNumber = 0;
+		gameState.turn.currentPlayerIndex = 0;
+		gameState.turn.turnNumber = 0;
 		advanceToNextPlayer();
 	}
 	
@@ -3759,14 +4546,15 @@ function startGame() {
 	currentTurnActions = [];
 	
 	// Save this game state
-	saveGameToDB(GAME_STATE);
+	saveGameToDB(gameState);
 	
 	// Broadcast start
 	// At the very end of the function, AFTER broadcast('game_start'):
-	broadcast({ type: 'game_start', state: GAME_STATE });
+	broadcast({ type: 'game_start', state: gameState });
+	checkForAITurn(); // start AI turn if it is his turn.
 	
 	// Send initial savings to all players
-	GAME_STATE.players.forEach(p => {
+	gameState.players.forEach(p => {
 		if (!p.isSpectator) {
 			updatePlayerSavings(p.id);
 		}
@@ -3793,9 +4581,9 @@ window.addEventListener('DOMContentLoaded', () => {
 	playerNameInput.onchange = (e) => localPlayer.name = e.target.value;
 
 	// --- Host Page ---
-	mapWidthInput.onchange = () => GAME_STATE.settings.mapWidth = parseInt(mapWidthInput.value);
-	mapHeightInput.onchange = () => GAME_STATE.settings.mapHeight = parseInt(mapHeightInput.value);
-	startMoneyInput.onchange = () => GAME_STATE.settings.startingMoney = parseInt(startMoneyInput.value);
+	mapWidthInput.onchange = () => gameState.settings.mapWidth = parseInt(mapWidthInput.value, 10);
+	mapHeightInput.onchange = () => gameState.settings.mapHeight = parseInt(mapHeightInput.value, 10);
+	startMoneyInput.onchange = () => gameState.settings.startingMoney = parseInt(startMoneyInput.value, 10);
 	
 	spectateHostBtn.onclick = () => {
 		localPlayer.isSpectator = !localPlayer.isSpectator;
@@ -3812,7 +4600,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			loadedGameInfoContainer.style.display = 'none';
 		} else {
 			// Load
-			const roomName = roomNameInput.value;
+			const roomName = gameNameInput.value;
 			loadGameFromDB(roomName, (state) => {
 				if (state) {
 					loadedGameState = state;
