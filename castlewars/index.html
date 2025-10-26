@@ -18,9 +18,12 @@
 	
 	<!-- 
 	TODO:
+
+	- your pools savings are actually combined when you try to buy soldiers. should only use the money from selected pool. also should need to select a pool before buying anything.
+	- keskitä ruutu keskelle omia unitteja kun peli alkaa.
 	- Test 60x30 size maps for the sake of it.
 	- Älä näytä move range juttua jos ukko on jo liikkunut.
-	- Mapin latauksessa se ei clearaa edellistä mappia niin edelliset tilet jää alle.
+
 	- Laita highlight edges näkymään paksumpina kun zoomaa ulos, ehkä aina yhtä paksuna tai melkein yhtä paksuna: jos zoomaa liikaa ulos niin paksuus alle normin, jos liikaa sisään niin paksuus yli normin.
 	- Edget keltaset poolista vaihtelee väriä oudosti ja ilmestyy map edgejen kohtiin keltasta jos liikkuu tiettyyn kohtaan o.o screenshotit käges.
 	- Myös vaihtelee läpinäkyvyys pool edgeissä riippuen mihin kohtaan poolia klikkas. Johtuuko siitä kun ukot muuttui ruohoksi?. Voinee johtua myös bugisesti ladatusta mapist (päällekkäiset) ?.
@@ -30,19 +33,9 @@
 	- Turn dead into cross before grass. 4 turns and grass. Each new turn random grass growth.
 	- End turn nappia painelemalla tekoälyn siirrot hidastuu o.o
 	
-	- player color is not "selected" when player joins. shows it disabled instead, shows selected glow when new color selected.
 
-	- player color becomes gray if player joins a game and doesnt choose color but instead changes his name and unfocuses the input.
-	  bug doesnt happen again if player changes name. only at first time.
-	- fix bottom ui rounded left bottom corner to non-rounded. fix some paddings too. height doesnt seem to need to be set, so maybe remove it so it auto adjusts?
-	- fix game name getting hidden when page is too long. also allow selecting the name and copy.
-	- calculate cropped map width/height, so it makes more sense. i dont think the original maps were cropped to land edges, might be some water tiles padding.
-	- use game name when publishing game on peerjs server, dont display different games on the list, only castlewars games.
-	- fix starting player index, increments it at start? make it choose random player index to start.
-	- make ai players IDs more random so it wont conflict with human player id if he uses name like AI-1
-	- make map loader, customMaps has all map data (compact version) and base64 imagedata ready to inject into img tags directly.
-	- when killing enemy unit by adding new soldier on top of it, and then undoing, it will not give the land of enemy back to him.
-	- when player left the room (disconnect), it shouldnt be shown in the list anymore. so disconnect set quitted true and filter quitted plyers from list.
+
+
 	- show protected radiuses of units with white edges.
 	- load game doesnt work for interrupted game. perhaps save doesnt work?
 	- moving an unit gives instantly the income from your pool??? some crazy math there, gives more than 1 per tile.
@@ -58,7 +51,7 @@
 	- allow placing new higher level unit on top of lower level unit and kill it.
 	- add map loader from original game maps. show preview of each map in selector list.
 
-	- useimages = 1, for rendering textures. check if its much slower than without. check if their render makes any sense or is it doing useless things.
+
 
 	- dont allow moving castles lol XD
 
@@ -111,15 +104,15 @@ function drawCalligraphyLine(x1, y1, x2, y2) {
 * {
 	box-sizing: border-box;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-	user-select: none;
+	---user-select: none;
 }
 
 html, body {
 	margin: 0;
 	padding: 0;
 	width: 100%;
-	height: 100%;
-	overflow: hidden;
+	----height: 100%;
+	----overflow: hidden;
 	background-color: var(--bg-color);
 	color: var(--text-color);
 }
@@ -326,6 +319,7 @@ label {
 	width: 100%;
 	height: 100%;
 	background: #000;
+	user-select: none;
 }
 
 #game-canvas {
@@ -457,6 +451,12 @@ label {
 	border-radius: 4px;
 	margin-bottom: 5px;
 	margin-top: 3px;
+
+	user-select: text !important;
+}
+
+.msgfromtext, .msgtext {
+  user-select: text !important;
 }
 
 #chat-input {
@@ -547,7 +547,7 @@ label {
     box-shadow: 0 5px 20px rgba(0,0,0,0.2);
     animation: fadeIn 0.2s ease;
 	
-    margin-top: 220px;
+    padding-top: 108px;
   }
 
   @keyframes fadeIn {
@@ -647,7 +647,6 @@ label {
 
 
   #loaded-map {
-    margin-top: 12px;
     border: 1px solid #ccc;
     border-radius: 6px;
   }
@@ -711,7 +710,9 @@ label {
 }
 */
 
-
+input.disabled {
+	cursor: not-allowed;
+}
 
 </style>
 </head>
@@ -789,7 +790,7 @@ label {
 		<input type="number" id="start-money" value="1000">
 
 		<div class="input-group">
-			<button id="add-ai-btn" style="flex: 2;">Add AI (Hardness: 1)</button>
+			<button id="add-ai-btn" style="flex: 2;">Add AI</button>
 			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1;">Spectate</button>
 		</div>
 		
@@ -798,7 +799,17 @@ label {
 			<button id="load-game-btn" style="display:none">Load Game</button>
 		</div>
 		
-		<img id="loaded-map" src="" width="100">
+		<div class="input-group">
+			<div style="width:110px; flex:0 0 auto;">
+				<label for="loaded-map">Loaded map</label>
+				<img id="loaded-map" src="" width="100" height="100">
+			</div>
+			<div>
+				<label for="map-scale">Map scale</label>
+				<input type="number" id="map-scale" value="1" min="1" max="5">
+				Scaling resizes the map by factor above.
+			</div>
+		</div>
 		
 		<div id="loaded-game-info-container" class="loaded-game-info" style="display: none;">
 			<p><strong>Saved Game:</strong> <span id="load-game-date"></span></p>
@@ -826,7 +837,18 @@ label {
 			<p><strong>Money:</strong> <span id="lobby-start-money">...</span></p>
 		</div>
 		
-		<img id="lobby-loaded-map" src="" width="100">
+		<div class="input-group">
+			<div style="width:110px; flex:0 0 auto;">
+				<label for="lobby-loaded-map">Loaded map</label>
+				<img id="lobby-loaded-map" src="" width="100" height="100">
+			</div>
+			<div>
+				<label for="lobby-map-scale">Map scale</label>
+				<input type="number" id="lobby-map-scale" class="disabled" value="1" max="5" disabled>
+				Scaling resizes the map by factor above.
+			</div>
+		</div>
+	
 		
 		<label for="lobby-player-name">Your Name</label>
 		<input type="text" id="lobby-player-name" value="Player">
@@ -865,8 +887,8 @@ label {
 
 			<div class="button-row" id="ui-right-button-row1-id">
 				<button id="sell-unit-btn" class="gamebutton">Sell</button>
-				<button id="build-castle-btn" class="gamebutton">Castle</button>
 				<button id="build-soldier-btn" class="gamebutton">Warrior</button>
+				<button id="build-castle-btn" class="gamebutton">Castle</button>
 			</div>
 			<div class="button-row" id="ui-right-button-row2-id">
 				<button id="toggle-ui-btn" class="gamebutton active">Chat</button>
@@ -887,6 +909,7 @@ label {
 
 <script>
 
+let APP_NAME = "castlewars"; // needed to filter these games from open rooms list. minesweeper is also on same peerjs server.
 
 let selectedServerIndex = 1; // default to render.com
 
@@ -982,8 +1005,16 @@ async function fetchOpenGames(serverIndex) {
     }
 
     const games = await res.json();
-    let totalGames = Object.keys(games).length;
-
+    let totalGames = 0;//Object.keys(games).length;
+	for (const key in games) {
+		if (games.hasOwnProperty(key)) {
+			let appName = games[key].appName;
+			// only display this game app rooms:
+			if(appName === APP_NAME){
+				totalGames++;
+			}
+		}
+	}
     console.warn('Open games:');
     console.warn(games);
 
@@ -1000,10 +1031,14 @@ async function fetchOpenGames(serverIndex) {
     for (const key in games) {
       if (games.hasOwnProperty(key)) {
         let gameName = games[key].name;
-        const option = document.createElement("option");
-        option.value = gameName;
-        option.textContent = gameName;
-        gamesListInput.appendChild(option);
+		let appName = games[key].appName;
+		// only display this game app rooms:
+		if(appName === APP_NAME){
+			const option = document.createElement("option");
+			option.value = gameName;
+			option.textContent = gameName;
+			gamesListInput.appendChild(option);
+		}
       }
     }
 
@@ -1084,6 +1119,8 @@ const categoryBtns = document.querySelectorAll('.category-btn');
 const loadedMapImg = document.getElementById('loaded-map');
 const lobbyLoadedMapImg = document.getElementById('lobby-loaded-map');
 
+const mapScale = document.getElementById('map-scale');
+
 let currentCategory = 'small';
 
 
@@ -1107,12 +1144,14 @@ let currentCategory = 'small';
   function renderMapList(category) {
     mapList.innerHTML = '';
     const maps = customMaps[category];
+	
     maps.forEach((map, index) => {
       const div = document.createElement('div');
       div.className = 'map-item';
       div.innerHTML = `
         <img src="${map.imageData}" alt="${map.name}">
         <div>${map.width} x ${map.height}</div>
+		<div>Land tiles: ${map.tileCount}</div>
       `;
       div.addEventListener('click', () => {
         loadMap(category, index);
@@ -1369,6 +1408,7 @@ let gameState = {
 	settings: {
 		mapWidth: 50,
 		mapHeight: 50,
+		mapScale: 1,
 		startingMoney: 1000, // default 0 actually. for testing 1000.
 		roomName: 'default-room'
 	},
@@ -1525,6 +1565,7 @@ const hostPlayerList = document.getElementById('host-player-list');
 const lobbyRoomNameTitle = document.getElementById('lobby-room-name-title');
 const lobbyMapSize = document.getElementById('lobby-map-size');
 const lobbyStartMoney = document.getElementById('lobby-start-money');
+const lobbyMapScale = document.getElementById('lobby-map-scale');
 const lobbyPlayerNameInput = document.getElementById('lobby-player-name');
 lobbyPlayerNameInput.value = randomPlayerName();
 
@@ -1597,7 +1638,15 @@ function randomPlayerName() {
 	return capitalize(prefix + middle + suffix);
 }
 
-
+function getRandomString(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * chars.length);
+        result += chars[randomIndex];
+    }
+    return result;
+}
 
 const addAiBtn = document.getElementById('add-ai-btn');
 
@@ -1606,9 +1655,9 @@ let ai_counter = 1;
 addAiBtn.addEventListener('click', () => {
     if (!localPlayer.isHost) return;
 
-
+	let randomStr = getRandomString(10);
     const aiPlayer = {
-        id: `ai-${ai_counter}`,
+        id: `AI-${ai_counter}-${randomStr}`,
         name: `AI-${ai_counter}`,
 		color: getNextFreeColor(),
 		isSpectator: false,
@@ -1744,7 +1793,7 @@ function addChatMessage(from, message, color = '#FFF') {
 	topFloatUiChatMessages.appendChild(item2);
 	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
 	
-	console.warn("message: "+message);
+	// show chat messages on top if topleft ui is not open
 	if(!showTopLeftUi){
 		console.warn("hideTopFloatUi");
 		hideTopFloatUi();
@@ -3830,7 +3879,7 @@ function setupConnection(conn) {
 				conn.send({ type: 'full_state', state: gameState });
 			} else {
 				// Send lobby state
-				conn.send({ type: 'lobby_update', settings: gameState.settings, players: gameState.players });
+				conn.send({ type: 'lobby_update', settings: gameState.settings, players: gameState.players, map: gameState.map });
 			}
 		}
 	});
@@ -3985,6 +4034,7 @@ function hostGame() {
 				  body: JSON.stringify({
 					peerId: localPlayer.id,
 					name: gameName,
+					appName: APP_NAME,
 					hostName: localPlayer.name,
 					maxPlayers: 400, // todo: allow changing this some day.
 				  }),
@@ -4084,6 +4134,7 @@ function updateLobbyUI() {
 	lobbyRoomNameTitle.textContent = `Joining: ${gameState.settings.roomName}`;
 	lobbyMapSize.textContent = `${gameState.settings.mapWidth} x ${gameState.settings.mapHeight}`;
 	lobbyStartMoney.textContent = `${gameState.settings.startingMoney} G`;
+	lobbyMapScale.value = gameState.settings.mapScale;
 	
 	// Update player list for non-host players:
 	lobbyPlayerList.innerHTML = '';
@@ -4332,6 +4383,27 @@ preloadImages(mapImages);
 
 // todo test and use pngs
 
+
+
+//mapdata = {width: 0, height: 0, data: []};
+// compact data: L/W/0 P/T/0 0-6 -> L00 = empty piece of land.
+// only for compact data.
+function getTileCountCompact(mapdata){
+	let tileCount = 0;
+	let data = mapdata.data;
+	let height = data.length;
+	let width = data[0].length;
+	for(let y = 0; y < height; y++){
+		for(let x = 0; x < width; x++){
+			if(data[y][x][0] === "L"){
+				tileCount++;
+			}
+		}
+	}
+	return tileCount;
+}
+
+
 async function buildMapList(mapSizeName) {
   const t = mapSizeName[0];
   const totalMaps = 40;
@@ -4357,6 +4429,7 @@ async function buildMapList(mapSizeName) {
       mapdata.preview = mapImageFile; // original URL (optional)
       mapdata.name = name;
       mapdata.imageData = imageData; // base64 string ready for <img src="...">
+	  mapdata.tileCount = getTileCountCompact(mapdata);
       return mapdata;
 
     } catch (err) {
@@ -4404,6 +4477,10 @@ await Promise.all([
 
 
 
+let loadedMapCategory = "small";
+let loadedMapIndex = 0;
+
+
 async function loadMapsFromJSON() {
   try {
     const response = await fetch('maps/all-compiled.json');
@@ -4423,32 +4500,50 @@ async function loadMapsFromJSON() {
 
 // Example usage
 (async () => {
-  customMaps = await loadMapsFromJSON();
-  console.warn(customMaps);
-  console.warn(customMaps.normal[0]);
-  
-  // todo: remove this:
-  loadMap("normal", 11);
+	customMaps = await loadMapsFromJSON();
+	// sort maps by tileCount (land tiles)
+	for (const key in customMaps) {
+		customMaps[key].sort((a, b) => a.tileCount - b.tileCount);
+	}
+	
+	//console.warn(customMaps);
+	//console.warn(customMaps.normal[0]);
+
+	// load default map, first in array:
+	loadMap(loadedMapCategory, loadedMapIndex);
 })();
 
-function openMapLoadDialog(){
-	
-	
-}
 
+
+	
 function loadMap(category, index) {
+	loadedMapCategory = category;
+	loadedMapIndex = index;
+	
 	const map = customMaps[category][index];
 	console.log('Loading map:', category, index, map.name);
 	loadedMapImg.src = map.imageData;
 	
 
-	loadedmap = customMaps[category][index];
-	loadParsedMap(loadedmap, true);
+	setLoadedMapAndApplyScale();
+
 	
-	broadcastMapState();
+	
 }
   
-
+function setLoadedMapAndApplyScale(){
+	//loadedmap = customMaps[loadedMapCategory][loadedMapIndex];
+	
+	loadedmap = structuredClone(customMaps[loadedMapCategory][loadedMapIndex]);
+	console.warn("loadedmap");
+	console.warn(loadedmap);
+	
+	
+	
+	scaleMap();
+	loadParsedMap(loadedmap, true);
+	broadcastMapState();
+}
 
 
 /*
@@ -4678,6 +4773,12 @@ function compactToExpandedInfo(str){
 }
 
 function loadParsedMap(parsedMap, compact = false){
+	
+	// clear previous data:
+	gameState.map.tiles = {};
+	
+
+	
 	let width = parsedMap.width+8;
 	let height = parsedMap.height+8;
 	gameState.map.width = parsedMap.width;
@@ -4720,9 +4821,49 @@ function loadParsedMap(parsedMap, compact = false){
 	}
 }
 
+function getMapScale(){
+	let scale = getUint(mapScale.value);
+	if(scale < 1) scale = 1;
+	if(scale > 5) scale = 5;
+	return scale;
+}
 
+function scaleMap(){
+	let scale = getMapScale();
+	if(scale == 1){
+		return; // dont scale if nothing changes.
+	}
+
+
+	let width = loadedmap.data[0].length;
+	let height = loadedmap.data.length;
+	let newData = [];
+	for(let y = 0; y < height; y++){
+		let rowData = [];
+		for(let x = 0; x < width; x++){
+			let elem = loadedmap.data[y][x];
+			for(let i = 0; i < scale; i++){
+				rowData.push(elem);
+			}
+		}
+		for(let i = 0; i < scale; i++){
+			newData.push(rowData);
+		}
+	}
+	
+	loadedmap.width = loadedmap.width*scale;
+	loadedmap.height = loadedmap.height*scale;
+	loadedmap.tileCount = loadedmap.tileCount*(scale*scale);
+	
+	loadedmap.data = newData;
+	
+	
+}
 
 function generateMap(width, height) {
+	
+	
+	
 	width = loadedmap.width+8;
 	height = loadedmap.height+8;
 	
@@ -4968,7 +5109,7 @@ function startGame() {
 		}
 		
 		// Set initial turn
-		gameState.turn.currentPlayerIndex = 0;
+		gameState.turn.currentPlayerIndex = random(0, gameState.players.length);
 		gameState.turn.turnNumber = 0;
 		advanceToNextPlayer();
 	}
@@ -5005,7 +5146,16 @@ function getUint(str) {
 }
 
 
-
+document.addEventListener('keydown', (event) => {
+	// dont handle enter if it came from chat input.
+	if(event.target.id !== 'chat-input'){
+	  if (event.key === 'Enter') {
+		if(gameState.gameStarted){
+			toggleUiTopLeft();
+		}
+	  }
+	}
+});
 
 // =================================================================
 // --- EVENT LISTENERS
@@ -5050,6 +5200,12 @@ window.addEventListener('DOMContentLoaded', () => {
 		broadcastLobbyState();
 	};
 
+	mapScale.onchange = () => {
+		gameState.settings.mapScale = getMapScale();
+		mapScale.value = gameState.settings.mapScale;
+		broadcastLobbyState();
+		setLoadedMapAndApplyScale();
+	}
 	
 	spectateHostBtn.onclick = () => {
 		localPlayer.isSpectator = !localPlayer.isSpectator;
@@ -5143,10 +5299,13 @@ window.addEventListener('DOMContentLoaded', () => {
 	};
 	
 	chatInput.onkeydown = (e) => {
-		if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+		// enter key "enter"
+		if (e.key === 'Enter') {
 			toggleUiTopLeft(false);
-			sendToHost({ type: 'chat', message: chatInput.value.trim() });
-			chatInput.value = '';
+			if(chatInput.value.trim() !== ''){
+				sendToHost({ type: 'chat', message: chatInput.value.trim() });
+				chatInput.value = '';
+			}
 		}
 	};
 	
