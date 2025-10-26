@@ -18,6 +18,18 @@
 	
 	<!-- 
 	TODO:
+	- Test 60x30 size maps for the sake of it.
+	- Älä näytä move range juttua jos ukko on jo liikkunut.
+	- Mapin latauksessa se ei clearaa edellistä mappia niin edelliset tilet jää alle.
+	- Laita highlight edges näkymään paksumpina kun zoomaa ulos, ehkä aina yhtä paksuna tai melkein yhtä paksuna: jos zoomaa liikaa ulos niin paksuus alle normin, jos liikaa sisään niin paksuus yli normin.
+	- Edget keltaset poolista vaihtelee väriä oudosti ja ilmestyy map edgejen kohtiin keltasta jos liikkuu tiettyyn kohtaan o.o screenshotit käges.
+	- Myös vaihtelee läpinäkyvyys pool edgeissä riippuen mihin kohtaan poolia klikkas. Johtuuko siitä kun ukot muuttui ruohoksi?. Voinee johtua myös bugisesti ladatusta mapist (päällekkäiset) ?.
+	- Ukon voi ostaa vihollisen viereen kun ei pitäis pystyy liikkuukaan siihen.
+	- Show outlines for protected areas when selecting a castle.
+	- Better shading for tiles near water (polygons) drawCalligraphyLine().
+	- Turn dead into cross before grass. 4 turns and grass. Each new turn random grass growth.
+	- End turn nappia painelemalla tekoälyn siirrot hidastuu o.o
+	
 	- player color is not "selected" when player joins. shows it disabled instead, shows selected glow when new color selected.
 
 	- player color becomes gray if player joins a game and doesnt choose color but instead changes his name and unfocuses the input.
@@ -53,6 +65,29 @@
 	- allow selecting enemy pools as well. (with red edges).
 	- dont close soldier add popup if the move was invalid, just play invalid move sound.
 	
+	
+
+// Parameters
+const penWidth = 10; // thickness of the pen
+const penAngle = Math.PI / 2; // vertical pen (90 degrees)
+
+// Helper to draw a "fixed angle" line segment
+function drawCalligraphyLine(x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  
+  // Compute perpendicular offset based on fixed pen angle
+  const offsetX = Math.cos(penAngle) * (penWidth / 2);
+  const offsetY = Math.sin(penAngle) * (penWidth / 2);
+  
+  ctx.beginPath();
+  ctx.moveTo(x1 - offsetX, y1 - offsetY);
+  ctx.lineTo(x2 - offsetX, y2 - offsetY);
+  ctx.lineTo(x2 + offsetX, y2 + offsetY);
+  ctx.lineTo(x1 + offsetX, y1 + offsetY);
+  ctx.closePath();
+  ctx.fill();
+}
 	-->
     
 <style>
@@ -511,6 +546,8 @@ label {
     padding: 3px;
     box-shadow: 0 5px 20px rgba(0,0,0,0.2);
     animation: fadeIn 0.2s ease;
+	
+    margin-top: 220px;
   }
 
   @keyframes fadeIn {
