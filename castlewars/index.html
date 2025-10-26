@@ -157,7 +157,13 @@ button {
 
 .gamebutton {
 	padding:4px;
-	font-size: 12px;
+
+    font-size: 12px;
+    height: 30px;
+}
+
+.gamebutton.active {
+	background-color: #1e8117;
 }
 
 button:hover {
@@ -317,6 +323,14 @@ label {
 	overflow-y: auto;
 }
 
+.ui-panel-trans {
+	pointer-events: auto;
+	padding: 2px 6px 2px 6px;
+	max-height: 90vh;
+	overflow-y: auto;
+}
+
+
 #ui-left {
 	display: flex;
 	flex-direction: column;
@@ -332,13 +346,13 @@ label {
 	flex-direction: column; /* stack rows vertically */
 	---gap: 10px;
 
-    max-width: 500px;
+    max-width: 200px;
     width: 100%;
-	height: 96px; /* let it grow naturally */
+	---height: 96px; /* let it grow naturally */
 	
 	overflow-y: hidden;
 	
-	border-bottom-left-radius: 8px;
+	border-top-left-radius: 8px;
 }
 
 /* Top row: texts side by side */
@@ -348,6 +362,8 @@ label {
 	justify-content: space-between; /* turn-info left, savings right */
 	align-items: center;
 	gap: 10px;
+	
+    margin-bottom: 10px;
 }
 
 /* Optional: style buttons as a row */
@@ -415,20 +431,37 @@ label {
 	margin-bottom: 4px;
 }
 
+.smalltitle {
+	
+	text-align:center;
+	margin-bottom:5px;
+	font-size:18px;
+}
+
+
+
+#build-popup-close {
+	margin-top: 10px;
+}
+
 #build-popup {
-	position: fixed;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	z-index: 100;
-	pointer-events: auto;
-	width: 300px;
+
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    /* transform: translate(-50%, -50%); */
+    z-index: 100;
+    pointer-events: auto;
+    width: 200px;
+   
+    border-top-left-radius: 12px;
 }
 
 .build-item {
 	display: flex;
 	justify-content: space-between;
-	padding: 10px;
+	
+    padding: 2px 10px 2px 10px;
 	background: var(--btn-bg);
 	border-radius: 4px;
 	margin-bottom: 5px;
@@ -447,10 +480,13 @@ label {
 
 .build-item .cost {
 	color: var(--warn-color);
+    padding-top: 5px;
 }
 
 
-
+.redbutton {
+    background-color: #d03535;
+}
 
   /* Popup backdrop */
   .popup-overlay {
@@ -472,7 +508,7 @@ label {
     max-height: 100%;
     overflow-y: auto;
     position: relative;
-    padding: 16px;
+    padding: 3px;
     box-shadow: 0 5px 20px rgba(0,0,0,0.2);
     animation: fadeIn 0.2s ease;
   }
@@ -482,18 +518,37 @@ label {
     to { opacity: 1; transform: scale(1); }
   }
 
+
+.popup-top-bar {
+    position: fixed;
+    top: 0;
+
+    border: none;
+    font-size: 29px;
+
+    width: 100%;
+    padding: 0;
+
+	
+	background-color:rgba(0,0,0, 1);
+	
+}
+
+.popup-title {
+	
+	font-size:24px;
+	text-align:center;
+}
   /* Close (X) button */
   .popup-close {
 
-    position: fixed;
-    top: 8px;
-    right: 12px;
-    border: none;
-    font-size: 29px;
-    cursor: pointer;
+    position: absolute;
+    right: 0;
     width: 50px;
-    padding: 0;
-    line-height: 43px;
+    height: 43px;
+    font-size: 34px;
+    line-height: 21px;
+    padding-top: 6px;
   }
 
   /* Category buttons */
@@ -506,12 +561,15 @@ label {
 
   .category-btn {
     padding: 8px 16px;
-    border: 1px solid #ccc;
-    background: #f7f7f7;
+    border: 1px solid #333;
+    background: #338;
     cursor: pointer;
     border-radius: 8px;
     font-weight: bold;
-	color:#555555;
+    color: #c5bef1;
+  }
+  .category-btn:hover {
+	  background: #66B;
   }
 
   .category-btn.active {
@@ -523,30 +581,30 @@ label {
   /* Map list */
 
   .map-item {
-    ---border: 1px solid #333;
     border-radius: 8px;
-    ---padding: 8px;
     text-align: center;
     cursor: pointer;
-    transition: 0.15s;
-	
-    margin-bottom: 18px;
+    ---transition: 0.15s;
+
+    margin-bottom: 8px;
+    padding-top: 5px;
+    padding-bottom: 5px;
 
   }
 
   .map-item:hover {
     background: #333333;
-    transform: scale(1.03);
+    ---transform: scale(1.03);
   }
 
   .map-item img {
-    width: 140px;
+    width: 95%;
     border-radius: 6px;
   }
   
   .map-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
     gap: 0px;
   }
 
@@ -557,22 +615,88 @@ label {
     border-radius: 6px;
   }
   
+  
+  
+#top-float-ui {
+	display: none;
+	flex-direction: column;
+	
+	padding-left: 4px;
+	
+	
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 53px;
+	pointer-events: none;
+
+
+	----border:1px solid black;
+	
+
+}
+
+#top-float-ui-messages {
+	flex-grow: 1;
+	overflow-y: hidden;
+	font-size: 13px;
+	
+	
+    text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+
+	color:white;
+
+}
+
+
+/*
+#chat-ui {
+	display: flex;
+	flex-direction: column;
+	height: 100px;
+	
+	border-top-right-radius: 8px;
+	border-bottom-right-radius: 8px;
+	
+	padding-left: 4px;
+}
+
+#chat-messages {
+	flex-grow: 1;
+	overflow-y: auto;
+	font-size: 13px;
+	padding: 5px;
+	background: rgba(0,0,0,0.2);
+	border-radius: 4px;
+	margin-bottom: 5px;
+	margin-top: 3px;
+}
+*/
+
+
+
 </style>
 </head>
 <body>
 
 <!-- Popup -->
 <div class="popup-overlay" id="map-popup-overlay">
-  <div class="popup" id="map-popup">
-	<div style="font-size:24px">Load map</div>
-	<button class="popup-close" id="popup-close">&times;</button>
-	<div class="category-tabs">
-	  <button class="category-btn active" data-category="small">Small</button>
-	  <button class="category-btn" data-category="normal">Normal</button>
-	  
+	<div class="popup" id="map-popup">
+		
+		<div class="popup-top-bar">
+			<div class="input-group">
+				<div class="popup-title">Load map</div>
+				<button class="popup-close" id="popup-close">&times;</button>
+			</div>
+			<div class="category-tabs">
+				<button class="category-btn active" data-category="small">Small</button>
+				<button class="category-btn" data-category="normal">Normal</button>
+			</div>
+			
+		</div>
+		<div class="map-list" id="map-list"></div>
 	</div>
-	<div class="map-list" id="map-list"></div>
-  </div>
 </div>
 
 <div id="start-page" class="page active">
@@ -634,7 +758,7 @@ label {
 		
 		<div class="input-group">
 			<button id="load-map-btn">Load Map</button>
-			<button id="load-game-btn">Load Game</button>
+			<button id="load-game-btn" style="display:none">Load Game</button>
 		</div>
 		
 		<img id="loaded-map" src="" width="100">
@@ -683,10 +807,13 @@ label {
 <div id="game-page" class="page">
 	<canvas id="game-canvas"></canvas>
 	
+	<div id="top-float-ui">
+		<div id="top-float-ui-messages"></div>
+	</div>
+	
 	<div id="game-ui">
 		<div id="ui-left">
-			<div id="player-ui-list" class="ui-panel">
-				</div>
+			<div id="player-ui-list" class="ui-panel"></div>
 			<div id="chat-ui" class="ui-panel">
 				<div id="chat-messages"></div>
 				<input type="text" id="chat-input" placeholder="Type message..." disabled>
@@ -694,24 +821,29 @@ label {
 		</div>
 		
 		<div id="ui-right" class="ui-panel">
-			<div class="top-row">
-				<h3 id="turn-info">Turn 1</h3>
-				<div id="player-savings">Savings: 0 G</div>
+			<div class="top-row" id="ui-right-top-row-id">
+				<div id="turn-info"></div>
+				<div id="player-savings"></div>
 			</div>
-			<div class="button-row">
-			    <button id="undo-btn" class="gamebutton" style="background-color:#d03535">Undo</button>
+
+			<div class="button-row" id="ui-right-button-row1-id">
+				<button id="sell-unit-btn" class="gamebutton">Sell</button>
 				<button id="build-castle-btn" class="gamebutton">Castle</button>
-				<button id="build-soldier-btn" class="gamebutton">Soldier</button>
-				<button id="end-turn-btn" class="gamebutton primary">End<br>Turn</button>
+				<button id="build-soldier-btn" class="gamebutton">Warrior</button>
+			</div>
+			<div class="button-row" id="ui-right-button-row2-id">
+				<button id="toggle-ui-btn" class="gamebutton active">Chat</button>
+				<button id="undo-btn" class="gamebutton redbutton">Undo</button>
+				<button id="end-turn-btn" class="gamebutton primary">EndTurn</button>
 			</div>
 		</div>
+		
 	</div>
 	
 	<div id="build-popup" class="ui-panel" style="display: none;">
-		<h3 id="build-popup-title">Build</h3>
-		<div id="build-popup-list">
-			</div>
-		<button id="build-popup-close" style="margin-top: 10px;">Cancel</button>
+		<div id="build-popup-title" class="smalltitle"></div>
+		<div id="build-popup-list"></div>
+		<button id="build-popup-close" class="redbutton">Cancel</button>
 	</div>
 	
 </div>
@@ -1370,6 +1502,10 @@ canvas = document.getElementById('game-canvas');
 ctx = canvas.getContext('2d');
 const playerUIList = document.getElementById('player-ui-list');
 const chatMessages = document.getElementById('chat-messages');
+const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
+
+
+
 const chatInput = document.getElementById('chat-input');
 const turnInfo = document.getElementById('turn-info');
 const playerSavings = document.getElementById('player-savings');
@@ -1382,8 +1518,12 @@ const buildPopupTitle = document.getElementById('build-popup-title');
 const buildPopupList = document.getElementById('build-popup-list');
 const buildPopupClose = document.getElementById('build-popup-close');
 
+const toggleUiBtn = document.getElementById('toggle-ui-btn');
 
+
+const topFloatUi = document.getElementById('top-float-ui');
 const uiRight = document.getElementById('ui-right');
+const uiLeft = document.getElementById('ui-left');
 
 
 
@@ -1495,6 +1635,62 @@ function broadcast(data) {
 	handleHostData(data);
 }
 
+
+let hideTimeout = null;
+let hideTimeout2 = null;
+
+function clearTimeouts(){
+	if(hideTimeout){
+		clearTimeout(hideTimeout);
+	}
+	if(hideTimeout2){
+		clearTimeout(hideTimeout2);
+	}
+}
+
+function hideTopFloatUi(){
+	clearTimeouts();
+	topFloatUi.style.transition = 'opacity 0.5s';
+	topFloatUi.style.opacity = '1';
+	topFloatUi.style.display = 'flex';
+	hideTimeout = setTimeout(() => {
+	  topFloatUi.style.opacity = '0';
+	  hideTimeout2 = setTimeout(() => {
+		topFloatUi.style.display = 'none';
+	  }, 1000); // matches the transition time
+	}, 10000);
+}
+
+
+let showTopLeftUi = true;
+
+function toggleUiTopLeft(toggleValue = null){
+	if(toggleValue === null){
+		showTopLeftUi = !showTopLeftUi;
+	}else{
+		showTopLeftUi = toggleValue;
+	}
+	toggleUiBtn.classList.toggle('active', showTopLeftUi);
+	
+	clearTimeouts();
+	
+	if(showTopLeftUi){
+		uiLeft.style.display = 'flex';
+		topFloatUi.style.display = 'none';
+		topFloatUi.style.opacity = '0';
+		chatMessages.scrollTop = chatMessages.scrollHeight;
+		chatInput.focus();
+	}else{
+		uiLeft.style.display = 'none';
+		topFloatUi.style.display = 'flex';
+		topFloatUi.style.opacity = '1';
+		topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
+		hideTopFloatUi();
+	}
+}
+
+
+
 function addChatMessage(from, message, color = '#FFF') {
 	const item = document.createElement('div');
 	item.innerHTML = `<strong style="color: ${color};" class="msgfromtext"></strong><span class="msgtext"></span>`;
@@ -1506,18 +1702,21 @@ function addChatMessage(from, message, color = '#FFF') {
 
 	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
+	
+	const item2 = item.cloneNode(true);
+	topFloatUiChatMessages.appendChild(item2);
+	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
+	
+	console.warn("message: "+message);
+	if(!showTopLeftUi){
+		console.warn("hideTopFloatUi");
+		hideTopFloatUi();
+	}
+
 }
-		/*
-    playerList.innerHTML = '';
-    gameState.players.forEach((p, playerIndex) => {
-        const li = document.createElement('li');
-        const displayName = p.isSpec ? `${p.name} (Spectator)` : p.name;
-		const safeName = document.createTextNode(displayName);
-		li.innerHTML = `<span style="color:${p.colors.color}"></span>`;
-		li.querySelector("span").appendChild(safeName);
-        playerList.appendChild(li);
-    });
-	*/
+
+
+
 function addSystemChatMessage(message, color = '#FFF') {
 	const item = document.createElement('div');
 	item.innerHTML = `<strong style="color: ${color};">${message}</strong>`;
@@ -2315,7 +2514,7 @@ function updateGameUI() {
 	
 	// Update savings
 	if (myPlayer && !myPlayer.isSpectator) {
-		playerSavings.textContent = `Savings: ${myCurrentSavings} G`;
+		playerSavings.textContent = `Savings: ${myCurrentSavings}`;
 	} else {
 		playerSavings.textContent = "Spectating";
 	}
@@ -2608,7 +2807,16 @@ function openBuildPopup(type) {
 	const data = (type === 'soldier') ? SOLDIER_DATA : CASTLE_DATA;
 	const mySavings = getMyTotalSavings();
 	
-	buildPopupTitle.textContent = `Buy ${type}`;
+	let buildprefix = "Buy";
+	let buildsuffix = type;
+	if(type == "castle"){
+		buildprefix = "Build";
+		buildsuffix = "castle";
+	}else if(type == "soldier"){
+		buildprefix = "Recruit";
+		buildsuffix = "warrior";
+	}
+	buildPopupTitle.textContent = `${buildprefix} ${buildsuffix}`;
 	buildPopupList.innerHTML = '';
 	
 	for (const key in data) {
@@ -3321,8 +3529,40 @@ function executeEndTurn(playerId) {
 }
 
 
-function hideUiRight(){
-	uiRight.style.display = "none";
+const uiRightTopRow = document.getElementById('ui-right-top-row-id');
+const uiRightButtonRow1 = document.getElementById('ui-right-button-row1-id');
+
+
+function spectatorUiMode(){
+	//uiRight.style.display = "none";
+	// make transparent panel:
+	uiRight.classList.remove('ui-panel');
+	uiRight.classList.add('ui-panel-trans');
+	
+	// hide unnecessary buttons and ui elements:
+	uiRightTopRow.style.display = "none";
+	uiRightButtonRow1.style.display = "none";
+	undoBtn.style.display = "none";
+	endTurnBtn.style.display = "none";
+
+
+/*		<div id="ui-right" class="ui-panel">
+			<div class="top-row" id="ui-right-top-row-id">
+				<div id="turn-info"></div>
+				<div id="player-savings"></div>
+			</div>
+
+			<div class="button-row" id="ui-right-button-row1-id">
+				<button id="sell-unit-btn" class="gamebutton">Sell</button>
+				<button id="build-castle-btn" class="gamebutton">Castle</button>
+				<button id="build-soldier-btn" class="gamebutton">Warrior</button>
+			</div>
+			<div class="button-row" id="ui-right-button-row2-id">
+				<button id="toggle-ui-btn" class="gamebutton active">Chat</button>
+				<button id="undo-btn" class="gamebutton redbutton">Undo</button>
+				<button id="end-turn-btn" class="gamebutton primary">EndTurn</button>
+			</div>
+		</div>*/
 }
 
 
@@ -3346,7 +3586,7 @@ function handleHostData(data) {
 			if (!localPlayer.isSpectator) {
 				localPlayer.isSpectator = true;
 				localPlayer.color = SPECTATOR_COLOR;
-				hideUiRight();
+				spectatorUiMode();
 				console.log("localPlayer");
 				console.log(localPlayer);
 				alert("Game in progress. Joining as spectator.");
@@ -3416,7 +3656,7 @@ function handleHostData(data) {
 			break;
 		case 'savings_update':
 			myCurrentSavings = data.total;
-			playerSavings.textContent = `Savings: ${myCurrentSavings} G`;
+			playerSavings.textContent = `Savings: ${myCurrentSavings}`;
 			break;
 	}
 	
@@ -3635,7 +3875,7 @@ function joinGame(isSpectator) {
 	localPlayer.name = playerNameInput.value;
 	if (isSpectator) {
 		localPlayer.color = SPECTATOR_COLOR;
-		hideUiRight();
+		spectatorUiMode();
 	}
 	
 	hostPeerId = gameNameInput.value.trim();
@@ -4687,7 +4927,7 @@ function startGame() {
 		
 		let myPlayer = getMyPlayer();
 		if(myPlayer.isSpectator){
-			hideUiRight();
+			spectatorUiMode();
 		}
 		
 		// Set initial turn
@@ -4726,6 +4966,9 @@ function getUint(str) {
 	let parsed = str.replace(/[^0-9]/g, '');
 	return (parsed.length > 0) ? parseInt(parsed, 10) : 0;
 }
+
+
+
 
 // =================================================================
 // --- EVENT LISTENERS
@@ -4856,8 +5099,15 @@ window.addEventListener('DOMContentLoaded', () => {
 	canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 	canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 	
+
+
+	toggleUiBtn.onclick = () => {
+		toggleUiTopLeft();
+	};
+	
 	chatInput.onkeydown = (e) => {
 		if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+			toggleUiTopLeft(false);
 			sendToHost({ type: 'chat', message: chatInput.value.trim() });
 			chatInput.value = '';
 		}
