@@ -842,6 +842,7 @@ button.secondary {
 
 <script>
 
+let APP_NAME = "minesweeper"; // needed to filter these games from open rooms list. 
 var CACHED_SOUND_EFFECTS = {};
 
 
@@ -2885,8 +2886,16 @@ async function fetchOpenGames(serverIndex) {
     }
 
     const games = await res.json();
-    let totalGames = Object.keys(games).length;
-
+    let totalGames = 0;//Object.keys(games).length;
+	for (const key in games) {
+		if (games.hasOwnProperty(key)) {
+			let appName = games[key].appName;
+			// only display this game app rooms:
+			if(appName === APP_NAME){
+				totalGames++;
+			}
+		}
+	}
     console.warn('Open games:');
     console.warn(games);
 
@@ -2903,10 +2912,14 @@ async function fetchOpenGames(serverIndex) {
     for (const key in games) {
       if (games.hasOwnProperty(key)) {
         let gameName = games[key].name;
-        const option = document.createElement("option");
-        option.value = gameName;
-        option.textContent = gameName;
-        gamesListInput.appendChild(option);
+		let appName = games[key].appName;
+		// only display this game app rooms:
+		if(appName === APP_NAME){
+			const option = document.createElement("option");
+			option.value = gameName;
+			option.textContent = gameName;
+			gamesListInput.appendChild(option);
+		}
       }
     }
 
@@ -3091,6 +3104,7 @@ function hostGame() {
 			  body: JSON.stringify({
 				peerId: localPlayer.id,
 				name: gameName,
+				appName: APP_NAME,
 				hostName: localPlayer.name,
 				maxPlayers: 400, // todo: allow changing this some day.
 			  }),
