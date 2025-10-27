@@ -2321,19 +2321,15 @@ function render() {
 		//drawnTiles++;
 		
 		// --- Start Drawing Hex ---
-		
-		ctx.save();
-		
-		
+
+		ctx.save(); // needed for hex drawing.
 		
 		// 1. Define the hex path
 		drawHexagonPath(x, y);
 		ctx.fillStyle = fallbackColor;
 		ctx.fill();
-		
-		
-		
-		
+
+		// useimages = false for testing performance without tile images.
 		if(useimages){
 			// 3. Get the background image for this tile type
 			// (We assume the image key is the same as tile.type)
@@ -2370,16 +2366,10 @@ function render() {
 				const dx = x - dWidth / 2;
 				const dy = y - dHeight / 2;
 				
-				// Draw the image centered and scaled
-				//ctx.drawImage(img, dx, dy, dWidth, dHeight);
-
-
 				if(tile.ownerId){
-				
+					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayer(tile.ownerId);
-					
-					// Draw the gray texture
-					
+	
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
 					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
 
@@ -2391,7 +2381,7 @@ function render() {
 					ctx.globalCompositeOperation = "source-over";
 					
 				}else{
-					// Draw the original image
+					// draw dirt image:
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
 					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
 				}
@@ -2401,6 +2391,7 @@ function render() {
 		}
 		// 5. Restore context (removes clip)
 		ctx.restore();
+		
 		
 		// 6. Draw objects (Trees/Grass) on top
 		// (This code is moved from its old location)
