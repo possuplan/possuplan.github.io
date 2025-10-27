@@ -18,11 +18,8 @@
 	
 	<!-- 
 	TODO:
-	- change map tile format into normal array instead of object keys. might speed up on mobile.
-	
-	- extreme large maps lags on phone for some reason, probably because it loops the whole object and separately tests culling for each tile. possible fix: split tiles into multiple arrays depending on the square. probably not needed for this game since the maps wont be that big anyway.
 
-	- Generate new minimaps with canvas and 13x10 hextile sprite
+
 	- Open minimap larger when clicked on lobby room
 	- Sometimed joining as spec doesnt work even when game is running and shows in game list
 	- Also messages doesnt update always if spec joins/leaves/joins etc and sends messages
@@ -83,8 +80,10 @@
 
 	- allow selecting enemy pools as well. (with red edges).
 	- dont close soldier add popup if the move was invalid, just play invalid move sound.
-	
-	
+
+
+	TODO low priority:
+	- Generate new minimaps with canvas and 13x10 hextile sprite, or just make new render function to render minimap and save as base64 image data.
 
 // Parameters
 const penWidth = 10; // thickness of the pen
@@ -284,7 +283,7 @@ label {
 .color-picker {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: 11px;
 	margin-bottom: 15px;
 }
 
@@ -744,6 +743,33 @@ input.disabled {
 	cursor: not-allowed;
 }
 
+
+  /* Popup container */
+#image-popup {
+	position: fixed;
+	inset: 0;
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background: rgba(0, 0, 0, 0.7);
+	z-index: 9999;
+}
+
+/* Visible state */
+#image-popup.active {
+	display: flex;
+}
+
+/* Enlarged image style */
+#image-popup img {
+	width: 90vw;          /* take up 90% of viewport width */
+	height: auto;         /* maintain aspect ratio */
+	max-height: 90vh;     /* prevent overflowing vertically */
+	object-fit: contain;  /* ensures the image scales proportionally */
+	border-radius: 8px;
+}
+
 </style>
 </head>
 <body>
@@ -766,6 +792,13 @@ input.disabled {
 		<div class="map-list" id="map-list"></div>
 	</div>
 </div>
+
+
+<div id="image-popup">
+	<div style="padding:5px">Map preview</div>
+	<img id="popup-img" src="" alt="Enlarged view">
+</div>
+
 
 <div id="start-page" class="page active">
 	<div class="container">
@@ -1013,6 +1046,8 @@ eventSource.onmessage = (event) => {
 */
 
 
+  
+
 const gamesListInput = document.getElementById("games-list-input");
 
 gamesListInput.addEventListener("change", function() {
@@ -1148,6 +1183,33 @@ const mapList = document.getElementById('map-list');
 const categoryBtns = document.querySelectorAll('.category-btn');
 const loadedMapImg = document.getElementById('loaded-map');
 const lobbyLoadedMapImg = document.getElementById('lobby-loaded-map');
+
+
+
+const imagePopup = document.getElementById('image-popup');
+const popupImg = document.getElementById('popup-img');
+
+// Show popup on click
+loadedMapImg.addEventListener('click', () => {
+	popupImg.src = loadedMapImg.src;
+	imagePopup.classList.add('active');
+});
+
+// Show popup on click
+lobbyLoadedMapImg.addEventListener('click', () => {
+	popupImg.src = lobbyLoadedMapImg.src;
+	imagePopup.classList.add('active');
+});
+
+// Hide popup on click
+imagePopup.addEventListener('click', (e) => {
+  //if (e.target === imagePopup){ // if clicked outside, doesnt work because aspect ratio fix for image adds transparent img area.
+	  imagePopup.classList.remove('active');
+  //}
+});
+
+
+
 
 const mapScale = document.getElementById('map-scale');
 
@@ -2402,8 +2464,8 @@ function render() {
 	// Draw selected pool
 	for (const hex of highlightedPool) {
 		drawHexagonOutlines(hex.q, hex.r, localPlayer.id);
-		ctx.strokeStyle = 'rgba(255,255,0, 0.7)';
-		ctx.lineWidth = 3;
+		ctx.strokeStyle = 'rgba(255,255,0, 1)';
+		ctx.lineWidth = 4;
 		ctx.stroke();
 	}
 	
