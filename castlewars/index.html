@@ -18,7 +18,7 @@
 	
 	<!-- 
 	TODO:
-	
+	- extreme large maps lags on phone for some reason, probably because it loops the whole object and separately tests culling for each tile. possible fix: split tiles into multiple arrays depending on the square. probably not needed for this game since the maps wont be that big anyway.
 
 	- Generate new minimaps with canvas and 13x10 hextile sprite
 	- Open minimap larger when clicked on lobby room
@@ -500,7 +500,11 @@ label {
 
 
 #build-popup-close {
-	margin-top: 10px;
+    margin-top: 10px;
+    width: 66px;
+    height: 42px;
+    margin-left: 121px;
+    padding: 5px 4px 5px 4px;
 }
 
 #build-popup {
@@ -830,7 +834,7 @@ input.disabled {
 			</div>
 			<div>
 				<label for="map-scale">Map scale</label>
-				<input type="number" id="map-scale" value="1" min="1" max="5">
+				<input type="number" id="map-scale" value="1" min="1" max="4">
 				Scaling resizes the map by factor above.
 			</div>
 		</div>
@@ -868,7 +872,7 @@ input.disabled {
 			</div>
 			<div>
 				<label for="lobby-map-scale">Map scale</label>
-				<input type="number" id="lobby-map-scale" class="disabled" value="1" max="5" disabled>
+				<input type="number" id="lobby-map-scale" class="disabled" value="1" max="4" disabled>
 				Scaling resizes the map by factor above.
 			</div>
 		</div>
@@ -915,9 +919,9 @@ input.disabled {
 				<button id="build-castle-btn" class="gamebutton">Castle</button>
 			</div>
 			<div class="button-row" id="ui-right-button-row2-id">
-				<button id="toggle-ui-btn" class="gamebutton active">Chat</button>
-				<button id="undo-btn" class="gamebutton redbutton">Undo</button>
 				<button id="end-turn-btn" class="gamebutton primary">EndTurn</button>
+				<button id="undo-btn" class="gamebutton redbutton">Undo</button>
+				<button id="toggle-ui-btn" class="gamebutton active">Chat</button>
 			</div>
 		</div>
 		
@@ -1394,10 +1398,11 @@ const SQRT3 = Math.sqrt(3);
 
 // soldiers =
 const SOLDIER_DATA = {
-	"Peasant":  { name: "Peasant",  type:"soldier", level: 1, cost: 10, wage: 3, sell: 5, prefix: 'P' },
-	"Knight":   { name: "Knight",   type:"soldier", level: 2, cost: 20, wage: 8, sell: 10, prefix: 'K' },
-	"Horse":    { name: "Horse",    type:"soldier", level: 3, cost: 30, wage: 18, sell: 15, prefix: 'H' },
+	// listed in this order.
 	"Dragon":   { name: "Dragon",   type:"soldier", level: 4, cost: 40, wage: 54, sell: 20, prefix: 'D' },
+	"Horse":    { name: "Horse",    type:"soldier", level: 3, cost: 30, wage: 18, sell: 15, prefix: 'H' },
+	"Knight":   { name: "Knight",   type:"soldier", level: 2, cost: 20, wage: 8, sell: 10, prefix: 'K' },
+	"Peasant":  { name: "Peasant",  type:"soldier", level: 1, cost: 10, wage: 3, sell: 5, prefix: 'P' },
 };
 // cross becomes grass in... 4 turns
 //grass ´grows 1-3 pieces per turn, chance is 50 for one piece?
@@ -1405,9 +1410,10 @@ const SOLDIER_DATA = {
 
 // castles =
 const CASTLE_DATA = {
-	"Hut":      { name: "Hut",      type:"castle", level: 1, cost: 10, prefix: 'h' },
-	"Castle":   { name: "Castle",   type:"castle", level: 2, cost: 40, prefix: 'C' },
+	// listed in this order.
 	"Fortress": { name: "Fortress", type:"castle", level: 3, cost: 200, prefix: 'F' },
+	"Castle":   { name: "Castle",   type:"castle", level: 2, cost: 40, prefix: 'C' },
+	"Hut":      { name: "Hut",      type:"castle", level: 1, cost: 10, prefix: 'h' },
 };
 
 // --- GLOBAL STATE ---
@@ -1572,47 +1578,6 @@ async function loadImages() {
     console.log("All images, mipmaps, and pattern mipmaps generated");
 }
 
-/*
-async function loadImages() {
-    const loadPromises = [];
-
-    for (const [key, obj] of Object.entries(imageAssets)) {
-        const img = new Image();
-        img.src = obj.path;
-		imageCache[key] = img;
-
-        const promise = new Promise((resolve, reject) => {
-            img.onload = async () => {
-                try {
-                    await img.decode(); // ensure fully decoded before use
-                    console.log(`Image loaded: ${key}`);
-
-                    obj.image = img;
-                    obj.mipmaps = await generateMipmaps(img, 6);
-					console.log("obj.mipmaps");
-					console.log(obj.mipmaps);
-                    resolve();
-                } catch (err) {
-                    console.error(`Error generating mipmaps for ${key}:`, err);
-                    reject(err);
-                }
-            };
-
-            img.onerror = () => {
-                console.error(`Failed to load image: ${obj.path}`);
-                reject(new Error(`Failed to load image: ${obj.path}`));
-            };
-        });
-
-        loadPromises.push(promise);
-    }
-
-    // Wait until all images (and mipmaps) are ready
-    await Promise.all(loadPromises);
-    console.log("All images and mipmaps generated");
-}
-*/
-
 
 async function generateMipmaps(img, levels = 6) {
     const mipmaps = [];
@@ -1647,83 +1612,8 @@ async function generateMipmaps(img, levels = 6) {
     return mipmaps;
 }
 
-// --- NEW FUNCTION: To load all images from imageAssets
-function loadImages2() {
-	for (const [key, obj] of Object.entries(imageAssets)) {
-		const img = new Image();
-		img.src = obj.path;
-		imageCache[key] = img;
-		//img.onload = () => {
-		//	console.log(`Image loaded: ${key} from ${obj.path}`);
-		//}
-		/*
-		img.onload = () => {
-			console.log(`Image loaded: ${key} from ${obj.path}`);
-			obj.image = img;
-			obj.mipmaps = generateMipmaps(img);
-		};
-		*/
-		
-		/*
-		img.onload = async () => {
-			try {
-				await img.decode(); // ensures browser finishes decoding
-				console.log(`Image loaded: ${key}`);
-				obj.image = img;
-				obj.mipmaps = generateMipmaps(img);
-			} catch (e) {
-				console.error(`Decode failed for ${key}`, e);
-			}
-		};
-		
-		*/
-				
-		img.onload = async () => {
-			await img.decode();
-			console.log(`Image loaded: ${key}`);
-			obj.image = img;
-			obj.mipmaps = await generateMipmaps(img, 6);
-		};
 
 
-		img.onerror = () => {
-			console.error(`Failed to load image: ${obj.path}`);
-		}
-	}
-}
-
-
-
-/*
-function generateMipmaps(img, levels = 6) {
-    const mipmaps = [];
-    let width = img.width;
-    let height = img.height;
-
-    // Level 0 = original image
-    const baseCanvas = document.createElement('canvas');
-    baseCanvas.width = width;
-    baseCanvas.height = height;
-    baseCanvas.getContext('2d').drawImage(img, 0, 0);
-    mipmaps.push(baseCanvas);
-
-    // Generate smaller levels
-    for (let i = 1; i < levels; i++) {
-        width = Math.max(1, Math.floor(width / 2));
-        height = Math.max(1, Math.floor(height / 2));
-        const c = document.createElement('canvas');
-        c.width = width;
-        c.height = height;
-        const ctx = c.getContext('2d');
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(mipmaps[i - 1], 0, 0, mipmaps[i - 1].width, mipmaps[i - 1].height, 0, 0, width, height);
-        mipmaps.push(c);
-    }
-
-    return mipmaps;
-}
-*/
 
 
 
@@ -1732,22 +1622,7 @@ function generateMipmaps(img, levels = 6) {
 function getMipmapForZoom(imgObj) {
     if (!imgObj.mipmaps) return imgObj.image;
 
-    // For zoom range ~0.02 → 20, we shift the range so level 0 (highest res)
-    // is used near zoom = 1, and lower mipmaps used as zoom gets smaller.
-	
-	// Too blurry too early when zooming out → change zoom * 2 → zoom * 3.
-	// Too sharp too long → reduce to zoom * 1.5.
-    //zoomMipLevel = Math.min(
-    //    imgObj.mipmaps.length - 1,
-    //    Math.max(0, Math.round(-Math.log2(viewport.zoom * 2)))
-	//	// try math.floor to prevent diagonal artifacts.
-    //);
-	
-	//if(level < 0) console.error("ivalid mipmaps1");
-	//if(level > imgObj.mipmaps.length-1) console.error("ivalid mipmaps2");
-
     return imgObj.mipmaps[zoomMipLevel];
-	//return imgObj.mipmaps[3];
 }
 
 
@@ -2235,6 +2110,20 @@ function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight){
 	ctx.drawImage(mip, dx, dy, dWidth, dHeight);
 }
 
+// check if object/tile should be skipped from drawing:
+// returns true if out of screen.
+function checkCulling(x, y){
+	const screenX = x * viewport.zoom + viewport.x;
+	const screenY = y * viewport.zoom + viewport.y;
+	if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
+		screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+		return true;
+	}
+	return false;
+}
+
+let previous_drawnTiles = 0;
+
 // rendermap
 function render() {
 	if (!gameState.gameStarted) return;
@@ -2269,7 +2158,7 @@ function render() {
 	ctx.scale(viewport.zoom, viewport.zoom);
 	
 
-	//let drawnTiles = 0;
+	let drawnTiles = 0;
 	
 	// --- DRAW TILES ---
 	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
@@ -2281,10 +2170,7 @@ function render() {
 		const { x, y } = axialToPixel(q, r);
 
 		// --- Culling Check ---
-		const screenX = x * viewport.zoom + viewport.x;
-		const screenY = y * viewport.zoom + viewport.y;
-		if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
-			screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+		if(checkCulling(x, y)){
 			continue;
 		}
 		
@@ -2318,7 +2204,7 @@ function render() {
 		}
 		
 
-		//drawnTiles++;
+		drawnTiles++;
 		
 		// --- Start Drawing Hex ---
 
@@ -2441,7 +2327,10 @@ function render() {
 		}
 	}
 	
-	//console.log("drawnTiles = "+drawnTiles);
+	if(previous_drawnTiles != drawnTiles){
+		console.log("drawnTiles = "+drawnTiles);
+		previous_drawnTiles = drawnTiles;
+	}
 	
 	
 	// renderoutlines render outlines
@@ -2457,10 +2346,7 @@ function render() {
 		const { x, y } = axialToPixel(q, r);
 
 		// --- Culling Check ---
-		const screenX = x * viewport.zoom + viewport.x;
-		const screenY = y * viewport.zoom + viewport.y;
-		if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
-			screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+		if(checkCulling(x, y)){
 			continue;
 		}
 		
@@ -2550,10 +2436,7 @@ function render() {
 		let { x, y } = axialToPixel(unit.q, unit.r);
 
 		// --- Culling Check ---
-		const screenX = x * viewport.zoom + viewport.x;
-		const screenY = y * viewport.zoom + viewport.y;
-		if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
-			screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+		if(checkCulling(x, y)){
 			continue;
 		}
 		//unitsDrawn++;
@@ -2772,9 +2655,7 @@ function zoomAtPoint(x, y, factor) {
 	viewport.y = y - (y - viewport.y) * (newZoom / oldZoom);
 	viewport.zoom = newZoom;
 
-
-	
-	console.log(zoomMipLevel);
+	//console.log(zoomMipLevel);
 }
 
 
@@ -4970,7 +4851,7 @@ function loadParsedMap(parsedMap, compact = false){
 function getMapScale(){
 	let scale = getUint(mapScale.value);
 	if(scale < 1) scale = 1;
-	if(scale > 5) scale = 5;
+	if(scale > 4) scale = 4;
 	return scale;
 }
 
