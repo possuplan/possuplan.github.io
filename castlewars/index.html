@@ -3582,10 +3582,13 @@ function findEconomyPools(playerId) {
 			// Check neighbors
 			for (const n of getHexNeighbors(q, r)) {
 				const nTile = getTileAt(n.q, n.r);
-				const nKey = `${n.q},${n.r},${nTile.tileIndex}`;
-				if (nTile && nTile.ownerId === playerId && !visited.has(nKey)) {
-					visited.add(nKey);
-					queue.push(nKey);
+				
+				if (nTile && nTile.ownerId === playerId){
+					const nKey = `${n.q},${n.r},${nTile.tileIndex}`;
+					if(!visited.has(nKey)) {
+						visited.add(nKey);
+						queue.push(nKey);
+					}
 				}
 			}
 		}
