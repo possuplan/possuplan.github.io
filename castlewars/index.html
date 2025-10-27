@@ -2265,245 +2265,238 @@ function render() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 	}
 
-	// ---- STEP 4: Now apply your world transform ----
 	ctx.translate(viewport.x, viewport.y);
 	ctx.scale(viewport.zoom, viewport.zoom);
 	
-	// --- CULLING (existing code) ---
-	const topLeft = pixelToAxial(0, 0);
-	const bottomRight = pixelToAxial(canvas.width, canvas.height);
-	let qMin = topLeft.q - 2;
-	let qMax = bottomRight.q + 2;
-	let rMin = topLeft.r - (bottomRight.q - topLeft.q) - 2; 
-	let rMax = bottomRight.r + (bottomRight.q - topLeft.q) + 2;
+
+	//let drawnTiles = 0;
 	
-	// fixes lagging when zooming out too much:
-	// it looped through useless hexes outside of map.
-	let bounds = getMapBounds();
-	if(qMin < bounds.q.min) qMin = bounds.q.min;
-	if(qMax > bounds.q.max) qMax = bounds.q.max;
-	if(rMin < bounds.r.min) rMin = bounds.r.min;
-	if(rMax > bounds.r.max) rMax = bounds.r.max;
-
 	// --- DRAW TILES ---
-	// --- DRAW TILES ---
-	for (let r = rMin; r <= rMax; r++) {
-		for (let q = qMin; q <= qMax; q++) {
-			const tile = getTileAt(q, r);
-			if (!tile) continue; // Out of map bounds
+	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
+	for (const key in gameState.map.tiles) {
+		const [q, r] = key.split(',').map(Number);
 
-			const { x, y } = axialToPixel(q, r);
+		const tile = gameState.map.tiles[key]; //getTileAt(q, r);
 
-			// --- Culling Check ---
-			const screenX = x * viewport.zoom + viewport.x;
-			const screenY = y * viewport.zoom + viewport.y;
-			if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
-				screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
-				continue;
-			}
-			
-			if (tile.type === 'water') {
-				if(drawInfiniteWater){
-					continue; // skip water tiles.
-				}
-			}
-			
-			let drawTile = true;
-			
-			
-			
+		const { x, y } = axialToPixel(q, r);
 
-			// 2. Draw the fallback background color (or owner color)
-			let fallbackColor = LAND_COLOR;
-			if (tile.type === 'water') {
-				fallbackColor = WATER_COLOR;
-				if(!drawWaterTiles){
-					drawTile = false;
-				}
-			} else if (tile.ownerId) {
-				const owner = getPlayer(tile.ownerId);
-				fallbackColor = owner ? owner.color : LAND_COLOR;
-			} else if (tile.type === 'land') {
-				fallbackColor = LAND_COLOR;
+		// --- Culling Check ---
+		const screenX = x * viewport.zoom + viewport.x;
+		const screenY = y * viewport.zoom + viewport.y;
+		if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
+			screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+			continue;
+		}
+		
+		if (tile.type === 'water') {
+			if(drawInfiniteWater){
+				continue; // skip water tiles.
 			}
-			
-			if(!drawTile){
-				continue;
-			}
-			
+		}
+		
+		let drawTile = true;
+		
+		
+		
 
-			// --- Start Drawing Hex ---
-			
-			ctx.save();
-			
-			
-			
-			// 1. Define the hex path
-			drawHexagonPath(x, y);
-			ctx.fillStyle = fallbackColor;
-			ctx.fill();
-			
-			
-			
-			
-			if(useimages){
-				// 3. Get the background image for this tile type
-				// (We assume the image key is the same as tile.type)
-				let img = null;
-				let imageName = "";
-				if(tile.ownerId){
-					imageName = tile.type;
-					img = getImage(tile.type);
+		// 2. Draw the fallback background color (or owner color)
+		let fallbackColor = LAND_COLOR;
+		if (tile.type === 'water') {
+			fallbackColor = WATER_COLOR;
+			if(!drawWaterTiles){
+				drawTile = false;
+			}
+		} else if (tile.ownerId) {
+			const owner = getPlayer(tile.ownerId);
+			fallbackColor = owner ? owner.color : LAND_COLOR;
+		} else if (tile.type === 'land') {
+			fallbackColor = LAND_COLOR;
+		}
+		
+		if(!drawTile){
+			continue;
+		}
+		
+
+		//drawnTiles++;
+		
+		// --- Start Drawing Hex ---
+		
+		ctx.save();
+		
+		
+		
+		// 1. Define the hex path
+		drawHexagonPath(x, y);
+		ctx.fillStyle = fallbackColor;
+		ctx.fill();
+		
+		
+		
+		
+		if(useimages){
+			// 3. Get the background image for this tile type
+			// (We assume the image key is the same as tile.type)
+			let img = null;
+			let imageName = "";
+			if(tile.ownerId){
+				imageName = tile.type;
+				img = getImage(tile.type);
+			}else{
+				// no owner, use dirt image:
+				if(tile.type === 'water') {
+					imageName = "water";
+					img = getImage("water");
 				}else{
-					// no owner, use dirt image:
-					if(tile.type === 'water') {
-						imageName = "water";
-						img = getImage("water");
-					}else{
-						imageName = "dirt";
-						img = getImage("dirt");
-					}
+					imageName = "dirt";
+					img = getImage("dirt");
 				}
-
-				// 4. If image is loaded, draw it clipped and scaled
-				if (img && img.complete && img.width > 0) {
-					ctx.clip(); // Apply clip to the hex path
-
-					// Calculate the "pointy-top" hex bounding box
-					const hexWidth = HEX_SIZE * SQRT3*GS;
-					const hexHeight = HEX_SIZE * 2;
-					
-					// Calculate "scale-to-fit" (contain) ratio
-					const ratio = Math.min(hexWidth / img.width, hexHeight / img.height);
-					const dWidth = img.width * ratio;
-					const dHeight = img.height * ratio;
-					
-					// Calculate centered destination (dx, dy)
-					const dx = x - dWidth / 2;
-					const dy = y - dHeight / 2;
-					
-					// Draw the image centered and scaled
-					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
-
-
-					if(tile.ownerId){
-					
-						const player = getPlayer(tile.ownerId);
-						
-						// Draw the gray texture
-						
-						//ctx.drawImage(img, dx, dy, dWidth, dHeight);
-						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
-
-						// todo: make own images for each player texture?
-						// Multiply by player color
-						ctx.globalCompositeOperation = "multiply";
-						ctx.fillStyle = player.color; // e.g. "#ff0000"
-						ctx.fillRect(dx, dy, dWidth, dHeight);
-						ctx.globalCompositeOperation = "source-over";
-						
-					}else{
-						// Draw the original image
-						//ctx.drawImage(img, dx, dy, dWidth, dHeight);
-						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
-					}
-
-				}
-				
 			}
-			// 5. Restore context (removes clip)
-			ctx.restore();
-			
-			// 6. Draw objects (Trees/Grass) on top
-			// (This code is moved from its old location)
-			if (tile.object === 'tree') {
-				let imageKey = tile.object;
-				const img = getImage(imageKey);
+
+			// 4. If image is loaded, draw it clipped and scaled
+			if (img && img.complete && img.width > 0) {
+				ctx.clip(); // Apply clip to the hex path
+
+				// Calculate the "pointy-top" hex bounding box
+				const hexWidth = HEX_SIZE * SQRT3*GS;
+				const hexHeight = HEX_SIZE * 2;
 				
-				if (img && img.complete && img.width > 0) {
-					// Draw the image centered and scaled
-					let imginfo = getImageSettings(imageKey);
-					let scale = imginfo.scale*0.9; // 0.9 global scale
-					let ratio = img.height/img.width;
-					let drawSize = 50;
-					let hsize = drawSize/2;
-					let offsetX = imginfo.offsetX;
-					let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-					let dx = x-((hsize-offsetX)*scale);
-					let dy = y-((hsize-offsetY+10)*ratio*scale);
-					let dw = drawSize*scale;
-					let dh = drawSize*ratio*scale;
+				// Calculate "scale-to-fit" (contain) ratio
+				const ratio = Math.min(hexWidth / img.width, hexHeight / img.height);
+				const dWidth = img.width * ratio;
+				const dHeight = img.height * ratio;
+				
+				// Calculate centered destination (dx, dy)
+				const dx = x - dWidth / 2;
+				const dy = y - dHeight / 2;
+				
+				// Draw the image centered and scaled
+				//ctx.drawImage(img, dx, dy, dWidth, dHeight);
+
+
+				if(tile.ownerId){
+				
+					const player = getPlayer(tile.ownerId);
 					
-					//ctx.drawImage(img, dx, dy, dw, dh);
-					drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
+					// Draw the gray texture
+					
+					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
+					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
+
+					// todo: make own images for each player texture?
+					// Multiply by player color
+					ctx.globalCompositeOperation = "multiply";
+					ctx.fillStyle = player.color; // e.g. "#ff0000"
+					ctx.fillRect(dx, dy, dWidth, dHeight);
+					ctx.globalCompositeOperation = "source-over";
+					
+				}else{
+					// Draw the original image
+					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
+					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
 				}
 
-			} else if (tile.object === 'grass') {
-				let imageKey = tile.object;
-				const img = getImage(imageKey);
+			}
+			
+		}
+		// 5. Restore context (removes clip)
+		ctx.restore();
+		
+		// 6. Draw objects (Trees/Grass) on top
+		// (This code is moved from its old location)
+		if (tile.object === 'tree') {
+			let imageKey = tile.object;
+			const img = getImage(imageKey);
+			
+			if (img && img.complete && img.width > 0) {
+				// Draw the image centered and scaled
+				let imginfo = getImageSettings(imageKey);
+				let scale = imginfo.scale*0.9; // 0.9 global scale
+				let ratio = img.height/img.width;
+				let drawSize = 50;
+				let hsize = drawSize/2;
+				let offsetX = imginfo.offsetX;
+				let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+				let dx = x-((hsize-offsetX)*scale);
+				let dy = y-((hsize-offsetY+10)*ratio*scale);
+				let dw = drawSize*scale;
+				let dh = drawSize*ratio*scale;
 				
-				if (img && img.complete && img.width > 0) {
-					// Draw the image centered and scaled
-					let imginfo = getImageSettings(imageKey);
-					let scale = imginfo.scale*0.9; // 0.9 global scale
-					let ratio = img.height/img.width;
-					let drawSize = 50;
-					let hsize = drawSize/2;
-					let offsetX = imginfo.offsetX;
-					let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-					let dx = x-((hsize-offsetX)*scale);
-					let dy = y-((hsize-offsetY+10)*ratio*scale);
-					let dw = drawSize*scale;
-					let dh = drawSize*ratio*scale;
-					
-					//ctx.drawImage(img, dx, dy, dw, dh);
-					drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
-				}
+				//ctx.drawImage(img, dx, dy, dw, dh);
+				drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
+			}
+
+		} else if (tile.object === 'grass') {
+			let imageKey = tile.object;
+			const img = getImage(imageKey);
+			
+			if (img && img.complete && img.width > 0) {
+				// Draw the image centered and scaled
+				let imginfo = getImageSettings(imageKey);
+				let scale = imginfo.scale*0.9; // 0.9 global scale
+				let ratio = img.height/img.width;
+				let drawSize = 50;
+				let hsize = drawSize/2;
+				let offsetX = imginfo.offsetX;
+				let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+				let dx = x-((hsize-offsetX)*scale);
+				let dy = y-((hsize-offsetY+10)*ratio*scale);
+				let dw = drawSize*scale;
+				let dh = drawSize*ratio*scale;
+				
+				//ctx.drawImage(img, dx, dy, dw, dh);
+				drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
 			}
 		}
 	}
+	
+	//console.log("drawnTiles = "+drawnTiles);
+	
 	
 	// renderoutlines render outlines
 	// draw map outlines:
-	for (let r = rMin; r <= rMax; r++) {
-		for (let q = qMin; q <= qMax; q++) {
-			const tile = getTileAt(q, r);
-			if (!tile) continue; // Out of map bounds
 
-			const { x, y } = axialToPixel(q, r);
+	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
+	for (const key in gameState.map.tiles) {
+		const [q, r] = key.split(',').map(Number);
 
-			// --- Culling Check ---
-			const screenX = x * viewport.zoom + viewport.x;
-			const screenY = y * viewport.zoom + viewport.y;
-			if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
-				screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
-				continue;
-			}
-			
-			if (tile.type === 'water') {
-				continue; // skip water tiles.
-				if(drawInfiniteWater){
-					continue; // skip water tiles.
-				}
-			}
+		const tile = getTileAt(q, r);
+		if (!tile) continue; // Out of map bounds
 
-			// --- Start Drawing Hex ---
-			
-			const outline = getOutlineAt(q, r);
-			
-			if(outline.length > 0){
-			
-				//ctx.save();
-				drawHexagonPath(x, y, outline);
-				ctx.strokeStyle = 'rgba(0,0,0, 0.7)';
-				ctx.lineWidth = 5;
-				ctx.lineCap = 'round'; 
-				ctx.stroke();
-				//ctx.restore();
-			}
-			
+		const { x, y } = axialToPixel(q, r);
+
+		// --- Culling Check ---
+		const screenX = x * viewport.zoom + viewport.x;
+		const screenY = y * viewport.zoom + viewport.y;
+		if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
+			screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+			continue;
 		}
+		
+		if (tile.type === 'water') {
+			continue; // skip water tiles.
+			if(drawInfiniteWater){
+				continue; // skip water tiles.
+			}
+		}
+
+		// --- Start Drawing Hex ---
+		
+		const outline = getOutlineAt(q, r);
+		
+		if(outline.length > 0){
+		
+			//ctx.save();
+			drawHexagonPath(x, y, outline);
+			ctx.strokeStyle = 'rgba(0,0,0, 0.7)';
+			ctx.lineWidth = 5;
+			ctx.lineCap = 'round'; 
+			ctx.stroke();
+			//ctx.restore();
+		}
+		
 	}
+	
 	
 	// --- DRAW HIGHLIGHTS (NEW) ---
 	
@@ -4559,51 +4552,12 @@ function loadGameFromDB(roomName, callback) {
 // --- GAME INIT (HOST-SIDE)
 // =================================================================
 
-// generate_map
-
-/*
-castle wars map format:
-first line: width height
-
-left side = right on the game.
-top side = top on the game.
-
-values:
--1 water
-
-
-
-                             first 5 bits
-0 below = no owner.
-
-  1 00000001 owner 1 empty   0
-  4 00000100 owner 1 peasant
-
- 41 00101001 owner 2 empty   5
- 44 00101100 owner 2 peasant
-
- 81 01010001 owner 3 empty   10
- 84 01010100 owner 3 peasant
-
-121 01111001 owner 4 empty   15
-124 01111100 owner 4 peasant 
-
-161 10100001 owner 5 empty   20
-164 10100100 owner 5 peasant 
-
-201 11001001 owner 6 empty   25
-204 11001100 owner 6 peasant 
-
-241 11110001 owner 0 empty   30
-243 11110011 owner 0 tree
-
-*/
 
 
 let loadedmap = null;
 
 let customMaps = {
-	/*
+	/* example data:
 	small: [
 		{
 			name: "mapname",
@@ -4624,33 +4578,10 @@ let customMaps = {
 		},
 	],
 	*/
-
 };
-//parseMap("maps/mapn1.dat"); // testmap
-//parseMap("maps/normal/mapn16.dat");
 
 
 
-
-/*
-const mapImages = [
-  '/images/map1.jpg',
-  '/images/map2.jpg',
-  '/images/map3.jpg'
-];
-
-function preloadImages(urls) {
-  urls.forEach(url => {
-    const img = new Image();
-    img.src = url; // browser will cache it if not already
-  });
-}
-
-// Run once at page load
-preloadImages(mapImages);
-*/
-
-// todo test and use pngs
 
 
 
@@ -4723,13 +4654,15 @@ function blobToBase64(blob) {
   });
 }
 
+
+// only used when compiled-maps.json has to be updated.
 async function loadmaps(){
-	/*
-await Promise.all([
-  buildMapList("normal"),
-  buildMapList("small")
-]);
-	*/
+	// other way to load them:
+	//await Promise.all([
+	//  buildMapList("normal"),
+	//  buildMapList("small")
+	//]);
+
 	await buildMapList("normal");
 	console.log("buildMapList normal finished");
 	await buildMapList("small");
@@ -4815,82 +4748,6 @@ function setLoadedMapAndApplyScale(){
 }
 
 
-/*
-async function buildMapList(mapSizeName) {
-  //const mapSizeName = "normal";
-  const t = mapSizeName[0];
-  const totalMaps = 40;
-
-  const promises = Array.from({ length: totalMaps }, async (_, i) => {
-    const n = i + 1;
-	const name = `map${t}${n}`;
-    const mapBasePath = `maps/${mapSizeName}/${name}`;
-    const mapFile = `${mapBasePath}.dat`;
-    const mapImageFile = `${mapBasePath}.png`;
-
-    try {
-      const mapdata = await parseMap(mapFile);
-      if (!mapdata) return null;
-      mapdata.preview = mapImageFile;
-	  mapdata.name = name;
-	  mapdata.imageData = ""; // base64 encoded imagedata here
-      return mapdata;
-    } catch (err) {
-      console.error(`Error loading map ${mapFile}:`, err);
-      return null;
-    }
-  });
-
-  const results = await Promise.all(promises);
-  customMaps[mapSizeName] = results.filter(Boolean);
-
-  console.log(`✅ Loaded ${customMaps[mapSizeName].length}/${totalMaps} maps successfully.`);
-}
-*/
-
-
-
-/*
-
-async function buildMapList(mapSizeName) {
-  //const mapSizeName = "normal";
-  const t = mapSizeName[0];
-  const totalMaps = 40;
-
-  // make sure the category exists
-  if (!customMaps[mapSizeName]) {
-    customMaps[mapSizeName] = [];
-  }
-
-  for (let i = 0; i < totalMaps; i++) {
-    const n = i + 1;
-    const mapBasePath = `maps/${mapSizeName}/map${t}${n}`;
-    const mapFile = `${mapBasePath}.dat`;
-    const mapImageFile = `${mapBasePath}.jpg`;
-
-    try {
-      const mapdata = await parseMap(mapFile);
-
-      if (!mapdata) {
-        console.warn(`Skipping map ${mapFile}: parseMap returned null/undefined`);
-        continue;
-      }
-
-      mapdata.preview = mapImageFile;
-      customMaps[mapSizeName].push(mapdata);
-
-    } catch (err) {
-      console.error(`Error loading map ${mapFile}:`, err);
-      // skip problematic map
-      continue;
-    }
-  }
-
-  console.log(`Loaded ${customMaps[mapSizeName].length} maps successfully.`);
-}
-
-
-*/
 
 
 // loadmap
@@ -5048,8 +4905,8 @@ function loadParsedMap(parsedMap, compact = false){
 	
 
 	
-	let width = parsedMap.width+8;
-	let height = parsedMap.height+8;
+	let width = parsedMap.width;
+	let height = parsedMap.height;
 	gameState.map.width = parsedMap.width;
 	gameState.map.height = parsedMap.height;
 	gameState.map.imageData = parsedMap.imageData;
@@ -5144,14 +5001,14 @@ function scaleMap(){
 }
 
 function generateMap(width, height) {
-	
+	// NOTE: map is loaded before this generateMaps call, so any changes here for the map wont be visible for playes.
 	
 	
 	width = loadedmap.width;
 	height = loadedmap.height;
 	
 
-		
+	// NOTE: map is loaded before this generateMaps call, so any changes here for the map wont be visible for playes.
 	gameState.settings.mapWidth = width;
 	gameState.settings.mapHeight = height;
 	
@@ -5159,6 +5016,7 @@ function generateMap(width, height) {
 	
 	console.log(`Generating map ${width}x${height}`);
 	/*
+	// "random" map generator:
 	gameState.map.tiles = {};
 	
 	
