@@ -2544,8 +2544,21 @@ function render() {
 	
 	let myPlayer = getMyTurnPlayer();
 	
+	//let unitsDrawn = 0;
+	
 	for (const unit of gameState.units) {
 		let { x, y } = axialToPixel(unit.q, unit.r);
+
+		// --- Culling Check ---
+		const screenX = x * viewport.zoom + viewport.x;
+		const screenY = y * viewport.zoom + viewport.y;
+		if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
+			screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+			continue;
+		}
+		//unitsDrawn++;
+		
+		
 		const owner = getPlayer(unit.ownerId);
 		if (!owner) continue;
 		
@@ -2600,6 +2613,8 @@ function render() {
 		}
 
 	}
+	
+	//console.log("unitsDrawn = "+unitsDrawn);
 
 	ctx.restore();
 	
