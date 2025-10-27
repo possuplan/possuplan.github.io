@@ -1448,7 +1448,7 @@ let gameState = {
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
 	map: { // Using axial coordinates (q, r)
-		// tiles[`${q},${r}`] = { type: 'land'/'water', ownerId: null, object: 'tree'/'grass'/null, savings: 0 }
+		// tiles[`${q},${r}`] = { type: 'land'/'water', ownerId: null, object: 'tree'/'grass'/'dead'/null, savings: 0 }
 		tiles: {}, 
 		outlines: {}, // tiles[`${q},${r}`] = [0,4,5] (show outlines for: bottom left, bottom, bottom right)
 	},
@@ -1498,7 +1498,7 @@ if(use_orig){
 		'land':     {path:'images/land2.jpg', scale:1, offsetX: 0}, 
 		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
 		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
-		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:1, offsetX: 0},
+		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
 		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: 3, offsetY: 5},
 		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: 2, offsetY: 5},
 		'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1, offsetX: 0},
@@ -2164,10 +2164,10 @@ function render() {
 	
 	// --- DRAW TILES ---
 	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
-	for (const key in gameState.map.tiles) {
-		const [q, r] = key.split(',').map(Number);
-
-		const tile = gameState.map.tiles[key]; //getTileAt(q, r);
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
 
 		const { x, y } = axialToPixel(q, r);
 
@@ -2326,6 +2326,27 @@ function render() {
 				//ctx.drawImage(img, dx, dy, dw, dh);
 				drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
 			}
+		} else if (tile.object === 'dead') {
+			let imageKey = tile.object;
+			const img = getImage(imageKey);
+			
+			if (img && img.complete && img.width > 0) {
+				// Draw the image centered and scaled
+				let imginfo = getImageSettings(imageKey);
+				let scale = imginfo.scale*0.9; // 0.9 global scale
+				let ratio = img.height/img.width;
+				let drawSize = 50;
+				let hsize = drawSize/2;
+				let offsetX = imginfo.offsetX;
+				let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+				let dx = x-((hsize-offsetX)*scale);
+				let dy = y-((hsize-offsetY+10)*ratio*scale);
+				let dw = drawSize*scale;
+				let dh = drawSize*ratio*scale;
+				
+				//ctx.drawImage(img, dx, dy, dw, dh);
+				drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
+			}
 		}
 	}
 	
@@ -2339,11 +2360,10 @@ function render() {
 	// draw map outlines:
 
 	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
-	for (const key in gameState.map.tiles) {
-		const [q, r] = key.split(',').map(Number);
-
-		const tile = getTileAt(q, r);
-		if (!tile) continue; // Out of map bounds
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
 
 		const { x, y } = axialToPixel(q, r);
 
@@ -2677,11 +2697,26 @@ function getMapBounds(){
 }
 
 function getTileAt(q, r) {
-	return gameState.map.tiles[`${q},${r}`];
+	let tileKey = `${q},${r}`;
+	let tileIndex = gameState.map.tiles[tileKey];
+	return gameState.map.tilesData[tileIndex];
 }
 
+
+
 function setTileAt(q, r, tileData) {
-	gameState.map.tiles[`${q},${r}`] = tileData;
+	let tileKey = `${q},${r}`;
+
+	if (Object.hasOwn(gameState.map.tiles, tileKey)) {
+		// modify already existing tile:
+		let tileIndex = gameState.map.tiles[tileKey];
+		gameState.map.tilesData[tileIndex] = {...gameState.map.tilesData[tileIndex], ...tileData};
+	}else{
+		// add new tile:
+		let tileIndex = gameState.map.tilesData.length;
+		gameState.map.tilesData.push({q, r, tileIndex, ...tileData});
+		gameState.map.tiles[tileKey] = tileIndex;
+	}
 }
 
 function getOutlineAt(q, r) {
@@ -2938,8 +2973,8 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 			}
 		}
 	}
-	console.warn("this_validMoveHexes");
-	console.warn(this_validMoveHexes);
+	//console.warn("this_validMoveHexes");
+	//console.warn(this_validMoveHexes);
 	return this_validMoveHexes;
 }
 
@@ -3090,7 +3125,7 @@ function isPlacementValid(unitType, hex, player) {
 	const isCastle = !!CASTLE_DATA[unitType];
 	if (isCastle) {
 		if (tile.ownerId !== player.id) return false; // Must own hex
-		if (tile.object) return false; // Must be clear (no tree/grass)
+		if (tile.object) return false; // not sure if original game had this rule: Must be clear (no tree/grass)
 	} else {
 		// Soldier
 		// Rules are "neighbouring land i own, or in the land i own"
@@ -3244,8 +3279,8 @@ function executeAction(playerId, action) {
 					sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
 				}
 				
-				console.warn("actionForUndo1");
-				console.warn(actionForUndo);
+				//console.warn("actionForUndo1");
+				//console.warn(actionForUndo);
 				
 				// Move unit
 				unit.q = toQ;
@@ -3438,11 +3473,15 @@ function updatePlayerSavings(playerId) {
 function findEconomyPools(playerId) {
 	// Finds all contiguous land areas for a given player
 	const pools = [];
-	const visited = new Set(); // 'q,r'
+	const visited = new Set(); // 'q,r,t'
 	
-	for (const key in gameState.map.tiles) {
-		const tile = gameState.map.tiles[key];
-		if (tile.ownerId !== playerId || visited.has(key)) {
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const qq = tile.q;
+		const rr = tile.r;
+		let elem = `${qq},${rr},${t}`;
+
+		if (tile.ownerId !== playerId || visited.has(elem)) {
 			continue;
 		}
 		
@@ -3455,19 +3494,19 @@ function findEconomyPools(playerId) {
 			totalWages: 0
 		};
 		
-		const queue = [key]; // 'q,r'
-		visited.add(key);
+		const queue = [elem]; // 'q,r,t'
+		visited.add(elem);
 		
 		while (queue.length > 0) {
 			const currentKey = queue.shift();
-			const [q, r] = currentKey.split(',').map(Number);
-			const currentTile = gameState.map.tiles[currentKey];
+			const [q, r, tileIndex] = currentKey.split(',').map(Number);
+			const currentTile = gameState.map.tilesData[tileIndex];
 			
 			pool.hexes.push({ q, r, tile: currentTile });
 			pool.totalSavings += currentTile.savings;
 			
-			// Add income (if no tree)
-			if (currentTile.object !== 'tree' && currentTile.object !== 'grass') {
+			// Add income (if no object on it)
+			if (!currentTile.object) {
 				pool.totalIncome += gameRules.tileIncome;
 			}
 			
@@ -3480,8 +3519,8 @@ function findEconomyPools(playerId) {
 			
 			// Check neighbors
 			for (const n of getHexNeighbors(q, r)) {
-				const nKey = `${n.q},${n.r}`;
-				const nTile = gameState.map.tiles[nKey];
+				const nTile = getTileAt(n.q, n.r);
+				const nKey = `${n.q},${n.r},${nTile.tileIndex}`;
 				if (nTile && nTile.ownerId === playerId && !visited.has(nKey)) {
 					visited.add(nKey);
 					queue.push(nKey);
@@ -3650,10 +3689,10 @@ function executeAIMoveSequentially(player) {
         return; 
     }
 
-    console.log(`AI ${player.name} is thinking...`);
+    //console.log(`AI ${player.name} is thinking...`);
 
     const bestMove = ai_find_best_move(player);
-    console.warn("AI bestMove:", bestMove);
+    //console.warn("AI bestMove:", bestMove);
 
     if (bestMove) {
         // If a move is found, execute it
@@ -3722,8 +3761,8 @@ function executeEndTurn(playerId) {
 	for (const soldier of allSoldiersKilled) {
 		const tile = getTileAt(soldier.q, soldier.r);
 		if (tile) {
-			tile.object = 'grass'; // Turn to grass
-			broadcast({ type: 'tile_changed', q: soldier.q, r: soldier.r, object: 'grass' });
+			tile.object = 'dead'; // Turn to dead (crosses)
+			broadcast({ type: 'tile_changed', q: soldier.q, r: soldier.r, object: tile.object });
 		}
 		gameState.units = gameState.units.filter(u => u.id !== soldier.id);
 		broadcast({ type: 'unit_removed', unitId: soldier.id });
@@ -4790,9 +4829,8 @@ function compactToExpandedInfo(str){
 function loadParsedMap(parsedMap, compact = false){
 	
 	// clear previous data:
-	gameState.map.tiles = {};
-	
-
+	gameState.map.tiles = {}; // associative array where [key] = tilesData array index.
+	gameState.map.tilesData = []; // actual data for tiles. {q,r, type, ownerId, object, savings} 
 	
 	let width = parsedMap.width;
 	let height = parsedMap.height;
@@ -4800,7 +4838,9 @@ function loadParsedMap(parsedMap, compact = false){
 	gameState.map.height = parsedMap.height;
 	gameState.map.imageData = parsedMap.imageData;
 	gameState.map.name = parsedMap.name;
-	console.error(parsedMap);
+	
+	console.warn(parsedMap);
+	
 	for (let q = -Math.floor(width/2), y = 0; q <= Math.floor(width/2); q++, y++) {
 		let roff = 0;
 	
@@ -4829,9 +4869,6 @@ function loadParsedMap(parsedMap, compact = false){
 				}
 				setTileAt(q-roff, r, { type: info.type, ownerId: null, object: tree, savings: 0 });
 			}
-			
-	
-			
 		}
 	}
 	
@@ -4840,8 +4877,10 @@ function loadParsedMap(parsedMap, compact = false){
 	let maxQ = -9999999;
 	let minR = 9999999;
 	let maxR = -9999999;
-	for (const key in gameState.map.tiles) {
-		const [q, r] = key.split(',').map(Number);
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
 		if(q < minQ) minQ = q;
 		if(q > maxQ) maxQ = q;
 		if(r < minR) minR = r;
@@ -4940,8 +4979,10 @@ function generateMap(width, height) {
 	
 
 	// generate outlines for all land pieces in the map:
-	for (const key in gameState.map.tiles) {
-		const [q, r] = key.split(',').map(Number);
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
 		//const lines = gameState.map.outlines[key];
 		let lines = [];
 		let neigh = getHexNeighbors(q, r);
@@ -4974,9 +5015,12 @@ function spawnPlayers() {
 	let landHexes = [];
 	
 	// Get all available land hexes
-	for (const key in gameState.map.tiles) {
-		if (gameState.map.tiles[key].type === 'land') {
-			const [q, r] = key.split(',').map(Number);
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+		
+		if (tile.type === 'land') {
 			landHexes.push({q, r});
 		}
 	}
