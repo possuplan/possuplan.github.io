@@ -18,6 +18,30 @@
 	
 	<!-- 
 	TODO:
+	
+
+	- Generate new minimaps with canvas and 13x10 hextile sprite
+	- Open minimap larger when clicked on lobby room
+	- Sometimed joining as spec doesnt work even when game is running and shows in game list
+	- Also messages doesnt update always if spec joins/leaves/joins etc and sends messages
+	- Also spec state seems to persist if player was speccing when host quitted and made new host and earlier spec player joins again as player: he becomes spectator but game thinks he can play. Probably because UI has been set for spectator earlier and it doesnt update to playing player ui
+	  - Same happens if i try to join game as spec (that doesnt exist) and then after error i host: i became spec.
+	- Renderöi hexat niin että tee mipmappei cacheen ja renderöi eri zoom levelil eri kuvat
+	- Tee nappi mistä voi lopettaa pelin niin että menee pois game näkymästä
+	- Close build menus by tapping outside
+	- Reverse units order too?
+	- Chat font larger on top
+	- Swap chat and endturn buttons. Prevents accidental endturn when sendin messages (keyboard "go" button is on bottom right
+	- Fix maplist top bar nicer
+
+	- Make ingame player list scrollable
+	- Prevent dragging page refresh from game ui elems. Can accidentally refresh page if trying to scroll units list
+	- Move turn number bottom left and rename to "day"
+	- Add confirmation popup if trying to leave page (on mobile too easy to misclick previous page)
+	- If built soldier on enemy land and undoed, he wont get his land back
+	- Check if map load sets tiles non-negative places because screen isnt focused anymore in middle of map. Might be because of +8 to width at generatemap()
+	- Prevent page close if dragging from botton right ("back button") corner. Fb handles it better.
+
 
 	- your pools savings are actually combined when you try to buy soldiers. should only use the money from selected pool. also should need to select a pool before buying anything.
 	- keskitä ruutu keskelle omia unitteja kun peli alkaa.
@@ -1178,15 +1202,17 @@ let GS = 1.16; // hex texture size multi
 
 const MIN_ZOOM = 0.02; // smaller value = more zoomed out
 const MAX_ZOOM = 20;   // bigger value = more zoomed in
+let zoomMipLevel = 0;
 
+/*
 let bgImage = new Image();
 let bgPattern = null;
 
 bgImage.src = 'images/water.jpg';
 bgImage.onload = () => {
 	bgPattern = ctx.createPattern(bgImage, 'repeat');
-	//draw(); // optional initial draw
 };
+*/
 
 function hexToHSL(hex) {
   // Remove '#' if present
@@ -1463,6 +1489,7 @@ if(use_orig){
 		'land': {path:'images/land2.jpg', scale:1, offsetX: 0}, 
 		'dirt': {path:'images/dirt2.jpg', scale:1, offsetX: 0},
 		'water': {path:'images/water.jpg', scale:1, offsetX: 0},
+		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
 		'dead': {path:'images/orig-scaled/dead.png', scale:1, offsetX: 0},
 		'grass': {path:'images/orig-scaled/grass.png', scale:2, offsetX: 3, offsetY: 5},
 		'tree': {path:'images/orig-scaled/tree.png', scale:2, offsetX: 2, offsetY: 5},
@@ -1481,6 +1508,7 @@ if(use_orig){
 		'land': {path:'images/land2.jpg', scale:1, offsetX: 0}, 
 		'dirt': {path:'images/dirt2.jpg', scale:1, offsetX: 0},
 		'water': {path:'images/water.jpg', scale:1, offsetX: 0},
+		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
 		'dead': {path:'images/orig-scaled/dead.png', scale:1, offsetX: 0},
 		'grass': {path:'images/orig-scaled/grass.png', scale:1, offsetX: 0},
 		'tree': {path:'images/orig-scaled/tree.png', scale:1, offsetX: 0},
@@ -1496,21 +1524,234 @@ if(use_orig){
 	};
 }
 
+async function loadImages() {
+    const loadPromises = [];
+
+    for (const [key, obj] of Object.entries(imageAssets)) {
+        const img = new Image();
+        img.src = obj.path;
+        imageCache[key] = img;
+
+        const promise = new Promise((resolve, reject) => {
+            img.onload = async () => {
+                try {
+                    await img.decode(); // ensure fully decoded before use
+                    console.log(`Image loaded: ${key}`);
+
+                    obj.image = img;
+                    obj.mipmaps = await generateMipmaps(img, 6);
+
+                    // --- NEW: generate patterns for images that are marked as patterns ---
+                    if (obj.isPattern) {
+                        obj.patterns = obj.mipmaps.map(mipmap => {
+                            // create a temporary canvas context for pattern
+                            const c = new OffscreenCanvas(mipmap.width, mipmap.height);
+                            const ctx2d = c.getContext('2d');
+                            ctx2d.drawImage(mipmap, 0, 0);
+                            return ctx.createPattern(c, 'repeat');
+                        });
+                    }
+
+                    resolve();
+                } catch (err) {
+                    console.error(`Error generating mipmaps for ${key}:`, err);
+                    reject(err);
+                }
+            };
+
+            img.onerror = () => {
+                console.error(`Failed to load image: ${obj.path}`);
+                reject(new Error(`Failed to load image: ${obj.path}`));
+            };
+        });
+
+        loadPromises.push(promise);
+    }
+
+    await Promise.all(loadPromises);
+    console.log("All images, mipmaps, and pattern mipmaps generated");
+}
+
+/*
+async function loadImages() {
+    const loadPromises = [];
+
+    for (const [key, obj] of Object.entries(imageAssets)) {
+        const img = new Image();
+        img.src = obj.path;
+		imageCache[key] = img;
+
+        const promise = new Promise((resolve, reject) => {
+            img.onload = async () => {
+                try {
+                    await img.decode(); // ensure fully decoded before use
+                    console.log(`Image loaded: ${key}`);
+
+                    obj.image = img;
+                    obj.mipmaps = await generateMipmaps(img, 6);
+					console.log("obj.mipmaps");
+					console.log(obj.mipmaps);
+                    resolve();
+                } catch (err) {
+                    console.error(`Error generating mipmaps for ${key}:`, err);
+                    reject(err);
+                }
+            };
+
+            img.onerror = () => {
+                console.error(`Failed to load image: ${obj.path}`);
+                reject(new Error(`Failed to load image: ${obj.path}`));
+            };
+        });
+
+        loadPromises.push(promise);
+    }
+
+    // Wait until all images (and mipmaps) are ready
+    await Promise.all(loadPromises);
+    console.log("All images and mipmaps generated");
+}
+*/
+
+
+async function generateMipmaps(img, levels = 6) {
+    const mipmaps = [];
+
+    // Level 0 = original image as ImageBitmap
+    const baseBitmap = await createImageBitmap(img);
+    mipmaps.push(baseBitmap);
+
+    let width = img.width;
+    let height = img.height;
+    let prev = baseBitmap;
+
+    // Generate smaller levels using OffscreenCanvas
+    for (let i = 1; i < levels; i++) {
+        width = Math.max(1, Math.floor(width / 2));
+        height = Math.max(1, Math.floor(height / 2));
+
+        const off = new OffscreenCanvas(width, height);
+        const ctx = off.getContext('2d');
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(prev, 0, 0, width, height);
+
+        // Convert the offscreen result into an ImageBitmap (GPU-friendly)
+        const bitmap = await createImageBitmap(off);
+        mipmaps.push(bitmap);
+
+        prev = bitmap;
+    }
+
+    return mipmaps;
+}
 
 // --- NEW FUNCTION: To load all images from imageAssets
-function loadImages() {
+function loadImages2() {
 	for (const [key, obj] of Object.entries(imageAssets)) {
 		const img = new Image();
 		img.src = obj.path;
 		imageCache[key] = img;
+		//img.onload = () => {
+		//	console.log(`Image loaded: ${key} from ${obj.path}`);
+		//}
+		/*
 		img.onload = () => {
 			console.log(`Image loaded: ${key} from ${obj.path}`);
-		}
+			obj.image = img;
+			obj.mipmaps = generateMipmaps(img);
+		};
+		*/
+		
+		/*
+		img.onload = async () => {
+			try {
+				await img.decode(); // ensures browser finishes decoding
+				console.log(`Image loaded: ${key}`);
+				obj.image = img;
+				obj.mipmaps = generateMipmaps(img);
+			} catch (e) {
+				console.error(`Decode failed for ${key}`, e);
+			}
+		};
+		
+		*/
+				
+		img.onload = async () => {
+			await img.decode();
+			console.log(`Image loaded: ${key}`);
+			obj.image = img;
+			obj.mipmaps = await generateMipmaps(img, 6);
+		};
+
+
 		img.onerror = () => {
 			console.error(`Failed to load image: ${obj.path}`);
 		}
 	}
 }
+
+
+
+/*
+function generateMipmaps(img, levels = 6) {
+    const mipmaps = [];
+    let width = img.width;
+    let height = img.height;
+
+    // Level 0 = original image
+    const baseCanvas = document.createElement('canvas');
+    baseCanvas.width = width;
+    baseCanvas.height = height;
+    baseCanvas.getContext('2d').drawImage(img, 0, 0);
+    mipmaps.push(baseCanvas);
+
+    // Generate smaller levels
+    for (let i = 1; i < levels; i++) {
+        width = Math.max(1, Math.floor(width / 2));
+        height = Math.max(1, Math.floor(height / 2));
+        const c = document.createElement('canvas');
+        c.width = width;
+        c.height = height;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(mipmaps[i - 1], 0, 0, mipmaps[i - 1].width, mipmaps[i - 1].height, 0, 0, width, height);
+        mipmaps.push(c);
+    }
+
+    return mipmaps;
+}
+*/
+
+
+
+
+
+function getMipmapForZoom(imgObj) {
+    if (!imgObj.mipmaps) return imgObj.image;
+
+    // For zoom range ~0.02 → 20, we shift the range so level 0 (highest res)
+    // is used near zoom = 1, and lower mipmaps used as zoom gets smaller.
+	
+	// Too blurry too early when zooming out → change zoom * 2 → zoom * 3.
+	// Too sharp too long → reduce to zoom * 1.5.
+    //zoomMipLevel = Math.min(
+    //    imgObj.mipmaps.length - 1,
+    //    Math.max(0, Math.round(-Math.log2(viewport.zoom * 2)))
+	//	// try math.floor to prevent diagonal artifacts.
+    //);
+	
+	//if(level < 0) console.error("ivalid mipmaps1");
+	//if(level > imgObj.mipmaps.length-1) console.error("ivalid mipmaps2");
+
+    return imgObj.mipmaps[zoomMipLevel];
+	//return imgObj.mipmaps[3];
+}
+
+
+
 
 // --- NEW FUNCTION: To get a loaded image from the cache
 function getImage(key) {
@@ -1582,7 +1823,8 @@ const playerUIList = document.getElementById('player-ui-list');
 const chatMessages = document.getElementById('chat-messages');
 const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
 
-
+//ctx.imageSmoothingEnabled = true;
+//ctx.imageSmoothingQuality = 'high';
 
 const chatInput = document.getElementById('chat-input');
 const turnInfo = document.getElementById('turn-info');
@@ -1976,42 +2218,46 @@ function drawHexagonOutlines(q, r, myId = -1){
 
 // renderinfinitewater 
 let drawInfiniteWater = 1;
+let drawWaterTiles = 0;
+
+let logged = 0;
+
+
+function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight){
+	const imgObj = imageAssets[imageName];
+	if(!logged){
+		console.warn("imageName: "+imageName);
+		console.warn("imgObj");
+		console.warn(imgObj);
+		logged = 1;
+	}
+	const mip = getMipmapForZoom(imgObj);
+	ctx.drawImage(mip, dx, dy, dWidth, dHeight);
+}
 
 // rendermap
 function render() {
 	if (!gameState.gameStarted) return;
 	
-	//ctx.fillStyle = '#000'; // Clear with black
-	//ctx.fillRect(0, 0, canvas.width, canvas.height);
+	// calculate current mip level:
+	zoomMipLevel = getZoomMipLevel(1);
+	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
 	
-	
-	// draw background pattern always:
-	//ctx.fillStyle = bgPattern;
-	//ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-
-   // ctx.save();
-   // ctx.translate(viewport.x, viewport.y);
-   // ctx.scale(viewport.zoom, viewport.zoom);
-   
-   
-
+  
 	// Save the context state
 	ctx.save();
 	if(drawInfiniteWater){
-		// ---- STEP 1: Create or reuse pattern ----
-		// (You can create bgPattern once outside render to avoid recreating every frame)
-		const pattern = bgPattern; // your ctx.createPattern(waterImage, 'repeat');
-
-		// ---- STEP 2: Apply transform to pattern ----
+		const patternObj = imageAssets['infinitewater'];
+		// get current mip level image pattern:
+		const pattern = patternObj.patterns[waterZoomMipLevel];
+		const mipScale = Math.pow(0.5, waterZoomMipLevel);
+		
 		const matrix = new DOMMatrix()
-			.translate(viewport.x, viewport.y) // inverse of camera movement
-			.scale(viewport.zoom*0.4);         // scale with zoom
+			.translate(viewport.x, viewport.y) 
+			.scale(viewport.zoom*0.4/mipScale); // mipScale = scale to different mip level
 
 		pattern.setTransform(matrix);
 
-		// ---- STEP 3: Draw the pattern ----
-	
 		ctx.fillStyle = pattern;
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 	}else{
@@ -2026,10 +2272,18 @@ function render() {
 	// --- CULLING (existing code) ---
 	const topLeft = pixelToAxial(0, 0);
 	const bottomRight = pixelToAxial(canvas.width, canvas.height);
-	const qMin = topLeft.q - 2;
-	const qMax = bottomRight.q + 2;
-	const rMin = topLeft.r - (bottomRight.q - topLeft.q) - 2; 
-	const rMax = bottomRight.r + (bottomRight.q - topLeft.q) + 2;
+	let qMin = topLeft.q - 2;
+	let qMax = bottomRight.q + 2;
+	let rMin = topLeft.r - (bottomRight.q - topLeft.q) - 2; 
+	let rMax = bottomRight.r + (bottomRight.q - topLeft.q) + 2;
+	
+	// fixes lagging when zooming out too much:
+	// it looped through useless hexes outside of map.
+	let bounds = getMapBounds();
+	if(qMin < bounds.q.min) qMin = bounds.q.min;
+	if(qMax > bounds.q.max) qMax = bounds.q.max;
+	if(rMin < bounds.r.min) rMin = bounds.r.min;
+	if(rMax > bounds.r.max) rMax = bounds.r.max;
 
 	// --- DRAW TILES ---
 	// --- DRAW TILES ---
@@ -2053,39 +2307,60 @@ function render() {
 					continue; // skip water tiles.
 				}
 			}
-
-			// --- Start Drawing Hex ---
 			
-			ctx.save();
+			let drawTile = true;
 			
-			// 1. Define the hex path
-			drawHexagonPath(x, y);
+			
+			
 
 			// 2. Draw the fallback background color (or owner color)
 			let fallbackColor = LAND_COLOR;
 			if (tile.type === 'water') {
 				fallbackColor = WATER_COLOR;
+				if(!drawWaterTiles){
+					drawTile = false;
+				}
 			} else if (tile.ownerId) {
 				const owner = getPlayer(tile.ownerId);
 				fallbackColor = owner ? owner.color : LAND_COLOR;
 			} else if (tile.type === 'land') {
 				fallbackColor = LAND_COLOR;
 			}
+			
+			if(!drawTile){
+				continue;
+			}
+			
+
+			// --- Start Drawing Hex ---
+			
+			ctx.save();
+			
+			
+			
+			// 1. Define the hex path
+			drawHexagonPath(x, y);
 			ctx.fillStyle = fallbackColor;
 			ctx.fill();
+			
+			
 			
 			
 			if(useimages){
 				// 3. Get the background image for this tile type
 				// (We assume the image key is the same as tile.type)
 				let img = null;
+				let imageName = "";
 				if(tile.ownerId){
+					imageName = tile.type;
 					img = getImage(tile.type);
 				}else{
 					// no owner, use dirt image:
 					if(tile.type === 'water') {
+						imageName = "water";
 						img = getImage("water");
 					}else{
+						imageName = "dirt";
 						img = getImage("dirt");
 					}
 				}
@@ -2116,37 +2391,23 @@ function render() {
 						const player = getPlayer(tile.ownerId);
 						
 						// Draw the gray texture
-						ctx.drawImage(img, dx, dy, dWidth, dHeight);
+						
+						//ctx.drawImage(img, dx, dy, dWidth, dHeight);
+						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
 
-						// todo: make own images for each player texture.
+						// todo: make own images for each player texture?
 						// Multiply by player color
 						ctx.globalCompositeOperation = "multiply";
 						ctx.fillStyle = player.color; // e.g. "#ff0000"
 						ctx.fillRect(dx, dy, dWidth, dHeight);
 						ctx.globalCompositeOperation = "source-over";
 						
-						/*
-						const player = getPlayer(tile.ownerId);
-						let hsl = hexToHSL(player.color);
-
-						ctx.filter = `hue-rotate(${hsl.h}deg) saturate(${hsl.s}) brightness(${hsl.l})`;
-						ctx.drawImage(img, dx, dy, dWidth, dHeight);
-						ctx.filter = 'none'; // always reset after
-						*/
 					}else{
 						// Draw the original image
-						ctx.drawImage(img, dx, dy, dWidth, dHeight);
+						//ctx.drawImage(img, dx, dy, dWidth, dHeight);
+						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
 					}
 
-/*
-					if (unit.hasMoved) {
-						ctx.globalCompositeOperation = 'multiply';
-					}
-					ctx.drawImage(img, dx, dy, dWidth, dHeight);
-
-					if (unit.hasMoved) {
-						ctx.globalCompositeOperation = 'source-over';// always reset after
-					}*/
 				}
 				
 			}
@@ -2173,7 +2434,8 @@ function render() {
 					let dw = drawSize*scale;
 					let dh = drawSize*ratio*scale;
 					
-					ctx.drawImage(img, dx, dy, dw, dh);
+					//ctx.drawImage(img, dx, dy, dw, dh);
+					drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
 				}
 
 			} else if (tile.object === 'grass') {
@@ -2194,7 +2456,8 @@ function render() {
 					let dw = drawSize*scale;
 					let dh = drawSize*ratio*scale;
 					
-					ctx.drawImage(img, dx, dy, dw, dh);
+					//ctx.drawImage(img, dx, dy, dw, dh);
+					drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
 				}
 			}
 		}
@@ -2218,6 +2481,7 @@ function render() {
 			}
 			
 			if (tile.type === 'water') {
+				continue; // skip water tiles.
 				if(drawInfiniteWater){
 					continue; // skip water tiles.
 				}
@@ -2332,8 +2596,8 @@ function render() {
 			
 			
 			// draw unit:
-			ctx.drawImage(img, dx, dy, dw, dh);
-			
+			//ctx.drawImage(img, dx, dy, dw, dh);
+			drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
 			
 			if(data.type == 'soldier'){
 				if(myPlayer.id === unit.ownerId && isMyTurn()){
@@ -2341,19 +2605,13 @@ function render() {
 					// draw yellow arrow sign:
 					if (!unit.hasMoved) {
 						let selectImg = getImage('select');
-						ctx.drawImage(selectImg, dx, dy, dw, dh);
+						//ctx.drawImage(selectImg, dx, dy, dw, dh);
+						drawImageMipped(ctx, 'select', dx, dy, dw, dh);
 						// draw arrow top left to signal the unit was not moved yet on this turn.
 					}
 				}
 			}
 			
-			//if (unit.hasMoved) {
-				// FILTERS ARE FUCKING SLOW!!! DONT USE.
-				//ctx.filter = 'brightness(0.6) opacity(1)';
-				////ctx.filter = 'drop-shadow(10px 10px 8px rgba(0, 0, 0, 0.6))';
-				// DRAW IMAGE
-				//ctx.filter = 'none'; // always reset after
-			//}
 			
 		}
 
@@ -2499,21 +2757,27 @@ function handleTouchEnd(e) {
 	}
 }
 
+function getZoomMipLevel(multiplier){
+	const safeZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, viewport.zoom));
+	return Math.min(
+		6 - 1,
+		Math.max(0, Math.round(-Math.log2(safeZoom * multiplier))) // smaller multiplier = earlier mip change to smaller
+	);
+}
+
 function zoomAtPoint(x, y, factor) {
 	const newZoom = Math.max(MIN_ZOOM, Math.min(viewport.zoom * factor, MAX_ZOOM));
 	const oldZoom = viewport.zoom;
 	
-	// (x - viewport.x) / oldZoom = worldX
-	// (new_x - viewport.x_new) / newZoom = worldX
-	// (x - viewport.x_new) / newZoom = (x - viewport.x) / oldZoom
-	// (x - viewport.x_new) = (x - viewport.x) * newZoom / oldZoom
-	// x - viewport.x_new = (x - viewport.x) * (newZoom / oldZoom)
-	// viewport.x_new = x - (x - viewport.x) * (newZoom / oldZoom)
-	
 	viewport.x = x - (x - viewport.x) * (newZoom / oldZoom);
 	viewport.y = y - (y - viewport.y) * (newZoom / oldZoom);
 	viewport.zoom = newZoom;
+
+
+	
+	console.log(zoomMipLevel);
 }
+
 
 function handleWheel(e) {
 	e.preventDefault();
@@ -2524,6 +2788,11 @@ function handleWheel(e) {
 // =================================================================
 // --- GAME LOGIC HELPERS
 // =================================================================
+
+
+function getMapBounds(){
+	return gameState.map.bounds;
+}
 
 function getTileAt(q, r) {
 	return gameState.map.tiles[`${q},${r}`];
@@ -4538,7 +4807,7 @@ function setLoadedMapAndApplyScale(){
 	console.warn("loadedmap");
 	console.warn(loadedmap);
 	
-	
+
 	
 	scaleMap();
 	loadParsedMap(loadedmap, true);
@@ -4819,6 +5088,20 @@ function loadParsedMap(parsedMap, compact = false){
 			
 		}
 	}
+	
+	
+	let minQ = 9999999;
+	let maxQ = -9999999;
+	let minR = 9999999;
+	let maxR = -9999999;
+	for (const key in gameState.map.tiles) {
+		const [q, r] = key.split(',').map(Number);
+		if(q < minQ) minQ = q;
+		if(q > maxQ) maxQ = q;
+		if(r < minR) minR = r;
+		if(r > maxR) maxR = r;
+	}
+	gameState.map.bounds = {q: {min:minQ, max:maxQ}, r: {min:minR, max:maxR}};
 }
 
 function getMapScale(){
@@ -4864,9 +5147,10 @@ function generateMap(width, height) {
 	
 	
 	
-	width = loadedmap.width+8;
-	height = loadedmap.height+8;
+	width = loadedmap.width;
+	height = loadedmap.height;
 	
+
 		
 	gameState.settings.mapWidth = width;
 	gameState.settings.mapHeight = height;
@@ -5160,10 +5444,10 @@ document.addEventListener('keydown', (event) => {
 // =================================================================
 // --- EVENT LISTENERS
 // =================================================================
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
 	initDB();
 	initPeerJS();
-	loadImages();
+	await loadImages();
 	
 	hostBtn.disabled = true;
 	joinBtn.disabled = true;
