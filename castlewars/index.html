@@ -1766,6 +1766,16 @@ addAiBtn.addEventListener('click', () => {
 // =================================================================
 // --- UTILITY FUNCTIONS
 // =================================================================
+function centerToFirstUnit(){
+	let player = getMyPlayer();
+	
+	for (const unit of gameState.units) {
+		if(unit.ownerId === player.id){
+			centerTo(unit.q, unit.r);
+			break;
+		}
+	}
+}
 
 function showPage(pageId) {
 	Object.values(pages).forEach(page => page.classList.remove('active'));
@@ -1778,6 +1788,12 @@ function showPage(pageId) {
 	}
 }
 
+// centers screen on q,r position.
+function centerTo(q, r){
+	const centerPx = axialToPixel(q, r); 
+	viewport.x = canvas.width / 2 - centerPx.x;
+	viewport.y = canvas.height / 2 - centerPx.y;
+}
 
 
 function sendToPlayer(playerId, data) {
@@ -1978,15 +1994,16 @@ function initCanvas() {
 	canvas.height = window.innerHeight;
 	
 	// Center map initially
-	const centerQ = Math.floor(gameState.settings.mapWidth / 2);
-	const centerR = Math.floor(gameState.settings.mapHeight / 2);
+	//const centerQ = Math.floor(gameState.settings.mapWidth / 2);
+	//const centerR = Math.floor(gameState.settings.mapHeight / 2);
 	// This axial coordinate isn't the *center* of a rectangular map,
 	// but it's good enough for a starting point.
 	// Let's just center on 0,0.
-	const centerPx = axialToPixel(0, 0); 
-	viewport.x = canvas.width / 2 - centerPx.x;
-	viewport.y = canvas.height / 2 - centerPx.y;
+	//const centerPx = axialToPixel(0, 0); 
+	//viewport.x = canvas.width / 2 - centerPx.x;
+	//viewport.y = canvas.height / 2 - centerPx.y;
 }
+
 
 
 
@@ -2134,10 +2151,12 @@ function checkCulling(x, y){
 
 let previous_drawnTiles = 0;
 
+
+
 // rendermap
 function render() {
 	if (!gameState.gameStarted) return;
-	
+
 	// calculate current mip level:
 	zoomMipLevel = getZoomMipLevel(1);
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
@@ -2213,11 +2232,12 @@ function render() {
 			continue;
 		}
 		
-		if(tile.type !== 'water') {
+		// draw shadows/shading for land tiles next to water:
+		// draw map outlines:
+		// renderoutlines render outlines
+		if(tile.type === 'land') {
 			const outline = getOutlineAt(q, r);
-			
 			if(outline.length > 0){
-			
 				drawWaterShading(x, y, outline);
 			}
 		}
@@ -2373,52 +2393,6 @@ function render() {
 	}
 	
 	
-	// draw map outlines:
-	// renderoutlines render outlines
-	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
-	/*
-	for(let t = 0; t < gameState.map.tilesData.length; t++){
-		const tile = gameState.map.tilesData[t];
-		const q = tile.q;
-		const r = tile.r;
-
-		const { x, y } = axialToPixel(q, r);
-
-		// --- Culling Check ---
-		if(checkCulling(x, y)){
-			continue;
-		}
-		
-		if (tile.type === 'water') {
-			continue; // skip water tiles.
-			if(drawInfiniteWater){
-				continue; // skip water tiles.
-			}
-		}
-
-		// --- Start Drawing Hex ---
-		
-		const outline = getOutlineAt(q, r);
-		
-		if(outline.length > 0){
-		
-			drawWaterShading(x, y, outline);
-			////ctx.save();
-			
-			//drawHexagonPath(x, y, outline);
-			//ctx.strokeStyle = 'rgba(0,0,0, 0.7)';
-			//ctx.lineWidth = 5;
-			//ctx.lineCap = 'round'; 
-			//ctx.stroke();
-			
-			////ctx.restore();
-			
-			//ctx.fillStyle = 'rgba(0,0,0, 0.5)';
-			//drawCalligraphyLine(x, y, x+100, y+80, 20);
-		}
-		
-	}
-	*/
 	
 	// --- DRAW HIGHLIGHTS (NEW) ---
 	
@@ -3883,6 +3857,7 @@ function handleHostData(data) {
 			gameState = data.state;
 			showPage('game');
 			updateGameUI();
+			centerToFirstUnit();
 			break;
 		case 'full_state':
 			gameState = data.state;
