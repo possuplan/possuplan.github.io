@@ -16,97 +16,8 @@
 	//window.APP_CONFIG.LOCAL = false; // this is true on my pc by default. on release version false.
 	</script>
 	
-	<!-- 
-	TODO:
 
 
-	- Open minimap larger when clicked on lobby room
-	- Sometimed joining as spec doesnt work even when game is running and shows in game list
-	- Also messages doesnt update always if spec joins/leaves/joins etc and sends messages
-	- Also spec state seems to persist if player was speccing when host quitted and made new host and earlier spec player joins again as player: he becomes spectator but game thinks he can play. Probably because UI has been set for spectator earlier and it doesnt update to playing player ui
-	  - Same happens if i try to join game as spec (that doesnt exist) and then after error i host: i became spec.
-	- Renderöi hexat niin että tee mipmappei cacheen ja renderöi eri zoom levelil eri kuvat
-	- Tee nappi mistä voi lopettaa pelin niin että menee pois game näkymästä
-	- Close build menus by tapping outside
-	- Reverse units order too?
-	- Chat font larger on top
-	- Swap chat and endturn buttons. Prevents accidental endturn when sendin messages (keyboard "go" button is on bottom right
-	- Fix maplist top bar nicer
-
-	- Make ingame player list scrollable
-	- Prevent dragging page refresh from game ui elems. Can accidentally refresh page if trying to scroll units list
-	- Move turn number bottom left and rename to "day"
-	- Add confirmation popup if trying to leave page (on mobile too easy to misclick previous page)
-	- If built soldier on enemy land and undoed, he wont get his land back
-	- Check if map load sets tiles non-negative places because screen isnt focused anymore in middle of map. Might be because of +8 to width at generatemap()
-	- Prevent page close if dragging from botton right ("back button") corner. Fb handles it better.
-
-
-	- your pools savings are actually combined when you try to buy soldiers. should only use the money from selected pool. also should need to select a pool before buying anything.
-	- keskitä ruutu keskelle omia unitteja kun peli alkaa.
-	- Test 60x30 size maps for the sake of it.
-	- Älä näytä move range juttua jos ukko on jo liikkunut.
-
-	- Laita highlight edges näkymään paksumpina kun zoomaa ulos, ehkä aina yhtä paksuna tai melkein yhtä paksuna: jos zoomaa liikaa ulos niin paksuus alle normin, jos liikaa sisään niin paksuus yli normin.
-	- Edget keltaset poolista vaihtelee väriä oudosti ja ilmestyy map edgejen kohtiin keltasta jos liikkuu tiettyyn kohtaan o.o screenshotit käges.
-	- Myös vaihtelee läpinäkyvyys pool edgeissä riippuen mihin kohtaan poolia klikkas. Johtuuko siitä kun ukot muuttui ruohoksi?. Voinee johtua myös bugisesti ladatusta mapist (päällekkäiset) ?.
-	- Ukon voi ostaa vihollisen viereen kun ei pitäis pystyy liikkuukaan siihen.
-	- Show outlines for protected areas when selecting a castle.
-	- Better shading for tiles near water (polygons) drawCalligraphyLine().
-	- Turn dead into cross before grass. 4 turns and grass. Each new turn random grass growth.
-	- End turn nappia painelemalla tekoälyn siirrot hidastuu o.o
-	
-
-
-
-	- show protected radiuses of units with white edges.
-	- load game doesnt work for interrupted game. perhaps save doesnt work?
-	- moving an unit gives instantly the income from your pool??? some crazy math there, gives more than 1 per tile.
-	- undoing move doesnt update the possible tiles where you can move if the unit is still selected.
-	- undoing fucks up the savings when moving to tile where not moved before. if i move again on same tile i moved on same turn after undo, it doesnt reduce savings anymore from that undo.
-	- draw move ranges with outlines only?
-	- new soldier placement doesnt remove tree (and probably not grass either)
-	- add sell possibility.
-	- make move sounds happen even when doesnt claim land. also add start / end move sounds.
-	- add new unit as ghosted when placing it.
-	- highlight possible areas where you can place new or old unit.
-	- add protect sounds when unit cannot move due to higher level unit.
-	- allow placing new higher level unit on top of lower level unit and kill it.
-	- add map loader from original game maps. show preview of each map in selector list.
-
-
-
-	- dont allow moving castles lol XD
-
-	- allow selecting enemy pools as well. (with red edges).
-	- dont close soldier add popup if the move was invalid, just play invalid move sound.
-
-
-	TODO low priority:
-	- Generate new minimaps with canvas and 13x10 hextile sprite, or just make new render function to render minimap and save as base64 image data.
-
-// Parameters
-const penWidth = 10; // thickness of the pen
-const penAngle = Math.PI / 2; // vertical pen (90 degrees)
-
-// Helper to draw a "fixed angle" line segment
-function drawCalligraphyLine(x1, y1, x2, y2) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  
-  // Compute perpendicular offset based on fixed pen angle
-  const offsetX = Math.cos(penAngle) * (penWidth / 2);
-  const offsetY = Math.sin(penAngle) * (penWidth / 2);
-  
-  ctx.beginPath();
-  ctx.moveTo(x1 - offsetX, y1 - offsetY);
-  ctx.lineTo(x2 - offsetX, y2 - offsetY);
-  ctx.lineTo(x2 + offsetX, y2 + offsetY);
-  ctx.lineTo(x1 + offsetX, y1 + offsetY);
-  ctx.closePath();
-  ctx.fill();
-}
-	-->
     
 <style>
 /* --- GLOBAL STYLES --- */
@@ -434,6 +345,7 @@ label {
 
 #player-ui-list {
 	border-bottom-right-radius: 8px;
+    max-height: 133px;
 }
 
 #player-ui-list .player-list-item {
@@ -459,7 +371,7 @@ label {
 #chat-ui {
 	display: flex;
 	flex-direction: column;
-	height: 100px;
+	height: 145px;
 	
 	border-top-right-radius: 8px;
 	border-bottom-right-radius: 8px;
@@ -685,33 +597,21 @@ label {
 #top-float-ui {
 	display: none;
 	flex-direction: column;
-	
 	padding-left: 4px;
-	
-	
 	position: absolute;
 	top: 0;
 	left: 0;
 	width: 100%;
-	height: 53px;
+	height: 57px;
 	pointer-events: none;
-
-
-	----border:1px solid black;
-	
-
 }
 
 #top-float-ui-messages {
 	flex-grow: 1;
 	overflow-y: hidden;
-	font-size: 13px;
-	
-	
+	font-size: 15px;
     text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
-
 	color:white;
-
 }
 
 
@@ -770,6 +670,10 @@ input.disabled {
 	border-radius: 8px;
 }
 
+
+#end-turn-btn[disabled] {
+	background-color:red;
+}
 </style>
 </head>
 <body>
@@ -1044,6 +948,10 @@ eventSource.onmessage = (event) => {
   }
 };
 */
+
+
+
+
 
 
   
@@ -2097,6 +2005,45 @@ function drawHexLine(i, px, py){
 	ctx.lineTo(p2.x, p2.y);
 }
 
+const neighToi = [4, 3, 2, 1, 0, 5]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
+
+
+
+
+function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
+	const dx = x2 - x1;
+	const dy = y2 - y1;
+
+	// Compute perpendicular offset based on fixed pen angle
+	const offsetX = Math.cos(penAngle) * (penWidth / 2);
+	const offsetY = Math.sin(penAngle) * (penWidth / 2);
+
+	ctx.beginPath();
+	ctx.moveTo(x1 - offsetX, y1 - offsetY);
+	ctx.lineTo(x2 - offsetX, y2 - offsetY);
+	ctx.lineTo(x2 + offsetX, y2 + offsetY);
+	ctx.lineTo(x1 + offsetX, y1 + offsetY);
+	ctx.closePath();
+	ctx.fill();
+}
+
+
+
+function drawWaterShading(px, py, drawLines){
+	let hlen = 7; // half of the line height.
+	let da = Math.PI / 2;
+	if(drawLines.length > 0){
+		for(let i = 0; i < drawLines.length; i++){
+			let ival = neighToi[drawLines[i]];
+			let p1 = getHexAnglePos(ival, px, py);
+			let p2 = getHexAnglePos(ival+1, px, py);
+	
+			ctx.fillStyle = 'rgba(0,0,0, 0.6)';
+			drawCalligraphyLine(p1.x, p1.y+hlen, p2.x, p2.y+hlen, hlen*2, da);
+		}
+	}
+}
+
 // drawLines = array of values 0-5
 // 0 = bottom left
 // 1 = top left
@@ -2105,7 +2052,6 @@ function drawHexLine(i, px, py){
 // 4 = bottom right
 // 5 = bottom
 function drawHexagonPath(px, py, drawLines = null) {
-	const neighToi = [4, 3, 2, 1, 0, 5]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
 	if(drawLines){
 		if(drawLines.length > 0){
 			ctx.beginPath();
@@ -2267,6 +2213,15 @@ function render() {
 			continue;
 		}
 		
+		if(tile.type !== 'water') {
+			const outline = getOutlineAt(q, r);
+			
+			if(outline.length > 0){
+			
+				drawWaterShading(x, y, outline);
+			}
+		}
+		
 
 		drawnTiles++;
 		
@@ -2418,10 +2373,10 @@ function render() {
 	}
 	
 	
-	// renderoutlines render outlines
 	// draw map outlines:
-
+	// renderoutlines render outlines
 	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
+	/*
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
@@ -2447,17 +2402,23 @@ function render() {
 		
 		if(outline.length > 0){
 		
-			//ctx.save();
-			drawHexagonPath(x, y, outline);
-			ctx.strokeStyle = 'rgba(0,0,0, 0.7)';
-			ctx.lineWidth = 5;
-			ctx.lineCap = 'round'; 
-			ctx.stroke();
-			//ctx.restore();
+			drawWaterShading(x, y, outline);
+			////ctx.save();
+			
+			//drawHexagonPath(x, y, outline);
+			//ctx.strokeStyle = 'rgba(0,0,0, 0.7)';
+			//ctx.lineWidth = 5;
+			//ctx.lineCap = 'round'; 
+			//ctx.stroke();
+			
+			////ctx.restore();
+			
+			//ctx.fillStyle = 'rgba(0,0,0, 0.5)';
+			//drawCalligraphyLine(x, y, x+100, y+80, 20);
 		}
 		
 	}
-	
+	*/
 	
 	// --- DRAW HIGHLIGHTS (NEW) ---
 	
@@ -2845,6 +2806,8 @@ function updateGameUI() {
 	endTurnBtn.disabled = !canPlay;
 	undoBtn.disabled = !canPlay;
 	chatInput.disabled = false;
+	
+	console.log("endTurnBtn.disabled = "+endTurnBtn.disabled);
 	
 	// Update savings
 	if (myPlayer && !myPlayer.isSpectator) {
@@ -4346,7 +4309,6 @@ function updateHostLobbyUI() {
 		}
 	});
 	
-	
 	// Update color picker
 	hostRoomColorPicker.innerHTML = '';
 	if (localPlayer.isSpectator) {
@@ -4354,8 +4316,8 @@ function updateHostLobbyUI() {
 		lobbyPlayerNameInput.disabled = true;
 	} else {
 		lobbyPlayerNameInput.disabled = false;
-		console.log("usedColors");
-		console.log(usedColors);
+		//console.log("usedColors");
+		//console.log(usedColors);
 		PLAYER_COLORS.forEach(color => {
 			const box = document.createElement('div');
 			box.className = 'color-box';
@@ -4365,11 +4327,11 @@ function updateHostLobbyUI() {
 				box.classList.add('selected');
 			}
 			if (usedColors.includes(color) && localPlayer.color !== color) {
-				console.log(usedColors);
+				//console.log(usedColors);
 				box.classList.add('disabled');
 			} else {
 				box.onclick = () => {
-					console.log("tried to change color");
+					//console.log("tried to change color");
 					localPlayer.color = color;
 					sendToHost({
 						type: 'player_update',
@@ -4405,17 +4367,7 @@ function updateLobbyUI() {
 			if (p.color) usedColors.push(p.color);
 		}
 	});
-	/*
-    playerList.innerHTML = '';
-    gameState.players.forEach((p, playerIndex) => {
-        const li = document.createElement('li');
-        const displayName = p.isSpec ? `${p.name} (Spectator)` : p.name;
-		const safeName = document.createTextNode(displayName);
-		li.innerHTML = `<span style="color:${p.colors.color}"></span>`;
-		li.querySelector("span").appendChild(safeName);
-        playerList.appendChild(li);
-    });
-	*/
+
 	// Update color picker
 	lobbyColorPicker.innerHTML = '';
 	if (localPlayer.isSpectator) {
@@ -4423,8 +4375,8 @@ function updateLobbyUI() {
 		lobbyPlayerNameInput.disabled = true;
 	} else {
 		lobbyPlayerNameInput.disabled = false;
-		console.log("usedColors");
-		console.log(usedColors);
+		//console.log("usedColors");
+		//console.log(usedColors);
 		PLAYER_COLORS.forEach(color => {
 			const box = document.createElement('div');
 			box.className = 'color-box';
@@ -4434,11 +4386,11 @@ function updateLobbyUI() {
 				box.classList.add('selected');
 			}
 			if (usedColors.includes(color) && localPlayer.color !== color) {
-				console.log(usedColors);
+				//console.log(usedColors);
 				box.classList.add('disabled');
 			} else {
 				box.onclick = () => {
-					console.log("tried to change color");
+					//console.log("tried to change color");
 					localPlayer.color = color;
 					sendToHost({
 						type: 'player_update',
@@ -5457,7 +5409,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	
 	endTurnBtn.onclick = () => {
-		if (isMyTurn()) {
+		if (!endTurnBtn.disabled && isMyTurn()) {
 			sendToHost({ type: 'action_end_turn' });
 		}
 	};
