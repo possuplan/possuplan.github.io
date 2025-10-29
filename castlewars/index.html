@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+	<link rel="manifest" href="site.webmanifest">
+	
     <title>Castle Wars</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 	
@@ -116,7 +121,6 @@ button {
 	font-size: 16px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: background-color 0.2s;
 }
 
 .gamebutton {
@@ -2096,14 +2100,7 @@ function drawWaterShading(px, py, drawLines){
 	}
 }
 
-// drawLines = array of values 0-5
-// 0 = bottom left
-// 1 = top left
-// 2 = Top
-// 3 = top right
-// 4 = bottom right
-// 5 = bottom
-function drawHexagonPath(px, py, drawLines = null) {
+function drawHexagonPathLines(px, py, drawLines = null) {
 	if(drawLines){
 		if(drawLines.length > 0){
 			ctx.beginPath();
@@ -2115,18 +2112,33 @@ function drawHexagonPath(px, py, drawLines = null) {
 		}
 	}else{
 		ctx.beginPath();
-		for (let i = 0; i < 6; i++) {
-			const angle = 2 * Math.PI / 6 * (i + 0.5); // +0.5 for pointy top
-			const x = px + HEX_SIZE * Math.cos(angle+Math.PI/2);
-			const y = py + HEX_SIZE * Math.sin(angle+Math.PI/2);
-			if(i === 0){
-				ctx.moveTo(x, y);
-			}else{
-				ctx.lineTo(x, y);
-			}
+		for (let ival = 0; ival < 6; ival++) {
+			drawHexLine(ival, px, py);
 		}
-		ctx.closePath();
+		//ctx.closePath(); // only needed for drawing filled hex.
 	}
+}
+
+// drawLines = array of values 0-5
+// 0 = bottom left
+// 1 = top left
+// 2 = Top
+// 3 = top right
+// 4 = bottom right
+// 5 = bottom
+function drawHexagonPath(px, py) {
+	ctx.beginPath();
+	for (let i = 0; i < 6; i++) {
+		const angle = 2 * Math.PI / 6 * (i + 0.5); // +0.5 for pointy top
+		const x = px + HEX_SIZE * Math.cos(angle+Math.PI/2);
+		const y = py + HEX_SIZE * Math.sin(angle+Math.PI/2);
+		if(i === 0){
+			ctx.moveTo(x, y);
+		}else{
+			ctx.lineTo(x, y);
+		}
+	}
+	ctx.closePath();
 }
 
 
@@ -2149,7 +2161,7 @@ function drawHexagonOutlines(q, r, myId = -1){
 			highlightedLines.push(i);
 		}
 	}
-	drawHexagonPath(x, y, highlightedLines);
+	drawHexagonPathLines(x, y, highlightedLines);
 }
 
 
@@ -2459,7 +2471,9 @@ function render() {
 		drawHexagonOutlines(hex.q, hex.r, localPlayer.id);
 		ctx.strokeStyle = 'rgba(255,255,0, 1)';
 		ctx.lineWidth = 4;
+		ctx.lineCap = 'round';
 		ctx.stroke();
+		ctx.lineCap = 'butt'; // reset to default
 	}
 	
 	// Draw movement range
@@ -2481,10 +2495,12 @@ function render() {
 	// Draw selected hex outline
 	if (selectedHex) {
 		const { x, y } = axialToPixel(selectedHex.q, selectedHex.r);
-		drawHexagonPath(x, y);
-		ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+		drawHexagonPathLines(x, y);
+		ctx.strokeStyle = 'rgba(255,255,255, 0.2)';
 		ctx.lineWidth = 3;
+		ctx.lineCap = 'round';
 		ctx.stroke();
+		ctx.lineCap = 'butt'; // reset to default
 	}
 	
 	// Draw placement highlight
