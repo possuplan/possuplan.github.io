@@ -14,6 +14,37 @@
 	<script src="config.js"></script> <!-- LOCAL=true on public, false on my pc config -->
 
 	<script>
+	
+	/*
+	game logic:
+	click next turn:
+	savings = savings + (income - wages)
+	
+	initially: (1 peasant (wage 3))
+	
+	savings: 21
+	income: 5
+	wages: -3
+	balance: 23
+	
+	click buy knight (cost 20, wage 8) ->
+	savings: 1
+	income: 5
+	wages: -11
+	balance: -5
+	
+	place knight: (1 peasant, 1 knight)
+	*all units dies*
+	savings: 0
+	income: 5
+	wages: 0
+	balance: 5
+	
+	makes little sense to allow placing unit if the result is everyone dying. 
+	unless you claim new hex which increases your income by 1, and makes income-wages zero. 
+	or if joining two pools together to get the balance positive.
+	
+	*/
 	//////////////////////////////////////////////
 	//
 	//  force to public server here for quick testing:
@@ -2041,11 +2072,12 @@ function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
 	ctx.fill();
 }
 
+let waterShadingHeightHalf = 12; // half of the line height.
+let waterShadingHeight = waterShadingHeightHalf*2;
 
 
 function drawWaterShading(px, py, drawLines){
 	if(drawLines.length > 0){
-		let hlen = 12; // half of the line height.
 		let da = Math.PI / 2;
 		for(let i = 0; i < drawLines.length; i++){
 			let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
@@ -2053,7 +2085,7 @@ function drawWaterShading(px, py, drawLines){
 			let p2 = getHexAnglePos(ival+1, px, py);
 	
 			ctx.fillStyle = 'rgba(0,0,0, 0.6)';
-			drawCalligraphyLine(p1.x, p1.y+hlen, p2.x, p2.y+hlen, hlen*2, da);
+			drawCalligraphyLine(p1.x, p1.y+waterShadingHeightHalf, p2.x, p2.y+waterShadingHeightHalf, waterShadingHeight, da);
 		}
 	}
 }
@@ -2137,11 +2169,12 @@ function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight){
 
 // check if object/tile should be skipped from drawing:
 // returns true if out of screen.
-function checkCulling(x, y){
+// topEdgeOffset: top edge offset.
+function checkCulling(x, y, topEdgeOffset = 0){
 	const screenX = x * viewport.zoom + viewport.x;
 	const screenY = y * viewport.zoom + viewport.y;
 	if (screenX < -HEX_SIZE * viewport.zoom || screenX > canvas.width + HEX_SIZE * viewport.zoom ||
-		screenY < -HEX_SIZE * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+		screenY < (-HEX_SIZE+topEdgeOffset) * viewport.zoom || screenY > canvas.height + HEX_SIZE * viewport.zoom) {
 		return true;
 	}
 	return false;
@@ -2211,7 +2244,7 @@ function render() {
 	trackFPS();
 
 	// calculate current mip level:
-	zoomMipLevel = getZoomMipLevel(1);
+	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
 	
   
@@ -2252,7 +2285,7 @@ function render() {
 		const { x, y } = axialToPixel(q, r);
 
 		// --- Culling Check ---
-		if(checkCulling(x, y)){
+		if(checkCulling(x, y, -waterShadingHeight)){
 			continue;
 		}
 		
