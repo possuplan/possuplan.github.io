@@ -25,7 +25,7 @@
 
     
 <style>
-/* --- GLOBAL STYLES --- */
+
 :root {
 	--bg-color: #1a1a1a;
 	--text-color: #eee;
@@ -98,17 +98,7 @@ input[type="text"], input[type="number"], select {
 	border-radius: 6px;
 	font-size: 16px;
 }
-/*
-input[type="text"], input[type="number"], select {
-	width: 100%;
-	padding: 12px;
-	background-color: var(--surface-color);
-	border: 1px solid var(--border-color);
-	border-radius: 8px;
-	color: var(--primary-text);
-	font-size: 16px;
-}
-*/
+
 
 button {
 	width: 100%;
@@ -305,7 +295,7 @@ label {
 }
 
 #ui-left {
-	display: flex;
+	display: none; /*flex when visible*/
 	flex-direction: column;
 	gap: 10px;
 	width: 200px;
@@ -623,29 +613,7 @@ label {
 }
 
 
-/*
-#chat-ui {
-	display: flex;
-	flex-direction: column;
-	height: 100px;
-	
-	border-top-right-radius: 8px;
-	border-bottom-right-radius: 8px;
-	
-	padding-left: 4px;
-}
 
-#chat-messages {
-	flex-grow: 1;
-	overflow-y: auto;
-	font-size: 13px;
-	padding: 5px;
-	background: rgba(0,0,0,0.2);
-	border-radius: 4px;
-	margin-bottom: 5px;
-	margin-top: 3px;
-}
-*/
 
 input.disabled {
 	cursor: not-allowed;
@@ -875,7 +843,7 @@ input.disabled {
 			<div class="button-row" id="ui-right-button-row2-id">
 				<button id="end-turn-btn" class="gamebutton primary">EndTurn</button>
 				<button id="undo-btn" class="gamebutton redbutton">Undo</button>
-				<button id="toggle-ui-btn" class="gamebutton active">Chat</button>
+				<button id="toggle-ui-btn" class="gamebutton">Chat</button>
 			</div>
 		</div>
 		
@@ -1185,15 +1153,8 @@ const MIN_ZOOM = 0.02; // smaller value = more zoomed out
 const MAX_ZOOM = 20;   // bigger value = more zoomed in
 let zoomMipLevel = 0;
 
-/*
-let bgImage = new Image();
-let bgPattern = null;
 
-bgImage.src = 'images/water.jpg';
-bgImage.onload = () => {
-	bgPattern = ctx.createPattern(bgImage, 'repeat');
-};
-*/
+
 
 function hexToHSL(hex) {
   // Remove '#' if present
@@ -1433,7 +1394,6 @@ let gameState = {
 		bounds: {},
 		tiles: {}, 
 		tilesData: [], 
-		outlines: {}, // tiles[`${q},${r}`] = [0,4,5] (show outlines for: bottom left, bottom, bottom right)
 	},
 	units: [], // { id, type: 'Peasant', ownerId, level, q, r, hasMoved }
 	turn: {
@@ -1459,7 +1419,6 @@ function resetGameState(){
 	gameState.map.bounds = {};
 	gameState.map.tiles = {};
 	gameState.map.tilesData = [];
-	gameState.map.outlines = {};
 	
 	// reset only required stuff for the player:
 	localPlayer.isSpectator = false;
@@ -1892,7 +1851,7 @@ function hideTopFloatUi(){
 }
 
 
-let showTopLeftUi = true;
+let showTopLeftUi = false;
 
 function toggleUiTopLeft(toggleValue = null){
 	if(toggleValue === null){
@@ -2007,13 +1966,13 @@ function hexRound(q, r) {
 }
 
 function getHexNeighbors(q, r) {
-	return [
-		{ q: q + 1, r: r },     // bottom right 0
-		{ q: q + 1, r: r - 1 }, // top right    1
-		{ q: q,     r: r - 1 }, // top          2
-		{ q: q - 1, r: r },     // top left     3
-		{ q: q - 1, r: r + 1 }, // bottom left  4
-		{ q: q,     r: r + 1 }, // bottom       5
+	return [                    //              i for "angle index" calculations
+		{ q: q,     r: r + 1 }, // bottom       0
+		{ q: q - 1, r: r + 1 }, // bottom left  1
+		{ q: q - 1, r: r },     // top left     2
+		{ q: q,     r: r - 1 }, // top          3
+		{ q: q + 1, r: r - 1 }, // top right    4
+		{ q: q + 1, r: r },     // bottom right 5
 	];
 }
 
@@ -2047,9 +2006,9 @@ function initCanvas() {
 
 
 function getHexAnglePos(i, px, py){
-	const angle = 2 * Math.PI / 6 * (i + 0.5); // +0.5 for pointy top
-	const x = px + HEX_SIZE * Math.cos(angle+Math.PI/2);
-	const y = py + HEX_SIZE * Math.sin(angle+Math.PI/2);
+	const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
+	const x = px + HEX_SIZE * Math.cos(angle);
+	const y = py + HEX_SIZE * Math.sin(angle);
 	return {x, y};
 }
 
@@ -2061,7 +2020,6 @@ function drawHexLine(i, px, py){
 	ctx.lineTo(p2.x, p2.y);
 }
 
-const neighToi = [4, 3, 2, 1, 0, 5]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
 
 
 
@@ -2086,11 +2044,11 @@ function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
 
 
 function drawWaterShading(px, py, drawLines){
-	let hlen = 7; // half of the line height.
-	let da = Math.PI / 2;
 	if(drawLines.length > 0){
+		let hlen = 12; // half of the line height.
+		let da = Math.PI / 2;
 		for(let i = 0; i < drawLines.length; i++){
-			let ival = neighToi[drawLines[i]];
+			let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
 			let p1 = getHexAnglePos(ival, px, py);
 			let p2 = getHexAnglePos(ival+1, px, py);
 	
@@ -2105,7 +2063,7 @@ function drawHexagonPathLines(px, py, drawLines = null) {
 		if(drawLines.length > 0){
 			ctx.beginPath();
 			for(let i = 0; i < drawLines.length; i++){
-				let ival = neighToi[drawLines[i]];
+				let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
 				drawHexLine(ival, px, py);
 			}
 			//ctx.closePath(); // only needed for drawing filled hex.
@@ -2129,9 +2087,9 @@ function drawHexagonPathLines(px, py, drawLines = null) {
 function drawHexagonPath(px, py) {
 	ctx.beginPath();
 	for (let i = 0; i < 6; i++) {
-		const angle = 2 * Math.PI / 6 * (i + 0.5); // +0.5 for pointy top
-		const x = px + HEX_SIZE * Math.cos(angle+Math.PI/2);
-		const y = py + HEX_SIZE * Math.sin(angle+Math.PI/2);
+		const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
+		const x = px + HEX_SIZE * Math.cos(angle);
+		const y = py + HEX_SIZE * Math.sin(angle);
 		if(i === 0){
 			ctx.moveTo(x, y);
 		}else{
@@ -2189,7 +2147,6 @@ function checkCulling(x, y){
 	return false;
 }
 
-let previous_drawnTiles = 0;
 
 
 
@@ -2220,6 +2177,33 @@ function trackFPS(){
 }
 
 
+function drawObject(ctx, x, y, objectName){
+	let imageKey = objectName;
+	const img = getImage(imageKey);
+	
+	if (img && img.complete && img.width > 0) {
+		// Draw the image centered and scaled
+		let imginfo = getImageSettings(imageKey);
+		let scale = imginfo.scale*0.9; // 0.9 global scale
+		let ratio = img.height/img.width;
+		let drawSize = 50;
+		let hsize = drawSize/2;
+		let offsetX = imginfo.offsetX;
+		let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+		let dx = x-((hsize-offsetX)*scale);
+		let dy = y-((hsize-offsetY+10)*ratio*scale);
+		let dw = drawSize*scale;
+		let dh = drawSize*ratio*scale;
+		
+		//ctx.drawImage(img, dx, dy, dw, dh);
+		drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
+	}
+}
+
+
+let previous_drawnTiles = 0;
+
+
 // rendermap
 function render() {
 	if (!gameState.settings.gameStarted) return;
@@ -2248,7 +2232,7 @@ function render() {
 		ctx.fillStyle = pattern;
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 	}else{
-		
+		// default clear without textures.
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 	}
 
@@ -2305,9 +2289,8 @@ function render() {
 		// draw map outlines:
 		// renderoutlines render outlines
 		if(tile.type === 'land') {
-			const outline = getOutlineAt(q, r);
-			if(outline.length > 0){
-				drawWaterShading(x, y, outline);
+			if(tile.outline){
+				drawWaterShading(x, y, tile.outline);
 			}
 		}
 		
@@ -2316,9 +2299,10 @@ function render() {
 		
 		// --- Start Drawing Hex ---
 
+		// anything inside save/restore is clipped to the hex shape.
 		ctx.save(); // needed for hex drawing.
 		
-		// 1. Define the hex path
+		// Define the hex path
 		drawHexagonPath(x, y);
 		ctx.fillStyle = fallbackColor;
 		ctx.fill();
@@ -2383,76 +2367,13 @@ function render() {
 			}
 			
 		}
-		// 5. Restore context (removes clip)
+		// Restore context (removes clip)
 		ctx.restore();
 		
 		
-		// 6. Draw objects (Trees/Grass) on top
-		// (This code is moved from its old location)
-		if (tile.object === 'tree') {
-			let imageKey = tile.object;
-			const img = getImage(imageKey);
-			
-			if (img && img.complete && img.width > 0) {
-				// Draw the image centered and scaled
-				let imginfo = getImageSettings(imageKey);
-				let scale = imginfo.scale*0.9; // 0.9 global scale
-				let ratio = img.height/img.width;
-				let drawSize = 50;
-				let hsize = drawSize/2;
-				let offsetX = imginfo.offsetX;
-				let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-				let dx = x-((hsize-offsetX)*scale);
-				let dy = y-((hsize-offsetY+10)*ratio*scale);
-				let dw = drawSize*scale;
-				let dh = drawSize*ratio*scale;
-				
-				//ctx.drawImage(img, dx, dy, dw, dh);
-				drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
-			}
-
-		} else if (tile.object === 'grass') {
-			let imageKey = tile.object;
-			const img = getImage(imageKey);
-			
-			if (img && img.complete && img.width > 0) {
-				// Draw the image centered and scaled
-				let imginfo = getImageSettings(imageKey);
-				let scale = imginfo.scale*0.9; // 0.9 global scale
-				let ratio = img.height/img.width;
-				let drawSize = 50;
-				let hsize = drawSize/2;
-				let offsetX = imginfo.offsetX;
-				let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-				let dx = x-((hsize-offsetX)*scale);
-				let dy = y-((hsize-offsetY+10)*ratio*scale);
-				let dw = drawSize*scale;
-				let dh = drawSize*ratio*scale;
-				
-				//ctx.drawImage(img, dx, dy, dw, dh);
-				drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
-			}
-		} else if (tile.object === 'dead') {
-			let imageKey = tile.object;
-			const img = getImage(imageKey);
-			
-			if (img && img.complete && img.width > 0) {
-				// Draw the image centered and scaled
-				let imginfo = getImageSettings(imageKey);
-				let scale = imginfo.scale*0.9; // 0.9 global scale
-				let ratio = img.height/img.width;
-				let drawSize = 50;
-				let hsize = drawSize/2;
-				let offsetX = imginfo.offsetX;
-				let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-				let dx = x-((hsize-offsetX)*scale);
-				let dy = y-((hsize-offsetY+10)*ratio*scale);
-				let dw = drawSize*scale;
-				let dh = drawSize*ratio*scale;
-				
-				//ctx.drawImage(img, dx, dy, dw, dh);
-				drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
-			}
+		// Draw objects (trees etc) on top
+		if (tile.object) {
+			drawObject(ctx, x, y, tile.object);
 		}
 	}
 	
@@ -2774,7 +2695,7 @@ function getTileAt(q, r) {
 }
 
 
-
+// if tile doesnt exist: new tile created, if not: modifying the tile.
 function setTileAt(q, r, tileData) {
 	let tileKey = `${q},${r}`;
 
@@ -2790,12 +2711,10 @@ function setTileAt(q, r, tileData) {
 	}
 }
 
-function getOutlineAt(q, r) {
-	return gameState.map.outlines[`${q},${r}`];
-}
 
+// will set water outline to the tile, or if doesnt exist yet, adds new tile with that info.
 function setOutlineAt(q, r, lines) {
-	gameState.map.outlines[`${q},${r}`] = lines;
+	setTileAt(q, r, {outline: lines});
 }
 
 function getUnitAt(q, r) {
@@ -3725,26 +3644,7 @@ function ai_find_best_move(player){
 					toR: randomMove.r
 				};
 			}
-			/*
-			let possibleMoves = [];
-			for(let n = 0; n < neigh.length; n++){
-				let nq = neigh[n].q;
-				let nr = neigh[n].r;
-				// MODIFICATION: Pass the actual player object to isMoveValid
-				const moveCheck = isMoveValid(unit, {q: nq, r: nr}, player);
-				if (moveCheck.valid) {
-					possibleMoves.push({q: nq, r: nr});
-				}
-			}
-			if(possibleMoves.length > 0){
-				let randomMove = randomItem(possibleMoves);
-				return {
-					type: 'action_move',
-					unitId: unit.id,
-					toQ: randomMove.q,
-					toR: randomMove.r
-				};
-			}*/
+
 		}
 	}
 	
@@ -3897,24 +3797,6 @@ function spectatorUiMode(){
 	undoBtn.style.display = "none";
 	endTurnBtn.style.display = "none";
 
-
-/*		<div id="ui-right" class="ui-panel">
-			<div class="top-row" id="ui-right-top-row-id">
-				<div id="turn-info"></div>
-				<div id="player-savings"></div>
-			</div>
-
-			<div class="button-row" id="ui-right-button-row1-id">
-				<button id="sell-unit-btn" class="gamebutton">Sell</button>
-				<button id="build-castle-btn" class="gamebutton">Castle</button>
-				<button id="build-soldier-btn" class="gamebutton">Warrior</button>
-			</div>
-			<div class="button-row" id="ui-right-button-row2-id">
-				<button id="toggle-ui-btn" class="gamebutton active">Chat</button>
-				<button id="undo-btn" class="gamebutton redbutton">Undo</button>
-				<button id="end-turn-btn" class="gamebutton primary">EndTurn</button>
-			</div>
-		</div>*/
 }
 
 
@@ -5063,12 +4945,11 @@ function generateMap(width, height) {
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
 		const r = tile.r;
-		//const lines = gameState.map.outlines[key];
 		let lines = [];
 		let neigh = getHexNeighbors(q, r);
 		for(let i = 0; i < neigh.length; i++){
 			// skip topleft,top,topright neighbours:
-			if(i > 0 && i < 4){
+			if(i > 1 && i < 5){
 				continue;
 			}
 			let n = neigh[i];
@@ -5332,19 +5213,7 @@ window.addEventListener('beforeunload', (e) => {
   navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
 });
 
-/*
-// handle window closing, send message that peer quitted:
-window.addEventListener('beforeunload', (e) => {
-e.preventDefault(); // Required in some browsers
-  e.returnValue = 'sure?'; // Chrome shows default confirmation
-  if (peer && !peer.destroyed) {
-    peer.destroy(); // closes local peer connection
-  }
 
-  // Notify your server immediately
-  navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
-});
-*/
 
 
 // =================================================================
