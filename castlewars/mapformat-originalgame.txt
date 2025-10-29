@@ -1,0 +1,43 @@
+
+first line: width height
+
+left side = right on the game.
+top side = top on the game.
+
+values:
+                             first 5 bits
+owner 0 = no owner.
+
+ -1 = water
+
+  1 00000001 owner 1 empty   0
+  4 00000100 owner 1 peasant
+
+ 41 00101001 owner 2 empty   5
+ 44 00101100 owner 2 peasant
+
+ 81 01010001 owner 3 empty   10
+ 84 01010100 owner 3 peasant
+
+121 01111001 owner 4 empty   15
+124 01111100 owner 4 peasant 
+
+161 10100001 owner 5 empty   20
+164 10100100 owner 5 peasant 
+
+201 11001001 owner 6 empty   25
+204 11001100 owner 6 peasant 
+
+241 11110001 owner 0 empty   30
+243 11110011 owner 0 tree
+
+
+values 2 and 3 probably are cross and grass in that order.
+1 = empty, 
+2 = cross, 
+3 = grass,
+and then special for player 0 (241):
+3 = tree
+
+
+
