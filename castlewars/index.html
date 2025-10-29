@@ -295,6 +295,10 @@ label {
 	overflow-y: auto;
 }
 
+#debug-ui {
+	pointer-events: none;
+    padding-left: 6px;
+}
 
 #ui-left {
 	display: flex;
@@ -678,6 +682,8 @@ input.disabled {
 </head>
 <body>
 
+<input type="hidden" id="dirty-flag">
+
 <!-- Popup -->
 <div class="popup-overlay" id="map-popup-overlay">
 	<div class="popup" id="map-popup">
@@ -839,10 +845,15 @@ input.disabled {
 	
 	<div id="game-ui">
 		<div id="ui-left">
+			<div id="ui-menu" class="ui-panel">
+				<button id="quit-game-btn" class="gamebutton redbutton">Quit game</button>
+			</div>
 			<div id="player-ui-list" class="ui-panel"></div>
 			<div id="chat-ui" class="ui-panel">
 				<div id="chat-messages"></div>
 				<input type="text" id="chat-input" placeholder="Type message..." disabled>
+			</div>
+			<div id="debug-ui">
 			</div>
 		</div>
 		
@@ -938,16 +949,6 @@ function connectToServer(serverUrl) {
   console.log('Connected to EventSource at', serverUrl);
 }
 
-/*
-const eventSource = new EventSource('https://peerjs-server-j9al.onrender.com/events');
-
-eventSource.onmessage = (event) => {
-  if (event.data === 'games_updated') {
-    console.log('Games updated — reloading list...');
-    fetchOpenGames(currentServerIndex); // or your own function
-  }
-};
-*/
 
 
 
@@ -988,8 +989,8 @@ async function fetchOpenGames(serverIndex) {
 			}
 		}
 	}
-    console.warn('Open games:');
-    console.warn(games);
+    console.log('Open games:');
+    console.log(games);
 
     // Clear existing options
     gamesListInput.innerHTML = '';
@@ -1405,12 +1406,13 @@ let localPlayer = {
 let db = null;
 let loadedGameState = null;
 
+
 // --- GAME STATE (synced by host) ---
 let gameState = {
-	gameStarted: false,
-	gameOver: false,
 	settings: {
-		mapWidth: 50,
+		gameStarted: false,
+		gameOver: false,
+		mapWidth: 50, // default input values for map generation on ui
 		mapHeight: 50,
 		mapScale: 1,
 		startingMoney: 1000, // default 0 actually. for testing 1000.
@@ -1419,7 +1421,14 @@ let gameState = {
 	players: [], // { id, name, color, isSpectator, isAI }
 	map: { // Using axial coordinates (q, r)
 		// tiles[`${q},${r}`] = { type: 'land'/'water', ownerId: null, object: 'tree'/'grass'/'dead'/null, savings: 0 }
+		// these are initialized when map is generated:
+		width: 0,
+		height: 0,
+		imageData: "",
+		name: "",
+		bounds: {},
 		tiles: {}, 
+		tilesData: [], 
 		outlines: {}, // tiles[`${q},${r}`] = [0,4,5] (show outlines for: bottom left, bottom, bottom right)
 	},
 	units: [], // { id, type: 'Peasant', ownerId, level, q, r, hasMoved }
@@ -1429,6 +1438,32 @@ let gameState = {
 	},
 	// Economy pools are calculated, not stored directly
 };
+
+function resetGameState(){
+	// TODO:
+	// todo: causes weird bugs when the client player goes to start page and starts hosting his own room.
+	
+	// reset only required stuff, keep map intact so it can be reused.
+	gameState.settings.gameStarted = false;
+	gameState.settings.gameOver = false;
+	gameState.players = [];
+	gameState.units = [];
+	gameState.turn.currentPlayerIndex = 0;
+	gameState.turn.turnNumber = 1;
+	
+	// only reset map data that is generated on game start:
+	gameState.map.bounds = {};
+	gameState.map.tiles = {};
+	gameState.map.tilesData = [];
+	gameState.map.outlines = {};
+	
+	// reset only required stuff for the player:
+	localPlayer.isSpectator = false;
+	localPlayer.isHost = false;
+	localPlayer.isDead = false;
+	localPlayer.isAI = false;
+}
+
 
 // --- CLIENT-SIDE STATE (not synced) ---
 let canvas, ctx;
@@ -2122,17 +2157,10 @@ function drawHexagonOutlines(q, r, myId = -1){
 let drawInfiniteWater = 1;
 let drawWaterTiles = 0;
 
-let logged = 0;
 
 
 function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight){
 	const imgObj = imageAssets[imageName];
-	if(!logged){
-		console.warn("imageName: "+imageName);
-		console.warn("imgObj");
-		console.warn(imgObj);
-		logged = 1;
-	}
 	const mip = getMipmapForZoom(imgObj);
 	ctx.drawImage(mip, dx, dy, dWidth, dHeight);
 }
@@ -2153,9 +2181,38 @@ let previous_drawnTiles = 0;
 
 
 
+const debugUi = document.getElementById("debug-ui");
+
+let lastTime = 0;
+let frameCount = 0;
+
+
+function trackFPS(){
+	let timestamp = Date.now();
+	if (!lastTime) lastTime = timestamp;
+
+	const delta = timestamp - lastTime;
+  
+	if (delta >= 2000) {
+		let fps = frameCount/(delta/1000);
+		console.log("FPS: "+fps.toFixed(2));
+		debugUi.textContent = "FPS: "+fps.toFixed(0);
+		
+		
+		frameCount = 0;
+		lastTime = timestamp;
+	}else{
+		frameCount++;
+	}
+
+}
+
+
 // rendermap
 function render() {
-	if (!gameState.gameStarted) return;
+	if (!gameState.settings.gameStarted) return;
+	
+	trackFPS();
 
 	// calculate current mip level:
 	zoomMipLevel = getZoomMipLevel(1);
@@ -2387,8 +2444,9 @@ function render() {
 		}
 	}
 	
+	// log how many tiles were drawn to test culling working:
 	if(previous_drawnTiles != drawnTiles){
-		console.log("drawnTiles = "+drawnTiles);
+		//console.log("drawnTiles = "+drawnTiles);
 		previous_drawnTiles = drawnTiles;
 	}
 	
@@ -2729,7 +2787,7 @@ function getUnitAt(q, r) {
 }
 
 function getMyTurnPlayer() {
-	if (!gameState.gameStarted) return null;
+	if (!gameState.settings.gameStarted) return null;
 	const player = gameState.players[gameState.turn.currentPlayerIndex];
 	return player;
 }
@@ -2740,7 +2798,7 @@ function isMyTurn() {
 }
 
 function updateGameUI() {
-	if (!gameState.gameStarted) return;
+	if (!gameState.settings.gameStarted) return;
 	
 	const myPlayer = getMyPlayer();
 	const myTurnPlayer = getMyTurnPlayer();
@@ -3682,7 +3740,7 @@ function ai_find_best_move(player){
 // This function recursively calls itself with a delay to execute AI moves sequentially.
 // moveai
 function executeAIMoveSequentially(player) {
-    if (!localPlayer.isHost || gameState.gameOver) return;
+    if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
     // Double-check if it's still this AI's turn
     const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
@@ -3715,7 +3773,7 @@ function executeAIMoveSequentially(player) {
 
 function checkForAITurn(){
 	// Only the host should control the AI
-    if (!localPlayer.isHost || gameState.gameOver) return;
+    if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
     const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
 
@@ -3854,6 +3912,7 @@ function handleHostData(data) {
 	
 	switch (data.type) {
 		case 'game_start':
+			markDirty();
 			gameState = data.state;
 			showPage('game');
 			updateGameUI();
@@ -3953,7 +4012,7 @@ function handleClientData(peerId, data) {
 		case 'join':
 			player.name = data.name;
 			
-			if (!gameState.gameStarted) {
+			if (!gameState.settings.gameStarted) {
 				player.color = getNextFreeColor();
 				player.isSpectator = data.isSpectator;
 			} else {
@@ -3981,13 +4040,16 @@ function handleClientData(peerId, data) {
 				color: player.color
 			});
 			break;
+		case 'host_quit':
+			console.warn("host has quit the game. showing popup to continue game or quit.");
+		break;
 		
 		// All game actions
 		case 'action_move':
 		case 'action_build':
 		case 'action_undo':
 		case 'action_end_turn':
-			if (gameState.gameStarted) {
+			if (gameState.settings.gameStarted) {
 				executeAction(peerId, data);
 			}
 			break;
@@ -3996,6 +4058,11 @@ function handleClientData(peerId, data) {
 
 
 function newPeer(myPeerId = null){
+	if(myPeerId){
+		console.log("newPeer(): myPeerId = "+myPeerId);
+	}else{
+		console.log("newPeer(): myPeerId = null");
+	}
 	selectedServerIndex = parseInt(serverNameInput.value, 10);
 	let selectedServer = serversList[selectedServerIndex];
 
@@ -4007,7 +4074,6 @@ function newPeer(myPeerId = null){
 		console.warn(`connecting to peerjs.com`);
 	}
 	console.warn(selectedServer.config);
-	
 }
 
 // =================================================================
@@ -4015,14 +4081,9 @@ function newPeer(myPeerId = null){
 // =================================================================
 function initPeerJS() {
 	try {
-		
-		
 		// This peer is for clients, or for the host to override
 		newPeer();
-		//peer = new Peer(null, {
-		//	debug: 2 // Set to 0 for production
-		//});
-		
+
 		peer.on('open', (id) => {
 			myPeerId = id;
 			localPlayer.id = id;
@@ -4067,7 +4128,7 @@ function setupConnection(conn) {
 			};
 			gameState.players.push(newPlayer);
 			
-			if (gameState.gameStarted) {
+			if (gameState.settings.gameStarted) {
 				// Send full game state to new player (who will join as spec)
 				conn.send({ type: 'full_state', state: gameState });
 			} else {
@@ -4097,7 +4158,7 @@ function setupConnection(conn) {
 				gameState.players = gameState.players.map(p =>
 					p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
 				);
-				if (gameState.gameStarted) {
+				if (gameState.settings.gameStarted) {
 					// let others play if quitter was in turn:
 					if(conn.peer == gameState.players[gameState.turn.currentPlayerIndex].id){
 						advanceToNextPlayer();
@@ -4114,11 +4175,20 @@ function setupConnection(conn) {
 			// We were disconnected from host
 			//alert('Disconnected from host. Returning to start page.');
 			console.warn('Disconnected from host. Returning to start page.');
-			showPage('start');
-			// Reset state?
+			let answer = confirm("Host has left the game, quit game?");
+			if(answer){
+				//showPage('start');
+				// Reset state?
+				// todo: causes weird bugs when the client player goes to start page and starts hosting his own room.
+				//resetGameState();
+			}else{
+				// maybe set some UI element to display "host quitted" or something.
+			}
 		}
 	});
 }
+
+
 
 // Helper function for joinGame
 function executeJoin(hostPeerId) {
@@ -4657,8 +4727,8 @@ function setLoadedMapAndApplyScale(){
 	//loadedmap = customMaps[loadedMapCategory][loadedMapIndex];
 	
 	loadedmap = structuredClone(customMaps[loadedMapCategory][loadedMapIndex]);
-	console.warn("loadedmap");
-	console.warn(loadedmap);
+	//console.warn("loadedmap");
+	//console.warn(loadedmap);
 	
 
 	
@@ -4831,7 +4901,8 @@ function loadParsedMap(parsedMap, compact = false){
 	gameState.map.imageData = parsedMap.imageData;
 	gameState.map.name = parsedMap.name;
 	
-	console.warn(parsedMap);
+	console.log("parsedMap");
+	console.log(parsedMap);
 	
 	for (let q = -Math.floor(width/2), y = 0; q <= Math.floor(width/2); q++, y++) {
 		let roff = 0;
@@ -4864,7 +4935,7 @@ function loadParsedMap(parsedMap, compact = false){
 		}
 	}
 	
-	
+	// find map actual bounds:
 	let minQ = 9999999;
 	let maxQ = -9999999;
 	let minR = 9999999;
@@ -4879,6 +4950,7 @@ function loadParsedMap(parsedMap, compact = false){
 		if(r > maxR) maxR = r;
 	}
 	gameState.map.bounds = {q: {min:minQ, max:maxQ}, r: {min:minR, max:maxR}};
+	
 }
 
 function getMapScale(){
@@ -5016,16 +5088,14 @@ function spawnPlayers() {
 			landHexes.push({q, r});
 		}
 	}
-	console.warn("playersToSpawn");
-	console.warn(playersToSpawn);
+
 	// Shuffle
 	landHexes.sort(() => Math.random() - 0.5);
 	
 	for (const player of playersToSpawn) {
 		let spawnHex = null;
 		let neighbors = [];
-		console.warn("player of playersToSpawn");
-		console.warn(player);
+
 		// Find a spawn point with at least 4 land neighbors
 		let found = false;
 		while (!found && landHexes.length > 0) {
@@ -5044,9 +5114,6 @@ function spawnPlayers() {
 			// Just use the last one we tried
 			if (!spawnHex) continue; // No land hexes left?
 		}
-		
-		console.warn("player of playersToSpawn111");
-		console.warn(player);
 		
 		// Claim center hex
 		const centerTile = getTileAt(spawnHex.q, spawnHex.r);
@@ -5082,8 +5149,6 @@ function spawnPlayers() {
 				hasMoved: false
 			};
 			
-			console.warn("peasant of playersToSpawn222");
-			console.warn(peasant);
 			gameState.units.push(peasant);
 		}
 	}
@@ -5093,6 +5158,7 @@ function spawnPlayers() {
 }
 
 function startGame() {
+
 	if (!localPlayer.isHost) return;
 	
 	console.log("Starting game...");
@@ -5100,7 +5166,7 @@ function startGame() {
 	if (loadedGameState) {
 		console.log("Starting from loaded state.");
 		gameState = loadedGameState;
-		gameState.gameStarted = true;
+		gameState.settings.gameStarted = true;
 		
 		// Match current players to loaded players
 		const newPlayerList = [];
@@ -5166,7 +5232,7 @@ function startGame() {
 			}
 		}
 		
-		gameState.gameStarted = true;
+		gameState.settings.gameStarted = true;
 		generateMap(gameState.settings.mapWidth, gameState.settings.mapHeight);
 		spawnPlayers();
 		
@@ -5217,19 +5283,60 @@ document.addEventListener('keydown', (event) => {
 	// dont handle enter if it came from chat input.
 	if(event.target.id !== 'chat-input'){
 	  if (event.key === 'Enter') {
-		if(gameState.gameStarted){
+		if(gameState.settings.gameStarted){
 			toggleUiTopLeft();
 		}
 	  }
 	}
 });
 
+const dirtyInput = document.getElementById('dirty-flag');
+
+// Whenever you want the page to be “dirty” (e.g., game started)
+function markDirty() {
+  dirtyInput.value = Date.now(); // any change will make the browser consider it modified
+}
+
+// When the game ends, you can reset it
+function clearDirty() {
+  dirtyInput.value = '';
+}
+
+window.addEventListener('beforeunload', (e) => {
+  // Only trigger if dirty
+  if (dirtyInput.value) {
+    e.preventDefault();
+    e.returnValue = 'Quit game?';
+  }
+   if (peer && !peer.destroyed) {
+    peer.destroy(); // closes local peer connection
+  }
+
+  // Notify your server immediately
+  navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
+});
+
+/*
+// handle window closing, send message that peer quitted:
+window.addEventListener('beforeunload', (e) => {
+e.preventDefault(); // Required in some browsers
+  e.returnValue = 'sure?'; // Chrome shows default confirmation
+  if (peer && !peer.destroyed) {
+    peer.destroy(); // closes local peer connection
+  }
+
+  // Notify your server immediately
+  navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
+});
+*/
+
+
 // =================================================================
 // --- EVENT LISTENERS
 // =================================================================
 window.addEventListener('DOMContentLoaded', async () => {
 	initDB();
-	initPeerJS();
+
 	await loadImages();
 	
 	hostBtn.disabled = true;
@@ -5394,7 +5501,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 			sendToHost({ type: 'action_undo' });
 		}
 	};
-
+	
+	initPeerJS();
+	console.log("PeerJS ready");
 });
 </script>
 </body>
