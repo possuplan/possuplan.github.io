@@ -320,9 +320,9 @@ label {
 
 .ui-panel-trans {
 	pointer-events: auto;
-	padding: 2px 6px 2px 6px;
-	max-height: 90vh;
-	overflow-y: auto;
+	----padding: 2px 6px 2px 6px;
+	---max-height: 90vh;
+	---overflow-y: auto;
 }
 
 #debug-ui {
@@ -357,12 +357,25 @@ label {
 /* Top row: texts side by side */
 #ui-right .top-row {
 	display: flex;
-	flex-direction: row;
+	flex-direction: column;
 	justify-content: space-between; /* turn-info left, savings right */
-	align-items: center;
-	gap: 10px;
-	
+	align-items: flex-end;
+	gap: 0px;
+	padding-right:10px;
     margin-bottom: 10px;
+}
+
+.ui-panel-controls {
+    border-top-left-radius: 10px;
+    padding-top: 7px;
+}
+
+#turn-info {
+	padding: 4px;
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	pointer-events: none;
 }
 
 /* Optional: style buttons as a row */
@@ -715,12 +728,14 @@ input.disabled {
 }
 
 #toggle-ui-btn {
-	font-size:16px;
+	font-size:30px;
 }
 #sell-unit-btn {
-	font-size:16px;
+    font-size: 27px;
 }
 #end-turn-btn {
+    font-size: 27px;
+    font-weight: normal;
 }
 	
 </style>
@@ -813,7 +828,8 @@ input.disabled {
 		</div>
 		
 		<div class="input-group">
-			<button id="load-map-btn">Load Map</button>
+			<button id="load-random-map-btn">Random map</button>
+			<button id="load-map-btn">Select Map</button>
 			<button id="load-game-btn" style="display:none">Load Game</button>
 		</div>
 		
@@ -888,6 +904,8 @@ input.disabled {
 		<div id="top-float-ui-messages"></div>
 	</div>
 	
+	<div id="turn-info"></div>
+	
 	<div id="game-ui">
 		<div id="ui-left">
 			<div id="ui-menu" class="ui-panel">
@@ -902,21 +920,29 @@ input.disabled {
 			</div>
 		</div>
 		
-		<div id="ui-right" class="ui-panel">
-			<div class="top-row" id="ui-right-top-row-id">
-				<div id="turn-info"></div>
-				<div id="player-savings"></div>
+		<div id="ui-right">
+			
+			<div>
+				<div class="top-row" id="ui-right-top-row-id">
+					<div id="player-savings">Savings: 0</div>
+					<div id="player-income">Income: 0</div>
+					<div id="player-wages">Wages: 0</div>
+					<div id="player-balance">Balance: 0</div>
+				</div>
 			</div>
+			
+			<div class="ui-panel ui-panel-controls">
 
-			<div class="button-row" id="ui-right-button-row1-id">
-				<button id="sell-unit-btn" class="gamebutton" title="Sell warrior">Sell</button>
-				<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
-				<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
-			</div>
-			<div class="button-row" id="ui-right-button-row2-id">
-				<button id="end-turn-btn" class="gamebutton primary" title="End turn">End Turn</button>
-				<button id="undo-btn" class="gamebutton redbutton" title="Undo">⤺</button>
-				<button id="toggle-ui-btn" class="gamebutton" title="Open chat">Chat</button>
+				<div class="button-row" id="ui-right-button-row1-id">
+					<button id="sell-unit-btn" class="gamebutton" title="Sell warrior">💲</button>
+					<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
+					<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
+				</div>
+				<div class="button-row" id="ui-right-button-row2-id">
+					<button id="end-turn-btn" class="gamebutton primary" title="End turn">🔄︎</button>
+					<button id="undo-btn" class="gamebutton redbutton" title="Undo">⤺</button>
+					<button id="toggle-ui-btn" class="gamebutton" title="Open chat">💬</button>
+				</div>
 			</div>
 		</div>
 		
@@ -1132,6 +1158,7 @@ function getSelectedServer(){
 const popupOverlay = document.getElementById('map-popup-overlay');
 const popup = document.getElementById('map-popup');
 const loadBtn = document.getElementById('load-map-btn');
+const loadRandomBtn = document.getElementById('load-random-map-btn');
 const closeBtn = document.getElementById('popup-close');
 const mapList = document.getElementById('map-list');
 const categoryBtns = document.querySelectorAll('.category-btn');
@@ -1169,6 +1196,15 @@ const mapScale = document.getElementById('map-scale');
 
 let currentCategory = 'small';
 
+
+
+function loadRandomMap(){
+	loadMap(random() == 0 ? "normal" : "small", random(0,39));
+}
+
+loadRandomBtn.addEventListener('click', () => {
+	loadRandomMap();
+});
 
   // Open popup
   loadBtn.addEventListener('click', () => {
@@ -1748,6 +1784,10 @@ const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
 const chatInput = document.getElementById('chat-input');
 const turnInfo = document.getElementById('turn-info');
 const playerSavings = document.getElementById('player-savings');
+const playerIncome = document.getElementById('player-income');
+const playerWages = document.getElementById('player-wages');
+const playerBalance = document.getElementById('player-balance');
+
 const buildSoldierBtn = document.getElementById('build-soldier-btn');
 const buildCastleBtn = document.getElementById('build-castle-btn');
 const endTurnBtn = document.getElementById('end-turn-btn');
@@ -1953,8 +1993,7 @@ function toggleUiTopLeft(toggleValue = null){
 }
 
 
-
-function addChatMessage(from, message, color = '#FFF') {
+function pushChatMessage(from, message, color = '#FFF') {
 	const item = document.createElement('div');
 	item.innerHTML = `<strong style="color: ${color};" class="msgfromtext"></strong><span class="msgtext"></span>`;
 	
@@ -1969,6 +2008,11 @@ function addChatMessage(from, message, color = '#FFF') {
 	const item2 = item.cloneNode(true);
 	topFloatUiChatMessages.appendChild(item2);
 	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
+}
+
+// sendmessage addmessage pushmessage
+function addChatMessage(from, message, color = '#FFF') {
+	pushChatMessage(from, message, color);
 	
 	// show chat messages on top if topleft ui is not open
 	if(!showTopLeftUi){
@@ -1985,6 +2029,16 @@ function addSystemChatMessage(message, color = '#FFF') {
 	item.innerHTML = `<strong style="color: ${color};">${message}</strong>`;
 	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
+	
+	const item2 = item.cloneNode(true);
+	topFloatUiChatMessages.appendChild(item2);
+	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
+	
+	// show chat messages on top if topleft ui is not open
+	if(!showTopLeftUi){
+		console.warn("hideTopFloatUi2");
+		hideTopFloatUi();
+	}
 }
 
 function getUID() {
@@ -2224,6 +2278,42 @@ function checkCulling(x, y, topEdgeOffset = 0){
 }
 
 
+function darkenHexColor(color, percentage = 0.8){
+	return blendHexColor(color, "#000000", percentage);
+}
+function lightenHexColor(color, percentage = 0.1){
+	return blendHexColor(color, "#FFFFFF", percentage);
+}
+
+
+
+function blendHexColor(color1, color2 = "#000000", percentage = 0.5) {
+  // Ensure percentage is between 0 and 1
+  percentage = Math.min(Math.max(percentage, 0), 1);
+
+  // Helper to convert hex to RGB
+  const hexToRgb = hex => {
+    hex = hex.replace(/^#/, "");
+    if (hex.length === 3) {
+      hex = hex.split("").map(x => x + x).join("");
+    }
+    const num = parseInt(hex, 16);
+    return [num >> 16, (num >> 8) & 255, num & 255];
+  };
+
+  // Helper to convert RGB to hex
+  const rgbToHex = ([r, g, b]) =>
+    "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+
+  const rgb1 = hexToRgb(color1);
+  const rgb2 = hexToRgb(color2);
+
+  // Blend each channel
+  const blended = rgb1.map((c, i) => Math.round(c * (1 - percentage) + rgb2[i] * percentage));
+
+  return rgbToHex(blended);
+}
+
 
 
 const debugUi = document.getElementById("debug-ui");
@@ -2240,7 +2330,7 @@ function trackFPS(){
   
 	if (delta >= 2000) {
 		let fps = frameCount/(delta/1000);
-		console.log("FPS: "+fps.toFixed(2));
+		//console.log("FPS: "+fps.toFixed(2));
 		debugUi.textContent = "FPS: "+fps.toFixed(0);
 		
 		
@@ -2478,20 +2568,24 @@ function render() {
 	}
 	
 	if(enemyHighlightedPool.length > 0){
-		ctx.setLineDash([12.5, 15]);
+		//ctx.setLineDash([12.5, 15]);
 		// Draw selected enemy pool
 		// use selected pool player id for each tile:
+		
 		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
+		let player = getPlayer(tile.ownerId);
+		
+		let color = lightenHexColor(player.color);
 		
 		for (const hex of enemyHighlightedPool) {
 			drawHexagonOutlines(hex.q, hex.r, tile.ownerId);
-			ctx.strokeStyle = 'rgba(255,0,0, 1)';
+			ctx.strokeStyle = color;
 			ctx.lineWidth = 4;
 			ctx.lineCap = 'round';
 			ctx.stroke();
 			ctx.lineCap = 'butt'; // reset to default
 		}
-		ctx.setLineDash([]);
+		//ctx.setLineDash([]);
 	}
 	
 	
@@ -2513,6 +2607,7 @@ function render() {
 		ctx.fill();
 	}
 
+/*
 	// Draw selected hex outline
 	if (selectedHex) {
 		const { x, y } = axialToPixel(selectedHex.q, selectedHex.r);
@@ -2523,6 +2618,7 @@ function render() {
 		ctx.stroke();
 		ctx.lineCap = 'butt'; // reset to default
 	}
+	*/
 	
 	// Draw placement highlight
 	if (placingUnit) {
@@ -2645,15 +2741,15 @@ function handleCanvasMouseDown(e) {
 	isDragging = false; // Reset dragging flag
 	dragStart = { x: e.clientX, y: e.clientY };
 	
-	const clickedHex = pixelToAxial(e.clientX, e.clientY);
-	const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
+	//const clickedHex = pixelToAxial(e.clientX, e.clientY);
+	//const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
 	
 	// Don't drag if we click a unit
-	if (!unitOnHex) {
+	//if (!unitOnHex) {
 		dragStart.canDrag = true;
-	} else {
-		dragStart.canDrag = false;
-	}
+	//} else {
+	//	dragStart.canDrag = false;
+	//}
 }
 
 function handleCanvasMouseUp(e) {
@@ -2866,7 +2962,7 @@ function updateGameUI() {
 	});
 
 	// Update turn info
-	turnInfo.textContent = `Turn ${gameState.turn.turnNumber}`;
+	turnInfo.textContent = `Day ${gameState.turn.turnNumber}`;
 	
 	// Update buttons
 	const canPlay = isMyTurn() && !myPlayer.isSpectator;
@@ -2875,14 +2971,14 @@ function updateGameUI() {
 	endTurnBtn.disabled = !canPlay;
 	undoBtn.disabled = !canPlay;
 	chatInput.disabled = false;
-	
+	/*
 	if(canPlay){
 		if(currentTurnActions.length > 0){
 			undoBtn.disabled = false;
 		}else{
 			undoBtn.disabled = true;
 		}
-	}
+	}*/
 	
 	console.log("endTurnBtn.disabled = "+endTurnBtn.disabled);
 	
@@ -2914,6 +3010,10 @@ function isHexWater(q, r){
 }
 
 function handleHexClick(hex) {
+	// dont allow selecting while moving on the map.
+	if(isDragging){
+		return;
+	}
 	const myPlayer = getMyPlayer();
 	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
 	
@@ -3135,7 +3235,7 @@ function updateHighlights() {
 					for (const n of getHexNeighbors(current.q, current.r)) {
 						const nKey = `${n.q},${n.r}`;
 						const nTile = getTileAt(n.q, n.r);
-						if (nTile && nTile.ownerId && !visited.has(nKey)) {
+						if (nTile && nTile.ownerId === tile.ownerId && !visited.has(nKey)) {
 							visited.add(nKey);
 							queue.push(n);
 						}
@@ -3959,7 +4059,8 @@ function handleHostData(data) {
 				spectatorUiMode();
 				console.log("localPlayer");
 				console.log(localPlayer);
-				alert("Game in progress. Joining as spectator.");
+				addSystemChatMessage("Joined as spectator");
+				//alert("Game in progress. Joining as spectator.");
 			}
 			showPage('game');
 			updateGameUI();
@@ -4019,7 +4120,7 @@ function handleHostData(data) {
 			selectedHex = null;
 			updateHighlights();
 			updateGameUI();
-			addSystemChatMessage(`Turn ${gameState.turn.turnNumber}: ${getMyTurnPlayer().name}'s turn.`);
+			addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${getMyTurnPlayer().name}'s turn.`);
 			break;
 		case 'sound':
 			playSound(data.name);
@@ -4057,7 +4158,9 @@ function handleClientData(peerId, data) {
 				if (p) p.isTaken = true;
 			}
 			broadcastLobbyState();
-			addSystemChatMessage(`${player.name} has joined.`);
+			if(gameState.settings.gameStarted){
+				addSystemChatMessage(`${player.name} has joined.`, "#AAAAFF");
+			}
 			break;
 		case 'player_update':
 			player.name = data.name;
@@ -4185,7 +4288,7 @@ function setupConnection(conn) {
 		if (localPlayer.isHost) {
 			const player = getPlayer(conn.peer);
 			if (player) {
-				addSystemChatMessage(`${player.name} has left.`);
+				addSystemChatMessage(`${player.name} has left.`, "#FFFF00");
 				//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
 				gameState.players = gameState.players.map(p =>
 					p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
@@ -4207,8 +4310,11 @@ function setupConnection(conn) {
 			// We were disconnected from host
 			//alert('Disconnected from host. Returning to start page.');
 			console.warn('Disconnected from host. Returning to start page.');
+			addSystemChatMessage("Host has left the game.", "#FFFF00");
+			
 			let answer = confirm("Host has left the game, quit game?");
 			if(answer){
+				restartGame();
 				//showPage('start');
 				// Reset state?
 				// todo: causes weird bugs when the client player goes to start page and starts hosting his own room.
@@ -4221,6 +4327,9 @@ function setupConnection(conn) {
 }
 
 
+function restartGame(){
+	location.reload();
+}
 
 // Helper function for joinGame
 function executeJoin(hostPeerId) {
@@ -4257,6 +4366,7 @@ function joinGame(isSpectator) {
 	if (isSpectator) {
 		localPlayer.color = SPECTATOR_COLOR;
 		spectatorUiMode();
+		addSystemChatMessage("Joined as spectator");
 	}
 	
 	hostPeerId = gameNameInput.value.trim();
@@ -4701,9 +4811,6 @@ async function loadmaps(){
 
 
 
-let loadedMapCategory = "small";
-let loadedMapIndex = 0;
-
 
 async function loadMapsFromJSON() {
   try {
@@ -4722,7 +4829,11 @@ async function loadMapsFromJSON() {
   }
 }
 
-// Example usage
+
+let loadedMapCategory = "small";
+let loadedMapIndex = 0;
+
+// load map on start:
 (async () => {
 	customMaps = await loadMapsFromJSON();
 	// sort maps by tileCount (land tiles)
@@ -5334,18 +5445,19 @@ function clearDirty() {
 }
 
 window.addEventListener('beforeunload', (e) => {
-  // Only trigger if dirty
-  if (dirtyInput.value) {
-    e.preventDefault();
-    e.returnValue = 'Quit game?';
-  }
-   if (peer && !peer.destroyed) {
-    peer.destroy(); // closes local peer connection
-  }
-
-  // Notify your server immediately
-  navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
+	if (dirtyInput.value) {
+		e.preventDefault();
+		e.returnValue = 'Quit game?';
+	}
 });
+
+window.addEventListener('unload', () => {
+	if (peer && !peer.destroyed) {
+		peer.destroy();
+		navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
+	}
+});
+
 
 
 
