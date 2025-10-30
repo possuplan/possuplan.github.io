@@ -1814,6 +1814,8 @@ const buildPopupList = document.getElementById('build-popup-list');
 const buildPopupClose = document.getElementById('build-popup-close');
 
 const toggleUiBtn = document.getElementById('toggle-ui-btn');
+const quitGameBtn = document.getElementById('quit-game-btn');
+
 
 
 const topFloatUi = document.getElementById('top-float-ui');
@@ -5475,6 +5477,18 @@ window.addEventListener('unload', () => {
 });
 
 
+// Prevent accidental back navigation
+window.history.pushState(null, '', window.location.href);
+
+window.addEventListener('popstate', function (event) {
+  // Push back into the same state to stop navigation
+  window.history.pushState(null, '', window.location.href);
+
+  // Show confirmation or custom overlay
+  alert(`Press the "Quit game" button in-game to quit (open chat first).`);
+});
+
+
 
 
 
@@ -5614,6 +5628,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 	canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 	
 
+	quitGameBtn.onclick = () => {
+		restartGame();
+	};
 
 	toggleUiBtn.onclick = () => {
 		toggleUiTopLeft();
