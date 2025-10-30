@@ -706,7 +706,7 @@ input.disabled {
 
 
 #build-soldier-btn {
-    background-image: url(images/orig-scaled/128x128/soldier1.png);
+    background-image: url('images/orig-scaled/128x128/soldier1.png');
     background-size: contain;
     background-repeat: no-repeat;
     background-position-x: 4px;
@@ -714,7 +714,7 @@ input.disabled {
 }
 
 #build-castle-btn {
-    background-image: url(images/orig-scaled/128x128/castle1.png);
+    background-image: url('images/orig-scaled/128x128/castle1.png');
     background-size: contain;
     background-repeat: no-repeat;
     background-position-x: 4px;
@@ -722,20 +722,30 @@ input.disabled {
 }
 
 #undo-btn {
-    font-size: 35px;
-    padding-top: 0;
-    padding-bottom: 0;
+    background-image: url('images/ui/undo.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+	background-position: center;
 }
 
 #toggle-ui-btn {
-	font-size:30px;
+    background-image: url('images/ui/chat.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+	background-position: center;
+ 
 }
 #sell-unit-btn {
-    font-size: 27px;
+    background-image: url('images/ui/sell.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
 }
 #end-turn-btn {
-    font-size: 27px;
-    font-weight: normal;
+    background-image: url('images/ui/endturn.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
 }
 	
 </style>
@@ -934,14 +944,14 @@ input.disabled {
 			<div class="ui-panel ui-panel-controls">
 
 				<div class="button-row" id="ui-right-button-row1-id">
-					<button id="sell-unit-btn" class="gamebutton" title="Sell warrior">💲</button>
+					<button id="sell-unit-btn" class="gamebutton" title="Sell warrior"></button>
 					<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
 					<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
 				</div>
 				<div class="button-row" id="ui-right-button-row2-id">
-					<button id="end-turn-btn" class="gamebutton primary" title="End turn">🔄︎</button>
-					<button id="undo-btn" class="gamebutton redbutton" title="Undo">⤺</button>
-					<button id="toggle-ui-btn" class="gamebutton" title="Open chat">💬</button>
+					<button id="end-turn-btn" class="gamebutton primary" title="End turn"></button>
+					<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
+					<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
 				</div>
 			</div>
 		</div>
@@ -1572,6 +1582,10 @@ let use_orig = 1;
 // images =
 if(use_orig){
 	imageAssets = {
+		'ui-sell': {path:'images/ui/sell.png', isUi: true},
+		'ui-undo': {path:'images/ui/undo.png', isUi: true},
+		'ui-endturn': {path:'images/ui/endturn.png', isUi: true},
+		'ui-chat': {path:'images/ui/chat.png', isUi: true},
 		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
 		'land':     {path:'images/land2.jpg', scale:1, offsetX: 0}, 
 		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
@@ -1618,40 +1632,42 @@ async function loadImages() {
         img.src = obj.path;
         imageCache[key] = img;
 
-        const promise = new Promise((resolve, reject) => {
-            img.onload = async () => {
-                try {
-                    await img.decode(); // ensure fully decoded before use
-                    console.log(`Image loaded: ${key}`);
+		if (!obj.isUi) {
+			const promise = new Promise((resolve, reject) => {
+				img.onload = async () => {
+					try {
+						await img.decode(); // ensure fully decoded before use
+						console.log(`Image loaded: ${key}`);
 
-                    obj.image = img;
-                    obj.mipmaps = await generateMipmaps(img, 6);
+						obj.image = img;
+						obj.mipmaps = await generateMipmaps(img, 6);
 
-                    // --- NEW: generate patterns for images that are marked as patterns ---
-                    if (obj.isPattern) {
-                        obj.patterns = obj.mipmaps.map(mipmap => {
-                            // create a temporary canvas context for pattern
-                            const c = new OffscreenCanvas(mipmap.width, mipmap.height);
-                            const ctx2d = c.getContext('2d');
-                            ctx2d.drawImage(mipmap, 0, 0);
-                            return ctx.createPattern(c, 'repeat');
-                        });
-                    }
+						// --- NEW: generate patterns for images that are marked as patterns ---
+						if (obj.isPattern) {
+							obj.patterns = obj.mipmaps.map(mipmap => {
+								// create a temporary canvas context for pattern
+								const c = new OffscreenCanvas(mipmap.width, mipmap.height);
+								const ctx2d = c.getContext('2d');
+								ctx2d.drawImage(mipmap, 0, 0);
+								return ctx.createPattern(c, 'repeat');
+							});
+						}
 
-                    resolve();
-                } catch (err) {
-                    console.error(`Error generating mipmaps for ${key}:`, err);
-                    reject(err);
-                }
-            };
+						resolve();
+					} catch (err) {
+						console.error(`Error generating mipmaps for ${key}:`, err);
+						reject(err);
+					}
+				};
 
-            img.onerror = () => {
-                console.error(`Failed to load image: ${obj.path}`);
-                reject(new Error(`Failed to load image: ${obj.path}`));
-            };
-        });
+				img.onerror = () => {
+					console.error(`Failed to load image: ${obj.path}`);
+					reject(new Error(`Failed to load image: ${obj.path}`));
+				};
+			});
 
-        loadPromises.push(promise);
+			loadPromises.push(promise);
+		}
     }
 
     await Promise.all(loadPromises);
