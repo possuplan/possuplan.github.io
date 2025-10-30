@@ -16,33 +16,36 @@
 	<script>
 	
 	/*
-	game logic:
-	click next turn:
-	savings = savings + (income - wages)
-	
-	initially: (1 peasant (wage 3))
-	
-	savings: 21
-	income: 5
-	wages: -3
-	balance: 23
-	
-	click buy knight (cost 20, wage 8) ->
-	savings: 1
-	income: 5
-	wages: -11
-	balance: -5
-	
-	place knight: (1 peasant, 1 knight)
-	*all units dies*
-	savings: 0
-	income: 5
-	wages: 0
-	balance: 5
-	
-	makes little sense to allow placing unit if the result is everyone dying. 
-	unless you claim new hex which increases your income by 1, and makes income-wages zero. 
-	or if joining two pools together to get the balance positive.
+
+game logic:
+click next turn:
+savings = savings + (income - wages)
+
+initially: (1 peasant (wage 3))
+
+savings: 21
+income: 5
+wages: -3
+balance: 23
+
+click buy knight (cost 20, wage 8) ->
+savings: 1
+income: 5
+wages: -11
+balance: -5
+
+place knight: (1 peasant, 1 knight)
+*all units dies*
+savings: 0
+income: 5
+wages: 0
+balance: 5
+
+makes little sense to allow placing unit if the result is everyone dying. 
+unless you claim new hex which increases your income by 1, and makes income-wages zero. 
+or if joining two pools together to get the balance positive.
+
+
 	
 	*/
 	//////////////////////////////////////////////
@@ -146,8 +149,10 @@ button {
 
 .gamebutton {
 	padding:4px;
+	
+    padding-top: 2px;
 
-    font-size: 12px;
+    font-size: 15px;
     height: 47px;
 }
 
@@ -681,6 +686,43 @@ input.disabled {
 #end-turn-btn[disabled] {
 	background-color:red;
 }
+
+#undo-btn[disabled] {
+	background-color:var(--btn-bg);
+}
+
+
+#build-soldier-btn {
+    background-image: url(images/orig-scaled/128x128/soldier1.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position-x: 4px;
+    background-position-y: -2px;
+}
+
+#build-castle-btn {
+    background-image: url(images/orig-scaled/128x128/castle1.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position-x: 4px;
+    background-position-y: -2px;
+}
+
+#undo-btn {
+    font-size: 35px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+#toggle-ui-btn {
+	font-size:16px;
+}
+#sell-unit-btn {
+	font-size:16px;
+}
+#end-turn-btn {
+}
+	
 </style>
 </head>
 <body>
@@ -867,14 +909,14 @@ input.disabled {
 			</div>
 
 			<div class="button-row" id="ui-right-button-row1-id">
-				<button id="sell-unit-btn" class="gamebutton">Sell</button>
-				<button id="build-soldier-btn" class="gamebutton">Warrior</button>
-				<button id="build-castle-btn" class="gamebutton">Castle</button>
+				<button id="sell-unit-btn" class="gamebutton" title="Sell warrior">Sell</button>
+				<button id="build-soldier-btn" class="gamebutton" title="Recruit soldier"></button>
+				<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
 			</div>
 			<div class="button-row" id="ui-right-button-row2-id">
-				<button id="end-turn-btn" class="gamebutton primary">EndTurn</button>
-				<button id="undo-btn" class="gamebutton redbutton">Undo</button>
-				<button id="toggle-ui-btn" class="gamebutton">Chat</button>
+				<button id="end-turn-btn" class="gamebutton primary" title="End turn">End Turn</button>
+				<button id="undo-btn" class="gamebutton redbutton" title="Undo">⤺</button>
+				<button id="toggle-ui-btn" class="gamebutton" title="Open chat">Chat</button>
 			</div>
 		</div>
 		
@@ -1471,6 +1513,7 @@ let currentTurnActions = []; // For undo
 
 let shakingUnits = []; // { id, endTime }
 let highlightedPool = []; // [{q, r}] for highlighting connected hexes
+let enemyHighlightedPool = []; // [{q, r}] for highlighting connected hexes
 let validMoveHexes = []; // [{q, r}] for green move highlight
 let invalidMoveHexes = []; // [{q, r}] for red move highlight
 let myCurrentSavings = 0; // Client-side savings
@@ -2072,10 +2115,10 @@ function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
 	ctx.fill();
 }
 
-let waterShadingHeightHalf = 12; // half of the line height.
+let waterShadingHeightHalf = 10; // half of the line height.
 let waterShadingHeight = waterShadingHeightHalf*2;
 
-
+// water shading
 function drawWaterShading(px, py, drawLines){
 	if(drawLines.length > 0){
 		let da = Math.PI / 2;
@@ -2419,16 +2462,40 @@ function render() {
 	
 	
 	// --- DRAW HIGHLIGHTS (NEW) ---
-	
-	// Draw selected pool
-	for (const hex of highlightedPool) {
-		drawHexagonOutlines(hex.q, hex.r, localPlayer.id);
-		ctx.strokeStyle = 'rgba(255,255,0, 1)';
-		ctx.lineWidth = 4;
-		ctx.lineCap = 'round';
-		ctx.stroke();
-		ctx.lineCap = 'butt'; // reset to default
+
+	if(highlightedPool.length > 0){
+		ctx.setLineDash([12.5, 15]);
+		// Draw selected pool
+		for (const hex of highlightedPool) {
+			drawHexagonOutlines(hex.q, hex.r, localPlayer.id);
+			ctx.strokeStyle = 'rgba(255,255,0, 1)';
+			ctx.lineWidth = 4;
+			ctx.lineCap = 'round';
+			ctx.stroke();
+			ctx.lineCap = 'butt'; // reset to default
+		}
+		ctx.setLineDash([]);
 	}
+	
+	if(enemyHighlightedPool.length > 0){
+		ctx.setLineDash([12.5, 15]);
+		// Draw selected enemy pool
+		// use selected pool player id for each tile:
+		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
+		
+		for (const hex of enemyHighlightedPool) {
+			drawHexagonOutlines(hex.q, hex.r, tile.ownerId);
+			ctx.strokeStyle = 'rgba(255,0,0, 1)';
+			ctx.lineWidth = 4;
+			ctx.lineCap = 'round';
+			ctx.stroke();
+			ctx.lineCap = 'butt'; // reset to default
+		}
+		ctx.setLineDash([]);
+	}
+	
+	
+	
 	
 	// Draw movement range
 	ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
@@ -2765,6 +2832,8 @@ function isMyTurn() {
 	return myTurnPlayer && myTurnPlayer.id === localPlayer.id;
 }
 
+
+// updateui update ui
 function updateGameUI() {
 	if (!gameState.settings.gameStarted) return;
 	
@@ -2806,6 +2875,14 @@ function updateGameUI() {
 	endTurnBtn.disabled = !canPlay;
 	undoBtn.disabled = !canPlay;
 	chatInput.disabled = false;
+	
+	if(canPlay){
+		if(currentTurnActions.length > 0){
+			undoBtn.disabled = false;
+		}else{
+			undoBtn.disabled = true;
+		}
+	}
 	
 	console.log("endTurnBtn.disabled = "+endTurnBtn.disabled);
 	
@@ -3010,6 +3087,8 @@ function updateHighlights() {
 	validMoveHexes = [];
 	invalidMoveHexes = [];
 	
+	enemyHighlightedPool = [];
+	
 	let poolStartHex = null;
 	if (selectedUnit) {
 		poolStartHex = selectedUnit;
@@ -3023,21 +3102,43 @@ function updateHighlights() {
 	// --- 1. Find the connected pool ---
 	if (poolStartHex) {
 		const tile = getTileAt(poolStartHex.q, poolStartHex.r);
-		if (tile && tile.ownerId === myPlayer.id) {
-			// Run BFS to find all connected friendly hexes
-			const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
-			const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
-			
-			while (queue.length > 0) {
-				const current = queue.shift();
-				highlightedPool.push(current);
+		if (tile) {
+			if(tile.ownerId === myPlayer.id){
+				// Run BFS to find all connected friendly hexes
+				const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
+				const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
 				
-				for (const n of getHexNeighbors(current.q, current.r)) {
-					const nKey = `${n.q},${n.r}`;
-					const nTile = getTileAt(n.q, n.r);
-					if (nTile && nTile.ownerId === myPlayer.id && !visited.has(nKey)) {
-						visited.add(nKey);
-						queue.push(n);
+				while (queue.length > 0) {
+					const current = queue.shift();
+					highlightedPool.push(current);
+					
+					for (const n of getHexNeighbors(current.q, current.r)) {
+						const nKey = `${n.q},${n.r}`;
+						const nTile = getTileAt(n.q, n.r);
+						if (nTile && nTile.ownerId === myPlayer.id && !visited.has(nKey)) {
+							visited.add(nKey);
+							queue.push(n);
+						}
+					}
+				}
+			}else if(tile.ownerId){
+				// create highlight for enemy pools:
+				
+				// Run BFS to find all connected friendly hexes
+				const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
+				const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
+				
+				while (queue.length > 0) {
+					const current = queue.shift();
+					enemyHighlightedPool.push(current);
+					
+					for (const n of getHexNeighbors(current.q, current.r)) {
+						const nKey = `${n.q},${n.r}`;
+						const nTile = getTileAt(n.q, n.r);
+						if (nTile && nTile.ownerId && !visited.has(nKey)) {
+							visited.add(nKey);
+							queue.push(n);
+						}
 					}
 				}
 			}
