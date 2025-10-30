@@ -1512,7 +1512,12 @@ let gameState = {
 		name: "",
 		bounds: {},
 		tiles: {}, 
-		tilesData: [], 
+		tilesData: [
+			// {
+			//   tileIndex: this tile array index
+			//   neighbours: {tileIndex, neighbourIndex, q, r} neighbour tiles indexes that are not water.
+			// }
+		], 
 	},
 	units: [], // { id, type: 'Peasant', ownerId, level, q, r, hasMoved }
 	turn: {
@@ -2303,6 +2308,25 @@ function lightenHexColor(color, percentage = 0.1){
 	return blendHexColor(color, "#FFFFFF", percentage);
 }
 
+function hexToRgba(hex, opacity = 1) {
+	// Remove the leading '#' if present
+	hex = hex.replace(/^#/, '');
+
+	// Handle shorthand hex (e.g. #f53)
+	if (hex.length === 3) {
+		hex = hex.split('').map(char => char + char).join('');
+	}
+
+	// Parse r, g, b values
+	const r = parseInt(hex.substring(0, 2), 16);
+	const g = parseInt(hex.substring(2, 4), 16);
+	const b = parseInt(hex.substring(4, 6), 16);
+
+	// Clamp opacity between 0 and 1
+	const alpha = Math.max(0, Math.min(1, opacity));
+
+	return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 
 function blendHexColor(color1, color2 = "#000000", percentage = 0.5) {
@@ -2478,6 +2502,8 @@ function render() {
 			}
 		}
 		
+		
+		
 
 		drawnTiles++;
 		
@@ -2488,7 +2514,7 @@ function render() {
 		
 		// Define the hex path
 		drawHexagonPath(x, y);
-		ctx.fillStyle = fallbackColor;
+		//ctx.fillStyle = fallbackColor;
 		ctx.fill();
 
 		// useimages = false for testing performance without tile images.
@@ -2558,6 +2584,63 @@ function render() {
 		// Draw objects (trees etc) on top
 		if (tile.object) {
 			drawObject(ctx, x, y, tile.object);
+		}
+	}
+	
+	
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		const { x, y } = axialToPixel(q, r);
+
+		// --- Culling Check ---
+		if(checkCulling(x, y, -waterShadingHeight)){
+			continue;
+		}
+		
+		if (tile.type === 'water') {
+			if(drawInfiniteWater){
+				continue; // skip water tiles.
+			}
+		}
+		
+		
+		if(tile.ownerId){
+			let neighbours = tile.neighbours;
+			if(neighbours && neighbours.length > 0){
+				let highlightedLines = [];
+				// ({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r}
+				for(let n = 0; n < neighbours.length; n++){
+					let neigh = neighbours[n];
+					// -1 = water tile:
+					if(neigh.tileIndex != -1){
+						let nTile = gameState.map.tilesData[neigh.tileIndex];
+						if(nTile.ownerId !== tile.ownerId){
+							highlightedLines.push(neigh.neighbourIndex);
+						}
+					}else{
+						// water tiles: add by default.
+						highlightedLines.push(neigh.neighbourIndex);
+					}
+				}
+				
+				
+				if(highlightedLines.length > 0){
+					drawHexagonPathLines(x, y, highlightedLines);
+					//drawHexagonPathLines(x, y, [0,1,2,3,4,5]);
+					
+					let player = getPlayer(tile.ownerId);
+					let color = hexToRgba(lightenHexColor(player.color), 0.5);
+					
+					ctx.strokeStyle = color;
+					ctx.lineWidth = 3;
+					ctx.lineCap = 'round';
+					ctx.stroke();
+					ctx.lineCap = 'butt'; // reset to default
+				}
+			}
 		}
 	}
 	
@@ -5093,6 +5176,28 @@ function loadParsedMap(parsedMap, compact = false){
 				}
 				setTileAt(q-roff, r, { type: info.type, ownerId: null, object: tree, savings: 0 });
 			}
+		}
+	}
+	
+	// set tile.neighbours for rendering pools with continuous lines:
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+		
+		if(tile.type === "land"){
+			let neigh = getHexNeighbors(q,r);
+			let availableNeighbours = [];
+			for(let i = 0; i < neigh.length; i++){
+				let n = neigh[i];
+				const nTile = getTileAt(n.q, n.r);
+				if(nTile){
+					availableNeighbours.push({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r});
+				}else{
+					availableNeighbours.push({tileIndex: -1, neighbourIndex: i, q: n.q, r: n.r});
+				}
+			}
+			tile.neighbours = availableNeighbours;
 		}
 	}
 	
