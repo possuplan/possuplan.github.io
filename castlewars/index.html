@@ -5478,15 +5478,25 @@ window.addEventListener('unload', () => {
 
 
 // Prevent accidental back navigation
-window.history.pushState(null, '', window.location.href);
+function preventBackNavigation() {
+  history.pushState(null, '', location.href);
 
-window.addEventListener('popstate', function (event) {
-  // Push back into the same state to stop navigation
-  window.history.pushState(null, '', window.location.href);
+  window.addEventListener('popstate', function (event) {
+    const leave = confirm('Are you sure you want to quit the game?');
 
-  // Show confirmation or custom overlay
-  alert(`Press the "Quit game" button in-game to quit (open chat first).`);
-});
+    if (leave) {
+      // Let them go back by removing the listener
+      window.removeEventListener('popstate', arguments.callee);
+      //history.back();
+	  restartGame();
+    } else {
+      // Re-add the state so back button keeps working
+      history.pushState(null, '', location.href);
+    }
+  });
+}
+
+preventBackNavigation();
 
 
 
