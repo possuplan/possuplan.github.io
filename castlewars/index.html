@@ -2072,6 +2072,10 @@ function getPlayer(playerId) {
 	return gameState.players.find(p => p.id === playerId);
 }
 
+function getPlayerIndex(playerId) {
+	return gameState.players.findIndex(p => p.id === playerId);
+}
+
 function getMyPlayer() {
 	return getPlayer(localPlayer.id);
 }
@@ -2588,6 +2592,7 @@ function render() {
 	}
 	
 	
+	// draw pools edges for all pools:
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
@@ -2596,7 +2601,7 @@ function render() {
 		const { x, y } = axialToPixel(q, r);
 
 		// --- Culling Check ---
-		if(checkCulling(x, y, -waterShadingHeight)){
+		if(checkCulling(x, y)){
 			continue;
 		}
 		
@@ -2631,7 +2636,7 @@ function render() {
 					drawHexagonPathLines(x, y, highlightedLines);
 					//drawHexagonPathLines(x, y, [0,1,2,3,4,5]);
 					
-					let player = getPlayer(tile.ownerId);
+					let player = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
 					let color = hexToRgba(lightenHexColor(player.color), 0.5);
 					
 					ctx.strokeStyle = color;
@@ -3005,6 +3010,15 @@ function setTileAt(q, r, tileData) {
 		let tileIndex = gameState.map.tilesData.length;
 		gameState.map.tilesData.push({q, r, tileIndex, ...tileData});
 		gameState.map.tiles[tileKey] = tileIndex;
+	}
+}
+
+function setTileOwner(tile, ownerId){
+	tile.ownerId = ownerId;
+	if(ownerId != null){
+		tile.ownerIndex = getPlayerIndex(ownerId);
+	}else{
+		tile.ownerIndex = null;
 	}
 }
 
@@ -3617,7 +3631,8 @@ function executeAction(playerId, action) {
 				
 				// Claim hex
 				if (toTile.ownerId !== playerId) {
-					toTile.ownerId = playerId;
+					setTileOwner(toTile, playerId);
+					//toTile.ownerId = playerId;
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
 					sounds.push('moveunit');
 				}
@@ -3669,7 +3684,8 @@ function executeAction(playerId, action) {
 					
 					const tile = getTileAt(q, r);
 					if (!newUnit.isCastle && tile.ownerId !== playerId) {
-						tile.ownerId = playerId;
+						//tile.ownerId = playerId;
+						setTileOwner(tile, playerId);
 						didClaim = true;
 						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
 						sounds.push('moveunit');
@@ -3707,7 +3723,8 @@ function executeAction(playerId, action) {
 				if (lastAction.didClaim) {
 					const tile = getTileAt(lastAction.toQ, lastAction.toR);
 					if (tile) {
-						tile.ownerId = lastAction.oldOwner;
+						//tile.ownerId = lastAction.oldOwner;
+						setTileOwner(tile, lastAction.oldOwner);
 						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
 					}
 				}
@@ -3739,7 +3756,8 @@ function executeAction(playerId, action) {
 				if (lastAction.didClaim) {
 					const tile = getTileAt(lastAction.unit.q, lastAction.unit.r);
 					if (tile) {
-						tile.ownerId = null; 
+						//tile.ownerId = null;
+						setTileOwner(tile, null);
 						updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: null });
 					}
 				}
@@ -4184,7 +4202,7 @@ function handleHostData(data) {
 		case 'tile_changed':
 			const tile = getTileAt(data.q, data.r);
 			if (tile) {
-				if (data.ownerId !== undefined) tile.ownerId = data.ownerId;
+				if (data.ownerId !== undefined) setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
 				if (data.object !== undefined) tile.object = data.object;
 			}
 			needsUIUpdate = true;
@@ -5382,7 +5400,8 @@ function spawnPlayers() {
 		
 		// Claim center hex
 		const centerTile = getTileAt(spawnHex.q, spawnHex.r);
-		centerTile.ownerId = player.id;
+		//centerTile.ownerId = player.id;
+		setTileOwner(centerTile, player.id);
 		centerTile.object = null;
 		centerTile.savings = gameState.settings.startingMoney / 5; // Split money
 		
@@ -5390,7 +5409,8 @@ function spawnPlayers() {
 		let claimedHexes = [];
 		for (let i = 0; i < 4; i++) {
 			const n = neighbors[i];
-			n.tile.ownerId = player.id;
+			//n.tile.ownerId = player.id;
+			setTileOwner(n.tile, player.id);
 			n.tile.object = null;
 			n.tile.savings = gameState.settings.startingMoney / 5;
 			claimedHexes.push(n);
