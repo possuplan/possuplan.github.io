@@ -2487,7 +2487,7 @@ function render() {
 				drawTile = false;
 			}
 		} else if (tile.ownerId) {
-			const owner = getPlayer(tile.ownerId);
+			const owner = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
 			fallbackColor = owner ? owner.color : LAND_COLOR;
 		} else if (tile.type === 'land') {
 			fallbackColor = LAND_COLOR;
@@ -2560,7 +2560,7 @@ function render() {
 				
 				if(tile.ownerId){
 					// Draw the gray texture (owned land) with multiply operation:
-					const player = getPlayer(tile.ownerId);
+					const player = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
 	
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
 					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
@@ -2679,7 +2679,7 @@ function render() {
 		// use selected pool player id for each tile:
 		
 		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
-		let player = getPlayer(tile.ownerId);
+		let player = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
 		
 		let color = lightenHexColor(player.color);
 		
