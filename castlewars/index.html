@@ -1461,6 +1461,11 @@ const SOLDIER_DATA = {
 	"Knight":   { name: "Knight",   type:"soldier", level: 2, cost: 20, wage: 8, sell: 10, prefix: 'K' },
 	"Peasant":  { name: "Peasant",  type:"soldier", level: 1, cost: 10, wage: 3, sell: 5, prefix: 'P' },
 };
+
+function getSoldierLevel(type){
+	return SOLDIER_DATA[type].level;
+}
+
 // cross becomes grass in... 4 turns
 //grass ´grows 1-3 pieces per turn, chance is 50 for one piece?
 // trees grow more the more land there is, i think max is 2 per turn.
@@ -1834,20 +1839,14 @@ const uiLeft = document.getElementById('ui-left');
 function randomPlayerName() {
 	const prefixes = [
 		"al", "bel", "cor", "dar", "el", "fen", "gal", "hal", "jor", "kal",
-		"lin", "mor", "nor", "or", "pel", "quil", "ron", "sel", "tor", "val"
+		"lin", "mor", "nor", "or", "pel", "quil", "ron", "sel", "tor", "val",
 	];
-
 	const middles = [
-		"a", "e", "i", "o", "u", "ae", "ia", "eo", "ou", "ai"
+		"a", "e", "i", "o", "u", "ae", "ia", "eo", "ou", "ai",
 	];
-
 	const suffixes = [
 		"dor", "mar", "ric", "tan", "ven", "win", "bar", "dris", "lith", "zor",
-		"thus", "mir", "gorn", "las", "thar", "mond"
-	];
-
-	const endings = [
-		"son", "ton", "ley", "well", "ford", "smith", "shire", "worth", "more", "vell"
+		"thus", "mir", "gorn", "las", "thar", "mond",
 	];
 
 	function capitalize(word) {
@@ -1857,7 +1856,6 @@ function randomPlayerName() {
 	const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
 	const middle = middles[Math.floor(Math.random() * middles.length)];
 	const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
-	const ending = endings[Math.floor(Math.random() * endings.length)];
 
 	return capitalize(prefix + middle + suffix);
 }
@@ -2070,6 +2068,10 @@ function getUID() {
 
 function getPlayer(playerId) {
 	return gameState.players.find(p => p.id === playerId);
+}
+
+function getPlayerByIndex(playerIndex) {
+	return gameState.players[playerIndex];
 }
 
 function getPlayerIndex(playerId) {
@@ -2487,7 +2489,7 @@ function render() {
 				drawTile = false;
 			}
 		} else if (tile.ownerId) {
-			const owner = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
+			const owner = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 			fallbackColor = owner ? owner.color : LAND_COLOR;
 		} else if (tile.type === 'land') {
 			fallbackColor = LAND_COLOR;
@@ -2560,7 +2562,7 @@ function render() {
 				
 				if(tile.ownerId){
 					// Draw the gray texture (owned land) with multiply operation:
-					const player = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
+					const player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 	
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
 					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
@@ -2591,8 +2593,20 @@ function render() {
 		}
 	}
 	
+	let highlightedEnemy = null;
+	let highlightedPlayer = null;
 	
 	// draw pools edges for all pools:
+	if(enemyHighlightedPool.length > 0){
+		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
+		highlightedEnemy = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+	}
+	
+	if(highlightedPool.length > 0){
+		let tile = getTileAt(highlightedPool[0].q, highlightedPool[0].r);
+		highlightedPlayer = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+	}
+
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
@@ -2636,14 +2650,40 @@ function render() {
 					drawHexagonPathLines(x, y, highlightedLines);
 					//drawHexagonPathLines(x, y, [0,1,2,3,4,5]);
 					
-					let player = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
-					let color = hexToRgba(lightenHexColor(player.color), 0.5);
+					let player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+					let color = lightenHexColor(player.color, 0.1);
+					let opacity = 0.5;
+					let dashedMode = 0;
 					
-					ctx.strokeStyle = color;
-					ctx.lineWidth = 3;
-					ctx.lineCap = 'round';
-					ctx.stroke();
-					ctx.lineCap = 'butt'; // reset to default
+					if(highlightedEnemy){
+						if(highlightedEnemy.id == tile.ownerId){
+							opacity = 1;
+							color = lightenHexColor(player.color, 0.4);
+						}
+					}
+					
+					if(highlightedPlayer){
+						if(highlightedPlayer.id == tile.ownerId){
+							dashedMode = 1;
+						}
+					}
+					
+					if(dashedMode){
+						ctx.setLineDash([12.5, 15]);
+						ctx.strokeStyle = 'rgba(255,255,0, 1)';
+						ctx.lineWidth = 4;
+						ctx.lineCap = 'round';
+						ctx.stroke();
+						ctx.lineCap = 'butt'; // reset to default
+						ctx.setLineDash([]);
+					}else{
+					
+						ctx.strokeStyle = hexToRgba(color, opacity);
+						ctx.lineWidth = 3;
+						ctx.lineCap = 'round';
+						ctx.stroke();
+						ctx.lineCap = 'butt'; // reset to default
+					}
 				}
 			}
 		}
@@ -2658,7 +2698,7 @@ function render() {
 	
 	
 	// --- DRAW HIGHLIGHTS (NEW) ---
-
+/*
 	if(highlightedPool.length > 0){
 		ctx.setLineDash([12.5, 15]);
 		// Draw selected pool
@@ -2672,14 +2712,15 @@ function render() {
 		}
 		ctx.setLineDash([]);
 	}
-	
+	*/
+	/*
 	if(enemyHighlightedPool.length > 0){
 		//ctx.setLineDash([12.5, 15]);
 		// Draw selected enemy pool
 		// use selected pool player id for each tile:
 		
 		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
-		let player = gameState.players[tile.ownerIndex];//getPlayer(tile.ownerId);
+		let player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 		
 		let color = lightenHexColor(player.color);
 		
@@ -2693,6 +2734,7 @@ function render() {
 		}
 		//ctx.setLineDash([]);
 	}
+	*/
 	
 	
 	
@@ -3015,7 +3057,7 @@ function setTileAt(q, r, tileData) {
 
 function setTileOwner(tile, ownerId){
 	tile.ownerId = ownerId;
-	if(ownerId != null){
+	if(ownerId){
 		tile.ownerIndex = getPlayerIndex(ownerId);
 	}else{
 		tile.ownerIndex = null;
@@ -4968,13 +5010,15 @@ let loadedMapIndex = 0;
 })();
 
 
-
+function getCustomMap(category, index){
+	return customMaps[category][index];
+}
 	
 function loadMap(category, index) {
 	loadedMapCategory = category;
 	loadedMapIndex = index;
 	
-	const map = customMaps[category][index];
+	const map = getCustomMap(category, index);//customMaps[category][index];
 	console.log('Loading map:', category, index, map.name);
 	loadedMapImg.src = map.imageData;
 	
@@ -4992,10 +5036,10 @@ function setLoadedMapAndApplyScale(){
 	//console.warn("loadedmap");
 	//console.warn(loadedmap);
 	
-
-	
 	scaleMap();
 	loadParsedMap(loadedmap, true);
+	
+	
 	broadcastMapState();
 }
 
@@ -5166,21 +5210,21 @@ function loadParsedMap(parsedMap, compact = false){
 	console.log("parsedMap");
 	console.log(parsedMap);
 	
-	for (let q = -Math.floor(width/2), y = 0; q <= Math.floor(width/2); q++, y++) {
+	// TODO: check if width/height is used properly in the loops! not sure which is which...
+	//for (let q = -Math.floor(width/2), y = 0; q <= Math.floor(width/2); q++, y++) {
+	for (let q = 0, y = 0; q < width; q++, y++) {
 		let roff = 0;
 	
-		for (let r = -Math.floor(height/2), x = 0; r <= Math.floor(height/2); r++, x++) {
+		//for (let r = -Math.floor(height/2), x = 0; r <= Math.floor(height/2); r++, x++) {
+		for (let r = 0, x = 0; r < height; r++, x++) {
 			if((x % 2) == 1){
 				roff++;
 			}
-			let isEven = ((x%2) == 0);
-			let add1 = isEven ? 1 : 0;
-			let xx = x; // todo: fix reading rows, has to place different offsets...
-			//xx = (parsedMap.width-1)-x;
+			let xx = x;
 			let yy = y;
+			let qq = q-roff;
+			let rr = r;
 			
-			//yy = (parsedMap.height-1)-y;
-			// todo: add compact map format into expanded function here:
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
 				let info;
 				if(compact){
@@ -5192,7 +5236,7 @@ function loadParsedMap(parsedMap, compact = false){
 				if(info.object == "tree"){
 					tree = "tree";
 				}
-				setTileAt(q-roff, r, { type: info.type, ownerId: null, object: tree, savings: 0 });
+				setTileAt(qq, rr, { type: info.type, ownerId: null, object: tree, savings: 0 });
 			}
 		}
 	}
@@ -5357,7 +5401,147 @@ function generateMap(width, height) {
 	
 }
 
-function spawnPlayers() {
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1)); // random index from 0 to i
+    [array[i], array[j]] = [array[j], array[i]];   // swap elements
+  }
+  return array;
+}
+
+
+
+// spawns players on loaded original maps which already has spawn points, just add peasants and claim random player hexes.
+function spawnPlayers(){
+	let compact = true; // always compact when using original game maps format in loadedmap
+	
+	let parsedMap = loadedmap;
+	
+	let width = parsedMap.width;
+	let height = parsedMap.height;
+	
+
+	let mapOwnerNumbers = {};
+	
+	// find all possible owners from tiles:
+	for (let q = 0, y = 0; q < width; q++, y++) {
+		for (let r = 0, x = 0; r < height; r++, x++) {
+			let xx = x;
+			let yy = y;
+			
+			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
+				let info; // {type, object, owner}
+				if(compact){
+					info = compactToExpandedInfo(parsedMap.data[yy][xx]);
+				}else{
+					info = parsedMap.data[yy][xx];
+				}
+				// if owned tile by some player:
+				if(info.owner > 0){
+					mapOwnerNumbers[info.owner] = info.owner;
+				}
+			}
+		}
+	}
+	let mapOwners = [];
+	for (let owner in mapOwnerNumbers) {
+		mapOwners.push(owner);
+	}
+	
+	// randomize and choose a player for each mapOwner:
+	mapOwners = shuffle(mapOwners);
+	
+	const playingPlayers = gameState.players.filter(p => !p.isSpectator);
+	
+
+
+	// set player id's to map owner numbers:
+	let mapPlayerToPlayerId = {};
+	let extraPlayers = [];
+	for(let p = 0, i = 0; p < playingPlayers.length; p++, i++){
+		let player = playingPlayers[p];
+		//let mapOwner = null; 
+		if(i < mapOwners.length){
+			mapPlayerToPlayerId[mapOwners[i]] = player.id;
+		}else{
+			extraPlayers.push(player);
+		}
+	}
+	
+	console.warn("mapOwners");
+	console.warn(mapOwners);
+	console.warn("mapPlayerToPlayerId");
+	console.warn(mapPlayerToPlayerId);
+	
+	// spawn players and claim hexes for them:
+	for (let q = 0, y = 0; q < width; q++, y++) {
+		let roff = 0;
+	
+		//for (let r = -Math.floor(height/2), x = 0; r <= Math.floor(height/2); r++, x++) {
+		for (let r = 0, x = 0; r < height; r++, x++) {
+			if((x % 2) == 1){
+				roff++;
+			}
+			let xx = x;
+			let yy = y;
+			let qq = q-roff;
+			let rr = r;
+			
+			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
+				let info; // {type, object, owner}
+				if(compact){
+					info = compactToExpandedInfo(parsedMap.data[yy][xx]);
+				}else{
+					info = parsedMap.data[yy][xx];
+				}
+				
+				if(info.owner){
+					let playerId = mapPlayerToPlayerId[info.owner];
+					if(playerId){
+						let tile = getTileAt(qq, rr);
+
+						setTileOwner(tile, playerId);
+						
+						if(info.object == "peasant"){
+							// unit found
+							spawnSoldier(qq, rr, playerId, 'Peasant');
+						}
+					}
+				}
+				
+				
+			}
+		}
+	}
+	
+	// spawn extra players:
+	if(extraPlayers.length > 0){
+		for(let i = 0; i < extraPlayers.length; i++){
+			// find free tile:
+			let randomTileIndex;
+			do {
+				randomTileIndex = random(0, gameState.map.tilesData.length-1);
+			} while (gameState.map.tilesData[randomTileIndex].ownerId || gameState.map.tilesData[randomTileIndex].type === "water");
+			
+			let tile = gameState.map.tilesData[randomTileIndex];
+			let qq = tile.q;
+			let rr = tile.r;
+			
+			let playerId = extraPlayers[i].id;
+			setTileOwner(tile, playerId);
+			tile.object = null;
+			spawnSoldier(qq, rr, playerId, 'Peasant');
+			// TODO: try to claim hex neighbour:
+			
+		}
+	}
+	
+	
+}
+
+
+function spawnPlayersRandom() {
 	const playersToSpawn = gameState.players.filter(p => !p.isSpectator); // && !p.isAI
 	let landHexes = [];
 	
@@ -5424,22 +5608,28 @@ function spawnPlayers() {
 
 		for(let i = 0; i < total_start_units; i++){
 			const soldierHex = claimedHexes[i];
-			const peasant = {
-				id: getUID(),
-				type: 'Peasant',
-				ownerId: player.id,
-				level: 1,
-				q: soldierHex.q,
-				r: soldierHex.r,
-				hasMoved: false
-			};
-			
-			gameState.units.push(peasant);
+			spawnSoldier(soldierHex.q, soldierHex.r, player.id, 'Peasant');
 		}
 	}
 	
 	console.warn("gameState.units ");
 	console.warn(gameState.units);
+}
+
+// type = Peasant, Knight, Horse, Dragon
+function spawnSoldier(q, r, playerId, type){
+	const soldier = {
+		id: getUID(),
+		type: type,
+		ownerId: playerId,
+		ownerIndex: getPlayerIndex(playerId),
+		level: getSoldierLevel(type),
+		q: q,
+		r: r,
+		hasMoved: false
+	};
+	
+	gameState.units.push(soldier);
 }
 
 function startGame() {
