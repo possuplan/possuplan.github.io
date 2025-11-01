@@ -535,7 +535,7 @@ label {
     box-shadow: 0 5px 20px rgba(0,0,0,0.2);
     animation: fadeIn 0.2s ease;
 	
-    padding-top: 108px;
+    padding-top: 128px;
   }
 
   @keyframes fadeIn {
@@ -563,6 +563,7 @@ label {
 	
 	font-size:24px;
 	text-align:center;
+	padding:10px;
 }
   /* Close (X) button */
   .popup-close {
@@ -755,7 +756,7 @@ input.disabled {
 <input type="hidden" id="dirty-flag">
 
 <!-- Popup -->
-<div class="popup-overlay" id="map-popup-overlay">
+<div id="map-popup-overlay" class="popup-overlay">
 	<div class="popup" id="map-popup">
 		
 		<div class="popup-top-bar">
@@ -1268,7 +1269,7 @@ loadRandomBtn.addEventListener('click', () => {
 let useimages = 1;
 let GS = 1.16; // hex texture size multi
 
-const MIN_ZOOM = 0.02; // smaller value = more zoomed out
+const MIN_ZOOM = 0.05; // smaller value = more zoomed out
 const MAX_ZOOM = 20;   // bigger value = more zoomed in
 let zoomMipLevel = 0;
 
@@ -2201,17 +2202,22 @@ function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
 let waterShadingHeightHalf = 10; // half of the line height.
 let waterShadingHeight = waterShadingHeightHalf*2;
 
+
 // water shading
-function drawWaterShading(px, py, drawLines){
+function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 	if(drawLines.length > 0){
 		let da = Math.PI / 2;
 		for(let i = 0; i < drawLines.length; i++){
 			let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
 			let p1 = getHexAnglePos(ival, px, py);
 			let p2 = getHexAnglePos(ival+1, px, py);
-	
-			ctx.fillStyle = 'rgba(0,0,0, 0.6)';
-			drawCalligraphyLine(p1.x, p1.y+waterShadingHeightHalf, p2.x, p2.y+waterShadingHeightHalf, waterShadingHeight, da);
+
+			ctx.fillStyle = color;
+			drawCalligraphyLine(
+				p1.x, p1.y+waterShadingHeightHalf, 
+				p2.x, p2.y+waterShadingHeightHalf, 
+				waterShadingHeight, da
+			);
 		}
 	}
 }
@@ -2478,8 +2484,6 @@ function render() {
 		
 		let drawTile = true;
 		
-		
-		
 
 		// 2. Draw the fallback background color (or owner color)
 		let fallbackColor = LAND_COLOR;
@@ -2504,12 +2508,17 @@ function render() {
 		// renderoutlines render outlines
 		if(tile.type === 'land') {
 			if(tile.outline){
-				drawWaterShading(x, y, tile.outline);
+				let player = getPlayer(tile.ownerId);
+				let color;
+				if(player){
+					color = hexToRgba(darkenHexColor(player.color, 0.8), 0.8);
+				}else{
+					color = hexToRgba(darkenHexColor("#705F4B", 0.8), 0.8);
+				}
+				drawWaterShading(x, y, tile.outline, color);
 			}
 		}
-		
-		
-		
+
 
 		drawnTiles++;
 		
@@ -3998,6 +4007,7 @@ function randomItem(arr){
 	return arr[random(0, arr.length-1)];
 }
 
+/*
 // this function doesnt need polishing, its very rudimentary AI that just moves not yet moved units to free hex.
 function ai_find_best_move(player){
 	console.log("ai_find_best_move");
@@ -4045,6 +4055,88 @@ function ai_find_best_move(player){
 	
 	return null; // no valid move found. turn will end.
 }
+*/
+
+function ai_find_best_move(player) {
+    console.log("ai_find_best_move (improved)");
+
+    let bestMove = null;
+    let bestScore = -Infinity;
+
+    for (let i = 0; i < gameState.units.length; i++) {
+        const unit = gameState.units[i];
+        if (unit.hasMoved || unit.ownerId !== player.id) continue;
+
+        const possibleMovesTemp = findUnitPossibleMoves(unit, player);
+        const possibleMoves = [];
+
+        for (const move of possibleMovesTemp) {
+            const tile = getTileAt(move.q, move.r);
+            if (!tile || tile.ownerId === player.id) continue;
+            const check = isMoveValid(unit, move, player);
+            if (check.valid) possibleMoves.push(move);
+        }
+
+        for (const move of possibleMoves) {
+            const tile = getTileAt(move.q, move.r);
+            let score = 0;
+
+            // === Base scoring ===
+            // Prefer new land
+            if (!tile.ownerId) score += 5;
+
+            // Prefer enemy tiles
+            if (tile.ownerId && tile.ownerId !== player.id) score += 10;
+
+            // === Attack scoring ===
+            const enemyUnit = gameState.units.find(u => u.q === move.q && u.r === move.r);
+            if (enemyUnit) {
+                if (unit.level > enemyUnit.level) {
+                    score += 25; // easy kill
+                } else {
+                    score -= 20; // risky
+                }
+            }
+
+            // === Territorial influence ===
+            // More valuable if this move borders more enemy land (potential cutoff)
+            const neighbors = getHexNeighbors(move.q, move.r);
+            let enemyAdj = 0;
+            for (const n of neighbors) {
+                const nt = getTileAt(n.q, n.r);
+                if (nt && nt.ownerId && nt.ownerId !== player.id) enemyAdj++;
+            }
+            score += enemyAdj * 2;
+
+            // === Economy safety ===
+            // Slightly prefer staying near friendly land (less isolation)
+            const friendlyAdj = neighbors.filter(n => {
+                const nt = getTileAt(n.q, n.r);
+                return nt && nt.ownerId === player.id;
+            }).length;
+            score += friendlyAdj;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = {
+                    type: "action_move",
+                    unitId: unit.id,
+                    toQ: move.q,
+                    toR: move.r
+                };
+            }
+        }
+    }
+
+    if (bestMove) {
+        console.log("AI selected best move:", bestMove, "score:", bestScore);
+        return bestMove;
+    }
+
+    // fallback
+    return null;
+}
+
 
 
 // *** NEW FUNCTION ***
