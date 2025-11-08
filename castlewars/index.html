@@ -2670,8 +2670,8 @@ function render() {
 	trackFPS();
 
 	// calculate current mip level:
-	zoomMipLevel = getZoomMipLevel(1.3); // use normal. smaller = earlier switch to smaller image
-	let tileZoomMipLevel = getZoomMipLevel(0.6); // use normal. smaller = earlier switch to smaller image
+	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
+	let tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
 	//console.log(tileZoomMipLevel);
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
 	let waterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
