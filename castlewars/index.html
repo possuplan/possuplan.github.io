@@ -1590,6 +1590,19 @@ function getImagePath(unitData){
 
 let use_orig = 1;
 
+let waterAnimData = {
+    width: 416,
+    height: 32,
+    tileWidth: 32,
+    tileHeight: 32,
+    frames: [
+      {"x":0,"y":0},{"x":32,"y":0},{"x":64,"y":0},{"x":96,"y":0},
+      {"x":128,"y":0},{"x":160,"y":0},{"x":192,"y":0},{"x":224,"y":0},
+      {"x":256,"y":0},{"x":288,"y":0},{"x":320,"y":0},{"x":352,"y":0},
+      {"x":384,"y":0}
+    ]
+};
+
 // images =
 if(use_orig){
 	imageAssets = {
@@ -1598,6 +1611,8 @@ if(use_orig){
 		'ui-endturn': {path:'images/ui/endturn.png', isUi: true},
 		'ui-chat': {path:'images/ui/chat.png', isUi: true},
 		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
+		'water-anim': {path:'images/water-anim.png', scale:1, offsetX: 0, isPattern: true, isAnimated: true, animationData: waterAnimData},
+		'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
 		'land':     {path:'images/land2.jpg', scale:1, offsetX: 0}, 
 		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
 		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
@@ -1635,6 +1650,103 @@ if(use_orig){
 	};
 }
 
+
+
+async function load8BitBMP(url) {
+  const buffer = await (await fetch(url)).arrayBuffer();
+  const dv = new DataView(buffer);
+
+  const pixelDataOffset = dv.getUint32(10, true);
+  const width = dv.getInt32(18, true);
+  const height = dv.getInt32(22, true);
+  const bitsPerPixel = dv.getUint16(28, true);
+  const paletteCount = dv.getUint32(46, true) || 256;
+
+  if (bitsPerPixel !== 8) throw new Error("Only 8-bit BMPs supported");
+
+  // Read palette (B,G,R,0)
+  const palette = [];
+  for (let i = 0; i < paletteCount; i++) {
+    const b = dv.getUint8(54 + i * 4 + 0);
+    const g = dv.getUint8(54 + i * 4 + 1);
+    const r = dv.getUint8(54 + i * 4 + 2);
+    palette.push([r, g, b]);
+  }
+
+  // Read pixel indices (bottom-up rows, 4-byte aligned)
+  const pixels = new Uint8Array(width * height);
+  const rowSize = Math.ceil(width / 4) * 4;
+  let offset = pixelDataOffset;
+  for (let y = height - 1; y >= 0; y--) {
+    for (let x = 0; x < width; x++) {
+      pixels[y * width + x] = dv.getUint8(offset++);
+    }
+    offset = pixelDataOffset + (height - 1 - y + 1) * rowSize;
+  }
+
+  return { width, height, palette, pixels };
+}
+
+
+
+function getCroppedBMP(bmp, dx, dy, width, height) {
+  const { width: srcW, height: srcH, pixels, palette } = bmp;
+
+  // Ensure crop stays inside the image bounds
+  dx = Math.max(0, Math.min(dx, srcW - 1));
+  dy = Math.max(0, Math.min(dy, srcH - 1));
+  const cropW = Math.min(width, srcW - dx);
+  const cropH = Math.min(height, srcH - dy);
+
+  // Allocate new pixel array for cropped region
+  const newPixels = new Uint8Array(cropW * cropH);
+
+  for (let y = 0; y < cropH; y++) {
+    const srcY = dy + y;
+    for (let x = 0; x < cropW; x++) {
+      const srcX = dx + x;
+      newPixels[y * cropW + x] = pixels[srcY * srcW + srcX];
+    }
+  }
+
+  // Return a new BMP-like object
+  return {
+    width: cropW,
+    height: cropH,
+    palette: bmp.palette.map(c => [...c]), // deep copy so palette edits won’t affect original
+    pixels: newPixels
+  };
+}
+
+
+
+function cyclePalette(palette, start = 229, end = 240) {
+  const last = palette[end];
+  for (let i = end; i > start; i--){
+	  palette[i] = palette[i - 1];
+  }
+  palette[start] = last;
+}
+
+
+function drawPaletteImage(ctx2, bmp, dx = 0, dy = 0) {
+  const imgData = ctx2.createImageData(bmp.width, bmp.height);
+  const data = imgData.data;
+  const { pixels, palette } = bmp;
+
+  for (let i = 0; i < pixels.length; i++) {
+    const [r, g, b] = palette[pixels[i]];
+    const j = i * 4;
+    data[j] = r;
+    data[j + 1] = g;
+    data[j + 2] = b;
+    data[j + 3] = 255;
+  }
+
+  ctx2.putImageData(imgData, dx, dy);
+}
+
+
 async function loadImages() {
     const loadPromises = [];
 
@@ -1651,17 +1763,136 @@ async function loadImages() {
 						console.log(`Image loaded: ${key}`);
 
 						obj.image = img;
-						obj.mipmaps = await generateMipmaps(img, 6);
+						
 
 						// --- NEW: generate patterns for images that are marked as patterns ---
 						if (obj.isPattern) {
-							obj.patterns = obj.mipmaps.map(mipmap => {
-								// create a temporary canvas context for pattern
-								const c = new OffscreenCanvas(mipmap.width, mipmap.height);
-								const ctx2d = c.getContext('2d');
-								ctx2d.drawImage(mipmap, 0, 0);
-								return ctx.createPattern(c, 'repeat');
-							});
+							if(obj.isAnimated){
+								if (obj.isBigAnim) {
+									const anim = obj.animationData;
+									const frameCount = anim.frames.length;
+									const gridSize = 8;
+									const tileW = anim.tileWidth;
+									const tileH = anim.tileHeight;
+									const outputSize = gridSize * tileW;
+									
+									// load 13 images at once from single image:
+									let waterAllPath = "images/water-all.bmp";
+									let bmpAll = await load8BitBMP(waterAllPath);
+
+									// 1️⃣ Create shuffled pool of frame indices 0–12, repeated 5 times
+									const baseIndices = Array.from({ length: frameCount }, (_, i) => i);
+									const shuffledPool = [];
+									for (let i = 0; i < 5; i++) {
+										const arr = [...baseIndices];
+										for (let j = arr.length - 1; j > 0; j--) {
+											const k = Math.floor(Math.random() * (j + 1));
+											[arr[j], arr[k]] = [arr[k], arr[j]];
+										}
+										shuffledPool.push(...arr);
+									}
+
+									// 2️⃣ Fill initial 8×8 tile map from shuffled pool
+									const tileMap = [];
+									let poolIndex = 0;
+									for (let y = 0; y < gridSize; y++) {
+										const row = [];
+										for (let x = 0; x < gridSize; x++) {
+											let imageIndex = shuffledPool[poolIndex % shuffledPool.length];
+											//let imageNumber = imageIndex+21;
+											//let imagePath = `images/waterframes/watrtl${imageNumber}.bmp`;
+											let bmp = getCroppedBMP(bmpAll, imageIndex*32, 0, 32, 32);
+											row.push(bmp);
+											poolIndex++;
+										}
+										tileMap.push(row);
+									}
+
+									// 3️⃣ Build 13 big animation frames (each 256×256)
+									obj.animFrames = [];
+									for (let frameIdx = 0; frameIdx < frameCount; frameIdx++) {
+										const off = new OffscreenCanvas(outputSize, outputSize);
+										const ctx2d = off.getContext('2d');
+										
+										// 8x8 tiles image:
+										for (let y = 0; y < gridSize; y++) {
+											for (let x = 0; x < gridSize; x++) {
+												let bmp = tileMap[y][x];
+												
+												let dx = x*tileW;
+												let dy = y*tileH;
+												drawPaletteImage(ctx2d, bmp, dx, dy);
+												cyclePalette(bmp.palette, 229, 240);
+											}
+										}
+
+										// 4️⃣ Generate mipmaps + patterns for this composite frame
+										const bitmap = await createImageBitmap(off);
+										const mipmaps = await generateMipmaps(bitmap, 6);
+										const patterns = mipmaps.map(mipmap => {
+											const c = new OffscreenCanvas(mipmap.width, mipmap.height);
+											const ctx3 = c.getContext('2d');
+											ctx3.drawImage(mipmap, 0, 0);
+											return ctx.createPattern(c, 'repeat');
+										});
+
+										obj.animFrames.push({
+											mipmaps,
+											patterns
+										});
+									}
+
+									// 5️⃣ Metadata (same structure as small animated textures)
+									obj.frameCount = frameCount;
+									obj.frameDuration = 100; // adjust if you want faster/slower
+									obj.currentFrame = 0;
+									obj.lastFrameTime = performance.now();
+
+									console.log(`Generated large animated pattern frames for ${key}`);
+								}else{
+								  const anim = obj.animationData;
+								  obj.animFrames = [];
+
+								  for (const frame of anim.frames) {
+									const frameCanvas = new OffscreenCanvas(anim.tileWidth, anim.tileHeight);
+									const fctx = frameCanvas.getContext('2d');
+									fctx.drawImage(
+									  img,
+									  frame.x, frame.y, anim.tileWidth, anim.tileHeight,
+									  0, 0, anim.tileWidth, anim.tileHeight
+									);
+									const frameBitmap = await createImageBitmap(frameCanvas);
+									const frameMipmaps = await generateMipmaps(frameBitmap, 6);
+
+									// For each mipmap level, create a pattern
+									const framePatterns = frameMipmaps.map(mipmap => {
+									  const c = new OffscreenCanvas(mipmap.width, mipmap.height);
+									  const ctx2d = c.getContext('2d');
+									  ctx2d.drawImage(mipmap, 0, 0);
+									  return ctx.createPattern(c, 'repeat');
+									});
+
+									obj.animFrames.push({
+									  mipmaps: frameMipmaps,
+									  patterns: framePatterns
+									});
+								  }
+
+								  obj.frameCount = anim.frames.length;
+								  obj.frameDuration = 300; // ms per frame, tweak as needed
+								  obj.currentFrame = 0;
+								  obj.lastFrameTime = performance.now();
+								}
+							}else{
+								obj.mipmaps = await generateMipmaps(img, 6);
+								obj.patterns = obj.mipmaps.map(mipmap => {
+									// create a temporary canvas context for pattern
+									const c = new OffscreenCanvas(mipmap.width, mipmap.height);
+									const ctx2d = c.getContext('2d');
+									ctx2d.drawImage(mipmap, 0, 0);
+									return ctx.createPattern(c, 'repeat');
+								});
+							}
 						}
 
 						resolve();
@@ -2425,6 +2656,10 @@ let previous_drawnTiles = 0;
 
 
 // rendermap
+
+let useAnimatedWater = 1;
+let isBigAnimatedWater = 1;
+
 function render() {
 	if (!gameState.settings.gameStarted) return;
 	
@@ -2433,24 +2668,76 @@ function render() {
 	// calculate current mip level:
 	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
+	let waterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
+	let bigWaterAnimZoomMipLevel = getZoomMipLevel(2.5); // smaller = earlier switch to smaller image
 	
   
 	// Save the context state
 	ctx.save();
 	if(drawInfiniteWater){
-		const patternObj = imageAssets['infinitewater'];
-		// get current mip level image pattern:
-		const pattern = patternObj.patterns[waterZoomMipLevel];
-		const mipScale = Math.pow(0.5, waterZoomMipLevel);
-		
-		const matrix = new DOMMatrix()
-			.translate(viewport.x, viewport.y) 
-			.scale(viewport.zoom*0.4/mipScale); // mipScale = scale to different mip level
+		if(useAnimatedWater){
+			if(isBigAnimatedWater){
+				const patternObj = imageAssets['water-anim-big'];
+				if (patternObj && patternObj.isAnimated) {
+				  const now = performance.now();
+				  if (now - patternObj.lastFrameTime >= patternObj.frameDuration) {
+					patternObj.currentFrame = (patternObj.currentFrame + 1) % patternObj.frameCount;
+					// skip first frame, since its same as last frame:
+					// TODO: remove the first frame image from the actual image frames array to save memory.
+					if(patternObj.currentFrame == 0) patternObj.currentFrame = 1;
+					patternObj.lastFrameTime = now;
+				  }
 
-		pattern.setTransform(matrix);
+				  const frame = patternObj.animFrames[patternObj.currentFrame];
+				  const pattern = frame.patterns[bigWaterAnimZoomMipLevel];
+				  const mipScale = Math.pow(0.5, bigWaterAnimZoomMipLevel);
 
-		ctx.fillStyle = pattern;
-		ctx.fillRect(0, 0, canvas.width, canvas.height);
+				  const matrix = new DOMMatrix()
+					.translate(viewport.x, viewport.y)
+					.scale(viewport.zoom * 1.6 / mipScale);
+
+				  pattern.setTransform(matrix);
+				  ctx.fillStyle = pattern;
+				  ctx.fillRect(0, 0, canvas.width, canvas.height);
+				}
+			}else{
+				const patternObj = imageAssets['water-anim'];
+				if (patternObj && patternObj.isAnimated) {
+				  const now = performance.now();
+				  if (now - patternObj.lastFrameTime >= patternObj.frameDuration) {
+					patternObj.currentFrame = (patternObj.currentFrame + 1) % patternObj.frameCount;
+					patternObj.lastFrameTime = now;
+				  }
+
+				  const frame = patternObj.animFrames[patternObj.currentFrame];
+				  const pattern = frame.patterns[waterAnimZoomMipLevel];
+				  const mipScale = Math.pow(0.5, waterAnimZoomMipLevel);
+
+				  const matrix = new DOMMatrix()
+					.translate(viewport.x, viewport.y)
+					.scale(viewport.zoom * 2.4 / mipScale);
+
+				  pattern.setTransform(matrix);
+				  ctx.fillStyle = pattern;
+				  ctx.fillRect(0, 0, canvas.width, canvas.height);
+				}
+			}
+
+		}else{
+			const patternObj = imageAssets['infinitewater'];
+			// get current mip level image pattern:
+			const pattern = patternObj.patterns[waterZoomMipLevel];
+			const mipScale = Math.pow(0.5, waterZoomMipLevel);
+			
+			const matrix = new DOMMatrix()
+				.translate(viewport.x, viewport.y) 
+				.scale(viewport.zoom*0.4/mipScale); // mipScale = scale to different mip level
+
+			pattern.setTransform(matrix);
+
+			ctx.fillStyle = pattern;
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+		}
 	}else{
 		// default clear without textures.
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
