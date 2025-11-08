@@ -1763,10 +1763,12 @@ async function loadImages() {
 						console.log(`Image loaded: ${key}`);
 
 						obj.image = img;
-						
 
 						// --- NEW: generate patterns for images that are marked as patterns ---
-						if (obj.isPattern) {
+						if (!obj.isPattern) {
+							// just generate mipmaps for normal images:
+							obj.mipmaps = await generateMipmaps(img, 6);
+						}else{
 							if(obj.isAnimated){
 								if (obj.isBigAnim) {
 									const anim = obj.animationData;
@@ -2444,6 +2446,7 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 			let p2 = getHexAnglePos(ival+1, px, py);
 
 			ctx.fillStyle = color;
+			
 			drawCalligraphyLine(
 				p1.x, p1.y+waterShadingHeightHalf, 
 				p2.x, p2.y+waterShadingHeightHalf, 
@@ -2666,10 +2669,11 @@ function render() {
 	trackFPS();
 
 	// calculate current mip level:
-	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
+	zoomMipLevel = getZoomMipLevel(1.6); // use normal. smaller = earlier switch to smaller image
+	//console.log(zoomMipLevel);
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
 	let waterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
-	let bigWaterAnimZoomMipLevel = getZoomMipLevel(2.5); // smaller = earlier switch to smaller image
+	let bigWaterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
 	
   
 	// Save the context state
@@ -2817,7 +2821,7 @@ function render() {
 		// Define the hex path
 		drawHexagonPath(x, y);
 		//ctx.fillStyle = fallbackColor;
-		ctx.fill();
+		//ctx.fill();
 
 		// useimages = false for testing performance without tile images.
 		if(useimages){
@@ -2903,6 +2907,8 @@ function render() {
 		highlightedPlayer = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 	}
 
+
+	// draw highlighted lines for all pools:
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
