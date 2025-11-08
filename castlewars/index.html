@@ -1959,10 +1959,10 @@ async function generateMipmaps(img, levels = 6) {
 
 
 
-function getMipmapForZoom(imgObj) {
+function getMipmapForZoom(imgObj, miplevel = -1) {
     if (!imgObj.mipmaps) return imgObj.image;
-
-    return imgObj.mipmaps[zoomMipLevel];
+	if(miplevel == -1) miplevel = zoomMipLevel;
+    return imgObj.mipmaps[miplevel];
 }
 
 
@@ -2527,9 +2527,10 @@ let drawWaterTiles = 0;
 
 
 
-function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight){
+function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, miplevel = -1){
 	const imgObj = imageAssets[imageName];
-	const mip = getMipmapForZoom(imgObj);
+	if(miplevel == -1) miplevel = zoomMipLevel;
+	const mip = getMipmapForZoom(imgObj, miplevel);
 	ctx.drawImage(mip, dx, dy, dWidth, dHeight);
 }
 
@@ -2669,8 +2670,9 @@ function render() {
 	trackFPS();
 
 	// calculate current mip level:
-	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
-	//console.log(zoomMipLevel);
+	zoomMipLevel = getZoomMipLevel(1.3); // use normal. smaller = earlier switch to smaller image
+	let tileZoomMipLevel = getZoomMipLevel(0.6); // use normal. smaller = earlier switch to smaller image
+	//console.log(tileZoomMipLevel);
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
 	let waterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
 	let bigWaterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
@@ -2865,7 +2867,7 @@ function render() {
 					const player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 	
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
-					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
+					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
 					// todo: make own images for each player texture?
 					// Multiply by player color
@@ -2877,7 +2879,7 @@ function render() {
 				}else{
 					// draw dirt image:
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
-					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight);
+					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 				}
 
 			}
