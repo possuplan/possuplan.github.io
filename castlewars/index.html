@@ -326,8 +326,11 @@ label {
 }
 
 #debug-ui {
-	pointer-events: none;
-    padding-left: 6px;
+    pointer-events: none;
+    padding-right: 6px;
+    position: absolute;
+    top: 0;
+    right: 0;
 }
 
 #ui-left {
@@ -1457,27 +1460,48 @@ const SQRT3 = Math.sqrt(3);
 // soldiers =
 const SOLDIER_DATA = {
 	// listed in this order.
-	"Dragon":   { name: "Dragon",   type:"soldier", level: 4, cost: 40, wage: 54, sell: 20, prefix: 'D' },
-	"Horse":    { name: "Horse",    type:"soldier", level: 3, cost: 30, wage: 18, sell: 15, prefix: 'H' },
-	"Knight":   { name: "Knight",   type:"soldier", level: 2, cost: 20, wage: 8, sell: 10, prefix: 'K' },
-	"Peasant":  { name: "Peasant",  type:"soldier", level: 1, cost: 10, wage: 3, sell: 5, prefix: 'P' },
+	// visibleName = text shown to user.
+	// name = internal name, same as the key (maybe useful later).
+	"dragon":  { visibleName: "Dragon",  name: "dragon",  type:"soldier", level: 4, cost: 40, wage: 54, sell: 20, prefix: 'D' },
+	"horse":   { visibleName: "Horse",   name: "horse",   type:"soldier", level: 3, cost: 30, wage: 18, sell: 15, prefix: 'H' },
+	"knight":  { visibleName: "Knight",  name: "knight",  type:"soldier", level: 2, cost: 20, wage: 8, sell: 10, prefix: 'K' },
+	"peasant": { visibleName: "Peasant", name: "peasant", type:"soldier", level: 1, cost: 10, wage: 3, sell: 5, prefix: 'P' },
 };
 
-function getSoldierLevel(type){
-	return SOLDIER_DATA[type].level;
-}
 
-// cross becomes grass in... 4 turns
-//grass ´grows 1-3 pieces per turn, chance is 50 for one piece?
-// trees grow more the more land there is, i think max is 2 per turn.
 
 // castles =
 const CASTLE_DATA = {
 	// listed in this order.
-	"Fortress": { name: "Fortress", type:"castle", level: 3, cost: 200, prefix: 'F' },
-	"Castle":   { name: "Castle",   type:"castle", level: 2, cost: 40, prefix: 'C' },
-	"Hut":      { name: "Hut",      type:"castle", level: 1, cost: 10, prefix: 'h' },
+	"fortress": { visibleName: "Fortress",name: "fortress", type:"castle", level: 3, cost: 200, prefix: 'F' },
+	"castle":   { visibleName: "Castle",  name: "castle",   type:"castle", level: 2, cost: 40, prefix: 'C' },
+	"hut":      { visibleName: "Hut",     name: "hut",      type:"castle", level: 1, cost: 10, prefix: 'h' },
 };
+
+
+const UNITS_DATA = {
+	soldier: { // this should be unit type, which can be used directly as reference here.
+		...SOLDIER_DATA
+	},
+	castle: {
+		...CASTLE_DATA
+	},
+	object: {
+		
+	},
+};
+
+console.log(UNITS_DATA);
+
+
+function getSoldierLevel(type){
+	return SOLDIER_DATA[type].level;
+}
+function getCastleLevel(type){
+	return CASTLE_DATA[type].level;
+}
+
+
 
 // --- GLOBAL STATE ---
 let peer = null;
@@ -2482,12 +2506,12 @@ function drawHexagonPathLines(px, py, drawLines = null) {
 // 3 = top right
 // 4 = bottom right
 // 5 = bottom
-function drawHexagonPath(px, py) {
+function drawHexagonPath(px, py, padding = 0) {
 	ctx.beginPath();
 	for (let i = 0; i < 6; i++) {
 		const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
-		const x = px + HEX_SIZE * Math.cos(angle);
-		const y = py + HEX_SIZE * Math.sin(angle);
+		const x = px + (HEX_SIZE+padding) * Math.cos(angle);
+		const y = py + (HEX_SIZE+padding) * Math.sin(angle);
 		if(i === 0){
 			ctx.moveTo(x, y);
 		}else{
@@ -2522,7 +2546,7 @@ function drawHexagonOutlines(q, r, myId = -1){
 
 
 // renderinfinitewater 
-let drawInfiniteWater = 1;
+let useInfiniteWater = 1;
 let drawWaterTiles = 0;
 
 
@@ -2664,23 +2688,15 @@ let previous_drawnTiles = 0;
 let useAnimatedWater = 1;
 let isBigAnimatedWater = 1;
 
-function render() {
-	if (!gameState.settings.gameStarted) return;
-	
-	trackFPS();
 
-	// calculate current mip level:
-	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
-	let tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
-	//console.log(tileZoomMipLevel);
+function drawInfiniteWater(){
+
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
 	let waterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
 	let bigWaterAnimZoomMipLevel = getZoomMipLevel(1.6); // smaller = earlier switch to smaller image
-	
-  
-	// Save the context state
-	ctx.save();
-	if(drawInfiniteWater){
+
+
+	if(useInfiniteWater){
 		if(useAnimatedWater){
 			if(isBigAnimatedWater){
 				const patternObj = imageAssets['water-anim-big'];
@@ -2748,6 +2764,23 @@ function render() {
 		// default clear without textures.
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 	}
+}
+
+
+
+function render() {
+	if (!gameState.settings.gameStarted) return;
+	
+	trackFPS();
+
+	// calculate current mip level:
+	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
+	let tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
+	//console.log(tileZoomMipLevel);
+  
+	// Save the context state
+	ctx.save();
+	drawInfiniteWater();
 
 	ctx.translate(viewport.x, viewport.y);
 	ctx.scale(viewport.zoom, viewport.zoom);
@@ -2770,7 +2803,7 @@ function render() {
 		}
 		
 		if (tile.type === 'water') {
-			if(drawInfiniteWater){
+			if(useInfiniteWater){
 				continue; // skip water tiles.
 			}
 		}
@@ -2924,7 +2957,7 @@ function render() {
 		}
 		
 		if (tile.type === 'water') {
-			if(drawInfiniteWater){
+			if(useInfiniteWater){
 				continue; // skip water tiles.
 			}
 		}
@@ -2973,6 +3006,7 @@ function render() {
 					}
 					
 					if(dashedMode){
+						// your pool highlight
 						ctx.setLineDash([12.5, 15]);
 						ctx.strokeStyle = 'rgba(255,255,0, 1)';
 						ctx.lineWidth = 4;
@@ -2981,7 +3015,7 @@ function render() {
 						ctx.lineCap = 'butt'; // reset to default
 						ctx.setLineDash([]);
 					}else{
-					
+						// enemy pool highlight
 						ctx.strokeStyle = hexToRgba(color, opacity);
 						ctx.lineWidth = 3;
 						ctx.lineCap = 'round';
@@ -3003,13 +3037,14 @@ function render() {
 	
 	// --- DRAW HIGHLIGHTS (NEW) ---
 /*
+	// note: moved above that loops all tiles to draw edges.
 	if(highlightedPool.length > 0){
 		ctx.setLineDash([12.5, 15]);
 		// Draw selected pool
 		for (const hex of highlightedPool) {
 			drawHexagonOutlines(hex.q, hex.r, localPlayer.id);
-			ctx.strokeStyle = 'rgba(255,255,0, 1)';
-			ctx.lineWidth = 4;
+			ctx.strokeStyle = 'rgba(255,0,255, 1)';
+			ctx.lineWidth = 1;
 			ctx.lineCap = 'round';
 			ctx.stroke();
 			ctx.lineCap = 'butt'; // reset to default
@@ -3077,10 +3112,11 @@ function render() {
 		const mouseHex = pixelToAxial(lastMousePos.x, lastMousePos.y);
 		const { x, y } = axialToPixel(mouseHex.q, mouseHex.r);
 		drawHexagonPath(x, y);
-		if (isPlacementValid(placingUnit.type, mouseHex, getMyPlayer())) {
+		const buildCheck = isPlacementValid(placingUnit.type, mouseHex, getMyPlayer());
+		if (buildCheck.valid) {
 			ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
 		} else {
-			ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+			ctx.fillStyle = 'rgba(255, 0, 255, 0.4)';
 		}
 		ctx.fill();
 	}
@@ -3165,6 +3201,9 @@ function render() {
 	
 	requestAnimationFrame(render);
 }
+
+
+
 
 let lastMousePos = { x: 0, y: 0 };
 
@@ -3497,7 +3536,8 @@ function handleHexClick(hex) {
 
 	// --- PLACING A UNIT ---
 	if (placingUnit) {
-		if (isPlacementValid(placingUnit.type, hex, myPlayer)) {
+		const buildCheck = isPlacementValid(placingUnit.type, hex, myPlayer);
+		if (buildCheck.valid) {
 			sendToHost({
 				type: 'action_build',
 				unitType: placingUnit.type,
@@ -3515,7 +3555,17 @@ function handleHexClick(hex) {
 	// --- MOVING A UNIT ---
 	if (selectedUnit) {
 		// Check if clicking a valid move hex
+		// validMoveHexes = highlighted move area.
 		const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
+		//const unitOnHex = getUnitAt(hex.q, hex.r);
+		//console.error(unitOnHex);
+		//if (unitOnHex && unitOnHex.type === 'castle'){
+		//	isValidMove = false;
+		//}
+		
+		console.log("isValidMove: "+isValidMove);
+		
+	
 		if (isValidMove) {
 			sendToHost({
 				type: 'action_move',
@@ -3543,12 +3593,19 @@ function handleHexClick(hex) {
 			}
 		}
 	} else {
-		// --- SELECTING A UNIT ---
+		// --- SELECTING AN UNIT ---
 		if(!isHexWater(hex.q, hex.r)){
 			const unitOnHex = getUnitAt(hex.q, hex.r);
 			if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
-				selectedUnit = unitOnHex;
-				selectedHex = hex;
+				// allow only selecting soldiers
+				if(unitOnHex.internalType === 'soldier'){
+					selectedUnit = unitOnHex;
+					selectedHex = hex;
+				}else{
+					// dont allow selecting castles.
+					selectedUnit = null;
+					selectedHex = hex;
+				}
 			} else {
 				selectedUnit = null;
 				selectedHex = hex;
@@ -3713,8 +3770,10 @@ function updateHighlights() {
 		// Add all empty hexes *in* the pool as valid moves
 		for (const hex of highlightedPool) {
 			// removing this fixes bug not allowing moving around selected unit:
+			// todo: might actually make another bug that allows moving always to neighbours...
 			//if (hex.q === selectedUnit.q && hex.r === selectedUnit.r) continue;
 			if (!getUnitAt(hex.q, hex.r)) {
+				// todo: move this elsewhere.. might fuck up stuff.
 				validMoveHexes.push(hex);
 			}
 			
@@ -3735,8 +3794,11 @@ function updateHighlights() {
 			const targetUnit = getUnitAt(hex.q, hex.r);
 			const shieldLevel = getShieldLevel(hex.q, hex.r, myPlayer.id);
 
+
 			if (targetUnit) {
-				if (targetUnit.ownerId === myPlayer.id) continue; // Should be impossible
+				if (targetUnit.ownerId === myPlayer.id){
+					continue; // Should be impossible
+				}
 				if (selectedUnit.level > shieldLevel && selectedUnit.level > targetUnit.level) {
 					validMoveHexes.push(hex);
 				} else {
@@ -3757,6 +3819,8 @@ function updateHighlights() {
 		}
 	}
 }
+
+
 
 function openBuildPopup(type) {
 	placingUnit = null;
@@ -3793,7 +3857,10 @@ function openBuildPopup(type) {
 		
 		if (canAfford) {
 			itemEl.onclick = () => {
-				placingUnit = { type: item.name, cost: item.cost };
+				placingUnit = {
+					type: item.name, // "soldier" etc.
+					cost: item.cost,
+				};
 				buildPopup.style.display = 'none';
 			};
 		}
@@ -3802,22 +3869,95 @@ function openBuildPopup(type) {
 	buildPopup.style.display = 'block';
 }
 
-// --- HOST-SIDE VALIDATION ---
 
+
+function getUnitLevel(unitType){
+	if(SOLDIER_DATA[unitType]){
+		return SOLDIER_DATA[unitType].level;
+	}
+	if(CASTLE_DATA[unitType]){
+		return CASTLE_DATA[unitType].level;
+	}
+	return 0; // fallback.
+}
+
+
+function is_castle(unitType){
+	return !!CASTLE_DATA[unitType];
+}
+// --- HOST-SIDE VALIDATION ---
+// unitType = unit type being built (horse, peasant, etc..)
+// hex      = where he builds it
+// player   = who builds it
+let prevhex = "";
 function isPlacementValid(unitType, hex, player) {
-	const tile = getTileAt(hex.q, hex.r);
-	if (!tile || tile.type === 'water') return false; // Must be on land
-	if (getUnitAt(hex.q, hex.r)) return false; // Must be empty
+	let unitLevel = getUnitLevel(unitType);
 	
-	const isCastle = !!CASTLE_DATA[unitType];
+	let logallowed = prevhex !== (hex.q+","+hex.r);
+	if(logallowed){
+		console.log("unitType = "+unitType);
+		console.log("hex = "+hex.q+","+hex.r);
+		console.log("player.id = "+player.id);
+	}
+	
+	const tile = getTileAt(hex.q, hex.r);
+	if (!tile || tile.type === 'water'){
+		return badMove("must be on land"); // Must be on land
+	}
+	
+	// if there is an unit on the hex:
+	const hexUnit = getUnitAt(hex.q, hex.r);
+	if (hexUnit){
+		// checks for castles and soldiers placement too.
+		if(hexUnit.ownerId === player.id){
+			return badMove("must be empty"); // Must be empty
+		}else{
+			// if trying to kill enemy player:
+			// todo: probably need to check if trying to place castle, 
+			//       so it wont allow placing castle on top of enemy soldier.
+			
+			// if the enemy unit level was higher than placed unit level:
+			if(hexUnit.level >= unitLevel){
+				if(logallowed){
+					console.log("trying to place unit on top of unit");
+					console.log("hexUnit.level >= unitLevel");
+					console.log(hexUnit.level+" >= "+unitLevel);
+				}
+				return badMove("too low level"); 
+			}else{
+				return goodMove('attack', hexUnit);
+			}
+		}
+	}
+	
+	// if new unit is a castle:
+	const isCastle = is_castle(unitType);
 	if (isCastle) {
-		if (tile.ownerId !== player.id) return false; // Must own hex
-		if (tile.object) return false; // not sure if original game had this rule: Must be clear (no tree/grass)
+		// if not your tile:
+		if (tile.ownerId !== player.id){
+			if(logallowed){
+				console.log("trying to place castle");
+				console.log("tile.ownerId !== player.id");
+				console.log(tile.ownerId+" != "+player.id);
+			}
+			return badMove("must own hex"); // Must own hex
+		}
+		// if there is object:
+		if (tile.object){
+			return badMove("tile has object"); // not sure if original game had this rule: Must be clear (no tree/grass)
+		}
 	} else {
-		// Soldier
-		// Rules are "neighbouring land i own, or in the land i own"
+		// if new unit is a soldier:
+		// Rules are "neighbouring land I own, or in the land I own"
+		
+		// if new place is not your land:
 		if (tile.ownerId !== player.id) {
-			// Check neighbors
+			if(logallowed){
+				console.log("trying to place soldier");
+				console.log("tile.ownerId !== player.id");
+				console.log(tile.ownerId+" != "+player.id);
+			}
+			// Check if any neighbour is my land:
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
@@ -3826,13 +3966,26 @@ function isPlacementValid(unitType, hex, player) {
 					break;
 				}
 			}
-			if (!isNeighborOwned) return false;
+			// if not in build radius:
+			if (!isNeighborOwned){
+				return badMove("out of range");
+			}else{
+				// if it was in build radius:
+				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
+				// if the enemy unit level was higher than placed unit level:
+				if(shieldLevel >= unitLevel){
+					return badMove("level is too low");
+				}
+			}
 		}
 	}
-	return true;
+	
+	prevhex = hex.q+","+hex.r;
+	
+	return goodMove('move');
 }
 
-function getShieldLevel(q, r, perspectiveOwnerId) {
+function getShieldLevel_orig(q, r, perspectiveOwnerId) {
 	let maxShield = 0;
 	for (const n of getHexNeighbors(q, r)) {
 		const unit = getUnitAt(n.q, n.r);
@@ -3844,11 +3997,54 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 	return maxShield;
 }
 
+
+function getShieldLevel(q, r, perspectiveOwnerId) {
+	let maxShield = 0;
+	const tile = getTileAt(q, r);
+	
+	for (const n of getHexNeighbors(q, r)) {
+		const unit = getUnitAt(n.q, n.r);
+		//const nTile = getTileAt(n.q, n.r);
+		if (tile && unit){
+			if (tile.ownerId === unit.ownerId){
+				if (unit.ownerId !== perspectiveOwnerId) {
+					// It's an enemy unit
+					maxShield = Math.max(maxShield, unit.level);
+				}
+			}
+		}
+	}
+	return maxShield;
+}
+
+
+
+
+function goodMove(action, target = null){
+	const move = { valid: true, action: action, target: target };
+	console.warn(move);
+	return move;
+}
+function badMove(reason){
+	const move = { valid: false, reason: reason };
+	console.warn(move);
+	return move;
+}
+
+
+
 function isMoveValid(unit, toHex, player) {
-	if (unit.hasMoved) return { valid: false, reason: 'Unit has already moved.' };
+	if (unit.hasMoved){
+		return badMove('Unit has already moved.');
+	}
+	if(unit.internalType === 'castle'){
+		return badMove('Cannot move castles.');
+	}
 
 	const toTile = getTileAt(toHex.q, toHex.r);
-	if (!toTile || toTile.type === 'water') return { valid: false, reason: 'Cannot move into water.' };
+	if (!toTile || toTile.type === 'water'){
+		return badMove('Cannot move into water.');
+	}
 	
 	const targetUnit = getUnitAt(toHex.q, toHex.r);
 
@@ -3874,8 +4070,10 @@ function isMoveValid(unit, toHex, player) {
 	// --- Case 1: Moving onto own tile (inside the pool) ---
 	const isMovingInPool = unitPool.some(h => h.q === toHex.q && h.r === toHex.r);
 	if (isMovingInPool) {
-		if (targetUnit) return { valid: false, reason: 'Cannot move onto own unit.' };
-		return { valid: true, action: 'move' };
+		if (targetUnit){
+			return badMove('Cannot move onto own unit.');
+		}
+		return goodMove('move');
 	}
 
 	// --- Case 2: Moving outside the pool ---
@@ -3889,7 +4087,7 @@ function isMoveValid(unit, toHex, player) {
 	}
 
 	if (!isBorderHex) {
-		return { valid: false, reason: 'Too far.' };
+		return badMove('Too far.');
 	}
 	
 	// It's a valid border hex, now check shields and targets
@@ -3897,27 +4095,34 @@ function isMoveValid(unit, toHex, player) {
 
 	if (targetUnit) {
 		if (targetUnit.ownerId === player.id) {
-			return { valid: false, reason: 'Cannot move onto own unit.' }; // Should be caught by pool check, but safe
+			return badMove('Cannot move onto own unit.'); // Should be caught by pool check, but safe
 		}
 		if (unit.level > shieldLevel && unit.level > targetUnit.level) {
-			 return { valid: true, action: 'attack', target: targetUnit };
+			return goodMove('attack', targetUnit);
 		} else {
-			return { valid: false, reason: 'Target unit level is too high or shielded.', shake: true };
+			return badMove('Target unit level is too high or shielded.');
 		}
 	}
 	
 	// No target unit
 	if (toTile.ownerId !== null) { // It's enemy land
 		if (unit.level > shieldLevel) {
-			return { valid: true, action: 'move' };
+			return goodMove('move');
 		} else {
-			return { valid: false, reason: 'Blocked by enemy shield.', shake: true };
+			// todo: think again....
+			if(toTile.ownerId !== unit.ownerId){
+				return badMove('Blocked by enemy shield.');
+			}else{
+				return goodMove('move');
+			}
 		}
 	} else { // It's unowned land
 		// New rule: Shields do not block movement to unowned land
-		return { valid: true, action: 'move' };
+		return goodMove('move');
 	}
 }
+
+
 
 function executeAction(playerId, action) {
 	// HOST-ONLY function
@@ -3955,7 +4160,7 @@ function executeAction(playerId, action) {
 					toQ, toR,
 					didClaim: oldOwner !== playerId,
 					oldOwner: oldOwner,
-					clearedObject: oldObject
+					clearedObject: oldObject,
 				};
 				
 				if (moveCheck.action === 'attack') {
@@ -3964,6 +4169,10 @@ function executeAction(playerId, action) {
 					gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 					sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
+					
+				
+					console.warn("moveCheck.action === 'attack'");
+					
 				}
 				
 				//console.warn("actionForUndo1");
@@ -3993,9 +4202,12 @@ function executeAction(playerId, action) {
 					distributePoolSavings(findEconomyPools(oldOwner));
 				}
 				
+				console.warn(actionForUndo);
+				
 			} else if (moveCheck.shake) {
-				broadcast({ type: 'unit_shake', unitId: unit.id });
-				sounds.push('protect');
+				// not really used, also useless on mobile...
+				//broadcast({ type: 'unit_shake', unitId: unit.id });
+				//sounds.push('protect');
 			}
 			break;
 		}
@@ -4005,7 +4217,8 @@ function executeAction(playerId, action) {
 			const data = SOLDIER_DATA[unitType] || CASTLE_DATA[unitType];
 			if (!data) return;
 			
-			if (isPlacementValid(unitType, {q, r}, player)) {
+			const buildCheck = isPlacementValid(unitType, {q, r}, player);
+			if (buildCheck.valid) {
 				const pools = findEconomyPools(playerId);
 				let totalSavings = 0;
 				pools.forEach(p => totalSavings += p.totalSavings);
@@ -4018,17 +4231,22 @@ function executeAction(playerId, action) {
 						type: unitType,
 						ownerId: playerId,
 						level: data.level,
+						internalType: data.type,
 						q, r,
 						hasMoved: true,
-						isCastle: !!CASTLE_DATA[unitType]
+						isCastle: !!CASTLE_DATA[unitType],
 					};
 					console.log("action_build: gameState.units.push(newUnit);");
 					console.log(newUnit);
+					
+					
 					//gameState.units.push(newUnit); // if used here then host gets the unit double!
 					
 					let didClaim = false;
 					
 					const tile = getTileAt(q, r);
+					const oldOwner = tile.ownerId;
+					
 					if (!newUnit.isCastle && tile.ownerId !== playerId) {
 						//tile.ownerId = playerId;
 						setTileOwner(tile, playerId);
@@ -4042,13 +4260,50 @@ function executeAction(playerId, action) {
 						tile.object = null;
 						updates.push({ type: 'tile_changed', q: q, r: r, object: null });
 					}
-					actionForUndo = { type: 'build', unit: newUnit, cost: data.cost, didClaim: didClaim, clearedObject:clearedObject };
+					
+					actionForUndo = {
+						type: 'build', 
+						unit: newUnit, 
+						cost: data.cost, 
+						didClaim: didClaim, 
+						oldOwner: oldOwner,
+						clearedObject: clearedObject,
+					};
+					/*
+					actionForUndo = {
+						type: 'move',
+						unitId: unit.id,
+						fromQ, fromR,
+						toQ, toR,
+						didClaim: oldOwner !== playerId,
+						oldOwner: oldOwner,
+						clearedObject: oldObject,
+					};*/
+					
+					if (buildCheck.action === 'attack') {
+						const targetUnit = buildCheck.target;
+						actionForUndo.killedUnit = { ...targetUnit }; // Store copy
+						gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
+						updates.push({ type: 'unit_removed', unitId: targetUnit.id });
+						//sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
+						sounds.push('kill');
+						
+						console.warn("buildCheck.action === 'attack'");
+						
+					}
+					
 					console.warn("actionForUndo");
 					console.warn(actionForUndo);
 					updates.push({ type: 'unit_added', unit: newUnit });
 					sounds.push('moveunit');
 					
 					distributePoolSavings(findEconomyPools(playerId));
+					if (tile.ownerId) {
+						affectedPlayers.add(tile.ownerId);
+						distributePoolSavings(findEconomyPools(tile.ownerId));
+					}
+					
+					console.warn(actionForUndo);
 				}
 			}
 			break;
@@ -4103,9 +4358,13 @@ function executeAction(playerId, action) {
 					const tile = getTileAt(lastAction.unit.q, lastAction.unit.r);
 					if (tile) {
 						//tile.ownerId = null;
-						setTileOwner(tile, null);
-						updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: null });
+						setTileOwner(tile, lastAction.oldOwner);
+						updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId });
 					}
+				}
+				if (lastAction.killedUnit) {
+					gameState.units.push(lastAction.killedUnit);
+					updates.push({ type: 'unit_added', unit: lastAction.killedUnit });
 				}
 				
 				if (lastAction.clearedObject) {
@@ -4116,6 +4375,10 @@ function executeAction(playerId, action) {
 					}
 				}
 				distributePoolSavings(findEconomyPools(playerId));
+				if(lastAction.oldOwner) {
+					affectedPlayers.add(lastAction.oldOwner);
+					distributePoolSavings(findEconomyPools(lastAction.oldOwner));
+				}
 			}
 			sounds.push('moveunit');
 			break;
@@ -4434,6 +4697,11 @@ function ai_find_best_move(player) {
 
 
 
+let AI_DELAY_START = 1;
+let AI_DELAY_MOVE = 1;
+
+
+
 // *** NEW FUNCTION ***
 // This function recursively calls itself with a delay to execute AI moves sequentially.
 // moveai
@@ -4460,13 +4728,14 @@ function executeAIMoveSequentially(player) {
         // Schedule the next move check after a delay
         setTimeout(() => {
             executeAIMoveSequentially(player); // Recursive call for the next move
-        }, 100); // delay between moves
+        }, AI_DELAY_MOVE); // delay between moves
     } else {
         // No more moves found, end the turn
         console.log(`AI ${player.name} has no more moves. Ending turn.`);
         handleClientData(player.id, { type: "action_end_turn" });
     }
 }
+
 
 
 function checkForAITurn(){
@@ -4483,7 +4752,7 @@ function checkForAITurn(){
         // Add a small initial delay to allow the "turn changed" message to settle
         setTimeout(() => {
             executeAIMoveSequentially(currentPlayer);
-        }, 100); // Small delay before first move
+        }, AI_DELAY_START); // Small delay before first move
 	}
 }
 
@@ -4515,15 +4784,78 @@ function executeEndTurn(playerId) {
 	distributePoolSavings(pools);
 	updatePlayerSavings(playerId); // Update savings *after* calcs
 	
-	// --- 2. Kill soldiers & turn to grass ---
+	// --- 2. Kill soldiers & turn to crosses ---
 	for (const soldier of allSoldiersKilled) {
 		const tile = getTileAt(soldier.q, soldier.r);
 		if (tile) {
 			tile.object = 'dead'; // Turn to dead (crosses)
-			broadcast({ type: 'tile_changed', q: soldier.q, r: soldier.r, object: tile.object });
+			tile.actionTurnNumber = gameState.turn.turnNumber;
+			broadcast({ type: 'object_changed', q: soldier.q, r: soldier.r, object: tile.object });
 		}
 		gameState.units = gameState.units.filter(u => u.id !== soldier.id);
 		broadcast({ type: 'unit_removed', unitId: soldier.id });
+	}
+	
+	// process:
+	// - crosses turning into grass.
+	// - grass spreading randomly.
+	// - new trees spawning randomly.
+	
+	// cross becomes grass in... 4 turns
+	// grass ´grows 1-3 pieces per turn, chance is 50 for one piece?
+	// trees grow more the more land there is, i think max is 2 per turn.
+
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+
+		// add random trees to land tiles without any objects or units:
+		if(tile.type === 'land'){
+			
+			// check if there is object on tile for grass/cross functionality:
+			if(tile.object){
+				if(tile.actionTurnNumber){
+					let turnDiff = gameState.turn.turnNumber - tile.actionTurnNumber;
+					if(tile.object === 'dead'){
+						// turn crosses into grass after 4 turns:
+						if(turnDiff >= 4){
+							tile.object = 'grass';
+							tile.actionTurnNumber = gameState.turn.turnNumber;
+							broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
+						}
+					}else if(tile.object === 'grass'){
+						// spread grass 
+						let neigh = getHexNeighbors(tile.q, tile.r);
+						for(let i = 0; i < neigh.length; i++){
+							let n = neigh[i];
+							const nTile = getTileAt(n.q, n.r);
+							if(nTile && nTile.type === 'land' && !nTile.object){
+								// a land tile without any objects yet.
+								// check if there is any units on this tile:
+								if(!getUnitAt(n.q, n.r)){
+									// ready to use random chance for growing:
+									if(Math.random() < 0.02){
+										nTile.object = 'grass';
+										nTile.actionTurnNumber = gameState.turn.turnNumber;
+										broadcast({ type: 'object_changed', q: nTile.q, r: nTile.r, object: nTile.object });
+									}
+								}
+								
+							}
+						}
+					}
+				}
+			}else{
+				// no object, spawn random trees:
+				if(Math.random() < 0.002){
+					if(!getUnitAt(tile.q, tile.r)){
+						tile.object = 'tree';
+						tile.actionTurnNumber = gameState.turn.turnNumber;
+						broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
+					}
+				}
+			}
+		}
+
 	}
 	
 	// --- 3. Reset "hasMoved" for all *this player's* units ---
@@ -4534,6 +4866,7 @@ function executeEndTurn(playerId) {
 				broadcast({ type: 'unit_moved', unitId: u.id, q: u.q, r: u.r, hasMoved: false });
 			}
 		}
+		
 	});
 	
 	// --- 4. Grow Grass / Spawn Trees (random events) ---
@@ -4628,13 +4961,26 @@ function handleHostData(data) {
 		case 'chat':
 			addChatMessage(data.from, data.message, data.color);
 			break;
-		case 'tile_changed':
-			const tile = getTileAt(data.q, data.r);
-			if (tile) {
-				if (data.ownerId !== undefined) setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
-				if (data.object !== undefined) tile.object = data.object;
+		case 'tile_changed': 
+			{
+				const tile = getTileAt(data.q, data.r);
+				if (tile) {
+					if (data.ownerId !== undefined) setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
+					if (data.object !== undefined) tile.object = data.object;
+				}
+				needsUIUpdate = true;
 			}
-			needsUIUpdate = true;
+			break;
+		case 'object_changed':
+			{
+				const tile = getTileAt(data.q, data.r);
+				if (tile) {
+					if (data.object !== undefined){
+						tile.object = data.object;
+					}
+				}
+				needsUIUpdate = true;
+			}
 			break;
 		case 'unit_added':
 			console.log("unit_added: gameState.units.push(data.unit);");
@@ -5619,11 +5965,15 @@ function loadParsedMap(parsedMap, compact = false){
 				}else{
 					info = parsedMap.data[yy][xx];
 				}
-				let tree = null;
-				if(info.object == "tree"){
-					tree = "tree";
+				let object = null;
+				//if(info.object == "tree"){
+				//	tree = "tree";
+				//}
+				// add random trees 20% chance:
+				if(!info.owner && Math.random() < 0.2){
+					object = "tree";
 				}
-				setTileAt(qq, rr, { type: info.type, ownerId: null, object: tree, savings: 0 });
+				setTileAt(qq, rr, { type: info.type, ownerId: null, object: object, savings: 0 });
 			}
 		}
 	}
@@ -5707,9 +6057,10 @@ function scaleMap(){
 	
 }
 
+// generate_map
 function generateMap(width, height) {
 	// NOTE: map is loaded before this generateMaps call, so any changes here for the map wont be visible for playes.
-	
+	// go to loadParsedMap
 	
 	width = loadedmap.width;
 	height = loadedmap.height;
@@ -5892,7 +6243,9 @@ function spawnPlayers(){
 						
 						if(info.object == "peasant"){
 							// unit found
-							spawnSoldier(qq, rr, playerId, 'Peasant');
+							// no need to remove object, since map format doesnt have object here.
+							spawnSoldier(qq, rr, playerId, 'peasant');
+							
 						}
 					}
 				}
@@ -5917,8 +6270,8 @@ function spawnPlayers(){
 			
 			let playerId = extraPlayers[i].id;
 			setTileOwner(tile, playerId);
-			tile.object = null;
-			spawnSoldier(qq, rr, playerId, 'Peasant');
+			setTileAt(qq, rr, {object:null}); // remove object if any.
+			spawnSoldier(qq, rr, playerId, 'peasant');
 			// TODO: try to claim hex neighbour:
 			
 		}
@@ -5995,7 +6348,7 @@ function spawnPlayersRandom() {
 
 		for(let i = 0; i < total_start_units; i++){
 			const soldierHex = claimedHexes[i];
-			spawnSoldier(soldierHex.q, soldierHex.r, player.id, 'Peasant');
+			spawnSoldier(soldierHex.q, soldierHex.r, player.id, 'peasant');
 		}
 	}
 	
@@ -6008,6 +6361,7 @@ function spawnSoldier(q, r, playerId, type){
 	const soldier = {
 		id: getUID(),
 		type: type,
+		internalType: SOLDIER_DATA[type].type,
 		ownerId: playerId,
 		ownerIndex: getPlayerIndex(playerId),
 		level: getSoldierLevel(type),
@@ -6017,6 +6371,22 @@ function spawnSoldier(q, r, playerId, type){
 	};
 	
 	gameState.units.push(soldier);
+}
+
+function spawnCastle(q, r, playerId, type){
+	const castle = {
+		id: getUID(),
+		type: type,
+		internalType: CASTLE_DATA[type].type,
+		ownerId: playerId,
+		ownerIndex: getPlayerIndex(playerId),
+		level: getCastleLevel(type),
+		q: q,
+		r: r,
+		hasMoved: false
+	};
+	
+	gameState.units.push(castle);
 }
 
 function startGame() {
