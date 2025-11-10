@@ -844,7 +844,7 @@ input.disabled {
 		<div class="input-group">
 			<button id="load-random-map-btn">Random map</button>
 			<button id="load-map-btn">Select Map</button>
-			<button id="load-game-btn" style="display:none">Load Game</button>
+			<button id="load-game-btn" style="display:block">Load Game</button>
 		</div>
 		
 		<div class="input-group">
@@ -859,7 +859,7 @@ input.disabled {
 			</div>
 		</div>
 		
-		<div id="loaded-game-info-container" class="loaded-game-info" style="display: none;">
+		<div id="loaded-game-info-container" class="loaded-game-info" style="display: block;">
 			<p><strong>Saved Game:</strong> <span id="load-game-date"></span></p>
 			<p><strong>Players:</strong></p>
 			<ul id="load-game-players"></ul>
@@ -1552,7 +1552,8 @@ let gameState = {
 	units: [], // { id, type: 'Peasant', ownerId, level, q, r, hasMoved }
 	turn: {
 		currentPlayerIndex: 0,
-		turnNumber: 1
+		startPlayerIndex: 0,
+		turnNumber: 1,
 	},
 	// Economy pools are calculated, not stored directly
 };
@@ -2295,7 +2296,7 @@ function addChatMessage(from, message, color = '#FFF') {
 	
 	// show chat messages on top if topleft ui is not open
 	if(!showTopLeftUi){
-		console.warn("hideTopFloatUi");
+		//console.warn("hideTopFloatUi");
 		hideTopFloatUi();
 	}
 
@@ -2315,7 +2316,7 @@ function addSystemChatMessage(message, color = '#FFF') {
 	
 	// show chat messages on top if topleft ui is not open
 	if(!showTopLeftUi){
-		console.warn("hideTopFloatUi2");
+		//console.warn("hideTopFloatUi2");
 		hideTopFloatUi();
 	}
 }
@@ -2922,10 +2923,6 @@ function render() {
 		ctx.restore();
 		
 		
-		// Draw objects (trees etc) on top
-		if (tile.object) {
-			drawObject(ctx, x, y, tile.object);
-		}
 	}
 	
 	let highlightedEnemy = null;
@@ -3027,6 +3024,26 @@ function render() {
 		}
 	}
 	
+	// Draw objects (trees etc) on top of pool edges:
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		const { x, y } = axialToPixel(q, r);
+
+		// --- Culling Check ---
+		if(checkCulling(x, y)){
+			continue;
+		}
+		
+		if (tile.type === 'land' && tile.object) {
+			drawObject(ctx, x, y, tile.object);
+		}
+	}
+	
+	
+	
 	// log how many tiles were drawn to test culling working:
 	if(previous_drawnTiles != drawnTiles){
 		//console.log("drawnTiles = "+drawnTiles);
@@ -3122,14 +3139,15 @@ function render() {
 	}
 	
 	// --- DRAW UNITS (existing code, moved *after* highlights) ---
-	ctx.font = `${HEX_SIZE * 0.5}px sans-serif`;
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'middle';
+	//ctx.font = `${HEX_SIZE * 0.5}px sans-serif`;
+	//ctx.textAlign = 'center';
+	//ctx.textBaseline = 'middle';
 	
 	let myPlayer = getMyTurnPlayer();
 	
 	//let unitsDrawn = 0;
 	
+	// draw all units:
 	for (const unit of gameState.units) {
 		let { x, y } = axialToPixel(unit.q, unit.r);
 
@@ -3480,7 +3498,7 @@ function updateGameUI() {
 		}
 	}*/
 	
-	console.log("endTurnBtn.disabled = "+endTurnBtn.disabled);
+	//console.log("endTurnBtn.disabled = "+endTurnBtn.disabled);
 	
 	// Update savings
 	if (myPlayer && !myPlayer.isSpectator) {
@@ -4022,12 +4040,12 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 
 function goodMove(action, target = null){
 	const move = { valid: true, action: action, target: target };
-	console.warn(move);
+	//console.warn(move);
 	return move;
 }
 function badMove(reason){
 	const move = { valid: false, reason: reason };
-	console.warn(move);
+	//console.warn(move);
 	return move;
 }
 
@@ -4171,7 +4189,7 @@ function executeAction(playerId, action) {
 					sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
 					
 				
-					console.warn("moveCheck.action === 'attack'");
+					//console.warn("moveCheck.action === 'attack'");
 					
 				}
 				
@@ -4202,7 +4220,7 @@ function executeAction(playerId, action) {
 					distributePoolSavings(findEconomyPools(oldOwner));
 				}
 				
-				console.warn(actionForUndo);
+				//console.warn(actionForUndo);
 				
 			} else if (moveCheck.shake) {
 				// not really used, also useless on mobile...
@@ -4236,8 +4254,8 @@ function executeAction(playerId, action) {
 						hasMoved: true,
 						isCastle: !!CASTLE_DATA[unitType],
 					};
-					console.log("action_build: gameState.units.push(newUnit);");
-					console.log(newUnit);
+					//console.log("action_build: gameState.units.push(newUnit);");
+					//console.log(newUnit);
 					
 					
 					//gameState.units.push(newUnit); // if used here then host gets the unit double!
@@ -4288,7 +4306,7 @@ function executeAction(playerId, action) {
 						//sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
 						sounds.push('kill');
 						
-						console.warn("buildCheck.action === 'attack'");
+						//console.warn("buildCheck.action === 'attack'");
 						
 					}
 					
@@ -4303,7 +4321,7 @@ function executeAction(playerId, action) {
 						distributePoolSavings(findEconomyPools(tile.ownerId));
 					}
 					
-					console.warn(actionForUndo);
+					//console.warn(actionForUndo);
 				}
 			}
 			break;
@@ -4534,28 +4552,33 @@ function addCost(pools, cost) {
 }
 
 
-function advanceToNextPlayer(){
-	let nextIndex = gameState.turn.currentPlayerIndex;
+function getNextPlayerIndex(currentIndex){
+	let nextIndex = currentIndex;
+	// get next player index:
     do {
         nextIndex = (nextIndex + 1) % gameState.players.length;
     } while (gameState.players[nextIndex].isSpectator);
 	
-    gameState.turn.currentPlayerIndex = nextIndex;
+	return nextIndex;
+}
+
+
+
+function advanceToNextPlayer(){
+
+	// advance to next player:
+    gameState.turn.currentPlayerIndex = getNextPlayerIndex(gameState.turn.currentPlayerIndex);
 	
-	let firstPlayerIndex = 0;
-	for(let i = 0; i < gameState.players.length; i++){
-		if(!gameState.players[i].isSpectator){
-			firstPlayerIndex = i;
-			break;
-		}
-	}
-	
-	if (gameState.turn.currentPlayerIndex === firstPlayerIndex) {
+	// end of day check:
+	if (gameState.turn.currentPlayerIndex === gameState.turn.startPlayerIndex) {
 		gameState.turn.turnNumber++;
+		processEndOfDay();
 	}
 	
 	updateGameUI();
 }
+
+
 
 function random(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -4757,6 +4780,129 @@ function checkForAITurn(){
 }
 
 
+
+
+function processEndOfDay(){
+	console.warn("Day ended, new day starts. process trees, grasses etc.");
+	
+	// Save this game state
+	saveGameToDB(gameState);
+	
+	// process:
+	// - crosses turning into grass.
+	// - grass spreading randomly.
+	// - new trees spawning randomly.
+	
+	// cross becomes grass in... 4 turns
+	// grass ´grows 1-3 pieces per turn, chance is 50 for one piece?
+	// trees grow more the more land there is, i think max is 2 per turn.
+	let grassGrow = {};
+	let landtilesCount = 0;
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+
+		// add random trees to land tiles without any objects or units:
+		if(tile.type === 'land'){
+			landtilesCount++;
+			
+			// check if there is object on tile for grass/cross functionality:
+			if(tile.object && tile.actionTurnNumber){
+
+				let turnDiff = gameState.turn.turnNumber - tile.actionTurnNumber;
+				if(tile.object === 'dead'){
+					// turn crosses into grass after 4 turns:
+					if(turnDiff >= 4){
+						tile.object = 'grass';
+						tile.actionTurnNumber = gameState.turn.turnNumber;
+						broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
+					}
+				}else if(tile.object === 'grass'){
+					// spread grass 
+					let neigh = getHexNeighbors(tile.q, tile.r);
+					for(let i = 0; i < neigh.length; i++){
+						let n = neigh[i];
+						const nTile = getTileAt(n.q, n.r);
+						if(nTile && nTile.type === 'land' && !nTile.object){
+							// a land tile without any objects yet.
+							// check if there is any units on this tile:
+							if(!getUnitAt(n.q, n.r)){
+								// ready to use random chance for growing:
+								if(Math.random() < 0.1){
+									// set this tile as possible growing for grass:
+									grassGrow[`${nTile.q},${nTile.r}`] = nTile;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	
+	
+	// spread grass, using keyed array so it wont spread into too far away, just neighbours:
+	for (const key in grassGrow) {
+		if (grassGrow.hasOwnProperty(key)) {
+			let nTile = grassGrow[key]; // was neighbour tile, so using nTile still here.
+			nTile.object = 'grass';
+			nTile.actionTurnNumber = gameState.turn.turnNumber;
+			broadcast({ type: 'object_changed', q: nTile.q, r: nTile.r, object: nTile.object });
+		}
+	}
+
+
+
+	
+	const tiles = gameState.map.tilesData;
+	
+	let treesPercent = 2/240; // 0.00833
+	let maxTrees = Math.round(landtilesCount*treesPercent);
+	let minTrees = 1;
+	if(maxTrees > 4) maxTrees = 4;
+	
+	// if maxtrees is 0, add randomly 0 or 1 trees
+	if(maxTrees == 0){
+		minTrees = 0;
+		maxTrees = random(0,random(0,1));
+	}else if(maxTrees == 1){
+		minTrees = 0;
+		maxTrees = random(0,1);
+	}else if(maxTrees == 2){
+		minTrees = 0;
+		maxTrees = random(0,1);
+	}else if(maxTrees == 3){
+		minTrees = 0;
+		maxTrees = random(0,1);
+	}else if(maxTrees == 4){
+		minTrees = 1;
+		maxTrees = random(1,2);
+	}
+	let curMaxTrees = random(minTrees, maxTrees);
+	
+	console.log("maxTrees: "+maxTrees+", curMaxTrees: "+curMaxTrees);
+	// add random trees:
+	for (let i = 0; i < curMaxTrees; i++) {
+		let rti, tile, hasUnit;
+
+		// Find a valid tile
+		do {
+			rti = random(0, tiles.length - 1);
+			tile = tiles[rti];
+			hasUnit = getUnitAt(tile.q, tile.r);
+		} while (tile.type === 'water' || tile.object || hasUnit);
+
+		// add tree:
+		tile.object = 'tree';
+		tile.actionTurnNumber = gameState.turn.turnNumber;
+		broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
+		console.warn("tree spawned at "+tile.q+tile.r);
+	}
+	
+}
+
+
+
 function executeEndTurn(playerId) {
 	// --- 1. Apply income and wages for current player ---
 	const player = getPlayer(playerId);
@@ -4784,6 +4930,8 @@ function executeEndTurn(playerId) {
 	distributePoolSavings(pools);
 	updatePlayerSavings(playerId); // Update savings *after* calcs
 	
+	
+
 	// --- 2. Kill soldiers & turn to crosses ---
 	for (const soldier of allSoldiersKilled) {
 		const tile = getTileAt(soldier.q, soldier.r);
@@ -4796,67 +4944,8 @@ function executeEndTurn(playerId) {
 		broadcast({ type: 'unit_removed', unitId: soldier.id });
 	}
 	
-	// process:
-	// - crosses turning into grass.
-	// - grass spreading randomly.
-	// - new trees spawning randomly.
 	
-	// cross becomes grass in... 4 turns
-	// grass ´grows 1-3 pieces per turn, chance is 50 for one piece?
-	// trees grow more the more land there is, i think max is 2 per turn.
 
-	for(let t = 0; t < gameState.map.tilesData.length; t++){
-		const tile = gameState.map.tilesData[t];
-
-		// add random trees to land tiles without any objects or units:
-		if(tile.type === 'land'){
-			
-			// check if there is object on tile for grass/cross functionality:
-			if(tile.object){
-				if(tile.actionTurnNumber){
-					let turnDiff = gameState.turn.turnNumber - tile.actionTurnNumber;
-					if(tile.object === 'dead'){
-						// turn crosses into grass after 4 turns:
-						if(turnDiff >= 4){
-							tile.object = 'grass';
-							tile.actionTurnNumber = gameState.turn.turnNumber;
-							broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
-						}
-					}else if(tile.object === 'grass'){
-						// spread grass 
-						let neigh = getHexNeighbors(tile.q, tile.r);
-						for(let i = 0; i < neigh.length; i++){
-							let n = neigh[i];
-							const nTile = getTileAt(n.q, n.r);
-							if(nTile && nTile.type === 'land' && !nTile.object){
-								// a land tile without any objects yet.
-								// check if there is any units on this tile:
-								if(!getUnitAt(n.q, n.r)){
-									// ready to use random chance for growing:
-									if(Math.random() < 0.02){
-										nTile.object = 'grass';
-										nTile.actionTurnNumber = gameState.turn.turnNumber;
-										broadcast({ type: 'object_changed', q: nTile.q, r: nTile.r, object: nTile.object });
-									}
-								}
-								
-							}
-						}
-					}
-				}
-			}else{
-				// no object, spawn random trees:
-				if(Math.random() < 0.002){
-					if(!getUnitAt(tile.q, tile.r)){
-						tile.object = 'tree';
-						tile.actionTurnNumber = gameState.turn.turnNumber;
-						broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
-					}
-				}
-			}
-		}
-
-	}
 	
 	// --- 3. Reset "hasMoved" for all *this player's* units ---
 	gameState.units.forEach(u => {
@@ -4866,7 +4955,6 @@ function executeEndTurn(playerId) {
 				broadcast({ type: 'unit_moved', unitId: u.id, q: u.q, r: u.r, hasMoved: false });
 			}
 		}
-		
 	});
 	
 	// --- 4. Grow Grass / Spawn Trees (random events) ---
@@ -4876,8 +4964,8 @@ function executeEndTurn(playerId) {
 
 	advanceToNextPlayer();
 	
-	console.log("gameState.turn.currentPlayerIndex");
-	console.log(gameState.turn.currentPlayerIndex);
+	//console.log("gameState.turn.currentPlayerIndex");
+	//console.log(gameState.turn.currentPlayerIndex);
 	
 	
 	currentTurnActions = []; // Clear undo stack
@@ -5006,10 +5094,9 @@ function handleHostData(data) {
 			playSound('protect'); // stub
 			break;
 		case 'turn_changed':
-			gameState.turn = {
-				currentPlayerIndex: data.currentPlayerIndex,
-				turnNumber: data.turnNumber
-			};
+			gameState.turn.currentPlayerIndex = data.currentPlayerIndex;
+			gameState.turn.turnNumber = data.turnNumber;
+
 			selectedUnit = null;
 			selectedHex = null;
 			updateHighlights();
@@ -5486,7 +5573,7 @@ function updateLobbyUI() {
 	}
 }
 
-function broadcastLobbyState() {
+function broadcastLobbyState(settings = gameState.settings, players = gameState.players, map = gameState.map) {
 	if (!localPlayer.isHost) return;
 	// Update host's own UI
 	updateHostLobbyUI();
@@ -5536,14 +5623,20 @@ function initDB() {
 
 function saveGameToDB(gameState) {
 	if (!db) return;
+
 	
-	// Create a deep clone to store
-	let stateToSave = JSON.parse(JSON.stringify(gameState));
-	stateToSave.saveDate = new Date().toISOString();
+	let stateToSave = {
+		gameState: JSON.parse(JSON.stringify(gameState)), // Create a deep clone to store
+		saveDate: new Date().toISOString(),
+		roomName: gameState.settings.roomName,
+	};
+	//console.warn("stateToSave:");
+	//console.warn(stateToSave);
+	//stateToSave.saveDate = new Date().toISOString();
 	
 	// --- FIX ---
 	// The keyPath is 'roomName', so we must add it to the top level of the object.
-	stateToSave.roomName = gameState.settings.roomName;
+	//stateToSave.roomName = gameState.settings.roomName;
 	// --- END FIX ---
 	
 	const transaction = db.transaction([DB_STORE_NAME], 'readwrite');
@@ -5552,9 +5645,13 @@ function saveGameToDB(gameState) {
 	
 	request.onsuccess = () => {
 		console.log('Game saved:', stateToSave.roomName);
+		console.log("stateToSave:");
+		console.log(stateToSave);
 	};
 	request.onerror = (e) => {
 		console.error('Error saving game:', e.target.error);
+		console.log("stateToSave:");
+		console.log(stateToSave);
 	};
 }
 
@@ -6407,7 +6504,7 @@ function startGame() {
 		// Add all current spectators
 		for (const p of connections.keys()) {
 			const player = getPlayer(p);
-			if (player.isSpectator) newPlayerList.push(player);
+			if (player && player.isSpectator) newPlayerList.push(player);
 		}
 		if (localPlayer.isSpectator) newPlayerList.push(localPlayer);
 		
@@ -6473,17 +6570,19 @@ function startGame() {
 			spectatorUiMode();
 		}
 		
-		// Set initial turn
-		gameState.turn.currentPlayerIndex = random(0, gameState.players.length);
-		gameState.turn.turnNumber = 0;
-		advanceToNextPlayer();
+		// Set initial turn (skips spectators)
+		gameState.turn.currentPlayerIndex = getNextPlayerIndex(random(0, gameState.players.length-1));
+		gameState.turn.startPlayerIndex = gameState.turn.currentPlayerIndex;
+		gameState.turn.turnNumber = 1;
+		console.warn("currentPlayerIndex: "+gameState.turn.currentPlayerIndex);
+		console.warn("startPlayerIndex: "+gameState.turn.startPlayerIndex);
+		//advanceToNextPlayer(); // not sure why this was here, probably because of bugged currentPlayerIndex calculations
 	}
 	
 	// Clear undo stack
 	currentTurnActions = [];
 	
-	// Save this game state
-	saveGameToDB(gameState);
+
 	
 	// Broadcast start
 	// At the very end of the function, AFTER broadcast('game_start'):
@@ -6642,11 +6741,30 @@ window.addEventListener('DOMContentLoaded', async () => {
 			const roomName = gameNameInput.value;
 			loadGameFromDB(roomName, (state) => {
 				if (state) {
-					loadedGameState = state;
+					loadedGameState = state.gameState;
+					console.warn("loadedGameState:");
+					console.warn(loadedGameState);
+					
+					
+					//console.log(lobbyLoadedMapImg);
+					gameState.settings = loadedGameState.settings;
+					gameState.players = loadedGameState.players;
+					gameState.map = loadedGameState.map;
+					// update minimap for host:
+					loadedMapImg.src = loadedGameState.map.imageData;
+					updateHostLobbyUI();
+
+					//console.log(lobbyLoadedMapImg);
+
+					// update state to all players so they see the map loaded etc.
+					broadcastLobbyState(loadedGameState.settings, loadedGameState.players, loadedGameState.map);
+					
+					
+					
 					loadGameBtn.textContent = 'Unload Game';
 					loadGameDate.textContent = new Date(state.saveDate).toLocaleString();
 					loadGamePlayersList.innerHTML = '';
-					state.players.filter(p => !p.isSpectator).forEach(p => {
+					state.gameState.players.filter(p => !p.isSpectator).forEach(p => {
 						const li = document.createElement('li');
 						li.textContent = `${p.name}`;
 						li.style.color = p.color;
