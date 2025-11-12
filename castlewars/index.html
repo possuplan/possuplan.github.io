@@ -1646,13 +1646,16 @@ if(use_orig){
 		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: 2, offsetY: 5},
 		'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1, offsetX: 0},
 		'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
-		'castle1':  {path:'images/orig-scaled/128x128/castle1.png', scale:1.8, offsetX: 0},
-		'castle2':  {path:'images/orig-scaled/128x128/castle2.png', scale:1.8, offsetX: 0},
-		'castle3':  {path:'images/orig-scaled/128x128/castle3.png', scale:1.8, offsetX: 0},
-		'soldier1': {path:'images/orig-scaled/128x128/homm3/soldier1.png', scale:2.6, offsetX: 0, offsetY: 5},
-		'soldier2': {path:'images/orig-scaled/128x128/homm3/soldier2.png', scale:2.2, offsetX: 0, offsetY: 5},
-		'soldier3': {path:'images/orig-scaled/128x128/homm3/soldier3.png', scale:2, offsetX: 0, offsetY: 2},
-		'soldier4': {path:'images/orig-scaled/128x128/homm3/soldier4.png', scale:1.8, offsetX: 0, offsetY: 2},
+		'castle1':  {path:'images/homm3/castle1.png', scale:1.45, offsetX: 0},
+		'castle2':  {path:'images/homm3/castle2.png', scale:1.6, offsetX: 0},
+		'castle3':  {path:'images/homm3/castle3.png', scale:1.6, offsetX: 0},
+		'soldier1': {path:'images/homm3/soldier1.png', scale:2.6, offsetX: 0, offsetY: 5},
+		'soldier2': {path:'images/homm3/soldier2.png', scale:2.2, offsetX: 0, offsetY: 5},
+		'soldier3': {path:'images/homm3/soldier3.png', scale:2.2, offsetX: 0, offsetY: 2},
+		'soldier4': {path:'images/homm3/soldier4.png', scale:1.9, offsetX: 0, offsetY: 2},
+		//'castle1':  {path:'images/orig-scaled/128x128/castle1.png', scale:1.8, offsetX: 0},
+		//'castle2':  {path:'images/orig-scaled/128x128/castle2.png', scale:1.8, offsetX: 0},
+		//'castle3':  {path:'images/orig-scaled/128x128/castle3.png', scale:1.8, offsetX: 0},
 		//'soldier1': {path:'images/orig-scaled/128x128/soldier1.png', scale:1.8, offsetX: 0},
 		//'soldier2': {path:'images/orig-scaled/128x128/soldier2.png', scale:1.8, offsetX: 0},
 		//'soldier3': {path:'images/orig-scaled/128x128/soldier3.png', scale:1.8, offsetX: 0},
@@ -1679,6 +1682,32 @@ if(use_orig){
 	};
 }
 
+
+// draws ">" triangle where the pointy right side is the x y coordinate.
+function drawRightTriangle(ctx, x, y, height, width) {
+	const halfHeight = height / 2;
+
+	ctx.beginPath();
+	
+	ctx.moveTo(x-width, y-halfHeight);                 // Top-left
+	ctx.lineTo(x-width, y-halfHeight + height);        // Bottom-left
+	ctx.moveTo(x-width, y-halfHeight);                 // Back to top-left
+	ctx.lineTo(x, y);  // Top to center-right
+	ctx.moveTo(x-width, y-halfHeight + height);        // Bottom-left
+	ctx.lineTo(x, y);  // Bottom to center-right
+
+	ctx.strokeStyle = 'yellow';
+	ctx.lineWidth = 2.5;
+	ctx.lineCap = 'round';
+	ctx.stroke();
+}
+
+function drawTriangle(ctx, x, y){
+	let scale = 0.5;
+	let h = 76;
+	let w = h/2;
+	drawRightTriangle(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale);
+}
 
 
 async function load8BitBMP(url) {
@@ -2779,7 +2808,7 @@ function render() {
 	trackFPS();
 
 	// calculate current mip level:
-	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
+	zoomMipLevel = getZoomMipLevel(1.1); // use normal. smaller = earlier switch to smaller image
 	let tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
 	//console.log(tileZoomMipLevel);
   
@@ -3204,9 +3233,10 @@ function render() {
 				
 					// draw yellow arrow sign:
 					if (!unit.hasMoved) {
-						let selectImg = getImage('select');
+						//let selectImg = getImage('select');
 						//ctx.drawImage(selectImg, dx, dy, dw, dh);
-						drawImageMipped(ctx, 'select', dx, dy, dw, dh);
+						//drawImageMipped(ctx, 'select', dx, dy, dw, dh);
+						drawTriangle(ctx, x, y);
 						// draw arrow top left to signal the unit was not moved yet on this turn.
 					}
 				}
