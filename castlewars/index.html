@@ -150,10 +150,10 @@ button {
 .gamebutton {
 	padding:4px;
 	
-    padding-top: 2px;
+	padding-top: 2px;
 
-    font-size: 15px;
-    height: 47px;
+	font-size: 15px;
+	height: 47px;
 }
 
 .gamebutton.active {
@@ -248,7 +248,7 @@ label {
 	cursor: not-allowed;
 	
 	background: repeating-linear-gradient(
-		45deg,            /* angle of the stripes */
+		45deg, /* angle of the stripes */
 		rgba(0, 0, 0, 0.5), /* dark stripe color with transparency */
 		rgba(0, 0, 0, 0.6) 4px,
 		transparent 4px,
@@ -326,11 +326,11 @@ label {
 }
 
 #debug-ui {
-    pointer-events: none;
-    padding-right: 6px;
-    position: absolute;
-    top: 0;
-    right: 0;
+	pointer-events: none;
+	padding-right: 6px;
+	position: absolute;
+	top: 0;
+	right: 0;
 }
 
 #ui-left {
@@ -348,8 +348,8 @@ label {
 	flex-direction: column; /* stack rows vertically */
 	---gap: 10px;
 
-    max-width: 200px;
-    width: 100%;
+	max-width: 200px;
+	width: 100%;
 	---height: 96px; /* let it grow naturally */
 	
 	overflow-y: hidden;
@@ -365,12 +365,12 @@ label {
 	align-items: flex-end;
 	gap: 0px;
 	padding-right:10px;
-    margin-bottom: 10px;
+	margin-bottom: 10px;
 }
 
 .ui-panel-controls {
-    border-top-left-radius: 10px;
-    padding-top: 7px;
+	border-top-left-radius: 10px;
+	padding-top: 7px;
 }
 
 #turn-info {
@@ -395,7 +395,7 @@ label {
 
 #player-ui-list {
 	border-bottom-right-radius: 8px;
-    max-height: 133px;
+	max-height: 133px;
 }
 
 #player-ui-list .player-list-item {
@@ -443,7 +443,7 @@ label {
 }
 
 .msgfromtext, .msgtext {
-  user-select: text !important;
+	user-select: text !important;
 }
 
 #chat-input {
@@ -454,7 +454,6 @@ label {
 }
 
 .smalltitle {
-	
 	text-align:center;
 	margin-bottom:5px;
 	font-size:18px;
@@ -463,31 +462,30 @@ label {
 
 
 #build-popup-close {
-    margin-top: 10px;
-    width: 66px;
-    height: 42px;
-    margin-left: 121px;
-    padding: 5px 4px 5px 4px;
+	margin-top: 10px;
+	width: 66px;
+	height: 42px;
+	margin-left: 121px;
+	padding: 5px 4px 5px 4px;
 }
 
 #build-popup {
+	position: absolute;
+	bottom: 0;
+	right: 0;
+	/* transform: translate(-50%, -50%); */
+	z-index: 100;
+	pointer-events: auto;
+	width: 200px;
 
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    /* transform: translate(-50%, -50%); */
-    z-index: 100;
-    pointer-events: auto;
-    width: 200px;
-   
-    border-top-left-radius: 12px;
+	border-top-left-radius: 12px;
 }
 
 .build-item {
 	display: flex;
 	justify-content: space-between;
 	
-    padding: 2px 10px 2px 10px;
+	padding: 2px 10px 2px 10px;
 	background: var(--btn-bg);
 	border-radius: 4px;
 	margin-bottom: 5px;
@@ -506,145 +504,199 @@ label {
 
 .build-item .cost {
 	color: var(--warn-color);
-    padding-top: 5px;
+	padding-top: 5px;
 }
 
 
 .redbutton {
-    background-color: #d03535;
+	background-color: #d03535;
 }
 
-  /* Popup backdrop */
-  .popup-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-  }
+.savedgames-popup-overlay {
+	display: none;
+	position: fixed;
+	inset: 0;
+	background: rgba(0,0,0,0.5);
+	z-index: 1000;
+	justify-content: center;
+	align-items: center;
+}
 
-  /* Popup box */
-  .popup {
-    background: black;
-    border-radius: 12px;
-    width: 100%;
+.savedgames-popup {
+	background: black;
+	border-radius: 12px;
+	width: 100%;
 
-    max-height: 100%;
-    overflow-y: auto;
-    position: relative;
-    padding: 3px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-    animation: fadeIn 0.2s ease;
-	
-    padding-top: 128px;
-  }
+	max-height: 100%;
+	height: 100%;
+	overflow-y: auto;
+	position: relative;
+	padding: 3px;
+	box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+	animation: fadeIn 0.2s ease;
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-  }
+	padding-top: 63px;
+}
+
+.savedgames-item {
+	border-radius: 8px;
+	text-align: center;
+	cursor: pointer;
+	---transition: 0.15s;
+
+	margin-bottom: 8px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+}
+
+.savedgames-item:hover {
+	background: #333333;
+	---transform: scale(1.03);
+}
+
+.savedgames-item img {
+	width: 95%;
+	border-radius: 6px;
+}
+
+.savedgames-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+	gap: 0px;
+}
+
+
+
+/* Popup backdrop */
+.popup-overlay {
+	display: none;
+	position: fixed;
+	inset: 0;
+	background: rgba(0,0,0,0.5);
+	z-index: 1000;
+	justify-content: center;
+	align-items: center;
+}
+
+/* Popup box */
+.popup {
+	background: black;
+	border-radius: 12px;
+	width: 100%;
+
+	max-height: 100%;
+	height: 100%;
+	overflow-y: auto;
+	position: relative;
+	padding: 3px;
+	box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+	animation: fadeIn 0.2s ease;
+
+	padding-top: 128px;
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; transform: scale(0.95); }
+	to { opacity: 1; transform: scale(1); }
+}
 
 
 .popup-top-bar {
-    position: fixed;
-    top: 0;
+	position: fixed;
+	top: 0;
 
-    border: none;
-    font-size: 29px;
+	border: none;
+	font-size: 29px;
 
-    width: 100%;
-    padding: 0;
+	width: 100%;
+	padding: 0;
 
-	
 	background-color:rgba(0,0,0, 1);
-	
 }
 
 .popup-title {
-	
 	font-size:24px;
 	text-align:center;
 	padding:10px;
 }
-  /* Close (X) button */
-  .popup-close {
 
-    position: absolute;
-    right: 0;
-    width: 50px;
-    height: 43px;
-    font-size: 34px;
-    line-height: 21px;
-    padding-top: 6px;
-  }
+/* Close (X) button */
+.popup-close {
+	position: absolute;
+	right: 0;
+	width: 50px;
+	height: 43px;
+	font-size: 34px;
+	line-height: 21px;
+	padding-top: 6px;
+}
 
-  /* Category buttons */
-  .category-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    margin-top: 15px;
-  }
+/* Category buttons */
+.category-tabs {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 16px;
+	margin-top: 15px;
+}
 
-  .category-btn {
-    padding: 8px 16px;
-    border: 1px solid #333;
-    background: #338;
-    cursor: pointer;
-    border-radius: 8px;
-    font-weight: bold;
-    color: #c5bef1;
-  }
-  .category-btn:hover {
-	  background: #66B;
-  }
+.category-btn {
+	padding: 8px 16px;
+	border: 1px solid #333;
+	background: #338;
+	cursor: pointer;
+	border-radius: 8px;
+	font-weight: bold;
+	color: #c5bef1;
+}
 
-  .category-btn.active {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-  }
+.category-btn:hover {
+	background: #66B;
+}
 
-  /* Map list */
+.category-btn.active {
+	background: #007bff;
+	color: white;
+	border-color: #007bff;
+}
 
-  .map-item {
-    border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    ---transition: 0.15s;
+/* Map list */
 
-    margin-bottom: 8px;
-    padding-top: 5px;
-    padding-bottom: 5px;
+.map-item {
+	border-radius: 8px;
+	text-align: center;
+	cursor: pointer;
+	---transition: 0.15s;
 
-  }
+	margin-bottom: 8px;
+	padding-top: 5px;
+	padding-bottom: 5px;
 
-  .map-item:hover {
-    background: #333333;
-    ---transform: scale(1.03);
-  }
+}
 
-  .map-item img {
-    width: 95%;
-    border-radius: 6px;
-  }
-  
-  .map-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-    gap: 0px;
-  }
+.map-item:hover {
+	background: #333333;
+	---transform: scale(1.03);
+}
+
+.map-item img {
+	width: 95%;
+	border-radius: 6px;
+}
+
+.map-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+	gap: 0px;
+}
 
 
-  #loaded-map {
-    border: 1px solid #ccc;
-    border-radius: 6px;
-  }
-  
-  
-  
+#loaded-map {
+	border: 1px solid #ccc;
+	border-radius: 6px;
+}
+
+
+
 #top-float-ui {
 	display: none;
 	flex-direction: column;
@@ -661,7 +713,7 @@ label {
 	flex-grow: 1;
 	overflow-y: hidden;
 	font-size: 15px;
-    text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
+	text-shadow: 2px 2px 1px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 1), 0px 0px 4px rgba(0, 0, 0, 1);
 	color:white;
 }
 
@@ -673,7 +725,7 @@ input.disabled {
 }
 
 
-  /* Popup container */
+/* Popup container */
 #image-popup {
 	position: fixed;
 	inset: 0;
@@ -710,55 +762,55 @@ input.disabled {
 
 
 #build-soldier-btn {
-    background-image: url('images/orig-scaled/128x128/soldier1.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position-x: 4px;
-    background-position-y: -2px;
+	background-image: url('images/orig-scaled/128x128/soldier1.png');
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position-x: 4px;
+	background-position-y: -2px;
 }
 
 #build-castle-btn {
-    background-image: url('images/orig-scaled/128x128/castle1.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position-x: 4px;
-    background-position-y: -2px;
+	background-image: url('images/orig-scaled/128x128/castle1.png');
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position-x: 4px;
+	background-position-y: -2px;
 }
 
 #undo-btn {
-    background-image: url('images/ui/undo.png');
-    background-size: contain;
-    background-repeat: no-repeat;
+	background-image: url('images/ui/undo.png');
+	background-size: contain;
+	background-repeat: no-repeat;
 	background-position: center;
 }
 
 #toggle-ui-btn {
-    background-image: url('images/ui/chat.png');
-    background-size: contain;
-    background-repeat: no-repeat;
+	background-image: url('images/ui/chat.png');
+	background-size: contain;
+	background-repeat: no-repeat;
 	background-position: center;
- 
 }
+
 #sell-unit-btn {
-    background-image: url('images/ui/sell.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
+	background-image: url('images/ui/sell.png');
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
 }
+
 #end-turn-btn {
-    background-image: url('images/ui/endturn.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
+	background-image: url('images/ui/endturn.png');
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
 }
-	
+
 </style>
 </head>
 <body>
 
 <input type="hidden" id="dirty-flag">
 
-<!-- Popup -->
 <div id="map-popup-overlay" class="popup-overlay">
 	<div class="popup" id="map-popup">
 		
@@ -777,6 +829,20 @@ input.disabled {
 	</div>
 </div>
 
+<div id="savedgames-popup-overlay" class="savedgames-popup-overlay">
+	<div class="savedgames-popup" id="savedgames-popup">
+		
+		<div class="popup-top-bar">
+			<div class="input-group">
+				<div class="popup-title">Load game</div>
+				<button class="popup-close" id="savedgames-popup-close">&times;</button>
+			</div>
+		</div>
+		<div class="savedgames-list" id="savedgames-list"></div>
+	</div>
+</div>
+
+
 
 <div id="image-popup">
 	<div style="padding:5px">Map preview</div>
@@ -792,24 +858,25 @@ input.disabled {
 		
 		<label for="game-name-input">Game Room Name</label>
 		<input type="text" id="game-name-input" value="default-room">
-        <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
-            <label for="server-name-input">Server:</label>
+		<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+			<label for="server-name-input">Server:</label>
 			<select id="server-name-input">
 			
 			</select>
-        </div>
+		</div>
 		<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
-            <label for="games-list-input">Gamelist:</label>
+			<label for="games-list-input">Gamelist:</label>
 			<select id="games-list-input">
 			
 			</select>
-        </div>
+		</div>
 		<button id="host-btn" class="primary">Host Game</button>
 		<button id="join-btn">Join Game</button>
 		<button id="spectate-btn">Join as Spectator</button>
 		<div id="connection-status" style="text-align: center; margin-top: 10px; font-size: 14px;">Initializing...</div>
 	</div>
 </div>
+
 
 <div id="host-page" class="page">
 	<div class="container">
@@ -869,12 +936,9 @@ input.disabled {
 		
 		<h3>Joined Players:</h3>
 		<div id="host-player-list" class="player-list"></div>
-			
-			
-			
 	</div>
-	
 </div>
+
 
 <div id="lobby-page" class="page">
 	<div class="container">
@@ -896,7 +960,6 @@ input.disabled {
 				Scaling resizes the map by factor above.
 			</div>
 		</div>
-	
 		
 		<label for="lobby-player-name">Your Name</label>
 		<input type="text" id="lobby-player-name" value="Player">
@@ -910,6 +973,7 @@ input.disabled {
 		<p id="lobby-status" style="text-align: center;">Waiting for host to start...</p>
 	</div>
 </div>
+
 
 <div id="game-page" class="page">
 	<canvas id="game-canvas"></canvas>
@@ -967,8 +1031,9 @@ input.disabled {
 		<div id="build-popup-list"></div>
 		<button id="build-popup-close" class="redbutton">Cancel</button>
 	</div>
-	
 </div>
+
+
 
 <script>
 
@@ -1010,37 +1075,34 @@ let serversList = [
 let eventSource = null;
 
 function connectToServer(serverUrl) {
-  // 1. Close existing EventSource if any
-  if (eventSource) {
-    eventSource.close(); // stops listening and frees resources
-    console.log('Closed previous EventSource');
-  }
+	// 1. Close existing EventSource if any
+	if (eventSource) {
+		eventSource.close(); // stops listening and frees resources
+		console.log('Closed previous EventSource');
+	}
 
-  // 2. Create new EventSource
-  eventSource = new EventSource(`${serverUrl}/events`);
+	// 2. Create new EventSource
+	eventSource = new EventSource(`${serverUrl}/events`);
 
-  // 3. Listen for messages
-  eventSource.onmessage = (event) => {
-    if (event.data === 'games_updated') {
-      console.log('Games updated — reloading list...');
-      fetchOpenGames(selectedServerIndex); // or your own function
-    }
-  };
+	// 3. Listen for messages
+	eventSource.onmessage = (event) => {
+		if (event.data === 'games_updated') {
+			console.log('Games updated — reloading list...');
+			fetchOpenGames(selectedServerIndex); // or your own function
+		}
+	};
 
-  eventSource.onerror = (err) => {
-    console.error('EventSource error', err);
-  };
+	eventSource.onerror = (err) => {
+		console.error('EventSource error', err);
+	};
 
-  console.log('Connected to EventSource at', serverUrl);
+	console.log('Connected to EventSource at', serverUrl);
 }
 
 
 
 
 
-
-
-  
 
 const gamesListInput = document.getElementById("games-list-input");
 
@@ -1050,68 +1112,68 @@ gamesListInput.addEventListener("change", function() {
 	gameNameInput.value = selectedValue;
 });
 
+
 async function fetchOpenGames(serverIndex) {
-  let server = serversList[serverIndex];
+	let server = serversList[serverIndex];
 
-  if (!server.serverListEnabled) return;
+	if (!server.serverListEnabled) return;
 
-  try {
-    const res = await fetch(`${server.fetchUrl}/games`);
+	try {
+		const res = await fetch(`${server.fetchUrl}/games`);
 
-    // Check for HTTP errors (non-2xx responses)
-    if (!res.ok) {
-      throw new Error(`Server returned ${res.status} ${res.statusText}`);
-    }
+		// Check for HTTP errors (non-2xx responses)
+		if (!res.ok) {
+			throw new Error(`Server returned ${res.status} ${res.statusText}`);
+		}
 
-    const games = await res.json();
-    let totalGames = 0;//Object.keys(games).length;
-	for (const key in games) {
-		if (games.hasOwnProperty(key)) {
-			let appName = games[key].appName;
-			// only display this game app rooms:
-			if(appName === APP_NAME){
-				totalGames++;
+		const games = await res.json();
+		let totalGames = 0;//Object.keys(games).length;
+		for (const key in games) {
+			if (games.hasOwnProperty(key)) {
+				let appName = games[key].appName;
+				// only display this game app rooms:
+				if(appName === APP_NAME){
+					totalGames++;
+				}
 			}
 		}
-	}
-    console.log('Open games:');
-    console.log(games);
+		console.log('Open games:');
+		console.log(games);
 
-    // Clear existing options
-    gamesListInput.innerHTML = '';
+		// Clear existing options
+		gamesListInput.innerHTML = '';
 
-    // Add header option
-    const defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.textContent = `-- Select game (${totalGames}) --`;
-    gamesListInput.appendChild(defaultOption);
+		// Add header option
+		const defaultOption = document.createElement("option");
+		defaultOption.value = "";
+		defaultOption.textContent = `-- Select game (${totalGames}) --`;
+		gamesListInput.appendChild(defaultOption);
 
-    // Add each game
-    for (const key in games) {
-      if (games.hasOwnProperty(key)) {
-        let gameName = games[key].name;
-		let appName = games[key].appName;
-		// only display this game app rooms:
-		if(appName === APP_NAME){
-			const option = document.createElement("option");
-			option.value = gameName;
-			option.textContent = gameName;
-			gamesListInput.appendChild(option);
+		// Add each game
+		for (const key in games) {
+			if (games.hasOwnProperty(key)) {
+				let gameName = games[key].name;
+				let appName = games[key].appName;
+				// only display this game app rooms:
+				if(appName === APP_NAME){
+					const option = document.createElement("option");
+					option.value = gameName;
+					option.textContent = gameName;
+					gamesListInput.appendChild(option);
+				}
+			}
 		}
-      }
-    }
+	} catch (error) {
+		console.error("Failed to fetch open games:", error);
 
-  } catch (error) {
-    console.error("Failed to fetch open games:", error);
+		// If any error occurs, modify select list
+		gamesListInput.innerHTML = '';
 
-    // If any error occurs, modify select list
-    gamesListInput.innerHTML = '';
-
-    const errorOption = document.createElement("option");
-    errorOption.value = "";
-    errorOption.textContent = "-- Server down --";
-    gamesListInput.appendChild(errorOption);
-  }
+		const errorOption = document.createElement("option");
+		errorOption.value = "";
+		errorOption.textContent = "-- Server down --";
+		gamesListInput.appendChild(errorOption);
+	}
 }
 
 
@@ -1171,10 +1233,25 @@ function getSelectedServer(){
 
 const popupOverlay = document.getElementById('map-popup-overlay');
 const popup = document.getElementById('map-popup');
-const loadBtn = document.getElementById('load-map-btn');
+
+
+const savedGamesPopupOverlay = document.getElementById('savedgames-popup-overlay');
+const savedGamesPopup = document.getElementById('savedgames-popup');
+
+
 const loadRandomBtn = document.getElementById('load-random-map-btn');
 const closeBtn = document.getElementById('popup-close');
+
+
+const savedGamesCloseBtn = document.getElementById('savedgames-popup-close');
+
+
+
 const mapList = document.getElementById('map-list');
+const savedGamesList = document.getElementById('savedgames-list');
+
+
+
 const categoryBtns = document.querySelectorAll('.category-btn');
 const loadedMapImg = document.getElementById('loaded-map');
 const lobbyLoadedMapImg = document.getElementById('lobby-loaded-map');
@@ -1183,6 +1260,10 @@ const lobbyLoadedMapImg = document.getElementById('lobby-loaded-map');
 
 const imagePopup = document.getElementById('image-popup');
 const popupImg = document.getElementById('popup-img');
+
+const loadMapBtn = document.getElementById('load-map-btn');
+const loadGameBtn = document.getElementById('load-game-btn');
+
 
 // Show popup on click
 loadedMapImg.addEventListener('click', () => {
@@ -1198,9 +1279,7 @@ lobbyLoadedMapImg.addEventListener('click', () => {
 
 // Hide popup on click
 imagePopup.addEventListener('click', (e) => {
-  //if (e.target === imagePopup){ // if clicked outside, doesnt work because aspect ratio fix for image adds transparent img area.
-	  imagePopup.classList.remove('active');
-  //}
+	imagePopup.classList.remove('active');
 });
 
 
@@ -1213,61 +1292,121 @@ let currentCategory = 'small';
 
 
 function loadRandomMap(){
-	loadMap(random() == 0 ? "normal" : "small", random(0,39));
+	loadMap(((random(0,1) == 0) ? "normal" : "small"), random(0,39));
 }
 
 loadRandomBtn.addEventListener('click', () => {
 	loadRandomMap();
 });
 
-  // Open popup
-  loadBtn.addEventListener('click', () => {
-    popupOverlay.style.display = 'flex';
-    renderMapList(currentCategory);
-  });
 
-  // Close popup (X or outside click)
-  closeBtn.addEventListener('click', closePopup);
-  popupOverlay.addEventListener('click', (e) => {
-    if (e.target === popupOverlay) closePopup();
-  });
 
-  function closePopup() {
-    popupOverlay.style.display = 'none';
-  }
+// Open popup
+loadMapBtn.addEventListener('click', () => {
+	popupOverlay.style.display = 'flex';
+	renderMapList(currentCategory);
+});
 
-  // Render map list
-  function renderMapList(category) {
-    mapList.innerHTML = '';
-    const maps = customMaps[category];
-	
-    maps.forEach((map, index) => {
-      const div = document.createElement('div');
-      div.className = 'map-item';
-      div.innerHTML = `
-        <img src="${map.imageData}" alt="${map.name}">
-        <div>${map.width} x ${map.height}</div>
-		<div>Land tiles: ${map.tileCount}</div>
-      `;
-      div.addEventListener('click', () => {
-        loadMap(category, index);
-		console.log("map loaded: "+category+index);
+// Close popup (X or outside click)
+closeBtn.addEventListener('click', closePopup);
+	popupOverlay.addEventListener('click', (e) => {
+	if (e.target === popupOverlay) closePopup();
+});
+
+function closePopup() {
+	popupOverlay.style.display = 'none';
+}
+
+// Render map list
+function renderMapList(category) {
+	mapList.innerHTML = '';
+	const maps = customMaps[category];
+
+	maps.forEach((map, index) => {
+		const div = document.createElement('div');
+		div.className = 'map-item';
+		div.innerHTML = `
+			<img src="${map.imageData}" alt="${map.name}" title="${map.name}: ${map.width} x ${map.height}">
+			<div>Land tiles: ${map.tileCount}</div>
+		`;
+		// <div>${map.width} x ${map.height}</div>
+		div.addEventListener('click', () => {
+			loadMap(category, index);
+			console.log("map loaded: "+category+index);
+
+			closePopup();
+		});
+		mapList.appendChild(div);
+	});
+}
+
+// Handle category switching
+categoryBtns.forEach(btn => {
+	btn.addEventListener('click', () => {
+		categoryBtns.forEach(b => b.classList.remove('active'));
+		btn.classList.add('active');
+		currentCategory = btn.dataset.category;
+		renderMapList(currentCategory);
+	});
+});
+
+  
+  
+
+// Open popup
+loadGameBtn.addEventListener('click', async () => {
+	if(loadedGameState){
+		loadSavedGame(null);
+	}else{
+		savedGamesPopupOverlay.style.display = 'flex';
+		let savedGames = await getAllSavedGames();
 		
-        closePopup();
-      });
-      mapList.appendChild(div);
-    });
-  }
+		renderSavedGamesList(savedGames);
+	}
+});
 
-  // Handle category switching
-  categoryBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      categoryBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentCategory = btn.dataset.category;
-      renderMapList(currentCategory);
-    });
-  });
+
+// Close popup (X or outside click)
+savedGamesCloseBtn.addEventListener('click', closeSavedGamesPopup);
+savedGamesPopupOverlay.addEventListener('click', (e) => {
+	if (e.target === savedGamesPopupOverlay) closeSavedGamesPopup();
+});
+
+function closeSavedGamesPopup() {
+	savedGamesPopupOverlay.style.display = 'none';
+}
+
+// Render map list
+function renderSavedGamesList(savedGames) {
+	savedGamesList.innerHTML = '';
+
+	for(let i = 0; i < savedGames.length; i++){
+		let map = savedGames[i].gameState.map;
+		let roomName = savedGames[i].roomName;
+		let date = formatReadableDate(savedGames[i].saveDate);
+		
+		let style = "";
+		if(i == 0){
+			style = "color:yellow; font-weight:bold";
+		}
+
+		const div = document.createElement('div');
+		div.className = 'savedgames-item';
+		div.innerHTML = `
+			<img src="${map.imageData}" alt="${map.name}" title="${map.name}: ${map.width} x ${map.height}">
+			<div style="${style}">${date}</div>
+		`;
+		div.addEventListener('click', () => {
+			loadSavedGame(roomName);
+			console.log("game loaded: "+roomName);
+
+			closeSavedGamesPopup();
+		});
+		savedGamesList.appendChild(div);
+	}
+}
+
+
 
 let useimages = 1;
 let GS = 1.16; // hex texture size multi
@@ -1280,42 +1419,42 @@ let zoomMipLevel = 0;
 
 
 function hexToHSL(hex) {
-  // Remove '#' if present
-  hex = hex.replace(/^#/, '');
+	// Remove '#' if present
+	hex = hex.replace(/^#/, '');
 
-  // Parse r, g, b values
-  let bigint = parseInt(hex, 16);
-  let r = (bigint >> 16) & 255;
-  let g = (bigint >> 8) & 255;
-  let b = bigint & 255;
+	// Parse r, g, b values
+	let bigint = parseInt(hex, 16);
+	let r = (bigint >> 16) & 255;
+	let g = (bigint >> 8) & 255;
+	let b = bigint & 255;
 
-  // Convert RGB to 0..1
-  r /= 255;
-  g /= 255;
-  b /= 255;
+	// Convert RGB to 0..1
+	r /= 255;
+	g /= 255;
+	b /= 255;
 
-  let max = Math.max(r, g, b);
-  let min = Math.min(r, g, b);
-  let h, s, l = (max + min) / 2;
+	let max = Math.max(r, g, b);
+	let min = Math.min(r, g, b);
+	let h, s, l = (max + min) / 2;
 
-  if (max === min) {
-	h = s = 0; // achromatic
-  } else {
-	let d = max - min;
-	s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-	switch (max) {
-	  case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-	  case g: h = (b - r) / d + 2; break;
-	  case b: h = (r - g) / d + 4; break;
+	if (max === min) {
+		h = s = 0; // achromatic
+	} else {
+		let d = max - min;
+		s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+		switch (max) {
+			case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+			case g: h = (b - r) / d + 2; break;
+			case b: h = (r - g) / d + 4; break;
+		}
+		h /= 6;
 	}
-	h /= 6;
-  }
 
-  return {
-	h: Math.round(h * 360), // 0 - 360 degrees
-	s: parseFloat(s.toFixed(3)), // 0 - 1
-	l: parseFloat(l.toFixed(3))  // 0 - 1
-  };
+	return {
+		h: Math.round(h * 360), // 0 - 360 degrees
+		s: parseFloat(s.toFixed(3)), // 0 - 1
+		l: parseFloat(l.toFixed(3))  // 0 - 1
+	};
 }
 
 
@@ -1344,13 +1483,13 @@ const context = new (window.AudioContext || window.webkitAudioContext)();
 const soundBuffers = {}; // store multiple decoded sounds
 
 function loadSound(src) {
-  return fetch(src)
-	.then(res => res.arrayBuffer())
-	.then(data => context.decodeAudioData(data))
-	.then(decoded => {
-	  soundBuffers[src] = decoded; // store buffer by filename
-	  return decoded; // also return it
-	});
+	return fetch(src)
+		.then(res => res.arrayBuffer())
+		.then(data => context.decodeAudioData(data))
+		.then(decoded => {
+			soundBuffers[src] = decoded; // store buffer by filename
+			return decoded; // also return it
+		});
 }
 
 
@@ -1396,12 +1535,16 @@ function playSound(src) {
 document.body.addEventListener('touchstart', e => {
 	if (e.target.id === 'game-canvas') e.preventDefault();
 }, { passive: false });
+
 document.body.addEventListener('touchmove', e => {
 	if (e.target.id === 'game-canvas') e.preventDefault();
 }, { passive: false });
+
 document.body.addEventListener('touchend', e => {
 	if (e.target.id === 'game-canvas') e.preventDefault();
 }, { passive: false });
+
+
 
 // --- CONSTANTS ---
 const DB_NAME = 'HexWarlordsDB';
@@ -1411,21 +1554,24 @@ const PLAYER_COLORS = [
 	'#32ADE6', '#007AFF', '#5856D6', '#AF52DE', '#FF2D55', '#A2845E'
 ];
 
+
+
 function randomColor() {
-  const h = Math.floor(Math.random() * 360);
-  const s = Math.floor(Math.random() * 41) + 60; // 60–100%
-  const l = Math.floor(Math.random() * 51) + 50; // 50–100%
+	const h = Math.floor(Math.random() * 360);
+	const s = Math.floor(Math.random() * 41) + 60; // 60–100%
+	const l = Math.floor(Math.random() * 51) + 50; // 50–100%
 
-  // Convert HSL → RGB → HEX
-  const a = s * Math.min(l / 100, 1 - l / 100) / 100;
-  const f = n => {
-    const k = (n + h / 30) % 12;
-    const color = l / 100 - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
+	// Convert HSL → RGB → HEX
+	const a = s * Math.min(l / 100, 1 - l / 100) / 100;
+	const f = n => {
+		const k = (n + h / 30) % 12;
+		const color = l / 100 - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+		return Math.round(255 * color).toString(16).padStart(2, '0');
+	};
 
-  return `#${f(0)}${f(8)}${f(4)}`;
+	return `#${f(0)}${f(8)}${f(4)}`;
 }
+
 
 function getNextFreeColor(player = null){
 	
@@ -1457,6 +1603,7 @@ const LAND_COLOR = '#224422'; // Unclaimed land
 const HEX_SIZE = 40; // Radius of hexagon
 const SQRT3 = Math.sqrt(3);
 
+
 // soldiers =
 const SOLDIER_DATA = {
 	// listed in this order.
@@ -1479,6 +1626,7 @@ const CASTLE_DATA = {
 };
 
 
+// todo: use this array instead of 2 separate arrays for soldiers and castles.
 const UNITS_DATA = {
 	soldier: { // this should be unit type, which can be used directly as reference here.
 		...SOLDIER_DATA
@@ -1616,16 +1764,16 @@ function getImagePath(unitData){
 let use_orig = 1;
 
 let waterAnimData = {
-    width: 416,
-    height: 32,
-    tileWidth: 32,
-    tileHeight: 32,
-    frames: [
-      {"x":0,"y":0},{"x":32,"y":0},{"x":64,"y":0},{"x":96,"y":0},
-      {"x":128,"y":0},{"x":160,"y":0},{"x":192,"y":0},{"x":224,"y":0},
-      {"x":256,"y":0},{"x":288,"y":0},{"x":320,"y":0},{"x":352,"y":0},
-      {"x":384,"y":0}
-    ]
+	width: 416,
+	height: 32,
+	tileWidth: 32,
+	tileHeight: 32,
+	frames: [
+		{"x":0,"y":0},{"x":32,"y":0},{"x":64,"y":0},{"x":96,"y":0},
+		{"x":128,"y":0},{"x":160,"y":0},{"x":192,"y":0},{"x":224,"y":0},
+		{"x":256,"y":0},{"x":288,"y":0},{"x":320,"y":0},{"x":352,"y":0},
+		{"x":384,"y":0}
+	]
 };
 
 // images =
@@ -1711,97 +1859,97 @@ function drawTriangle(ctx, x, y){
 
 
 async function load8BitBMP(url) {
-  const buffer = await (await fetch(url)).arrayBuffer();
-  const dv = new DataView(buffer);
+	const buffer = await (await fetch(url)).arrayBuffer();
+	const dv = new DataView(buffer);
 
-  const pixelDataOffset = dv.getUint32(10, true);
-  const width = dv.getInt32(18, true);
-  const height = dv.getInt32(22, true);
-  const bitsPerPixel = dv.getUint16(28, true);
-  const paletteCount = dv.getUint32(46, true) || 256;
+	const pixelDataOffset = dv.getUint32(10, true);
+	const width = dv.getInt32(18, true);
+	const height = dv.getInt32(22, true);
+	const bitsPerPixel = dv.getUint16(28, true);
+	const paletteCount = dv.getUint32(46, true) || 256;
 
-  if (bitsPerPixel !== 8) throw new Error("Only 8-bit BMPs supported");
+	if (bitsPerPixel !== 8) throw new Error("Only 8-bit BMPs supported");
 
-  // Read palette (B,G,R,0)
-  const palette = [];
-  for (let i = 0; i < paletteCount; i++) {
-    const b = dv.getUint8(54 + i * 4 + 0);
-    const g = dv.getUint8(54 + i * 4 + 1);
-    const r = dv.getUint8(54 + i * 4 + 2);
-    palette.push([r, g, b]);
-  }
+	// Read palette (B,G,R,0)
+	const palette = [];
+	for (let i = 0; i < paletteCount; i++) {
+		const b = dv.getUint8(54 + i * 4 + 0);
+		const g = dv.getUint8(54 + i * 4 + 1);
+		const r = dv.getUint8(54 + i * 4 + 2);
+		palette.push([r, g, b]);
+	}
 
-  // Read pixel indices (bottom-up rows, 4-byte aligned)
-  const pixels = new Uint8Array(width * height);
-  const rowSize = Math.ceil(width / 4) * 4;
-  let offset = pixelDataOffset;
-  for (let y = height - 1; y >= 0; y--) {
-    for (let x = 0; x < width; x++) {
-      pixels[y * width + x] = dv.getUint8(offset++);
-    }
-    offset = pixelDataOffset + (height - 1 - y + 1) * rowSize;
-  }
+	// Read pixel indices (bottom-up rows, 4-byte aligned)
+	const pixels = new Uint8Array(width * height);
+	const rowSize = Math.ceil(width / 4) * 4;
+	let offset = pixelDataOffset;
+	for (let y = height - 1; y >= 0; y--) {
+		for (let x = 0; x < width; x++) {
+			pixels[y * width + x] = dv.getUint8(offset++);
+		}
+		offset = pixelDataOffset + (height - 1 - y + 1) * rowSize;
+	}
 
-  return { width, height, palette, pixels };
+	return { width, height, palette, pixels };
 }
 
 
 
 function getCroppedBMP(bmp, dx, dy, width, height) {
-  const { width: srcW, height: srcH, pixels, palette } = bmp;
+	const { width: srcW, height: srcH, pixels, palette } = bmp;
 
-  // Ensure crop stays inside the image bounds
-  dx = Math.max(0, Math.min(dx, srcW - 1));
-  dy = Math.max(0, Math.min(dy, srcH - 1));
-  const cropW = Math.min(width, srcW - dx);
-  const cropH = Math.min(height, srcH - dy);
+	// Ensure crop stays inside the image bounds
+	dx = Math.max(0, Math.min(dx, srcW - 1));
+	dy = Math.max(0, Math.min(dy, srcH - 1));
+	const cropW = Math.min(width, srcW - dx);
+	const cropH = Math.min(height, srcH - dy);
 
-  // Allocate new pixel array for cropped region
-  const newPixels = new Uint8Array(cropW * cropH);
+	// Allocate new pixel array for cropped region
+	const newPixels = new Uint8Array(cropW * cropH);
 
-  for (let y = 0; y < cropH; y++) {
-    const srcY = dy + y;
-    for (let x = 0; x < cropW; x++) {
-      const srcX = dx + x;
-      newPixels[y * cropW + x] = pixels[srcY * srcW + srcX];
-    }
-  }
+	for (let y = 0; y < cropH; y++) {
+		const srcY = dy + y;
+		for (let x = 0; x < cropW; x++) {
+			const srcX = dx + x;
+			newPixels[y * cropW + x] = pixels[srcY * srcW + srcX];
+		}
+	}
 
-  // Return a new BMP-like object
-  return {
-    width: cropW,
-    height: cropH,
-    palette: bmp.palette.map(c => [...c]), // deep copy so palette edits won’t affect original
-    pixels: newPixels
-  };
+	// Return a new BMP-like object
+	return {
+		width: cropW,
+		height: cropH,
+		palette: bmp.palette.map(c => [...c]), // deep copy so palette edits won’t affect original
+		pixels: newPixels
+	};
 }
 
 
 
 function cyclePalette(palette, start = 229, end = 240) {
-  const last = palette[end];
-  for (let i = end; i > start; i--){
-	  palette[i] = palette[i - 1];
-  }
-  palette[start] = last;
+	const last = palette[end];
+	for (let i = end; i > start; i--){
+		palette[i] = palette[i - 1];
+	}
+	palette[start] = last;
 }
 
 
 function drawPaletteImage(ctx2, bmp, dx = 0, dy = 0) {
-  const imgData = ctx2.createImageData(bmp.width, bmp.height);
-  const data = imgData.data;
-  const { pixels, palette } = bmp;
+	const imgData = ctx2.createImageData(bmp.width, bmp.height);
+	const data = imgData.data;
+	const { pixels, palette } = bmp;
 
-  for (let i = 0; i < pixels.length; i++) {
-    const [r, g, b] = palette[pixels[i]];
-    const j = i * 4;
-    data[j] = r;
-    data[j + 1] = g;
-    data[j + 2] = b;
-    data[j + 3] = 255;
-  }
+	for (let i = 0; i < pixels.length; i++) {
+		const [r, g, b] = palette[pixels[i]];
+		const j = i * 4;
+		data[j] = r;
+		data[j + 1] = g;
+		data[j + 2] = b;
+		data[j + 3] = 255;
+	}
 
-  ctx2.putImageData(imgData, dx, dy);
+	ctx2.putImageData(imgData, dx, dy);
 }
 
 
@@ -1910,38 +2058,38 @@ async function loadImages() {
 
 									console.log(`Generated large animated pattern frames for ${key}`);
 								}else{
-								  const anim = obj.animationData;
-								  obj.animFrames = [];
+									const anim = obj.animationData;
+									obj.animFrames = [];
 
-								  for (const frame of anim.frames) {
+									for (const frame of anim.frames) {
 									const frameCanvas = new OffscreenCanvas(anim.tileWidth, anim.tileHeight);
 									const fctx = frameCanvas.getContext('2d');
 									fctx.drawImage(
-									  img,
-									  frame.x, frame.y, anim.tileWidth, anim.tileHeight,
-									  0, 0, anim.tileWidth, anim.tileHeight
+										img,
+										frame.x, frame.y, anim.tileWidth, anim.tileHeight,
+										0, 0, anim.tileWidth, anim.tileHeight
 									);
 									const frameBitmap = await createImageBitmap(frameCanvas);
 									const frameMipmaps = await generateMipmaps(frameBitmap, 6);
 
 									// For each mipmap level, create a pattern
 									const framePatterns = frameMipmaps.map(mipmap => {
-									  const c = new OffscreenCanvas(mipmap.width, mipmap.height);
-									  const ctx2d = c.getContext('2d');
-									  ctx2d.drawImage(mipmap, 0, 0);
-									  return ctx.createPattern(c, 'repeat');
+										const c = new OffscreenCanvas(mipmap.width, mipmap.height);
+										const ctx2d = c.getContext('2d');
+										ctx2d.drawImage(mipmap, 0, 0);
+										return ctx.createPattern(c, 'repeat');
 									});
 
 									obj.animFrames.push({
-									  mipmaps: frameMipmaps,
-									  patterns: framePatterns
+										mipmaps: frameMipmaps,
+										patterns: framePatterns
 									});
-								  }
+									}
 
-								  obj.frameCount = anim.frames.length;
-								  obj.frameDuration = 300; // ms per frame, tweak as needed
-								  obj.currentFrame = 0;
-								  obj.lastFrameTime = performance.now();
+									obj.frameCount = anim.frames.length;
+									obj.frameDuration = 300; // ms per frame, tweak as needed
+									obj.currentFrame = 0;
+									obj.lastFrameTime = performance.now();
 								}
 							}else{
 								obj.mipmaps = await generateMipmaps(img, 6);
@@ -2067,8 +2215,8 @@ const startMoneyInput = document.getElementById('start-money');
 
 
 const spectateHostBtn = document.getElementById('spectate-host-btn');
-const loadMapBtn = document.getElementById('load-map-btn');
-const loadGameBtn = document.getElementById('load-game-btn');
+
+
 const loadedGameInfoContainer = document.getElementById('loaded-game-info-container');
 const loadGameDate = document.getElementById('load-game-date');
 const loadGamePlayersList = document.getElementById('load-game-players');
@@ -2192,6 +2340,7 @@ addAiBtn.addEventListener('click', () => {
 // --- UTILITY FUNCTIONS
 // =================================================================
 function centerToFirstUnit(){
+	// todo: will fail when loading a game where you are not a player.
 	let player = getMyPlayer();
 	
 	for (const unit of gameState.units) {
@@ -2269,13 +2418,16 @@ function hideTopFloatUi(){
 	topFloatUi.style.transition = 'opacity 0.5s';
 	topFloatUi.style.opacity = '1';
 	topFloatUi.style.display = 'flex';
+	
 	hideTimeout = setTimeout(() => {
-	  topFloatUi.style.opacity = '0';
-	  hideTimeout2 = setTimeout(() => {
-		topFloatUi.style.display = 'none';
-	  }, 1000); // matches the transition time
+		topFloatUi.style.opacity = '0';
+		
+		hideTimeout2 = setTimeout(() => {
+			topFloatUi.style.display = 'none';
+		}, 1000); // matches the transition time
 	}, 10000);
 }
+
 
 
 let showTopLeftUi = false;
@@ -2363,7 +2515,11 @@ function getPlayer(playerId) {
 }
 
 function getPlayerByIndex(playerIndex) {
-	return gameState.players[playerIndex];
+	if(gameState.players[playerIndex]){
+		return gameState.players[playerIndex];
+	}else{
+		return null;
+	}
 }
 
 function getPlayerIndex(playerId) {
@@ -2373,6 +2529,7 @@ function getPlayerIndex(playerId) {
 function getMyPlayer() {
 	return getPlayer(localPlayer.id);
 }
+
 
 // =================================================================
 // --- HEXAGON MATH
@@ -2385,6 +2542,7 @@ function axialToPixel(q, r) {
 	return { x, y };
 }
 
+
 function pixelToAxial(x, y) {
 	// Apply viewport inverse transform
 	const viewX = (x - viewport.x) / viewport.zoom;
@@ -2394,6 +2552,7 @@ function pixelToAxial(x, y) {
 	const r = (-1/3 * viewX + SQRT3/3 * viewY) / HEX_SIZE;
 	return hexRound(q, r);
 }
+
 
 function hexRound(q, r) {
 	const s = -q - r;
@@ -2414,6 +2573,7 @@ function hexRound(q, r) {
 	return { q: rq, r: rr };
 }
 
+
 function getHexNeighbors(q, r) {
 	return [                    //              i for "angle index" calculations
 		{ q: q,     r: r + 1 }, // bottom       0
@@ -2425,12 +2585,16 @@ function getHexNeighbors(q, r) {
 	];
 }
 
+
 function getHexDistance(q1, r1, q2, r2) {
 	const dq = q1 - q2;
 	const dr = r1 - r2;
 	const ds = (-q1 - r1) - (-q2 - r2);
 	return (Math.abs(dq) + Math.abs(dr) + Math.abs(ds)) / 2;
 }
+
+
+
 
 // =================================================================
 // --- CANVAS RENDERING
@@ -2490,6 +2654,10 @@ function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
 	ctx.fill();
 }
 
+
+
+
+
 let waterShadingHeightHalf = 10; // half of the line height.
 let waterShadingHeight = waterShadingHeightHalf*2;
 
@@ -2514,6 +2682,9 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 	}
 }
 
+
+
+
 function drawHexagonPathLines(px, py, drawLines = null) {
 	if(drawLines){
 		if(drawLines.length > 0){
@@ -2532,6 +2703,9 @@ function drawHexagonPathLines(px, py, drawLines = null) {
 		//ctx.closePath(); // only needed for drawing filled hex.
 	}
 }
+
+
+
 
 // drawLines = array of values 0-5
 // 0 = bottom left
@@ -2579,9 +2753,6 @@ function drawHexagonOutlines(q, r, myId = -1){
 }
 
 
-// renderinfinitewater 
-let useInfiniteWater = 1;
-let drawWaterTiles = 0;
 
 
 
@@ -2635,30 +2806,30 @@ function hexToRgba(hex, opacity = 1) {
 
 
 function blendHexColor(color1, color2 = "#000000", percentage = 0.5) {
-  // Ensure percentage is between 0 and 1
-  percentage = Math.min(Math.max(percentage, 0), 1);
+	// Ensure percentage is between 0 and 1
+	percentage = Math.min(Math.max(percentage, 0), 1);
 
-  // Helper to convert hex to RGB
-  const hexToRgb = hex => {
-    hex = hex.replace(/^#/, "");
-    if (hex.length === 3) {
-      hex = hex.split("").map(x => x + x).join("");
-    }
-    const num = parseInt(hex, 16);
-    return [num >> 16, (num >> 8) & 255, num & 255];
-  };
+	// Helper to convert hex to RGB
+	const hexToRgb = hex => {
+		hex = hex.replace(/^#/, "");
+		if (hex.length === 3) {
+			hex = hex.split("").map(x => x + x).join("");
+		}
+		const num = parseInt(hex, 16);
+		return [num >> 16, (num >> 8) & 255, num & 255];
+	};
 
-  // Helper to convert RGB to hex
-  const rgbToHex = ([r, g, b]) =>
-    "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+	// Helper to convert RGB to hex
+	const rgbToHex = ([r, g, b]) =>
+		"#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
 
-  const rgb1 = hexToRgb(color1);
-  const rgb2 = hexToRgb(color2);
+	const rgb1 = hexToRgb(color1);
+	const rgb2 = hexToRgb(color2);
 
-  // Blend each channel
-  const blended = rgb1.map((c, i) => Math.round(c * (1 - percentage) + rgb2[i] * percentage));
+	// Blend each channel
+	const blended = rgb1.map((c, i) => Math.round(c * (1 - percentage) + rgb2[i] * percentage));
 
-  return rgbToHex(blended);
+	return rgbToHex(blended);
 }
 
 
@@ -2714,15 +2885,18 @@ function drawObject(ctx, x, y, objectName){
 }
 
 
-let previous_drawnTiles = 0;
 
 
-// rendermap
 
 let useAnimatedWater = 1;
 let isBigAnimatedWater = 1;
 
+// renderinfinitewater 
+let useInfiniteWater = 1;
+let drawWaterTiles = 0;
 
+
+// draw water draw infinitewater draw infinite water render infinitewater render infinite water
 function drawInfiniteWater(){
 
 	let waterZoomMipLevel = getZoomMipLevel(0.6); // smaller = earlier switch to smaller image
@@ -2735,47 +2909,47 @@ function drawInfiniteWater(){
 			if(isBigAnimatedWater){
 				const patternObj = imageAssets['water-anim-big'];
 				if (patternObj && patternObj.isAnimated) {
-				  const now = performance.now();
-				  if (now - patternObj.lastFrameTime >= patternObj.frameDuration) {
-					patternObj.currentFrame = (patternObj.currentFrame + 1) % patternObj.frameCount;
-					// skip first frame, since its same as last frame:
-					// TODO: remove the first frame image from the actual image frames array to save memory.
-					if(patternObj.currentFrame == 0) patternObj.currentFrame = 1;
-					patternObj.lastFrameTime = now;
-				  }
+					const now = performance.now();
+					if (now - patternObj.lastFrameTime >= patternObj.frameDuration) {
+						patternObj.currentFrame = (patternObj.currentFrame + 1) % patternObj.frameCount;
+						// skip first frame, since its same as last frame:
+						// TODO: remove the first frame image from the actual image frames array to save memory.
+						if(patternObj.currentFrame == 0) patternObj.currentFrame = 1;
+						patternObj.lastFrameTime = now;
+					}
 
-				  const frame = patternObj.animFrames[patternObj.currentFrame];
-				  const pattern = frame.patterns[bigWaterAnimZoomMipLevel];
-				  const mipScale = Math.pow(0.5, bigWaterAnimZoomMipLevel);
+					const frame = patternObj.animFrames[patternObj.currentFrame];
+					const pattern = frame.patterns[bigWaterAnimZoomMipLevel];
+					const mipScale = Math.pow(0.5, bigWaterAnimZoomMipLevel);
 
-				  const matrix = new DOMMatrix()
-					.translate(viewport.x, viewport.y)
-					.scale(viewport.zoom * 1.6 / mipScale);
+					const matrix = new DOMMatrix()
+						.translate(viewport.x, viewport.y)
+						.scale(viewport.zoom * 1.6 / mipScale);
 
-				  pattern.setTransform(matrix);
-				  ctx.fillStyle = pattern;
-				  ctx.fillRect(0, 0, canvas.width, canvas.height);
+					pattern.setTransform(matrix);
+					ctx.fillStyle = pattern;
+					ctx.fillRect(0, 0, canvas.width, canvas.height);
 				}
 			}else{
 				const patternObj = imageAssets['water-anim'];
 				if (patternObj && patternObj.isAnimated) {
-				  const now = performance.now();
-				  if (now - patternObj.lastFrameTime >= patternObj.frameDuration) {
-					patternObj.currentFrame = (patternObj.currentFrame + 1) % patternObj.frameCount;
-					patternObj.lastFrameTime = now;
-				  }
+					const now = performance.now();
+					if (now - patternObj.lastFrameTime >= patternObj.frameDuration) {
+						patternObj.currentFrame = (patternObj.currentFrame + 1) % patternObj.frameCount;
+						patternObj.lastFrameTime = now;
+					}
 
-				  const frame = patternObj.animFrames[patternObj.currentFrame];
-				  const pattern = frame.patterns[waterAnimZoomMipLevel];
-				  const mipScale = Math.pow(0.5, waterAnimZoomMipLevel);
+					const frame = patternObj.animFrames[patternObj.currentFrame];
+					const pattern = frame.patterns[waterAnimZoomMipLevel];
+					const mipScale = Math.pow(0.5, waterAnimZoomMipLevel);
 
-				  const matrix = new DOMMatrix()
-					.translate(viewport.x, viewport.y)
-					.scale(viewport.zoom * 2.4 / mipScale);
+					const matrix = new DOMMatrix()
+						.translate(viewport.x, viewport.y)
+						.scale(viewport.zoom * 2.4 / mipScale);
 
-				  pattern.setTransform(matrix);
-				  ctx.fillStyle = pattern;
-				  ctx.fillRect(0, 0, canvas.width, canvas.height);
+					pattern.setTransform(matrix);
+					ctx.fillStyle = pattern;
+					ctx.fillRect(0, 0, canvas.width, canvas.height);
 				}
 			}
 
@@ -2802,25 +2976,17 @@ function drawInfiniteWater(){
 
 
 
-function render() {
-	if (!gameState.settings.gameStarted) return;
-	
-	trackFPS();
 
-	// calculate current mip level:
-	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
+
+let drawnTiles = 0;
+let previous_drawnTiles = 0;
+
+
+// rendertiles drawtiles rendermaptiles render tiles render map tiles
+function drawMapTiles(){
+
 	let tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
-	//console.log(tileZoomMipLevel);
-  
-	// Save the context state
-	ctx.save();
-	drawInfiniteWater();
-
-	ctx.translate(viewport.x, viewport.y);
-	ctx.scale(viewport.zoom, viewport.zoom);
 	
-
-	let drawnTiles = 0;
 	
 	// --- DRAW TILES ---
 	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
@@ -2936,10 +3102,14 @@ function render() {
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
 					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
+					let color = player.color;
+					if(!tile.isProtected){
+						color = lightenHexColor(player.color, 0.2);
+					}
 					// todo: make own images for each player texture?
 					// Multiply by player color
 					ctx.globalCompositeOperation = "multiply";
-					ctx.fillStyle = player.color; // e.g. "#ff0000"
+					ctx.fillStyle =  color; // e.g. "#ff0000"
 					ctx.fillRect(dx, dy, dWidth, dHeight);
 					ctx.globalCompositeOperation = "source-over";
 					
@@ -2954,10 +3124,23 @@ function render() {
 		}
 		// Restore context (removes clip)
 		ctx.restore();
-		
-		
 	}
 	
+
+	// log how many tiles were drawn to test culling working:
+	if(previous_drawnTiles != drawnTiles){
+		//console.log("drawnTiles = "+drawnTiles);
+		previous_drawnTiles = drawnTiles;
+	}
+	
+}
+
+
+
+
+// renderhighlights
+function drawHighlights(){
+
 	let highlightedEnemy = null;
 	let highlightedPlayer = null;
 	
@@ -3057,35 +3240,7 @@ function render() {
 		}
 	}
 	
-	// Draw objects (trees etc) on top of pool edges:
-	for(let t = 0; t < gameState.map.tilesData.length; t++){
-		const tile = gameState.map.tilesData[t];
-		const q = tile.q;
-		const r = tile.r;
 
-		const { x, y } = axialToPixel(q, r);
-
-		// --- Culling Check ---
-		if(checkCulling(x, y)){
-			continue;
-		}
-		
-		if (tile.type === 'land' && tile.object) {
-			drawObject(ctx, x, y, tile.object);
-		}
-	}
-	
-	
-	
-	// log how many tiles were drawn to test culling working:
-	if(previous_drawnTiles != drawnTiles){
-		//console.log("drawnTiles = "+drawnTiles);
-		previous_drawnTiles = drawnTiles;
-	}
-	
-	
-	
-	// --- DRAW HIGHLIGHTS (NEW) ---
 /*
 	// note: moved above that loops all tiles to draw edges.
 	if(highlightedPool.length > 0){
@@ -3124,10 +3279,131 @@ function render() {
 		//ctx.setLineDash([]);
 	}
 	*/
+}
+
+
+
+
+
+// renderobjects
+function drawObjects(){
+
+	// Draw objects (trees etc) on top of pool edges:
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		const { x, y } = axialToPixel(q, r);
+
+		// --- Culling Check ---
+		if(checkCulling(x, y)){
+			continue;
+		}
+		
+		if (tile.type === 'land' && tile.object) {
+			drawObject(ctx, x, y, tile.object);
+		}
+	}
+}
+
+
+
+
+// draw only specific type of units; "soldier" or "castle"
+function drawUnitsByType(unitType){
+	for (const unit of gameState.units) {
+		if(unit.internalType !== unitType){
+			continue;
+		}
+		
+		let { x, y } = axialToPixel(unit.q, unit.r);
+
+		// --- Culling Check ---
+		if(checkCulling(x, y)){
+			continue;
+		}
+		//unitsDrawn++;
+		
+		// no idea why this is here... probably loaded game missing players fix?
+		const owner = getPlayerByIndex(unit.ownerIndex);
+		if (!owner){
+			//console.log("owner not found: "+unit.ownerIndex);
+			continue;
+		}
+
+		const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
+		
+		let imageKey = `${data.type}${data.level}`;
+		const img = getImage(imageKey);
+		
+		if (img && img.complete && img.width > 0) {
+			// Draw the image centered and scaled
+			let imginfo = getImageSettings(imageKey);
+			let scale = imginfo.scale*0.9; // 0.9 global scale
+			let ratio = img.height/img.width;
+			let drawSize = 50;
+			let hsize = drawSize/2;
+			let offsetX = imginfo.offsetX;
+			let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+			let dx = x-((hsize-offsetX)*scale);
+			let dy = y-((hsize-offsetY+10)*ratio*scale);
+			let dw = drawSize*scale;
+			let dh = drawSize*ratio*scale;
+			
+			// draw unit:
+			drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
+		}
+	}
+}
+
+
+
+
+// renderunits
+function drawUnits(){
+	
+	// draw all units, castles first:
+	drawUnitsByType("castle");
+	drawUnitsByType("soldier");
 	
 	
+	let myPlayer = getMyTurnPlayer();
+
+	// draw arrow signs (yellow triangles):
+	for (const unit of gameState.units) {
+		let { x, y } = axialToPixel(unit.q, unit.r);
+
+		// --- Culling Check ---
+		if(checkCulling(x, y)){
+			continue;
+		}
+		
+		// no idea why this is here... probably loaded game missing players fix?
+		const owner = getPlayerByIndex(unit.ownerIndex);
+		if (!owner) continue;
+
+		const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
+		
+		if(data.type == 'soldier'){
+			if(myPlayer.id === unit.ownerId && isMyTurn()){
+				// draw yellow arrow sign:
+				if (!unit.hasMoved) {
+					drawTriangle(ctx, x, y);
+				}
+			}
+		}
+		
+	}
 	
-	
+	//console.log("unitsDrawn = "+unitsDrawn);
+}
+
+
+
+// rendermovementranges
+function drawMovementRanges(){
+
 	// Draw movement range
 	ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
 	for (const hex of validMoveHexes) {
@@ -3143,6 +3419,14 @@ function render() {
 		drawHexagonPath(x, y);
 		ctx.fill();
 	}
+}
+
+
+
+
+
+// renderPlacementHighlight 
+function drawPlacementHighlight(){
 
 /*
 	// Draw selected hex outline
@@ -3170,84 +3454,49 @@ function render() {
 		}
 		ctx.fill();
 	}
-	
-	// --- DRAW UNITS (existing code, moved *after* highlights) ---
-	//ctx.font = `${HEX_SIZE * 0.5}px sans-serif`;
-	//ctx.textAlign = 'center';
-	//ctx.textBaseline = 'middle';
-	
-	let myPlayer = getMyTurnPlayer();
-	
-	//let unitsDrawn = 0;
-	
-	// draw all units:
-	for (const unit of gameState.units) {
-		let { x, y } = axialToPixel(unit.q, unit.r);
+}
 
-		// --- Culling Check ---
-		if(checkCulling(x, y)){
-			continue;
-		}
-		//unitsDrawn++;
-		
-		
-		const owner = getPlayer(unit.ownerId);
-		if (!owner) continue;
-		
-		// Shake logic
-		const shake = shakingUnits.find(s => s.id === unit.id);
-		if (shake && shake.endTime > Date.now()) {
-			x += (Math.random() - 0.5) * HEX_SIZE * 0.1;
-			y += (Math.random() - 0.5) * HEX_SIZE * 0.1;
-		} else if (shake) {
-			shakingUnits = shakingUnits.filter(s => s.id !== unit.id);
-		}
 
-		const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
-		
-		
-		let imageKey = `${data.type}${data.level}`;
-		const img = getImage(imageKey);
-		
-		if (img && img.complete && img.width > 0) {
-			// Draw the image centered and scaled
-			let imginfo = getImageSettings(imageKey);
-			let scale = imginfo.scale*0.9; // 0.9 global scale
-			let ratio = img.height/img.width;
-			let drawSize = 50;
-			let hsize = drawSize/2;
-			let offsetX = imginfo.offsetX;
-			let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-			let dx = x-((hsize-offsetX)*scale);
-			let dy = y-((hsize-offsetY+10)*ratio*scale);
-			let dw = drawSize*scale;
-			let dh = drawSize*ratio*scale;
-			
-			
-			// draw unit:
-			//ctx.drawImage(img, dx, dy, dw, dh);
-			drawImageMipped(ctx, imageKey, dx, dy, dw, dh);
-			
-			if(data.type == 'soldier'){
-				if(myPlayer.id === unit.ownerId && isMyTurn()){
-				
-					// draw yellow arrow sign:
-					if (!unit.hasMoved) {
-						//let selectImg = getImage('select');
-						//ctx.drawImage(selectImg, dx, dy, dw, dh);
-						//drawImageMipped(ctx, 'select', dx, dy, dw, dh);
-						drawTriangle(ctx, x, y);
-						// draw arrow top left to signal the unit was not moved yet on this turn.
-					}
-				}
-			}
-			
-			
-		}
 
-	}
+
+
+
+function render() {
+	if (!gameState.settings.gameStarted) return;
 	
-	//console.log("unitsDrawn = "+unitsDrawn);
+	trackFPS();
+
+	// calculate current mip level:
+	zoomMipLevel = getZoomMipLevel(1); // use normal. smaller = earlier switch to smaller image
+
+	//console.log(tileZoomMipLevel);
+  
+	// Save the context state
+	ctx.save();
+	drawInfiniteWater();
+
+	ctx.translate(viewport.x, viewport.y);
+	ctx.scale(viewport.zoom, viewport.zoom);
+	
+
+	// MAP TILE DRAWING:
+	drawMapTiles();
+
+	// HIGHLIGHTS DRAWING:
+	drawHighlights();
+	
+	// OBJECTS DRAWING:
+	drawObjects();
+	
+	// MOVEMENT RANGE DRAWING:
+	drawMovementRanges();
+	
+	// PLACEMENT HIGHLIGHT DRAWING:
+	drawPlacementHighlight();
+	
+	// UNITS DRAWING:
+	drawUnits();
+	
 
 	ctx.restore();
 	
@@ -3296,15 +3545,17 @@ function handleCanvasMouseDown(e) {
 }
 
 function handleCanvasMouseUp(e) {
-	const dx = e.clientX - dragStart.x;
-	const dy = e.clientY - dragStart.y;
-	const dist = Math.sqrt(dx*dx + dy*dy);
-	
-	if (dist < 5) { // It's a click, not a drag
-		handleHexClick(pixelToAxial(e.clientX, e.clientY));
+	if(dragStart){
+		const dx = e.clientX - dragStart.x;
+		const dy = e.clientY - dragStart.y;
+		const dist = Math.sqrt(dx*dx + dy*dy);
+		
+		if (dist < 5) { // It's a click, not a drag
+			handleHexClick(pixelToAxial(e.clientX, e.clientY));
+		}
+		isDragging = false;
+		dragStart = null;
 	}
-	isDragging = false;
-	dragStart = null;
 }
 
 // --- Touch controls ---
@@ -4282,6 +4533,7 @@ function executeAction(playerId, action) {
 						id: getUID(),
 						type: unitType,
 						ownerId: playerId,
+						ownerIndex: getPlayerIndex(playerId),
 						level: data.level,
 						internalType: data.type,
 						q, r,
@@ -4432,6 +4684,7 @@ function executeAction(playerId, action) {
 					distributePoolSavings(findEconomyPools(lastAction.oldOwner));
 				}
 			}
+			updateHighlights();
 			sounds.push('moveunit');
 			break;
 		}
@@ -4457,6 +4710,9 @@ function executeAction(playerId, action) {
 	
 	// Send savings updates to all affected players
 	affectedPlayers.forEach(pid => updatePlayerSavings(pid));
+	
+	// non-synced updates executed on every action:
+	setProtectedTiles();
 }
 
 // =================================================================
@@ -4597,7 +4853,7 @@ function getNextPlayerIndex(currentIndex){
 }
 
 
-
+// this is host function.
 function advanceToNextPlayer(){
 
 	// advance to next player:
@@ -4673,83 +4929,83 @@ function ai_find_best_move(player){
 */
 
 function ai_find_best_move(player) {
-    console.log("ai_find_best_move (improved)");
+	console.log("ai_find_best_move (improved)");
 
-    let bestMove = null;
-    let bestScore = -Infinity;
+	let bestMove = null;
+	let bestScore = -Infinity;
 
-    for (let i = 0; i < gameState.units.length; i++) {
-        const unit = gameState.units[i];
-        if (unit.hasMoved || unit.ownerId !== player.id) continue;
+	for (let i = 0; i < gameState.units.length; i++) {
+		const unit = gameState.units[i];
+		if (unit.hasMoved || unit.ownerId !== player.id) continue;
 
-        const possibleMovesTemp = findUnitPossibleMoves(unit, player);
-        const possibleMoves = [];
+		const possibleMovesTemp = findUnitPossibleMoves(unit, player);
+		const possibleMoves = [];
 
-        for (const move of possibleMovesTemp) {
-            const tile = getTileAt(move.q, move.r);
-            if (!tile || tile.ownerId === player.id) continue;
-            const check = isMoveValid(unit, move, player);
-            if (check.valid) possibleMoves.push(move);
-        }
+		for (const move of possibleMovesTemp) {
+			const tile = getTileAt(move.q, move.r);
+			if (!tile || tile.ownerId === player.id) continue;
+			const check = isMoveValid(unit, move, player);
+			if (check.valid) possibleMoves.push(move);
+		}
 
-        for (const move of possibleMoves) {
-            const tile = getTileAt(move.q, move.r);
-            let score = 0;
+		for (const move of possibleMoves) {
+			const tile = getTileAt(move.q, move.r);
+			let score = 0;
 
-            // === Base scoring ===
-            // Prefer new land
-            if (!tile.ownerId) score += 5;
+			// === Base scoring ===
+			// Prefer new land
+			if (!tile.ownerId) score += 5;
 
-            // Prefer enemy tiles
-            if (tile.ownerId && tile.ownerId !== player.id) score += 10;
+			// Prefer enemy tiles
+			if (tile.ownerId && tile.ownerId !== player.id) score += 10;
 
-            // === Attack scoring ===
-            const enemyUnit = gameState.units.find(u => u.q === move.q && u.r === move.r);
-            if (enemyUnit) {
-                if (unit.level > enemyUnit.level) {
-                    score += 25; // easy kill
-                } else {
-                    score -= 20; // risky
-                }
-            }
+			// === Attack scoring ===
+			const enemyUnit = gameState.units.find(u => u.q === move.q && u.r === move.r);
+			if (enemyUnit) {
+				if (unit.level > enemyUnit.level) {
+					score += 25; // easy kill
+				} else {
+					score -= 20; // risky
+				}
+			}
 
-            // === Territorial influence ===
-            // More valuable if this move borders more enemy land (potential cutoff)
-            const neighbors = getHexNeighbors(move.q, move.r);
-            let enemyAdj = 0;
-            for (const n of neighbors) {
-                const nt = getTileAt(n.q, n.r);
-                if (nt && nt.ownerId && nt.ownerId !== player.id) enemyAdj++;
-            }
-            score += enemyAdj * 2;
+			// === Territorial influence ===
+			// More valuable if this move borders more enemy land (potential cutoff)
+			const neighbors = getHexNeighbors(move.q, move.r);
+			let enemyAdj = 0;
+			for (const n of neighbors) {
+				const nt = getTileAt(n.q, n.r);
+				if (nt && nt.ownerId && nt.ownerId !== player.id) enemyAdj++;
+			}
+			score += enemyAdj * 2;
 
-            // === Economy safety ===
-            // Slightly prefer staying near friendly land (less isolation)
-            const friendlyAdj = neighbors.filter(n => {
-                const nt = getTileAt(n.q, n.r);
-                return nt && nt.ownerId === player.id;
-            }).length;
-            score += friendlyAdj;
+			// === Economy safety ===
+			// Slightly prefer staying near friendly land (less isolation)
+			const friendlyAdj = neighbors.filter(n => {
+				const nt = getTileAt(n.q, n.r);
+				return nt && nt.ownerId === player.id;
+			}).length;
+			score += friendlyAdj;
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = {
-                    type: "action_move",
-                    unitId: unit.id,
-                    toQ: move.q,
-                    toR: move.r
-                };
-            }
-        }
-    }
+			if (score > bestScore) {
+				bestScore = score;
+				bestMove = {
+					type: "action_move",
+					unitId: unit.id,
+					toQ: move.q,
+					toR: move.r
+				};
+			}
+		}
+	}
 
-    if (bestMove) {
-        console.log("AI selected best move:", bestMove, "score:", bestScore);
-        return bestMove;
-    }
+	if (bestMove) {
+		console.log("AI selected best move:", bestMove, "score:", bestScore);
+		return bestMove;
+	}
 
-    // fallback
-    return null;
+	// fallback
+	return null;
 }
 
 
@@ -4763,64 +5019,63 @@ let AI_DELAY_MOVE = 1;
 // This function recursively calls itself with a delay to execute AI moves sequentially.
 // moveai
 function executeAIMoveSequentially(player) {
-    if (!localPlayer.isHost || gameState.settings.gameOver) return;
+	if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
-    // Double-check if it's still this AI's turn
-    const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
-    if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
-        console.log("AI turn interrupted or changed.");
-        return; 
-    }
+	// Double-check if it's still this AI's turn
+	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
+	if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
+		console.log("AI turn interrupted or changed.");
+		return;
+	}
 
-    //console.log(`AI ${player.name} is thinking...`);
+	//console.log(`AI ${player.name} is thinking...`);
 
-    const bestMove = ai_find_best_move(player);
-    //console.warn("AI bestMove:", bestMove);
+	const bestMove = ai_find_best_move(player);
+	//console.warn("AI bestMove:", bestMove);
 
-    if (bestMove) {
-        // If a move is found, execute it
-        // handleClientData is correct, as the host is simulating the AI's action
-        handleClientData(player.id, bestMove);
-        
-        // Schedule the next move check after a delay
-        setTimeout(() => {
-            executeAIMoveSequentially(player); // Recursive call for the next move
-        }, AI_DELAY_MOVE); // delay between moves
-    } else {
-        // No more moves found, end the turn
-        console.log(`AI ${player.name} has no more moves. Ending turn.`);
-        handleClientData(player.id, { type: "action_end_turn" });
-    }
+	if (bestMove) {
+		// If a move is found, execute it
+		// handleClientData is correct, as the host is simulating the AI's action
+		handleClientData(player.id, bestMove);
+		
+		// Schedule the next move check after a delay
+		setTimeout(() => {
+			executeAIMoveSequentially(player); // Recursive call for the next move
+		}, AI_DELAY_MOVE); // delay between moves
+	} else {
+		// No more moves found, end the turn
+		console.log(`AI ${player.name} has no more moves. Ending turn.`);
+		handleClientData(player.id, { type: "action_end_turn" });
+	}
 }
 
 
 
 function checkForAITurn(){
 	// Only the host should control the AI
-    if (!localPlayer.isHost || gameState.settings.gameOver) return;
+	if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
-    const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
+	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
 
-    // If the current player is an AI, trigger their move sequence
-    if (currentPlayer && currentPlayer.isAI && !currentPlayer.isDead) {
+	// If the current player is an AI, trigger their move sequence
+	if (currentPlayer && currentPlayer.isAI && !currentPlayer.isDead) {
 		console.log(`Starting AI turn for: ${currentPlayer.name}`);
-        
-        // Start the sequential move execution
-        // Add a small initial delay to allow the "turn changed" message to settle
-        setTimeout(() => {
-            executeAIMoveSequentially(currentPlayer);
-        }, AI_DELAY_START); // Small delay before first move
+		
+		// Start the sequential move execution
+		// Add a small initial delay to allow the "turn changed" message to settle
+		setTimeout(() => {
+			executeAIMoveSequentially(currentPlayer);
+		}, AI_DELAY_START); // Small delay before first move
 	}
 }
 
 
 
-
+// this is host function.
 function processEndOfDay(){
 	console.warn("Day ended, new day starts. process trees, grasses etc.");
 	
-	// Save this game state
-	saveGameToDB(gameState);
+
 	
 	// process:
 	// - crosses turning into grass.
@@ -4861,7 +5116,7 @@ function processEndOfDay(){
 							// check if there is any units on this tile:
 							if(!getUnitAt(n.q, n.r)){
 								// ready to use random chance for growing:
-								if(Math.random() < 0.1){
+								if(Math.random() < 0.08){
 									// set this tile as possible growing for grass:
 									grassGrow[`${nTile.q},${nTile.r}`] = nTile;
 								}
@@ -4933,6 +5188,10 @@ function processEndOfDay(){
 		console.warn("tree spawned at "+tile.q+tile.r);
 	}
 	
+	
+	
+	// Save this game state
+	saveGameToDB(gameState);
 }
 
 
@@ -5146,6 +5405,9 @@ function handleHostData(data) {
 			break;
 	}
 	
+	// non-synced updates executed on every action:
+	setProtectedTiles();
+	
 	if (needsUIUpdate) {
 		updateGameUI();
 	}
@@ -5259,6 +5521,7 @@ function initPeerJS() {
 	}
 }
 
+
 function setupConnection(conn) {
 	connections.set(conn.peer, conn); // must be here instantly or color/nick changes wont work.
 	
@@ -5342,6 +5605,7 @@ function setupConnection(conn) {
 }
 
 
+// todo: make without reloading the page but instead clear the gameState.
 function restartGame(){
 	location.reload();
 }
@@ -5645,6 +5909,7 @@ function initDB() {
 	request.onsuccess = (e) => {
 		db = e.target.result;
 		console.log("IndexedDB initialized.");
+		console.log(db);
 	};
 	
 	request.onupgradeneeded = (e) => {
@@ -5655,6 +5920,133 @@ function initDB() {
 	};
 }
 
+
+async function getMostRecentSave() {
+	return new Promise((resolve, reject) => {
+		if (!db) {
+			resolve(null); // no saves to be found
+			//reject('Database not initialized');
+			return;
+		}
+
+		const transaction = db.transaction([DB_STORE_NAME], 'readonly');
+		const objectStore = transaction.objectStore(DB_STORE_NAME);
+		const getAllRequest = objectStore.getAll();
+
+		getAllRequest.onsuccess = (event) => {
+			const allSaves = event.target.result;
+			if (allSaves.length > 0) {
+				allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+				resolve(allSaves[0].roomName);
+			} else {
+				resolve(null); // no saves found
+			}
+		};
+
+		getAllRequest.onerror = (e) => {
+			console.error('Error loading game:', e.target.error);
+			//reject(e.target.error);
+			resolve(null); // no saves to be found
+		};
+	});
+}
+
+
+
+async function getAllSavedGames() {
+	return new Promise((resolve, reject) => {
+		if (!db) {
+			resolve(null); // no saves to be found
+			return;
+		}
+
+		const transaction = db.transaction([DB_STORE_NAME], 'readonly');
+		const objectStore = transaction.objectStore(DB_STORE_NAME);
+		const getAllRequest = objectStore.getAll();
+
+		getAllRequest.onsuccess = (event) => {
+			const allSaves = event.target.result;
+
+			// Sort saves by saveDate (newest first)
+			allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+			resolve(allSaves); // return array of saved games.
+		};
+
+		getAllRequest.onerror = (e) => {
+			console.error('Error loading game:', e.target.error);
+			resolve(null); // no saves to be found
+		};
+	});
+}
+
+
+function pruneOldSaves(maxSaves = 5) {
+	if (!db) return;
+
+	const transaction = db.transaction([DB_STORE_NAME], 'readwrite');
+	const objectStore = transaction.objectStore(DB_STORE_NAME);
+
+	// Get all saved games
+	const getAllRequest = objectStore.getAll();
+
+	getAllRequest.onsuccess = (event) => {
+		const allSaves = event.target.result;
+
+		// Sort saves by saveDate (newest first)
+		allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+
+		// If there are more than maxSaves, delete the oldest ones
+		if (allSaves.length > maxSaves) {
+			const savesToDelete = allSaves.slice(maxSaves);
+
+			savesToDelete.forEach((save) => {
+				const deleteRequest = objectStore.delete(save.roomName);
+				deleteRequest.onsuccess = () => {
+					console.warn('Deleted old save:', save.roomName);
+				};
+			});
+		}
+	};
+}
+
+
+// get date like "12.11.2025 - 09:45:03" from saved new Date().toISOString() from db.
+function formatReadableDate(isoString) {
+	const date = new Date(isoString);
+	const pad = (n) => n.toString().padStart(2, '0');
+
+	const day = pad(date.getDate());
+	const month = pad(date.getMonth() + 1);
+	const year = date.getFullYear();
+	const hours = pad(date.getHours());
+	const minutes = pad(date.getMinutes());
+	const seconds = pad(date.getSeconds());
+
+	return `${day}.${month}.${year} - ${hours}:${minutes}:${seconds}`;
+}
+
+
+
+function formatDateForSave() {
+	const now = new Date();
+
+	const pad = (n) => n.toString().padStart(2, '0');
+
+	const year = now.getFullYear();
+	const month = pad(now.getMonth() + 1);
+	const day = pad(now.getDate());
+	const hours = pad(now.getHours());
+	const minutes = pad(now.getMinutes());
+	const seconds = pad(now.getSeconds());
+
+	return `${year}${month}${day}_${hours}${minutes}${seconds}`;
+}
+
+
+
+let currentFormattedDate = formatDateForSave(); // updated at startGame() to get precise date of start time.
+
+
 function saveGameToDB(gameState) {
 	if (!db) return;
 
@@ -5662,16 +6054,10 @@ function saveGameToDB(gameState) {
 	let stateToSave = {
 		gameState: JSON.parse(JSON.stringify(gameState)), // Create a deep clone to store
 		saveDate: new Date().toISOString(),
-		roomName: gameState.settings.roomName,
+		// roomName key is used for db key:
+		roomName: currentFormattedDate, // "20251112_170804", initialized at app launch only.
 	};
-	//console.warn("stateToSave:");
-	//console.warn(stateToSave);
-	//stateToSave.saveDate = new Date().toISOString();
-	
-	// --- FIX ---
-	// The keyPath is 'roomName', so we must add it to the top level of the object.
-	//stateToSave.roomName = gameState.settings.roomName;
-	// --- END FIX ---
+
 	
 	const transaction = db.transaction([DB_STORE_NAME], 'readwrite');
 	const objectStore = transaction.objectStore(DB_STORE_NAME);
@@ -5679,18 +6065,27 @@ function saveGameToDB(gameState) {
 	
 	request.onsuccess = () => {
 		console.log('Game saved:', stateToSave.roomName);
-		console.log("stateToSave:");
-		console.log(stateToSave);
+		// remove old saved games, keep only 6:
+		pruneOldSaves(8);
+		//console.log("stateToSave:");
+		//console.log(stateToSave);
 	};
 	request.onerror = (e) => {
 		console.error('Error saving game:', e.target.error);
-		console.log("stateToSave:");
-		console.log(stateToSave);
+		//console.log("stateToSave:");
+		//console.log(stateToSave);
 	};
 }
 
+
+
 function loadGameFromDB(roomName, callback) {
 	if (!db) return;
+	// if no saved games found: (roomName set to null in that case)
+	if(!roomName){
+		callback(null);
+		return;
+	}
 	
 	const transaction = db.transaction([DB_STORE_NAME], 'readonly');
 	const objectStore = transaction.objectStore(DB_STORE_NAME);
@@ -5762,53 +6157,53 @@ function getTileCountCompact(mapdata){
 
 
 async function buildMapList(mapSizeName) {
-  const t = mapSizeName[0];
-  const totalMaps = 40;
+	const t = mapSizeName[0];
+	const totalMaps = 40;
 
-  const promises = Array.from({ length: totalMaps }, async (_, i) => {
-    const n = i + 1;
-    const name = `map${t}${n}`;
-    const mapBasePath = `maps/${mapSizeName}/${name}`;
-    const mapFile = `${mapBasePath}.dat`;
-    const mapImageFile = `${mapBasePath}.png`;
+	const promises = Array.from({ length: totalMaps }, async (_, i) => {
+		const n = i + 1;
+		const name = `map${t}${n}`;
+		const mapBasePath = `maps/${mapSizeName}/${name}`;
+		const mapFile = `${mapBasePath}.dat`;
+		const mapImageFile = `${mapBasePath}.png`;
 
-    try {
-      const mapdata = await parseMap(mapFile, true);
-      if (!mapdata) return null;
+		try {
+			const mapdata = await parseMap(mapFile, true);
+			if (!mapdata) return null;
 
-      // Convert image to base64
-      const imageResponse = await fetch(mapImageFile);
-      if (!imageResponse.ok) throw new Error(`Image not found: ${mapImageFile}`);
+			// Convert image to base64
+			const imageResponse = await fetch(mapImageFile);
+			if (!imageResponse.ok) throw new Error(`Image not found: ${mapImageFile}`);
 
-      const blob = await imageResponse.blob();
-      const imageData = await blobToBase64(blob); // convert blob → base64
+			const blob = await imageResponse.blob();
+			const imageData = await blobToBase64(blob); // convert blob → base64
 
-      mapdata.preview = mapImageFile; // original URL (optional)
-      mapdata.name = name;
-      mapdata.imageData = imageData; // base64 string ready for <img src="...">
-	  mapdata.tileCount = getTileCountCompact(mapdata);
-      return mapdata;
+			mapdata.preview = mapImageFile; // original URL (optional)
+			mapdata.name = name;
+			mapdata.imageData = imageData; // base64 string ready for <img src="...">
+			mapdata.tileCount = getTileCountCompact(mapdata);
+			return mapdata;
 
-    } catch (err) {
-      console.error(`Error loading map ${name}:`, err);
-      return null;
-    }
-  });
+		} catch (err) {
+			console.error(`Error loading map ${name}:`, err);
+			return null;
+		}
+	});
 
-  const results = await Promise.all(promises);
-  customMaps[mapSizeName] = results.filter(Boolean);
+	const results = await Promise.all(promises);
+	customMaps[mapSizeName] = results.filter(Boolean);
 
-  console.log(`✅ Loaded ${customMaps[mapSizeName].length}/${totalMaps} maps successfully.`);
+	console.log(`✅ Loaded ${customMaps[mapSizeName].length}/${totalMaps} maps successfully.`);
 }
 
 // Helper to convert Blob → Base64 string
 function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result); // returns a Data URL (base64)
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onloadend = () => resolve(reader.result); // returns a Data URL (base64)
+		reader.onerror = reject;
+		reader.readAsDataURL(blob);
+	});
 }
 
 
@@ -5838,20 +6233,20 @@ async function loadmaps(){
 
 
 async function loadMapsFromJSON() {
-  try {
-    const response = await fetch('maps/all-compiled.json');
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+	try {
+		const response = await fetch('maps/all-compiled.json');
+		if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-    const allmaps = await response.json(); // parses JSON into JS object
-    //console.log('Loaded maps:', allmaps);
+		const allmaps = await response.json(); // parses JSON into JS object
+		//console.log('Loaded maps:', allmaps);
 
-    // now you can use allmaps normally
-    return allmaps;
+		// now you can use allmaps normally
+		return allmaps;
 
-  } catch (err) {
-    console.error('Failed to load JSON file:', err);
-    return null;
-  }
+	} catch (err) {
+		console.error('Failed to load JSON file:', err);
+		return null;
+	}
 }
 
 
@@ -5877,8 +6272,12 @@ let loadedMapIndex = 0;
 function getCustomMap(category, index){
 	return customMaps[category][index];
 }
+
 	
 function loadMap(category, index) {
+	// unload loaded game so it wont mess up new game:
+	unloadGame();
+	
 	loadedMapCategory = category;
 	loadedMapIndex = index;
 	
@@ -5892,7 +6291,8 @@ function loadMap(category, index) {
 	
 	
 }
-  
+
+
 function setLoadedMapAndApplyScale(){
 	//loadedmap = customMaps[loadedMapCategory][loadedMapIndex];
 	
@@ -6524,6 +6924,7 @@ function startGame() {
 
 	if (!localPlayer.isHost) return;
 	
+
 	console.log("Starting game...");
 	
 	if (loadedGameState) {
@@ -6563,6 +6964,10 @@ function startGame() {
 		gameState.players = newPlayerList;
 		
 	} else {
+		
+		// update gameRoom key for the db, so the game room name will match the start time.
+		currentFormattedDate = formatDateForSave();
+	
 		console.log("Starting new game.");
 		// Set settings from inputs
 		gameState.settings.mapWidth = parseInt(mapWidthInput.value, 10);
@@ -6613,6 +7018,8 @@ function startGame() {
 		//advanceToNextPlayer(); // not sure why this was here, probably because of bugged currentPlayerIndex calculations
 	}
 	
+	setProtectedTiles();
+	
 	// Clear undo stack
 	currentTurnActions = [];
 	
@@ -6629,6 +7036,26 @@ function startGame() {
 			updatePlayerSavings(p.id);
 		}
 	});
+}
+
+
+
+// checks all tiles if they are protected or not.
+function setProtectedTiles(){
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+		if(tile.type === 'land'){
+			if(getUnitAt(q,r)){
+				// if unit on tile, set protected
+				tile.isProtected = true;
+			}else{
+				// check if this tile is protected
+				tile.isProtected = getShieldLevel(q, r, -1) ? true : false;
+			}
+		}
+	}
 }
 
 // safer parseInt so it wont allow any text to cause extreme large values.
@@ -6655,17 +7082,21 @@ document.addEventListener('keydown', (event) => {
 	}
 });
 
+
+
 const dirtyInput = document.getElementById('dirty-flag');
 
 // Whenever you want the page to be “dirty” (e.g., game started)
 function markDirty() {
-  dirtyInput.value = Date.now(); // any change will make the browser consider it modified
+	dirtyInput.value = Date.now(); // any change will make the browser consider it modified
 }
 
 // When the game ends, you can reset it
 function clearDirty() {
-  dirtyInput.value = '';
+	dirtyInput.value = '';
 }
+
+
 
 window.addEventListener('beforeunload', (e) => {
 	if (dirtyInput.value) {
@@ -6684,26 +7115,111 @@ window.addEventListener('unload', () => {
 
 // Prevent accidental back navigation
 function preventBackNavigation() {
-  history.pushState(null, '', location.href);
+	history.pushState(null, '', location.href);
 
-  window.addEventListener('popstate', function (event) {
-    const leave = confirm('Are you sure you want to quit the game?');
+	window.addEventListener('popstate', function (event) {
+		const leave = confirm('Are you sure you want to quit the game?');
 
-    if (leave) {
-      // Let them go back by removing the listener
-      window.removeEventListener('popstate', arguments.callee);
-      //history.back();
-	  restartGame();
-    } else {
-      // Re-add the state so back button keeps working
-      history.pushState(null, '', location.href);
-    }
-  });
+		if (leave) {
+			// Let them go back by removing the listener
+			window.removeEventListener('popstate', arguments.callee);
+			//history.back();
+			restartGame();
+		} else {
+			// Re-add the state so back button keeps working
+			history.pushState(null, '', location.href);
+		}
+	});
 }
 
 preventBackNavigation();
 
 
+
+
+function unloadGame(){
+	// Unload
+	loadedGameState = null;
+	loadGameBtn.textContent = 'Load Game';
+	loadedGameInfoContainer.style.display = 'none';
+}
+
+
+function loadSavedGame(roomName){
+	if (loadedGameState) {
+		unloadGame();
+	} else {
+		// Load
+		
+		// update so it will not create new savegame for this game. uses same date key for db.
+		currentFormattedDate = roomName;
+		
+		loadGameFromDB(roomName, (state) => {
+			if (state) {
+				loadedGameState = state.gameState;
+				console.warn("loadedGameState:");
+				console.warn(loadedGameState);
+				
+				
+				//console.log(lobbyLoadedMapImg);
+				gameState.settings = loadedGameState.settings;
+				//gameState.players = loadedGameState.players;
+				gameState.map = loadedGameState.map;
+				// update minimap for host:
+				loadedMapImg.src = loadedGameState.map.imageData;
+				updateHostLobbyUI();
+
+				//console.log(lobbyLoadedMapImg);
+
+				// update state to all players so they see the map loaded etc.
+				broadcastLobbyState(loadedGameState.settings, loadedGameState.players, loadedGameState.map);
+				
+				
+				
+				loadGameBtn.textContent = 'Unload Game';
+				
+				loadGameDate.textContent = new Date(state.saveDate).toLocaleString();
+				loadGamePlayersList.innerHTML = '';
+				state.gameState.players.filter(p => !p.isSpectator).forEach(p => {
+					const li = document.createElement('li');
+					li.textContent = `${p.name}`;
+					li.style.color = p.color;
+					li.className = 'loaded-player';
+					li.onclick = () => {
+						if (li.classList.contains('taken')) return;
+						
+						// Mark others as not taken
+						loadGamePlayersList.querySelectorAll('li').forEach(item => {
+							if (item.textContent.endsWith(' (taken)')) {
+								const originalName = item.dataset.name;
+								const pData = loadedGameState.players.find(lp => lp.name === originalName);
+								if (pData) pData.isTaken = false;
+								item.textContent = originalName;
+								item.classList.remove('taken');
+							}
+						});
+						
+						// Take this one
+						localPlayer.name = p.name;
+						localPlayer.color = p.color;
+						playerNameInput.value = p.name;
+						localPlayer.isSpectator = false;
+						spectateHostBtn.classList.remove('active');
+						p.isTaken = true; // Mark in loaded state
+						li.textContent = `${p.name} (taken)`;
+						li.dataset.name = p.name;
+						li.classList.add('taken');
+						broadcastLobbyState(); // Update others
+					};
+					loadGamePlayersList.appendChild(li);
+				});
+				loadedGameInfoContainer.style.display = 'block';
+			} else {
+				alert('No saved game found for this room name: '+roomName);
+			}
+		});
+	}
+}
 
 
 
@@ -6764,7 +7280,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 		broadcastLobbyState();
 	};
 	
-	loadGameBtn.onclick = () => {
+	/*
+	// async needed here for await to work for getMostRecentSave()
+	loadGameBtn.onclick = async () => {
 		if (loadedGameState) {
 			// Unload
 			loadedGameState = null;
@@ -6772,7 +7290,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 			loadedGameInfoContainer.style.display = 'none';
 		} else {
 			// Load
-			const roomName = gameNameInput.value;
+			let mostRecentSave = await getMostRecentSave();
+			console.log("mostRecentSave: "+mostRecentSave);
+			
+			const roomName = mostRecentSave;//gameNameInput.value;
 			loadGameFromDB(roomName, (state) => {
 				if (state) {
 					loadedGameState = state.gameState;
@@ -6833,11 +7354,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 					});
 					loadedGameInfoContainer.style.display = 'block';
 				} else {
-					alert('No saved game found for this room name.');
+					alert('No saved game found for this room name: '+roomName);
 				}
 			});
 		}
 	};
+	*/
 	
 	startGameBtn.onclick = startGame;
 	
@@ -6901,8 +7423,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	
 	initPeerJS();
-	console.log("PeerJS ready");
+	
+	console.log("DOMContentLoaded finished");
 });
+
+
 </script>
+
+
+
 </body>
 </html>
