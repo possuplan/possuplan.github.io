@@ -1463,14 +1463,23 @@ let gameRules = {
 };
 // sounds =
 let gameSounds = {
-	moveunit:{filename: "sounds/down.mp3",    gain: 1,   filter: false},
-	starmove:{filename: "sounds/up.mp3",      gain: 1,   filter: false},
-	info:    {filename: "sounds/info.mp3",    gain: 1,   filter: false},
-	kill:    {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
-	destroy: {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
-	move:    {filename: "sounds/move.mp3",    gain: 1,   filter: false},
-	protect: {filename: "sounds/protect.mp3", gain: 1,   filter: false},
-	sea:     {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
+	moveunit:     {filename: "sounds/down.mp3",    gain: 1,   filter: false},
+	starmove:     {filename: "sounds/up.mp3",      gain: 1,   filter: false},
+	info:         {filename: "sounds/info.mp3",    gain: 1,   filter: false},
+	kill:         {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
+	destroy:      {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
+	move:         {filename: "sounds/move.mp3",    gain: 1,   filter: false},
+	protect:      {filename: "sounds/protect.mp3", gain: 1,   filter: false},
+	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
+	
+	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 1,   filter: false},
+	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.2,   filter: false},
+	
+	// used for: soldier kills castle.
+	killCastle:   {filename: "sounds/kill-castle.mp3",     gain: 1,   filter: false},
+	
+	// used for: knight kills peasant, horse kills knight.
+	swordKill:    {filename: "sounds/sword-kill.mp3",      gain: 1,   filter: false},
 };
 
 // Preload all sounds
@@ -4492,11 +4501,28 @@ function executeAction(playerId, action) {
 					setTileOwner(toTile, playerId);
 					//toTile.ownerId = playerId;
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
-					sounds.push('moveunit');
+					if (!toTile.object) {
+						sounds.push('moveunit');
+					}
+				}else{
+					// if moved inside own pool, play also sound.
+					if (!toTile.object) {
+						sounds.push('moveunit');
+					}
 				}
+				
 				if (toTile.object) {
+					if(toTile.object === 'tree'){
+						sounds.push('claimTree');
+					}else if(toTile.object === 'grass'){
+						sounds.push('claimGrass');
+					}else{
+						sounds.push('moveunit');
+					}
 					toTile.object = null;
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
+					
+
 				}
 				
 				distributePoolSavings(findEconomyPools(playerId));
@@ -4507,10 +4533,6 @@ function executeAction(playerId, action) {
 				
 				//console.warn(actionForUndo);
 				
-			} else if (moveCheck.shake) {
-				// not really used, also useless on mobile...
-				//broadcast({ type: 'unit_shake', unitId: unit.id });
-				//sounds.push('protect');
 			}
 			break;
 		}
@@ -4556,13 +4578,24 @@ function executeAction(playerId, action) {
 						setTileOwner(tile, playerId);
 						didClaim = true;
 						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
-						sounds.push('moveunit');
+						if (!tile.object) {
+							sounds.push('moveunit');
+						}
 					}
+					
 					let clearedObject = null;
 					if (tile.object) {
+						if(tile.object === 'tree'){
+							sounds.push('claimTree');
+						}else if(tile.object === 'grass'){
+							sounds.push('claimGrass');
+						}else{
+							sounds.push('moveunit');
+						}
 						clearedObject = tile.object;
 						tile.object = null;
 						updates.push({ type: 'tile_changed', q: q, r: r, object: null });
+
 					}
 					
 					actionForUndo = {
@@ -5381,10 +5414,6 @@ function handleHostData(data) {
 				unit.hasMoved = data.hasMoved;
 			}
 			needsUIUpdate = true;
-			break;
-		case 'unit_shake':
-			shakingUnits.push({ id: data.unitId, endTime: Date.now() + 500 });
-			playSound('protect'); // stub
 			break;
 		case 'turn_changed':
 			gameState.turn.currentPlayerIndex = data.currentPlayerIndex;
