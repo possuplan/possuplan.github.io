@@ -63,7 +63,6 @@ or if joining two pools together to get the balance positive.
 :root {
 	--bg-color: #000000;
 	--text-color: #eee;
-	--primary-color: #0a84ff;
 	--border-color: #444;
 	--input-bg: #2c2c2e;
 	--btn-bg: #3a3a3c;
@@ -169,12 +168,12 @@ button:active {
 }
 
 button.primary {
-	background-color: var(--primary-color);
+	background-color: #0077ff;
 	color: white;
 }
 
 button.primary:hover {
-	background-color: #007aff;
+	background-color: #1188ff;
 }
 
 button.danger {
@@ -312,7 +311,6 @@ label {
 	pointer-events: auto;
 	background: rgba(0, 0, 0, 0.8);
 	backdrop-filter: blur(5px);
-	border: 1px solid var(--border-color);
 	padding: 2px 6px 2px 6px;
 	max-height: 90vh;
 	overflow-y: auto;
@@ -336,7 +334,7 @@ label {
 #ui-left {
 	display: none; /*flex when visible*/
 	flex-direction: column;
-	gap: 10px;
+	gap: 0px;
 	width: 200px;
 }
 
@@ -394,8 +392,10 @@ label {
 }
 
 #player-ui-list {
-	border-bottom-right-radius: 8px;
 	max-height: 133px;
+	
+    border-top: 1px solid #3e3e3e;
+    border-bottom: 1px solid #3e3e3e;
 }
 
 #player-ui-list .player-list-item {
@@ -422,8 +422,7 @@ label {
 	display: flex;
 	flex-direction: column;
 	height: 145px;
-	
-	border-top-right-radius: 8px;
+
 	border-bottom-right-radius: 8px;
 	
 	padding-left: 4px;
@@ -508,8 +507,12 @@ label {
 }
 
 
-.redbutton {
+button.redbutton {
 	background-color: #d03535;
+}
+
+button.redbutton:hover {
+	background-color: #ca4747;
 }
 
 .savedgames-popup-overlay {
@@ -1479,6 +1482,7 @@ let gameSounds = {
 	protect:      {filename: "sounds/protect.mp3", gain: 1,   filter: false},
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
+	sell:         {filename: "sounds/sell.mp3",    gain: 0.1,   filter: false},
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
 	
@@ -1565,8 +1569,9 @@ document.body.addEventListener('touchend', e => {
 // --- CONSTANTS ---
 const DB_NAME = 'HexWarlordsDB';
 const DB_STORE_NAME = 'savedGames';
+
 const PLAYER_COLORS = [
-	'#FF2222', '#FFFF00', '#2222ff', '#FF9500', '#FF2D55', '#34C759',  '#30B0C7', 
+	'#FF2222', '#FFFF00', '#3333ee', '#FF9500', '#FF2D55', '#34C759',  '#30B0C7', 
 	'#ff22dd', '#A2845E', '#eeeeee', '#333333',
 ];
 
@@ -1884,7 +1889,7 @@ function drawRightTriangle(ctx, x, y, height, width) {
 }
 
 function drawTriangle(ctx, x, y){
-	let scale = 0.5;
+	let scale = 0.45;
 	let h = 76;
 	let w = h/2;
 	drawRightTriangle(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale);
@@ -2291,6 +2296,7 @@ const buildSoldierBtn = document.getElementById('build-soldier-btn');
 const buildCastleBtn = document.getElementById('build-castle-btn');
 const endTurnBtn = document.getElementById('end-turn-btn');
 const undoBtn = document.getElementById('undo-btn');
+const sellUnitBtn = document.getElementById('sell-unit-btn');
 const buildPopup = document.getElementById('build-popup');
 
 const buildPopupTitle = document.getElementById('build-popup-title');
@@ -3414,7 +3420,7 @@ function drawUnits(){
 	drawUnitsByType("soldier");
 	
 	
-	let myPlayer = getMyTurnPlayer();
+	let currentTurnPlayer = getCurrentTurnPlayer();
 
 	// draw arrow signs (yellow triangles):
 	for (const unit of gameState.units) {
@@ -3432,7 +3438,7 @@ function drawUnits(){
 		const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
 		
 		if(data.type == 'soldier'){
-			if(myPlayer.id === unit.ownerId && isMyTurn()){
+			if(currentTurnPlayer.id === unit.ownerId && isMyTurn()){
 				// draw yellow arrow sign:
 				if (!unit.hasMoved) {
 					drawTriangle(ctx, x, y);
@@ -3504,7 +3510,22 @@ function drawPlacementHighlight(){
 
 
 
+function drawUnitSelection(){
+	if(selectedUnit){
+		const { x, y } = axialToPixel(selectedUnit.q, selectedUnit.r);
+		drawHexagonPathLines(x, y);
 
+		// your pool highlight
+		ctx.setLineDash([12.5, 15]);
+		ctx.strokeStyle = 'rgba(255,255,255, 1)';
+		ctx.lineWidth = 4;
+		ctx.lineCap = 'round';
+		ctx.stroke();
+		ctx.lineCap = 'butt'; // reset to default
+		ctx.setLineDash([]);
+
+	}
+}
 
 
 function render() {
@@ -3535,7 +3556,10 @@ function render() {
 	drawObjects();
 	
 	// MOVEMENT RANGE DRAWING:
-	drawMovementRanges();
+	//drawMovementRanges();
+	
+	// UNIT SELECTION DRAWING:
+	drawUnitSelection();
 	
 	// PLACEMENT HIGHLIGHT DRAWING:
 	drawPlacementHighlight();
@@ -3833,15 +3857,14 @@ function getUnitAt(q, r) {
 	return gameState.units.find(u => u.q === q && u.r === r);
 }
 
-function getMyTurnPlayer() {
+function getCurrentTurnPlayer() {
 	if (!gameState.settings.gameStarted) return null;
-	const player = gameState.players[gameState.turn.currentPlayerIndex];
-	return player;
+	return gameState.players[gameState.turn.currentPlayerIndex];
 }
 
 function isMyTurn() {
-	const myTurnPlayer = getMyTurnPlayer();
-	return myTurnPlayer && myTurnPlayer.id === localPlayer.id;
+	const currentTurnPlayer = getCurrentTurnPlayer();
+	return currentTurnPlayer && currentTurnPlayer.id === localPlayer.id;
 }
 
 
@@ -3850,14 +3873,14 @@ function updateGameUI() {
 	if (!gameState.settings.gameStarted) return;
 	
 	const myPlayer = getMyPlayer();
-	const myTurnPlayer = getMyTurnPlayer();
+	const currentTurnPlayer = getCurrentTurnPlayer();
 	
 	// Update player list
 	playerUIList.innerHTML = '';
 	gameState.players.forEach(p => {
 		const item = document.createElement('div');
 		item.className = 'player-list-item';
-		if (p.id === myTurnPlayer?.id) {
+		if (p.id === currentTurnPlayer?.id) {
 			item.classList.add('current-turn');
 		}
 		let color = p.color;
@@ -3939,7 +3962,8 @@ function handleHexClick(hex) {
 			selectedHex = hex;
 			
 			selectedUnit = getUnitAt(hex.q, hex.r) || null;
-
+			console.log("selectedUnit:");
+			console.log(selectedUnit);
 
 			placingUnit = null;
 			buildPopup.style.display = 'none';
@@ -3973,55 +3997,96 @@ function handleHexClick(hex) {
 	
 	// --- MOVING A UNIT ---
 	if (selectedUnit) {
-		// Check if clicking a valid move hex
-		// validMoveHexes = highlighted move area.
-		const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
-		//const unitOnHex = getUnitAt(hex.q, hex.r);
-		//console.error(unitOnHex);
-		//if (unitOnHex && unitOnHex.type === 'castle'){
-		//	isValidMove = false;
-		//}
 		
-		console.log("isValidMove: "+isValidMove);
-		
-	
-		if (isValidMove) {
-			sendToHost({
-				type: 'action_move',
-				unitId: selectedUnit.id,
-				toQ: hex.q,
-				toR: hex.r
-			});
-			// Deselect
+		let deselected = false;
+
+		if(hex.q === selectedUnit.q && hex.r === selectedUnit.r){
+			// deselect if clicked same unit again:
 			selectedUnit = null;
 			selectedHex = null;
-		} else {
-			// Clicked somewhere else, check for new selection
-			if(!isHexWater(hex.q, hex.r)){
-				const unitOnHex = getUnitAt(hex.q, hex.r);
-				if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
-					selectedUnit = unitOnHex; // Select new unit
-					selectedHex = hex;
-				} else {
-					selectedUnit = null; // Deselect
-					selectedHex = hex;
-				}
-			}else{
-				selectedUnit = null; // Deselect
+			deselected = true;
+		}
+
+		
+		if(!deselected){
+			// Check if clicking a valid move hex
+			// validMoveHexes = highlighted move area.
+			const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
+			//const unitOnHex = getUnitAt(hex.q, hex.r);
+			//console.error(unitOnHex);
+			//if (unitOnHex && unitOnHex.type === 'castle'){
+			//	isValidMove = false;
+			//}
+			
+			console.log("isValidMove: "+isValidMove);
+			
+		
+			if (isValidMove) {
+				sendToHost({
+					type: 'action_move',
+					unitId: selectedUnit.id,
+					toQ: hex.q,
+					toR: hex.r
+				});
+				// Deselect
+				selectedUnit = null;
 				selectedHex = null;
+			} else {
+				// Clicked somewhere else, check for new selection
+				if(!isHexWater(hex.q, hex.r)){
+					const isInvalidMove = invalidMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
+					if(isInvalidMove){
+						playSound("protect");
+					}
+					
+					const unitOnHex = getUnitAt(hex.q, hex.r);
+					if(unitOnHex){
+						if (unitOnHex.ownerId === localPlayer.id) {
+							if(unitOnHex.internalType === 'soldier' && !unitOnHex.hasMoved){
+								selectedUnit = unitOnHex; // Select new unit
+								selectedHex = hex;
+								playSound('startmove');
+							}
+						}else{
+							// deselect when clicking enemy unit that was not protected:
+							if(!isInvalidMove){
+								selectedUnit = null; // Deselect
+								selectedHex = hex;
+								console.log("deselected");
+							}
+						}
+					}else{
+						// deselect when clicked just land that was not protected:
+						if(!isInvalidMove){
+							selectedUnit = null; // Deselect
+							selectedHex = hex;
+							console.log("deselected");
+						}
+					}
+				}else{
+					selectedUnit = null; // Deselect
+					selectedHex = null;
+				}
 			}
 		}
 	} else {
 		// --- SELECTING AN UNIT ---
 		if(!isHexWater(hex.q, hex.r)){
 			const unitOnHex = getUnitAt(hex.q, hex.r);
+			
+
+		
+
 			if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
 				// allow only selecting soldiers
 				if(unitOnHex.internalType === 'soldier'){
-					selectedUnit = unitOnHex;
-					selectedHex = hex;
-					if(!selectedUnit.hasMoved){
-						playSound('startmove');
+					if(!unitOnHex.hasMoved){
+						console.log("selected new unit");
+						selectedUnit = unitOnHex;
+						selectedHex = hex;
+						if(!selectedUnit.hasMoved){
+							playSound('startmove');
+						}
 					}
 				}else{
 					// dont allow selecting castles.
@@ -4032,6 +4097,7 @@ function handleHexClick(hex) {
 				selectedUnit = null;
 				selectedHex = hex;
 			}
+
 		}else{
 			selectedUnit = null; // Deselect
 			selectedHex = null;
@@ -4040,6 +4106,9 @@ function handleHexClick(hex) {
 	
 	updateHighlights();
 }
+
+
+
 
 function findUnitPossibleMoves(this_selectedUnit, player){
 	let this_poolStartHex = this_selectedUnit;
@@ -4119,6 +4188,8 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 	//console.warn(this_validMoveHexes);
 	return this_validMoveHexes;
 }
+
+
 
 
 function updateHighlights() {
@@ -4550,12 +4621,29 @@ function isMoveValid(unit, toHex, player) {
 
 
 
+function isAiPlayer(playerId){
+	let player = getPlayer(playerId);
+	return player && player.isAI;
+}
+
+
+// gets the amount of money you get by selling a soldier.
+function getUnitSellPrice(unit){
+	let unitInfo = SOLDIER_DATA[unit.type];
+	if(unitInfo){
+		return unitInfo.sell;
+	}
+	return 0;
+}
+
+
+
 function executeAction(playerId, action) {
 	// HOST-ONLY function
 	if (!localPlayer.isHost) return;
 	
 	const player = getPlayer(playerId);
-	if (!player || player.id !== getMyTurnPlayer()?.id) {
+	if (!player || player.id !== getCurrentTurnPlayer()?.id) {
 		console.warn(`Action from wrong player: ${playerId}`);
 		return;
 	}
@@ -4566,7 +4654,38 @@ function executeAction(playerId, action) {
 	let affectedPlayers = new Set([playerId]); // Track who needs savings update
 
 	switch (action.type) {
+		case 'action_sell': {
+			// sell unit
+			
+			console.log("executeAction: action_sell");
+			
+			const { unitId } = action;
+			const unit = gameState.units.find(u => u.id === unitId);
+			if (!unit || unit.ownerId !== playerId) return;
+			
+			let sellPrice = getUnitSellPrice(unit);
+			
+			actionForUndo = {
+				type: 'sell', 
+				soldUnit: unit, 
+				sellPrice: sellPrice,
+			};
+			
+			const pools = findEconomyPools(playerId);
+			addCost(pools, sellPrice);
+			
+			// remove unit:
+			gameState.units = gameState.units.filter(u => u.id !== unit.id);
+			updates.push({ type: 'unit_removed', unitId: unit.id });
+			
+			if(!isAiPlayer(playerId)){
+				sounds.push('sell');
+			}
+			break;
+		}
 		case 'action_move': {
+			// move unit
+			
 			const { unitId, toQ, toR } = action;
 			const unit = gameState.units.find(u => u.id === unitId);
 			if (!unit || unit.ownerId !== playerId) return;
@@ -4594,7 +4713,9 @@ function executeAction(playerId, action) {
 					actionForUndo.killedUnit = { ...targetUnit }; // Store copy
 					gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
-					sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
+					if(!isAiPlayer(playerId)){
+						sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
+					}
 					
 					//console.warn("moveCheck.action === 'attack'");
 				}
@@ -4613,23 +4734,29 @@ function executeAction(playerId, action) {
 					setTileOwner(toTile, playerId);
 					//toTile.ownerId = playerId;
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
-					if (!toTile.object) {
-						sounds.push('moveunit');
+					if(!isAiPlayer(playerId)){
+						if (!toTile.object) {
+							sounds.push('moveunit');
+						}
 					}
 				}else{
 					// if moved inside own pool, play also sound.
-					if (!toTile.object) {
-						sounds.push('moveunit');
+					if(!isAiPlayer(playerId)){
+						if (!toTile.object) {
+							sounds.push('moveunit');
+						}
 					}
 				}
 				
 				if (toTile.object) {
-					if(toTile.object === 'tree'){
-						sounds.push('claimTree');
-					}else if(toTile.object === 'grass'){
-						sounds.push('claimGrass');
-					}else{
-						sounds.push('moveunit');
+					if(!isAiPlayer(playerId)){
+						if(toTile.object === 'tree'){
+							sounds.push('claimTree');
+						}else if(toTile.object === 'grass'){
+							sounds.push('claimGrass');
+						}else{
+							sounds.push('moveunit');
+						}
 					}
 					toTile.object = null;
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
@@ -4650,6 +4777,8 @@ function executeAction(playerId, action) {
 		}
 		
 		case 'action_build': {
+			// build unit
+			
 			const { unitType, q, r } = action;
 			const data = SOLDIER_DATA[unitType] || CASTLE_DATA[unitType];
 			if (!data) return;
@@ -4690,23 +4819,29 @@ function executeAction(playerId, action) {
 						setTileOwner(tile, playerId);
 						didClaim = true;
 						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
-						if (!tile.object) {
-							sounds.push('moveunit');
+						if(!isAiPlayer(playerId)){
+							if (!tile.object) {
+								sounds.push('moveunit');
+							}
 						}
 					}else{
-						if (!tile.object) {
-							sounds.push('moveunit');
+						if(!isAiPlayer(playerId)){
+							if (!tile.object) {
+								sounds.push('moveunit');
+							}
 						}
 					}
 					
 					let clearedObject = null;
 					if (tile.object) {
-						if(tile.object === 'tree'){
-							sounds.push('claimTree');
-						}else if(tile.object === 'grass'){
-							sounds.push('claimGrass');
-						}else{
-							sounds.push('moveunit');
+						if(!isAiPlayer(playerId)){
+							if(tile.object === 'tree'){
+								sounds.push('claimTree');
+							}else if(tile.object === 'grass'){
+								sounds.push('claimGrass');
+							}else{
+								sounds.push('moveunit');
+							}
 						}
 						clearedObject = tile.object;
 						tile.object = null;
@@ -4739,7 +4874,9 @@ function executeAction(playerId, action) {
 						gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 						updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 						//sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
-						sounds.push('kill');
+						if(!isAiPlayer(playerId)){
+							sounds.push('kill');
+						}
 						
 						//console.warn("buildCheck.action === 'attack'");
 						
@@ -4763,6 +4900,8 @@ function executeAction(playerId, action) {
 		}
 		
 		case 'action_undo': {
+			// undo move
+			
 			const lastAction = currentTurnActions.pop();
 			if (!lastAction) break;
 			
@@ -4832,15 +4971,34 @@ function executeAction(playerId, action) {
 					affectedPlayers.add(lastAction.oldOwner);
 					distributePoolSavings(findEconomyPools(lastAction.oldOwner));
 				}
+			} else if (lastAction.type === 'sell') {
+				// handle un-selling the unit.
+				
+				const pools = findEconomyPools(playerId);
+				deductCost(pools, lastAction.sellPrice);
+
+				gameState.units.push(lastAction.soldUnit);
+				updates.push({ type: 'unit_added', unit: lastAction.soldUnit });
+				
+				
+				distributePoolSavings(findEconomyPools(playerId));
 			}
+			
 			updateHighlights();
-			sounds.push('moveunit');
+			
+			if(!isAiPlayer(playerId)){
+				sounds.push('moveunit');
+			}
 			break;
 		}
 		
 		case 'action_end_turn': {
+			// end turn
+			
 			executeEndTurn(playerId);
-			broadcast({ type: 'sound', name: "move" });
+			if(!isAiPlayer(playerId)){
+				broadcast({ type: 'sound', name: "move" });
+			}
 			return; // end turn handles its own broadcasts
 		}
 	}
@@ -5159,14 +5317,14 @@ function ai_find_best_move(player) {
 
 
 
-let AI_DELAY_START = 1;
+let AI_DELAY_START = 50;
 let AI_DELAY_MOVE = 1;
 
 
 
 // *** NEW FUNCTION ***
 // This function recursively calls itself with a delay to execute AI moves sequentially.
-// moveai
+// moveai handleaimove aiturn handleai
 function executeAIMoveSequentially(player) {
 	if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
@@ -5199,7 +5357,7 @@ function executeAIMoveSequentially(player) {
 }
 
 
-
+// checkaiturn
 function checkForAITurn(){
 	// Only the host should control the AI
 	if (!localPlayer.isHost || gameState.settings.gameOver) return;
@@ -5441,8 +5599,13 @@ function spectatorUiMode(){
 	uiRightButtonRow1.style.display = "none";
 	undoBtn.style.display = "none";
 	endTurnBtn.style.display = "none";
-
 }
+
+
+function addCurrentTurnChatMessage(){
+	addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${getCurrentTurnPlayer().name}'s turn.`);
+}
+
 
 
 // =================================================================
@@ -5539,7 +5702,8 @@ function handleHostData(data) {
 			selectedHex = null;
 			updateHighlights();
 			updateGameUI();
-			addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${getMyTurnPlayer().name}'s turn.`);
+
+			addCurrentTurnChatMessage();
 			break;
 		case 'sound':
 			playSound(data.name);
@@ -5602,6 +5766,7 @@ function handleClientData(peerId, data) {
 		break;
 		
 		// All game actions
+		case 'action_sell':
 		case 'action_move':
 		case 'action_build':
 		case 'action_undo':
@@ -7188,6 +7353,10 @@ function startGame() {
 		//advanceToNextPlayer(); // not sure why this was here, probably because of bugged currentPlayerIndex calculations
 	}
 	
+	
+	addCurrentTurnChatMessage();
+	
+	
 	setProtectedTiles();
 	
 	// Clear undo stack
@@ -7206,6 +7375,8 @@ function startGame() {
 			updatePlayerSavings(p.id);
 		}
 	});
+	
+	
 }
 
 
@@ -7608,6 +7779,19 @@ window.addEventListener('DOMContentLoaded', async () => {
 	undoBtn.onclick = () => {
 		if (isMyTurn()) {
 			sendToHost({ type: 'action_undo' });
+		}
+	};
+	
+	sellUnitBtn.onclick = () => {
+		if (isMyTurn()) {
+			console.log("action_sell");
+			console.log(selectedUnit);
+			if(selectedUnit){
+				sendToHost({ type: 'action_sell', unitId: selectedUnit.id });
+				selectedUnit = null; // Deselect
+				selectedHex = null;
+				console.log("Deselected unit");
+			}
 		}
 	};
 	
