@@ -61,7 +61,7 @@ or if joining two pools together to get the balance positive.
 <style>
 
 :root {
-	--bg-color: #1a1a1a;
+	--bg-color: #000000;
 	--text-color: #eee;
 	--primary-color: #0a84ff;
 	--border-color: #444;
@@ -111,7 +111,7 @@ html, body {
 	width: 100%;
 	max-width: 400px;
 	padding: 20px;
-	background: #222;
+	background: #1a1a1a;
 	border-radius: 8px;
 	border: 1px solid var(--border-color);
 }
@@ -125,7 +125,7 @@ h1, h2, h3 {
 input[type="text"], input[type="number"], select {
 	width: 100%;
 	padding: 12px;
-	margin-bottom: 15px;
+	margin-bottom: 10px;
 	background: var(--input-bg);
 	border: 1px solid var(--border-color);
 	color: var(--text-color);
@@ -224,13 +224,13 @@ label {
 .color-picker {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 11px;
+	gap: 7px;
 	margin-bottom: 15px;
 }
 
 .color-box {
-	width: 30px;
-	height: 30px;
+	width: 35px;
+	height: 35px;
 	border-radius: 50%;
 	cursor: pointer;
 	---border: 2px solid transparent;
@@ -310,7 +310,7 @@ label {
 
 .ui-panel {
 	pointer-events: auto;
-	background: rgba(34, 34, 34, 0.8);
+	background: rgba(0, 0, 0, 0.8);
 	backdrop-filter: blur(5px);
 	border: 1px solid var(--border-color);
 	padding: 2px 6px 2px 6px;
@@ -883,7 +883,11 @@ input.disabled {
 		<h2 id="host-room-name-title">Hosting: default-room</h2>
 		
 		<label for="host-room-player-name">Your Name</label>
-		<input type="text" id="host-room-player-name" value="Player">
+		<div class="input-group">
+			
+			<input type="text" id="host-room-player-name" value="Player"  style="flex: 3;">
+			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1;">Spectate</button>
+		</div>
 		
 		<label>Choose Color</label>
 		<div id="host-room-color-picker" class="color-picker"></div>
@@ -900,13 +904,16 @@ input.disabled {
 			</div>
 		</div>
 		
-		<label for="start-money">Starting Money</label>
-		<input type="number" id="start-money" value="1000">
-
 		<div class="input-group">
-			<button id="add-ai-btn" style="flex: 2;">Add AI</button>
-			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1;">Spectate</button>
+			<button id="add-ai-btn">Add AI</button>
 		</div>
+		
+		<div style="display:none">
+			<label for="start-money">Starting Money</label>
+			<input type="number" id="start-money" value="1000">
+		</div>
+
+
 		
 		<div class="input-group">
 			<button id="load-random-map-btn">Random map</button>
@@ -1464,7 +1471,7 @@ let gameRules = {
 // sounds =
 let gameSounds = {
 	moveunit:     {filename: "sounds/down.mp3",    gain: 1,   filter: false},
-	starmove:     {filename: "sounds/up.mp3",      gain: 1,   filter: false},
+	startmove:    {filename: "sounds/up.mp3",      gain: 1,   filter: false},
 	info:         {filename: "sounds/info.mp3",    gain: 1,   filter: false},
 	kill:         {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
 	destroy:      {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
@@ -1472,8 +1479,8 @@ let gameSounds = {
 	protect:      {filename: "sounds/protect.mp3", gain: 1,   filter: false},
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
-	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 1,   filter: false},
-	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.2,   filter: false},
+	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
+	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
 	
 	// used for: soldier kills castle.
 	killCastle:   {filename: "sounds/kill-castle.mp3",     gain: 1,   filter: false},
@@ -1559,8 +1566,8 @@ document.body.addEventListener('touchend', e => {
 const DB_NAME = 'HexWarlordsDB';
 const DB_STORE_NAME = 'savedGames';
 const PLAYER_COLORS = [
-	'#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#00C7BE', '#30B0C7', 
-	'#32ADE6', '#007AFF', '#5856D6', '#AF52DE', '#FF2D55', '#A2845E'
+	'#FF2222', '#FFFF00', '#2222ff', '#FF9500', '#FF2D55', '#34C759',  '#30B0C7', 
+	'#ff22dd', '#A2845E', '#eeeeee', '#333333',
 ];
 
 
@@ -1785,6 +1792,21 @@ let waterAnimData = {
 	]
 };
 
+
+let use_homm3 = 0;
+let pathPrefix = "";
+let unitScales = [];
+let unitOffsets = [];
+if(use_homm3){
+	pathPrefix = "homm3";
+	unitScales = [1.45, 1.6, 1.6,   2.6, 2.2, 2.2, 1.9];
+	unitOffsets = [{x:0,y:0}, {x:0,y:0}, {x:0,y:0},   {x:0,y:5}, {x:0,y:5}, {x:0,y:2}, {x:0,y:2}];
+}else{
+	pathPrefix = "orig-scaled/128x128";
+	unitScales = [1.8, 1.8, 1.8,   1.8, 1.8, 1.8, 1.8];
+	unitOffsets = [{x:0,y:0}, {x:0,y:0}, {x:0,y:0},   {x:0,y:0}, {x:0,y:0}, {x:0,y:0}, {x:0,y:3}];
+}
+
 // images =
 if(use_orig){
 	imageAssets = {
@@ -1803,13 +1825,15 @@ if(use_orig){
 		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: 2, offsetY: 5},
 		'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1, offsetX: 0},
 		'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
-		'castle1':  {path:'images/homm3/castle1.png', scale:1.45, offsetX: 0},
-		'castle2':  {path:'images/homm3/castle2.png', scale:1.6, offsetX: 0},
-		'castle3':  {path:'images/homm3/castle3.png', scale:1.6, offsetX: 0},
-		'soldier1': {path:'images/homm3/soldier1.png', scale:2.6, offsetX: 0, offsetY: 5},
-		'soldier2': {path:'images/homm3/soldier2.png', scale:2.2, offsetX: 0, offsetY: 5},
-		'soldier3': {path:'images/homm3/soldier3.png', scale:2.2, offsetX: 0, offsetY: 2},
-		'soldier4': {path:'images/homm3/soldier4.png', scale:1.9, offsetX: 0, offsetY: 2},
+
+		'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
+		'castle2':  {path:'images/'+pathPrefix+'/castle2.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
+		'castle3':  {path:'images/'+pathPrefix+'/castle3.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
+		'soldier1': {path:'images/'+pathPrefix+'/soldier1.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
+		'soldier2': {path:'images/'+pathPrefix+'/soldier2.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
+		'soldier3': {path:'images/'+pathPrefix+'/soldier3.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
+		'soldier4': {path:'images/'+pathPrefix+'/soldier4.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
+
 		//'castle1':  {path:'images/orig-scaled/128x128/castle1.png', scale:1.8, offsetX: 0},
 		//'castle2':  {path:'images/orig-scaled/128x128/castle2.png', scale:1.8, offsetX: 0},
 		//'castle3':  {path:'images/orig-scaled/128x128/castle3.png', scale:1.8, offsetX: 0},
@@ -2071,28 +2095,28 @@ async function loadImages() {
 									obj.animFrames = [];
 
 									for (const frame of anim.frames) {
-									const frameCanvas = new OffscreenCanvas(anim.tileWidth, anim.tileHeight);
-									const fctx = frameCanvas.getContext('2d');
-									fctx.drawImage(
-										img,
-										frame.x, frame.y, anim.tileWidth, anim.tileHeight,
-										0, 0, anim.tileWidth, anim.tileHeight
-									);
-									const frameBitmap = await createImageBitmap(frameCanvas);
-									const frameMipmaps = await generateMipmaps(frameBitmap, 6);
+										const frameCanvas = new OffscreenCanvas(anim.tileWidth, anim.tileHeight);
+										const fctx = frameCanvas.getContext('2d');
+										fctx.drawImage(
+											img,
+											frame.x, frame.y, anim.tileWidth, anim.tileHeight,
+											0, 0, anim.tileWidth, anim.tileHeight
+										);
+										const frameBitmap = await createImageBitmap(frameCanvas);
+										const frameMipmaps = await generateMipmaps(frameBitmap, 6);
 
-									// For each mipmap level, create a pattern
-									const framePatterns = frameMipmaps.map(mipmap => {
-										const c = new OffscreenCanvas(mipmap.width, mipmap.height);
-										const ctx2d = c.getContext('2d');
-										ctx2d.drawImage(mipmap, 0, 0);
-										return ctx.createPattern(c, 'repeat');
-									});
+										// For each mipmap level, create a pattern
+										const framePatterns = frameMipmaps.map(mipmap => {
+											const c = new OffscreenCanvas(mipmap.width, mipmap.height);
+											const ctx2d = c.getContext('2d');
+											ctx2d.drawImage(mipmap, 0, 0);
+											return ctx.createPattern(c, 'repeat');
+										});
 
-									obj.animFrames.push({
-										mipmaps: frameMipmaps,
-										patterns: framePatterns
-									});
+										obj.animFrames.push({
+											mipmaps: frameMipmaps,
+											patterns: framePatterns
+										});
 									}
 
 									obj.frameCount = anim.frames.length;
@@ -2268,6 +2292,7 @@ const buildCastleBtn = document.getElementById('build-castle-btn');
 const endTurnBtn = document.getElementById('end-turn-btn');
 const undoBtn = document.getElementById('undo-btn');
 const buildPopup = document.getElementById('build-popup');
+
 const buildPopupTitle = document.getElementById('build-popup-title');
 const buildPopupList = document.getElementById('build-popup-list');
 const buildPopupClose = document.getElementById('build-popup-close');
@@ -2318,6 +2343,9 @@ function getRandomString(length) {
     }
     return result;
 }
+
+
+
 
 const addAiBtn = document.getElementById('add-ai-btn');
 
@@ -3113,7 +3141,8 @@ function drawMapTiles(){
 
 					let color = player.color;
 					if(!tile.isProtected){
-						color = lightenHexColor(player.color, 0.2);
+						// showing unprotected lands might make game boring, also confusing when it shows different color.
+						//color = lightenHexColor(player.color, 0.2);
 					}
 					// todo: make own images for each player texture?
 					// Multiply by player color
@@ -3518,6 +3547,8 @@ function render() {
 let lastMousePos = { x: 0, y: 0 };
 
 function handleCanvasMouseMove(e) {
+	console.log("handleCanvasMouseMove");
+	
 	lastMousePos.x = e.clientX;
 	lastMousePos.y = e.clientY;
 	
@@ -3539,6 +3570,8 @@ function handleCanvasMouseMove(e) {
 }
 
 function handleCanvasMouseDown(e) {
+	console.log("handleCanvasMouseDown");
+	
 	isDragging = false; // Reset dragging flag
 	dragStart = { x: e.clientX, y: e.clientY };
 	
@@ -3554,6 +3587,8 @@ function handleCanvasMouseDown(e) {
 }
 
 function handleCanvasMouseUp(e) {
+	console.log("handleCanvasMouseUp");
+	
 	if(dragStart){
 		const dx = e.clientX - dragStart.x;
 		const dy = e.clientY - dragStart.y;
@@ -3572,6 +3607,8 @@ let touchStartPos = null;
 let lastTouch = null;
 let lastDist = null; // for pinch-zoom
 
+
+/*
 function handleTouchStart(e) {
 	if (e.touches.length === 1) {
 		// Single touch (drag or tap)
@@ -3595,8 +3632,59 @@ function handleTouchStart(e) {
 		);
 	}
 }
+*/
+
+function isBuildPopupOpen(){
+	return buildPopup.style.display !== 'none';
+}
+
+
+function handleTouchStart(e) {
+	console.log("handleTouchStart");
+	
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+
+	if(!placingUnit){
+		const touchedOutside =
+			!buildPopup.contains(target) &&
+			!buildSoldierBtn.contains(target) &&
+			!buildCastleBtn.contains(target);
+
+		if (touchedOutside && isBuildPopupOpen()) {
+			closeBuildPopup();
+		}
+	}
+
+    if (e.touches.length === 1) {
+		console.log("e.touches.length === 1");
+        isDragging = false;
+        touchStartPos = { x: touch.clientX, y: touch.clientY };
+
+        const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
+        const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
+
+        touchStartPos.canDrag = !unitOnHex;
+        lastTouch = { x: touch.clientX, y: touch.clientY };
+        lastDist = null;
+
+    } else if (e.touches.length === 2) {
+		console.log("e.touches.length === 2");
+		// cancel drag, start zooming by pinching.
+        isDragging = false;
+        touchStartPos = null;
+        lastDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+        );
+    }
+}
+
+
 
 function handleTouchMove(e) {
+	console.log("handleTouchMove");
+		
 	lastMousePos.x = e.touches[0].clientX; // for placement cursor
 	lastMousePos.y = e.touches[0].clientY;
 
@@ -3637,10 +3725,13 @@ function handleTouchMove(e) {
 }
 
 function handleTouchEnd(e) {
+	console.log("handleTouchEnd");
+	
 	if (e.touches.length === 0 && touchStartPos && !isDragging) {
 		// This was a tap
 		handleHexClick(pixelToAxial(touchStartPos.x, touchStartPos.y));
 	}
+	
 	
 	if (e.touches.length < 2) {
 		lastDist = null; // Stop zooming
@@ -3830,10 +3921,13 @@ function handleHexClick(hex) {
 	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
 	
 		if(!isHexWater(hex.q, hex.r)){
+
 			// Spectator or not my turn, just select
 			selectedHex = hex;
 			
 			selectedUnit = getUnitAt(hex.q, hex.r) || null;
+
+
 			placingUnit = null;
 			buildPopup.style.display = 'none';
 			updateHighlights();
@@ -3913,6 +4007,9 @@ function handleHexClick(hex) {
 				if(unitOnHex.internalType === 'soldier'){
 					selectedUnit = unitOnHex;
 					selectedHex = hex;
+					if(!selectedUnit.hasMoved){
+						playSound('startmove');
+					}
 				}else{
 					// dont allow selecting castles.
 					selectedUnit = null;
@@ -4210,7 +4307,10 @@ function isPlacementValid(unitType, hex, player) {
 		console.log("unitType = "+unitType);
 		console.log("hex = "+hex.q+","+hex.r);
 		console.log("player.id = "+player.id);
+		prevhex = hex.q+","+hex.r;
 	}
+	
+	
 	
 	const tile = getTileAt(hex.q, hex.r);
 	if (!tile || tile.type === 'water'){
@@ -4255,9 +4355,10 @@ function isPlacementValid(unitType, hex, player) {
 			return badMove("must own hex"); // Must own hex
 		}
 		// if there is object:
-		if (tile.object){
-			return badMove("tile has object"); // not sure if original game had this rule: Must be clear (no tree/grass)
-		}
+		// original game allows placing castles on objects.
+		//if (tile.object){
+		//	return badMove("tile has object"); // not sure if original game had this rule: Must be clear (no tree/grass)
+		//}
 	} else {
 		// if new unit is a soldier:
 		// Rules are "neighbouring land I own, or in the land I own"
@@ -4292,10 +4393,10 @@ function isPlacementValid(unitType, hex, player) {
 		}
 	}
 	
-	prevhex = hex.q+","+hex.r;
 	
 	return goodMove('move');
 }
+
 
 function getShieldLevel_orig(q, r, perspectiveOwnerId) {
 	let maxShield = 0;
@@ -4482,9 +4583,7 @@ function executeAction(playerId, action) {
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 					sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
 					
-				
 					//console.warn("moveCheck.action === 'attack'");
-					
 				}
 				
 				//console.warn("actionForUndo1");
@@ -4581,6 +4680,10 @@ function executeAction(playerId, action) {
 						if (!tile.object) {
 							sounds.push('moveunit');
 						}
+					}else{
+						if (!tile.object) {
+							sounds.push('moveunit');
+						}
 					}
 					
 					let clearedObject = null;
@@ -4632,7 +4735,7 @@ function executeAction(playerId, action) {
 					console.warn("actionForUndo");
 					console.warn(actionForUndo);
 					updates.push({ type: 'unit_added', unit: newUnit });
-					sounds.push('moveunit');
+					//sounds.push('moveunit');
 					
 					distributePoolSavings(findEconomyPools(playerId));
 					if (tile.ownerId) {
@@ -5783,6 +5886,31 @@ function hostGame() {
 		connectionStatus.textContent = "PeerJS failed to load. Use HTTPS.";
 	}
 }
+
+
+
+// generates svg for hexagon with color.
+function hexagonSVG(color, size = 35){
+	let targetSize = size;
+	let aspectRatio = 175/200;
+	let targetWidth = targetSize;
+	let targetHeight = targetSize*aspectRatio;
+	let width = 200;
+	let height = 175;
+	let points = [[50,0],[150,0],[200,87],[150,174],[50,174],[0,87]];
+	let pointsArr = [];
+	for(let p = 0; p < points.length; p++){
+		let x = points[p][0]/width*targetWidth;
+		let y = points[p][1]/height*targetHeight;
+		pointsArr.push(x+","+y);
+	}
+	let pointsStr = pointsArr.join(" ");
+	
+	return `<svg width="${targetWidth}" height="${targetHeight}" viewBox="0 0 ${targetWidth} ${targetHeight}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hexagon"><polygon points="${pointsStr}" fill="${color}"/></svg>
+`;
+}
+
+
 
 // =================================================================
 // --- LOBBY UI & LOGIC
@@ -7111,6 +7239,21 @@ document.addEventListener('keydown', (event) => {
 	}
 });
 
+	//if (canvas.contains(e.target)) return; // let the canvas handle it
+	
+	
+function handleOutside(e) {
+	if (!buildPopup.contains(e.target) && !buildSoldierBtn.contains(e.target) && !buildCastleBtn.contains(e.target)) {
+		if(isBuildPopupOpen()){
+			closeBuildPopup();
+			return true;
+		}
+	}
+	return false;
+}
+
+document.addEventListener('click', handleOutside);
+//document.addEventListener('touchstart', handleOutside, { passive: true });
 
 
 const dirtyInput = document.getElementById('dirty-flag');
@@ -7250,6 +7393,11 @@ function loadSavedGame(roomName){
 	}
 }
 
+
+function closeBuildPopup(){
+	buildPopup.style.display = 'none';
+	placingUnit = null;
+}
 
 
 // =================================================================
@@ -7435,8 +7583,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	buildSoldierBtn.onclick = () => openBuildPopup('soldier');
 	buildCastleBtn.onclick = () => openBuildPopup('castle');
 	buildPopupClose.onclick = () => {
-		buildPopup.style.display = 'none';
-		placingUnit = null;
+		closeBuildPopup();
 	};
 	
 	endTurnBtn.onclick = () => {
