@@ -2394,10 +2394,20 @@ function showPage(pageId) {
 		pages[pageId].classList.add('active');
 	}
 	if (pageId === 'game') {
-		initCanvas();
+		resizeCanvas();
+		
+		// might fix weird black bar appearing at bottom sometimes:
+		// "A2HS standalone/PWA mode has viewport bugs on many Android versions."
+		// "The OS initially gives a height that includes or excludes soft navigation bars incorrectly."
+		// "The CSS units vh and JavaScript window.innerHeight are unreliable on first load in these conditions."
+		setTimeout(resizeCanvas, 250);
+		
 		render();
 	}
 }
+
+
+
 
 // centers screen on q,r position.
 function centerTo(q, r){
@@ -2636,20 +2646,18 @@ function getHexDistance(q1, r1, q2, r2) {
 // =================================================================
 // --- CANVAS RENDERING
 // =================================================================
-
-function initCanvas() {
+function resizeCanvas(){
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
-	
-	// Center map initially
-	//const centerQ = Math.floor(gameState.settings.mapWidth / 2);
-	//const centerR = Math.floor(gameState.settings.mapHeight / 2);
-	// This axial coordinate isn't the *center* of a rectangular map,
-	// but it's good enough for a starting point.
-	// Let's just center on 0,0.
-	//const centerPx = axialToPixel(0, 0); 
-	//viewport.x = canvas.width / 2 - centerPx.x;
-	//viewport.y = canvas.height / 2 - centerPx.y;
+}
+
+
+
+
+function initCanvas() {
+	// old code, using resizeCanvas() now.
+	//canvas.width = window.innerWidth;
+	//canvas.height = window.innerHeight;
 }
 
 
@@ -3547,7 +3555,7 @@ function render() {
 let lastMousePos = { x: 0, y: 0 };
 
 function handleCanvasMouseMove(e) {
-	console.log("handleCanvasMouseMove");
+	//console.log("handleCanvasMouseMove");
 	
 	lastMousePos.x = e.clientX;
 	lastMousePos.y = e.clientY;
@@ -3570,7 +3578,7 @@ function handleCanvasMouseMove(e) {
 }
 
 function handleCanvasMouseDown(e) {
-	console.log("handleCanvasMouseDown");
+	//console.log("handleCanvasMouseDown");
 	
 	isDragging = false; // Reset dragging flag
 	dragStart = { x: e.clientX, y: e.clientY };
@@ -3587,7 +3595,7 @@ function handleCanvasMouseDown(e) {
 }
 
 function handleCanvasMouseUp(e) {
-	console.log("handleCanvasMouseUp");
+	//console.log("handleCanvasMouseUp");
 	
 	if(dragStart){
 		const dx = e.clientX - dragStart.x;
@@ -3640,7 +3648,7 @@ function isBuildPopupOpen(){
 
 
 function handleTouchStart(e) {
-	console.log("handleTouchStart");
+	//console.log("handleTouchStart");
 	
     const touch = e.touches[0];
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -3657,21 +3665,21 @@ function handleTouchStart(e) {
 	}
 
     if (e.touches.length === 1) {
-		console.log("e.touches.length === 1");
+		//console.log("e.touches.length === 1");
         isDragging = false;
         touchStartPos = { x: touch.clientX, y: touch.clientY };
 
         const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
         const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
 
-		touchStartPos.canDrag = true;
+		touchStartPos.canDrag = true; // always allow dragging while doing things
         //touchStartPos.canDrag = !unitOnHex;
 		//touchStartPos.canDrag = !placingUnit;
         lastTouch = { x: touch.clientX, y: touch.clientY };
         lastDist = null;
 
     } else if (e.touches.length === 2) {
-		console.log("e.touches.length === 2");
+		//console.log("e.touches.length === 2");
 		// cancel drag, start zooming by pinching.
         isDragging = false;
         touchStartPos = null;
@@ -3685,7 +3693,7 @@ function handleTouchStart(e) {
 
 
 function handleTouchMove(e) {
-	console.log("handleTouchMove");
+	//console.log("handleTouchMove");
 		
 	lastMousePos.x = e.touches[0].clientX; // for placement cursor
 	lastMousePos.y = e.touches[0].clientY;
@@ -3727,7 +3735,7 @@ function handleTouchMove(e) {
 }
 
 function handleTouchEnd(e) {
-	console.log("handleTouchEnd");
+	//console.log("handleTouchEnd");
 	
 	if (e.touches.length === 0 && touchStartPos && !isDragging) {
 		// This was a tap
@@ -7556,7 +7564,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	
 	// --- Game Page ---
-	window.onresize = initCanvas;
+	window.onresize = resizeCanvas;
 	canvas.addEventListener('wheel', handleWheel, { passive: false });
 	canvas.addEventListener('mousedown', handleCanvasMouseDown);
 	canvas.addEventListener('mousemove', handleCanvasMouseMove);
@@ -7605,6 +7613,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	initPeerJS();
 	
+
 	console.log("DOMContentLoaded finished");
 });
 
