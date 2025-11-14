@@ -3664,7 +3664,9 @@ function handleTouchStart(e) {
         const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
         const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
 
-        touchStartPos.canDrag = !unitOnHex;
+		touchStartPos.canDrag = true;
+        //touchStartPos.canDrag = !unitOnHex;
+		//touchStartPos.canDrag = !placingUnit;
         lastTouch = { x: touch.clientX, y: touch.clientY };
         lastDist = null;
 
@@ -3742,6 +3744,9 @@ function handleTouchEnd(e) {
 		lastTouch = null;
 	}
 }
+
+
+
 
 function getZoomMipLevel(multiplier){
 	const safeZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, viewport.zoom));
