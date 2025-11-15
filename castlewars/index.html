@@ -64,9 +64,9 @@ or if joining two pools together to get the balance positive.
 	--bg-color: #000000;
 	--text-color: #eee;
 	--border-color: #444;
-	--input-bg: #2c2c2e;
-	--btn-bg: #3a3a3c;
-	--btn-hover-bg: #4a4a4c;
+	--input-bg: #1d1d1d;
+	--btn-bg: #1d1d1d;
+	--btn-hover-bg: #2a2a2a;
 	--danger-color: #ff3b30;
 	--warn-color: #ffcc00;
 	--spec-color: #ffffff;
@@ -95,7 +95,7 @@ html, body {
 	display: none;
 	width: 100%;
 	height: 100%;
-	padding: 20px;
+	----padding: 20px;
 	overflow-y: auto;
 	flex-direction: column;
 	align-items: center;
@@ -108,11 +108,11 @@ html, body {
 
 .container {
 	width: 100%;
-	max-width: 400px;
-	padding: 20px;
-	background: #1a1a1a;
-	border-radius: 8px;
-	border: 1px solid var(--border-color);
+	max-width: 410px;
+	padding: 8px;
+	---background: #1a1a1a;
+	---border-radius: 8px;
+	---border: 1px solid var(--border-color);
 }
 
 h1, h2, h3 {
@@ -168,12 +168,12 @@ button:active {
 }
 
 button.primary {
-	background-color: #0077ff;
+	background-color: #00428e;
 	color: white;
 }
 
 button.primary:hover {
-	background-color: #1188ff;
+	background-color: #1155cc;
 }
 
 button.danger {
@@ -205,11 +205,13 @@ label {
 
 .player-list {
 	width: 100%;
-	padding: 10px;
-	background: var(--input-bg);
+	---padding: 10px;
+	background: #000000;
+	border:1px solid #333333;
 	border-radius: 6px;
-	min-height: 100px;
-	margin-top: 15px;
+	height: 100px;
+	overflow-y:auto;
+	----margin-top: 15px;
 }
 
 .player-list-item {
@@ -228,8 +230,8 @@ label {
 }
 
 .color-box {
-	width: 35px;
-	height: 35px;
+	width: 37px;
+	height: 37px;
 	border-radius: 50%;
 	cursor: pointer;
 	---border: 2px solid transparent;
@@ -887,13 +889,21 @@ input.disabled {
 		
 		<label for="host-room-player-name">Your Name</label>
 		<div class="input-group">
-			
 			<input type="text" id="host-room-player-name" value="Player"  style="flex: 3;">
 			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1;">Spectate</button>
 		</div>
 		
-		<label>Choose Color</label>
-		<div id="host-room-color-picker" class="color-picker"></div>
+
+		<div class="input-group">
+			<div style="width:264px; flex:0 0 auto;">
+				<label>Choose Color</label>
+				<div id="host-room-color-picker" class="color-picker"></div>
+			</div>
+			<div>
+				<label>Joined Players</label>
+				<div id="host-player-list" class="player-list"></div>
+			</div>
+		</div>
 		
 		<!-- todo: later when random map generator is added, or map editor, then enable these inputs: -->
 		<div class="input-group" style="display:none">
@@ -944,8 +954,7 @@ input.disabled {
 		
 		<button id="start-game-btn" class="primary">Start Game</button>
 		
-		<h3>Joined Players:</h3>
-		<div id="host-player-list" class="player-list"></div>
+
 	</div>
 </div>
 
@@ -2360,7 +2369,7 @@ let ai_counter = 1;
 addAiBtn.addEventListener('click', () => {
     if (!localPlayer.isHost) return;
 
-	let randomStr = getRandomString(10);
+	let randomStr = getUID(8);
     const aiPlayer = {
         id: `AI-${ai_counter}-${randomStr}`,
         name: `AI-${ai_counter}`,
@@ -2424,12 +2433,20 @@ function centerTo(q, r){
 
 
 function sendToPlayer(playerId, data) {
+	//console.log("sendToPlayer");
+	
 	if (!localPlayer.isHost) return;
+	
+	//console.log("sendToPlayer 2");
 	
 	if (playerId === localPlayer.id) {
 		// It's the host, handle directly
+		//console.log("sendToPlayer playerId === localPlayer.id");
+		
 		handleHostData(data);
 	} else if (connections.has(playerId)) {
+		//console.log("else if (connections.has(playerId)");
+		
 		connections.get(playerId).send(data);
 	}
 }
@@ -2559,8 +2576,24 @@ function addSystemChatMessage(message, color = '#FFF') {
 	}
 }
 
-function getUID() {
-	return Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+
+function shortUIDBase36(maxLength = 16) {
+	let bytes = 10;
+	const arr = new Uint8Array(bytes);
+	crypto.getRandomValues(arr);
+
+	let num = 0n;
+	for (const b of arr) num = (num << 8n) | BigInt(b);
+
+	return num.toString(36).toUpperCase().slice(0, maxLength);
+}
+
+function getUID(maxLength = 16) {
+	// seems to be working right, no way two identical IDS generated.
+	//return Date.now().toString(36) + Math.random().toString(36).substr(2);
+	//return Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2).toUpperCase();
+	return shortUIDBase36(maxLength);
 }
 
 function getPlayer(playerId) {
@@ -3921,9 +3954,10 @@ function updateGameUI() {
 	
 	//console.log("endTurnBtn.disabled = "+endTurnBtn.disabled);
 	
+	
 	// Update savings
 	if (myPlayer && !myPlayer.isSpectator) {
-		playerSavings.textContent = `Savings: ${myCurrentSavings}`;
+		playerSavings.textContent = `Savfings: ${myCurrentSavings}`;
 	} else {
 		playerSavings.textContent = "Spectating";
 	}
@@ -4375,9 +4409,16 @@ function getUnitLevel(unitType){
 }
 
 
-function is_castle(unitType){
+// iscastle is_castle
+function isTypeCastle(unitType){
 	return !!CASTLE_DATA[unitType];
 }
+
+function isCastle(unit){
+	return unit && unit.internalType === 'castle';
+}
+
+
 // --- HOST-SIDE VALIDATION ---
 // unitType = unit type being built (horse, peasant, etc..)
 // hex      = where he builds it
@@ -4427,8 +4468,7 @@ function isPlacementValid(unitType, hex, player) {
 	}
 	
 	// if new unit is a castle:
-	const isCastle = is_castle(unitType);
-	if (isCastle) {
+	if (isTypeCastle(unitType)) {
 		// if not your tile:
 		if (tile.ownerId !== player.id){
 			if(logallowed){
@@ -4639,14 +4679,18 @@ function getUnitSellPrice(unit){
 
 
 function executeAction(playerId, action) {
+	//console.log("executeAction");
 	// HOST-ONLY function
 	if (!localPlayer.isHost) return;
+	//console.log("executeAction 2");
 	
 	const player = getPlayer(playerId);
 	if (!player || player.id !== getCurrentTurnPlayer()?.id) {
 		console.warn(`Action from wrong player: ${playerId}`);
 		return;
 	}
+	
+	//console.log("executeAction 3");
 	
 	let updates = []; // Array of update messages to broadcast
 	let sounds = []; // Array of sounds to broadcast
@@ -4657,7 +4701,7 @@ function executeAction(playerId, action) {
 		case 'action_sell': {
 			// sell unit
 			
-			console.log("executeAction: action_sell");
+			//console.log("executeAction: action_sell");
 			
 			const { unitId } = action;
 			const unit = gameState.units.find(u => u.id === unitId);
@@ -4685,6 +4729,8 @@ function executeAction(playerId, action) {
 		}
 		case 'action_move': {
 			// move unit
+			
+			//console.log("executeAction action_move");
 			
 			const { unitId, toQ, toR } = action;
 			const unit = gameState.units.find(u => u.id === unitId);
@@ -4779,6 +4825,8 @@ function executeAction(playerId, action) {
 		case 'action_build': {
 			// build unit
 			
+			//console.log("executeAction action_build");
+			
 			const { unitType, q, r } = action;
 			const data = SOLDIER_DATA[unitType] || CASTLE_DATA[unitType];
 			if (!data) return;
@@ -4794,14 +4842,14 @@ function executeAction(playerId, action) {
 					
 					const newUnit = {
 						id: getUID(),
-						type: unitType,
 						ownerId: playerId,
-						ownerIndex: getPlayerIndex(playerId),
+						q: q, 
+						r: r,
+						type: unitType,
 						level: data.level,
-						internalType: data.type,
-						q, r,
 						hasMoved: true,
-						isCastle: !!CASTLE_DATA[unitType],
+						ownerIndex: getPlayerIndex(playerId),
+						internalType: data.type,
 					};
 					//console.log("action_build: gameState.units.push(newUnit);");
 					//console.log(newUnit);
@@ -4814,7 +4862,7 @@ function executeAction(playerId, action) {
 					const tile = getTileAt(q, r);
 					const oldOwner = tile.ownerId;
 					
-					if (!newUnit.isCastle && tile.ownerId !== playerId) {
+					if (!isCastle(newUnit) && tile.ownerId !== playerId) {
 						//tile.ownerId = playerId;
 						setTileOwner(tile, playerId);
 						didClaim = true;
@@ -4901,6 +4949,8 @@ function executeAction(playerId, action) {
 		
 		case 'action_undo': {
 			// undo move
+			
+			//console.log("executeAction action_undo");
 			
 			const lastAction = currentTurnActions.pop();
 			if (!lastAction) break;
@@ -4995,6 +5045,8 @@ function executeAction(playerId, action) {
 		case 'action_end_turn': {
 			// end turn
 			
+			//console.log("executeAction action_end_turn");
+			
 			executeEndTurn(playerId);
 			if(!isAiPlayer(playerId)){
 				broadcast({ type: 'sound', name: "move" });
@@ -5002,6 +5054,8 @@ function executeAction(playerId, action) {
 			return; // end turn handles its own broadcasts
 		}
 	}
+	
+	//console.log("executeAction endswitch");
 	
 	if (actionForUndo) {
 		currentTurnActions.push(actionForUndo);
@@ -5015,21 +5069,35 @@ function executeAction(playerId, action) {
 		broadcast({ type: 'sound', name: sound });
 	}
 	
+	//console.log("executeAction endswitch 2");
+	
 	// Send savings updates to all affected players
 	affectedPlayers.forEach(pid => updatePlayerSavings(pid));
 	
+	//console.log("executeAction endswitch 3");
+	
 	// non-synced updates executed on every action:
 	setProtectedTiles();
+	
+	//console.log("executeAction endswitch 4");
 }
+
+
 
 // =================================================================
 // --- ECONOMY & TURN LOGIC (HOST-SIDE)
 // =================================================================
 function updatePlayerSavings(playerId) {
+	//console.log("updatePlayerSavings");
+	
 	if (!playerId) return;
 	const newPools = findEconomyPools(playerId);
 	let newTotalSavings = 0;
+	
+	//console.log("updatePlayerSavings 2: newPools.len = "+newPools.length);
+	
 	newPools.forEach(p => newTotalSavings += p.totalSavings);
+	
 	console.log("newTotalSavings");
 	console.log(newTotalSavings);
 	
@@ -5081,7 +5149,7 @@ function findEconomyPools(playerId) {
 			
 			// Check for soldier
 			const unit = getUnitAt(q, r);
-			if (unit && !unit.isCastle && SOLDIER_DATA[unit.type]) {
+			if (unit && !isCastle(unit) && SOLDIER_DATA[unit.type]) {
 				pool.soldiers.push(unit);
 				pool.totalWages += SOLDIER_DATA[unit.type].wage;
 			}
@@ -5165,7 +5233,7 @@ function advanceToNextPlayer(){
 
 	// advance to next player:
     gameState.turn.currentPlayerIndex = getNextPlayerIndex(gameState.turn.currentPlayerIndex);
-	
+	//console.log("gameState.turn.currentPlayerIndex = "+gameState.turn.currentPlayerIndex);
 	// end of day check:
 	if (gameState.turn.currentPlayerIndex === gameState.turn.startPlayerIndex) {
 		gameState.turn.turnNumber++;
@@ -5236,7 +5304,7 @@ function ai_find_best_move(player){
 */
 
 function ai_find_best_move(player) {
-	console.log("ai_find_best_move (improved)");
+	//console.log("ai_find_best_move (improved)");
 
 	let bestMove = null;
 	let bestScore = -Infinity;
@@ -5316,9 +5384,9 @@ function ai_find_best_move(player) {
 }
 
 
-
+// ai turn delay ai aidelay aiturn
 let AI_DELAY_START = 50;
-let AI_DELAY_MOVE = 1;
+let AI_DELAY_MOVE = 50;
 
 
 
@@ -5341,12 +5409,15 @@ function executeAIMoveSequentially(player) {
 	//console.warn("AI bestMove:", bestMove);
 
 	if (bestMove) {
+		//console.log("executeAIMoveSequentially bestMove");
+		
 		// If a move is found, execute it
 		// handleClientData is correct, as the host is simulating the AI's action
 		handleClientData(player.id, bestMove);
 		
 		// Schedule the next move check after a delay
 		setTimeout(() => {
+			//console.log("setTimeout executeAIMoveSequentially");
 			executeAIMoveSequentially(player); // Recursive call for the next move
 		}, AI_DELAY_MOVE); // delay between moves
 	} else {
@@ -5359,8 +5430,11 @@ function executeAIMoveSequentially(player) {
 
 // checkaiturn
 function checkForAITurn(){
+	//console.log("checkForAITurn");
 	// Only the host should control the AI
 	if (!localPlayer.isHost || gameState.settings.gameOver) return;
+	
+	//console.log("checkForAITurn 2");
 
 	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
 
@@ -5616,6 +5690,8 @@ function handleHostData(data) {
 	// CLIENT-SIDE: Received data from host
 	let needsUIUpdate = false;
 	
+	//console.log("handleHostData: data.type = "+data.type);
+	
 	switch (data.type) {
 		case 'game_start':
 			markDirty();
@@ -5627,6 +5703,7 @@ function handleHostData(data) {
 		case 'full_state':
 			gameState = data.state;
 			console.warn("handleHostData full_state");
+			
 			if (!localPlayer.isSpectator) {
 				localPlayer.isSpectator = true;
 				localPlayer.color = SPECTATOR_COLOR;
@@ -5723,9 +5800,12 @@ function handleHostData(data) {
 }
 
 function handleClientData(peerId, data) {
+	//console.log("handleClientData");
 	// HOST-SIDE: Received data from a client
 	const player = getPlayer(peerId);
 	if (!player) return;
+	
+	//console.log("handleClientData 2");
 	
 	switch (data.type) {
 		case 'join':
@@ -5771,6 +5851,7 @@ function handleClientData(peerId, data) {
 		case 'action_build':
 		case 'action_undo':
 		case 'action_end_turn':
+			//console.log("handleClientData executeAction "+data.type);
 			if (gameState.settings.gameStarted) {
 				executeAction(peerId, data);
 			}
@@ -7225,15 +7306,16 @@ function spawnPlayersRandom() {
 // type = Peasant, Knight, Horse, Dragon
 function spawnSoldier(q, r, playerId, type){
 	const soldier = {
+		// rearranged keys for easier debugging
 		id: getUID(),
-		type: type,
-		internalType: SOLDIER_DATA[type].type,
 		ownerId: playerId,
-		ownerIndex: getPlayerIndex(playerId),
-		level: getSoldierLevel(type),
 		q: q,
 		r: r,
-		hasMoved: false
+		hasMoved: false,
+		type: type,
+		level: getSoldierLevel(type),
+		internalType: SOLDIER_DATA[type].type,
+		ownerIndex: getPlayerIndex(playerId),
 	};
 	
 	gameState.units.push(soldier);
@@ -7241,15 +7323,16 @@ function spawnSoldier(q, r, playerId, type){
 
 function spawnCastle(q, r, playerId, type){
 	const castle = {
+		// rearranged keys for easier debugging
 		id: getUID(),
-		type: type,
-		internalType: CASTLE_DATA[type].type,
 		ownerId: playerId,
-		ownerIndex: getPlayerIndex(playerId),
-		level: getCastleLevel(type),
 		q: q,
 		r: r,
-		hasMoved: false
+		hasMoved: false,
+		type: type,
+		level: getCastleLevel(type),
+		internalType: CASTLE_DATA[type].type,
+		ownerIndex: getPlayerIndex(playerId),
 	};
 	
 	gameState.units.push(castle);
