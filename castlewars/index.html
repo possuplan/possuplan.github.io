@@ -217,6 +217,9 @@ label {
 .player-list-item {
 	padding: 5px;
 	border-bottom: 1px solid var(--border-color);
+	
+
+	word-break: break-all;
 }
 .player-list-item:last-child {
 	border-bottom: none;
@@ -895,11 +898,11 @@ input.disabled {
 		
 
 		<div class="input-group">
-			<div style="width:264px; flex:0 0 auto;">
+			<div style="flex:5">
 				<label>Choose Color</label>
 				<div id="host-room-color-picker" class="color-picker"></div>
 			</div>
-			<div>
+			<div style="flex: 2;">
 				<label>Joined Players</label>
 				<div id="host-player-list" class="player-list"></div>
 			</div>
@@ -963,8 +966,23 @@ input.disabled {
 	<div class="container">
 		<h2 id="lobby-room-name-title">Joining: default-room</h2>
 		
-		<div id="lobby-game-settings">
-			<p style="display:none"><strong>Map:</strong> <span id="lobby-map-size">...</span></p>
+
+		<label for="lobby-player-name">Your Name</label>
+		<input type="text" id="lobby-player-name" value="Player">
+		
+		<div class="input-group">
+			<div style="flex:5">
+				<label>Choose Color</label>
+				<div id="lobby-color-picker" class="color-picker"></div>
+			</div>
+			<div style="flex: 2;">
+				<label>Joined Players</label>
+				<div id="lobby-player-list" class="player-list"></div>
+			</div>
+		</div>
+		
+		<div id="lobby-game-settings" style="display:none">
+			<p><strong>Map:</strong> <span id="lobby-map-size">...</span></p>
 			<p><strong>Money:</strong> <span id="lobby-start-money">...</span></p>
 		</div>
 		
@@ -980,14 +998,7 @@ input.disabled {
 			</div>
 		</div>
 		
-		<label for="lobby-player-name">Your Name</label>
-		<input type="text" id="lobby-player-name" value="Player">
 		
-		<label>Choose Color</label>
-		<div id="lobby-color-picker" class="color-picker"></div>
-		
-		<h3>Joined Players:</h3>
-		<div id="lobby-player-list" class="player-list"></div>
 		
 		<p id="lobby-status" style="text-align: center;">Waiting for host to start...</p>
 	</div>
