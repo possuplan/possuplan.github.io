@@ -155,16 +155,26 @@ button {
 	height: 47px;
 }
 
+
 .gamebutton.active {
-	background-color: #1e8117;
+	---background-color: #1e8117;
+}
+
+
+
+#build-soldier-btn,
+#build-castle-btn {
+	/* prevents annoying ghosting of hover effect that is visible under the build menu for a short time */
+	-webkit-tap-highlight-color: transparent;
 }
 
 button:hover {
 	background: var(--btn-hover-bg);
 }
 
+
 button:active {
-	transform: scale(0.98);
+	---transform: scale(0.98);
 }
 
 button.primary {
@@ -541,7 +551,7 @@ button.redbutton:hover {
 	position: relative;
 	padding: 3px;
 	box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-	animation: fadeIn 0.2s ease;
+	----animation: fadeIn 0.2s ease;
 
 	padding-top: 63px;
 }
@@ -598,7 +608,7 @@ button.redbutton:hover {
 	position: relative;
 	padding: 3px;
 	box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-	animation: fadeIn 0.2s ease;
+	---animation: fadeIn 0.2s ease;
 
 	padding-top: 128px;
 }
