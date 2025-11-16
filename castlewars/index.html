@@ -5835,7 +5835,7 @@ function handleHostData(data) {
 			updateLobbyUI();
 			break;
 		case 'chat':
-			addChatMessage(data.from, data.message, data.color);
+			addChatMessage(data.from, data.message, lightenHexColor(data.color, 0.3));
 			break;
 		case 'tile_changed': 
 			{
