@@ -1520,7 +1520,7 @@ let gameSounds = {
 	protect:      {filename: "sounds/protect.mp3", gain: 1,   filter: false},
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
-	sell:         {filename: "sounds/sell.mp3",    gain: 0.1,   filter: false},
+	sell:         {filename: "sounds/sell.mp3",    gain: 0.4,   filter: false},
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
 	
@@ -4038,6 +4038,8 @@ function isHexWater(q, r){
 	return false;
 }
 
+
+
 function handleHexClick(hex) {
 	// dont allow selecting while moving on the map.
 	if(isDragging){
@@ -4641,6 +4643,7 @@ let prevhex = "";
 
 let placementframe = 0;
 
+// isvalidplacement
 function isPlacementValid(unitType, hex, player) {
 	//placementframe++;
 	//console.log("placementframe: "+placementframe);
@@ -4698,6 +4701,8 @@ function isPlacementValid(unitType, hex, player) {
 				// if the enemy unit level was higher than placed unit level:
 				if(shieldLevel >= unitLevel || hexUnit.level >= unitLevel){
 					return badMove("level is too low");
+				}else{
+					return goodMove('attack', hexUnit);
 				}
 			}
 		}
