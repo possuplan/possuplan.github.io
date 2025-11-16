@@ -1027,8 +1027,16 @@ input.disabled {
 	<div id="game-ui">
 		<div id="ui-left">
 			<div id="ui-menu" class="ui-panel">
-				<button id="quit-game-btn" class="gamebutton redbutton">Quit game</button>
+				<div class="input-group">
+					<div style="flex:4">
+						<button id="quit-game-btn" class="gamebutton redbutton">Quit game</button>
+					</div>
+					<div style="flex: 1;">
+						<button id="refresh-canvas" class="gamebutton" title="refresh canvas">↺</button>
+					</div>
+				</div>
 			</div>
+			
 			<div id="player-ui-list" class="ui-panel"></div>
 			<div id="chat-ui" class="ui-panel">
 				<div id="chat-messages"></div>
@@ -2336,6 +2344,8 @@ const buildPopupClose = document.getElementById('build-popup-close');
 const toggleUiBtn = document.getElementById('toggle-ui-btn');
 const quitGameBtn = document.getElementById('quit-game-btn');
 
+const refreshCanvasBtn = document.getElementById('refresh-canvas');
+
 
 
 const topFloatUi = document.getElementById('top-float-ui');
@@ -2436,7 +2446,7 @@ function showPage(pageId) {
 		// "A2HS standalone/PWA mode has viewport bugs on many Android versions."
 		// "The OS initially gives a height that includes or excludes soft navigation bars incorrectly."
 		// "The CSS units vh and JavaScript window.innerHeight are unreliable on first load in these conditions."
-		setTimeout(resizeCanvas, 250);
+		setTimeout(resizeCanvas, 1000);
 		
 		render();
 	}
@@ -2707,6 +2717,7 @@ function getHexDistance(q1, r1, q2, r2) {
 // --- CANVAS RENDERING
 // =================================================================
 function resizeCanvas(){
+	console.warn(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 }
@@ -3530,6 +3541,8 @@ function drawMovementRanges(){
 
 
 
+let prev_highlight = "";
+let cur_buildCheck = null;
 
 // renderPlacementHighlight 
 function drawPlacementHighlight(){
@@ -3539,21 +3552,34 @@ function drawPlacementHighlight(){
 	if (selectedHex) {
 		const { x, y } = axialToPixel(selectedHex.q, selectedHex.r);
 		drawHexagonPathLines(x, y);
-		ctx.strokeStyle = 'rgba(255,255,255, 0.2)';
-		ctx.lineWidth = 3;
+		ctx.strokeStyle = 'rgba(255,255,255, 0.4)';
+		ctx.lineWidth = 2;
 		ctx.lineCap = 'round';
 		ctx.stroke();
 		ctx.lineCap = 'butt'; // reset to default
 	}
 	*/
 	
+	
 	// Draw placement highlight
 	if (placingUnit) {
 		const mouseHex = pixelToAxial(lastMousePos.x, lastMousePos.y);
 		const { x, y } = axialToPixel(mouseHex.q, mouseHex.r);
+		
+		let cur_highlight =  mouseHex.q+", "+mouseHex.r;
+		
+		// run isPlacementValid() only when mouse has moved to new hex:
+		if(prev_highlight !== cur_highlight){
+			//console.warn("prev_drawPlacementHighlight !== curstr");
+			
+			const buildCheck = isPlacementValid(placingUnit.type, mouseHex, getMyPlayer());
+			cur_buildCheck = buildCheck;
+			prev_highlight = cur_highlight;
+		}
+
+		// draw always with cached info:
 		drawHexagonPath(x, y);
-		const buildCheck = isPlacementValid(placingUnit.type, mouseHex, getMyPlayer());
-		if (buildCheck.valid) {
+		if (cur_buildCheck.valid) {
 			ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
 		} else {
 			ctx.fillStyle = 'rgba(255, 0, 255, 0.4)';
@@ -3610,7 +3636,7 @@ function render() {
 	drawObjects();
 	
 	// MOVEMENT RANGE DRAWING:
-	//drawMovementRanges();
+	drawMovementRanges();
 	
 	// UNIT SELECTION DRAWING:
 	drawUnitSelection();
@@ -3962,23 +3988,32 @@ function updateGameUI() {
 	buildSoldierBtn.disabled = !canPlay;
 	buildCastleBtn.disabled = !canPlay;
 	endTurnBtn.disabled = !canPlay;
-	undoBtn.disabled = !canPlay;
-	chatInput.disabled = false;
-	/*
+	
+	
+	
+	///////////////////////////////
+	// THIS WONT WORK SINCE CLIENTS DOESNT HAVE currentTurnActions array, its empty! only host keeps track of it...
+	let undoDisabled = !canPlay;
 	if(canPlay){
-		if(currentTurnActions.length > 0){
-			undoBtn.disabled = false;
+		//console.log("currentTurnActions len = "+currentTurnActions.length);
+		//console.log(currentTurnActions);
+		if(currentTurnActions && currentTurnActions.length > 0){
+			undoDisabled = false;
 		}else{
-			undoBtn.disabled = true;
+			undoDisabled = true;
 		}
-	}*/
+		//console.log("undoDisabled: "+undoDisabled);
+	}else{
+		//console.log("cant play: undoDisabled: "+undoDisabled);
+	}
 	
-	//console.log("endTurnBtn.disabled = "+endTurnBtn.disabled);
-	
+	undoBtn.disabled = !canPlay; // need to fix this so all clients will also know if they have undo remaining.
+	chatInput.disabled = false;
+
 	
 	// Update savings
 	if (myPlayer && !myPlayer.isSpectator) {
-		playerSavings.textContent = `Savfings: ${myCurrentSavings}`;
+		playerSavings.textContent = `Savings: ${myCurrentSavings}`;
 	} else {
 		playerSavings.textContent = "Spectating";
 	}
@@ -4011,18 +4046,33 @@ function handleHexClick(hex) {
 	const myPlayer = getMyPlayer();
 	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
 	
+		
 		if(!isHexWater(hex.q, hex.r)){
 
-			// Spectator or not my turn, just select
+			// Spectator or not my turn, just select hex for highlighting pools:
 			selectedHex = hex;
+			selectedUnit = null; // Deselect
 			
-			selectedUnit = getUnitAt(hex.q, hex.r) || null;
-			console.log("selectedUnit:");
-			console.log(selectedUnit);
-
-			placingUnit = null;
-			buildPopup.style.display = 'none';
+			buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
 			updateHighlights();
+			
+			
+			/*
+			let unitOnHex = getUnitAt(hex.q, hex.r);
+			if(unitOnHex && unitOnHex.ownerId === myPlayer.id){
+				// allow only selecting your own units:
+				selectedUnit = unitOnHex;
+				console.log("selectedUnit:");
+				console.log(selectedUnit);
+
+				placingUnit = null;
+				buildPopup.style.display = 'none';
+				updateHighlights();
+			}else{
+				selectedUnit = null; // Deselect
+				selectedHex = null;
+			}
+			*/
 		}else{
 			selectedUnit = null; // Deselect
 			selectedHex = null;
@@ -4045,7 +4095,7 @@ function handleHexClick(hex) {
 		} else {
 			playSound('protect');
 		}
-		placingUnit = null;
+		placingUnit = null; // "deselect", must do that because there is no cancel button (yet?)
 		updateHighlights();
 		return;
 	}
@@ -4440,107 +4490,6 @@ function isCastle(unit){
 }
 
 
-// --- HOST-SIDE VALIDATION ---
-// unitType = unit type being built (horse, peasant, etc..)
-// hex      = where he builds it
-// player   = who builds it
-let prevhex = "";
-function isPlacementValid(unitType, hex, player) {
-	let unitLevel = getUnitLevel(unitType);
-	
-	let logallowed = prevhex !== (hex.q+","+hex.r);
-	if(logallowed){
-		console.log("unitType = "+unitType);
-		console.log("hex = "+hex.q+","+hex.r);
-		console.log("player.id = "+player.id);
-		prevhex = hex.q+","+hex.r;
-	}
-	
-	
-	
-	const tile = getTileAt(hex.q, hex.r);
-	if (!tile || tile.type === 'water'){
-		return badMove("must be on land"); // Must be on land
-	}
-	
-	// if there is an unit on the hex:
-	const hexUnit = getUnitAt(hex.q, hex.r);
-	if (hexUnit){
-		// checks for castles and soldiers placement too.
-		if(hexUnit.ownerId === player.id){
-			return badMove("must be empty"); // Must be empty
-		}else{
-			// if trying to kill enemy player:
-			// todo: probably need to check if trying to place castle, 
-			//       so it wont allow placing castle on top of enemy soldier.
-			
-			// if the enemy unit level was higher than placed unit level:
-			if(hexUnit.level >= unitLevel){
-				if(logallowed){
-					console.log("trying to place unit on top of unit");
-					console.log("hexUnit.level >= unitLevel");
-					console.log(hexUnit.level+" >= "+unitLevel);
-				}
-				return badMove("too low level"); 
-			}else{
-				return goodMove('attack', hexUnit);
-			}
-		}
-	}
-	
-	// if new unit is a castle:
-	if (isTypeCastle(unitType)) {
-		// if not your tile:
-		if (tile.ownerId !== player.id){
-			if(logallowed){
-				console.log("trying to place castle");
-				console.log("tile.ownerId !== player.id");
-				console.log(tile.ownerId+" != "+player.id);
-			}
-			return badMove("must own hex"); // Must own hex
-		}
-		// if there is object:
-		// original game allows placing castles on objects.
-		//if (tile.object){
-		//	return badMove("tile has object"); // not sure if original game had this rule: Must be clear (no tree/grass)
-		//}
-	} else {
-		// if new unit is a soldier:
-		// Rules are "neighbouring land I own, or in the land I own"
-		
-		// if new place is not your land:
-		if (tile.ownerId !== player.id) {
-			if(logallowed){
-				console.log("trying to place soldier");
-				console.log("tile.ownerId !== player.id");
-				console.log(tile.ownerId+" != "+player.id);
-			}
-			// Check if any neighbour is my land:
-			let isNeighborOwned = false;
-			for (const n of getHexNeighbors(hex.q, hex.r)) {
-				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id) {
-					isNeighborOwned = true;
-					break;
-				}
-			}
-			// if not in build radius:
-			if (!isNeighborOwned){
-				return badMove("out of range");
-			}else{
-				// if it was in build radius:
-				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
-				// if the enemy unit level was higher than placed unit level:
-				if(shieldLevel >= unitLevel){
-					return badMove("level is too low");
-				}
-			}
-		}
-	}
-	
-	
-	return goodMove('move');
-}
 
 
 function getShieldLevel_orig(q, r, perspectiveOwnerId) {
@@ -4580,16 +4529,18 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 
 function goodMove(action, target = null){
 	const move = { valid: true, action: action, target: target };
-	//console.warn(move);
+	console.warn(move);
 	return move;
 }
 function badMove(reason){
 	const move = { valid: false, reason: reason };
-	//console.warn(move);
+	console.warn(move);
 	return move;
 }
 
 
+
+// --- HOST-SIDE VALIDATION ---
 
 function isMoveValid(unit, toHex, player) {
 	if (unit.hasMoved){
@@ -4679,6 +4630,135 @@ function isMoveValid(unit, toHex, player) {
 		return goodMove('move');
 	}
 }
+
+
+
+// --- HOST-SIDE VALIDATION ---
+// unitType = unit type being built (horse, peasant, etc..)
+// hex      = where he builds it
+// player   = who builds it
+let prevhex = "";
+
+let placementframe = 0;
+
+function isPlacementValid(unitType, hex, player) {
+	//placementframe++;
+	//console.log("placementframe: "+placementframe);
+
+	//return isMoveValid(unit, hex, player);
+	
+	let unitLevel = getUnitLevel(unitType);
+	
+	let logallowed = prevhex !== (hex.q+","+hex.r);
+	if(logallowed){
+		//console.log("unitType = "+unitType);
+		//console.log("hex = "+hex.q+","+hex.r);
+		//console.log("player.id = "+player.id);
+		prevhex = hex.q+","+hex.r;
+	}
+	
+	
+	const tile = getTileAt(hex.q, hex.r);
+	if (!tile || tile.type === 'water'){
+		return badMove("must be on land"); // Must be on land
+	}
+	
+	// if there is an unit on the hex:
+	const hexUnit = getUnitAt(hex.q, hex.r);
+	if (hexUnit){
+		//console.log("hexUnit exists:");
+		//console.log(hexUnit);
+		
+		// checks for castles and soldiers placement too.
+		if(hexUnit.ownerId === player.id){
+			return badMove("must be empty"); // Must be empty
+		}else{
+			// if trying to kill enemy player:
+			// todo: probably need to check if trying to place castle, 
+			//       so it wont allow placing castle on top of enemy soldier.
+			
+			//console.log("hexUnit.ownerId !== player.id");
+			
+			// Check if any neighbour is my land:
+			let isNeighborOwned = false;
+			for (const n of getHexNeighbors(hex.q, hex.r)) {
+				const nTile = getTileAt(n.q, n.r);
+				if (nTile && nTile.ownerId === player.id) {
+					isNeighborOwned = true;
+					break;
+				}
+			}
+			// if not in build radius:
+			if (!isNeighborOwned){
+				return badMove("out of range");
+			}else{
+
+				// if it was in build radius:
+				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
+				// if the enemy unit level was higher than placed unit level:
+				if(shieldLevel >= unitLevel || hexUnit.level >= unitLevel){
+					return badMove("level is too low");
+				}
+			}
+		}
+	}
+	
+	// if new unit is a castle:
+	if (isTypeCastle(unitType)) {
+		// if not your tile:
+		if (tile.ownerId !== player.id){
+			if(logallowed){
+				//console.log("trying to place castle");
+				//console.log("tile.ownerId !== player.id");
+				//console.log(tile.ownerId+" != "+player.id);
+			}
+			return badMove("must own hex"); // Must own hex
+		}
+		// if there is object:
+		// original game allows placing castles on objects.
+		//if (tile.object){
+		//	return badMove("tile has object"); // not sure if original game had this rule: Must be clear (no tree/grass)
+		//}
+	} else {
+		// if new unit is a soldier:
+		// Rules are "neighbouring land I own, or in the land I own"
+		
+		// if new place is not your land:
+		if (tile.ownerId !== player.id) {
+			if(logallowed){
+				//console.log("trying to place soldier");
+				//console.log("tile.ownerId !== player.id");
+				//console.log(tile.ownerId+" != "+player.id);
+			}
+			
+			// Check if any neighbour is my land:
+			let isNeighborOwned = false;
+			for (const n of getHexNeighbors(hex.q, hex.r)) {
+				const nTile = getTileAt(n.q, n.r);
+				if (nTile && nTile.ownerId === player.id) {
+					isNeighborOwned = true;
+					break;
+				}
+			}
+			
+			// if not in build radius:
+			if (!isNeighborOwned){
+				return badMove("out of range");
+			}else{
+				// if it was in build radius:
+				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
+				// if the enemy unit level was higher than placed unit level:
+				if(shieldLevel >= unitLevel){
+					return badMove("level is too low");
+				}
+			}
+		}
+	}
+	
+	
+	return goodMove('move');
+}
+
 
 
 
@@ -7848,6 +7928,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 	canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 	canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 	
+	
+	refreshCanvasBtn.onclick = () => {
+		resizeCanvas();	
+	};
 
 	quitGameBtn.onclick = () => {
 		restartGame();
@@ -7883,6 +7967,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	undoBtn.onclick = () => {
 		if (isMyTurn()) {
 			sendToHost({ type: 'action_undo' });
+			updateGameUI();
 		}
 	};
 	
