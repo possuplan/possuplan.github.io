@@ -7737,13 +7737,15 @@ window.addEventListener('beforeunload', (e) => {
 	}
 });
 
+/*
+// doesnt seem to be working on server side, maybe need to fix server.
 window.addEventListener('unload', () => {
 	if (peer && !peer.destroyed) {
 		peer.destroy();
 		navigator.sendBeacon('/peer-disconnect', JSON.stringify({ peerId: peer.id }));
 	}
 });
-
+*/
 
 // Prevent accidental back navigation
 function preventBackNavigation() {
