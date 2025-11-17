@@ -1589,6 +1589,7 @@ function playSound(key) {
 		console.error("Sound not found:", key);
 		return;
 	}
+	console.warn("playSound: "+key);
 
 	const buffer = soundBuffers[sound.filename];
 	if (!buffer) return; // not loaded yet
@@ -2608,7 +2609,7 @@ function hideTopFloatUi(){
 		hideTimeout2 = setTimeout(() => {
 			topFloatUi.style.display = 'none';
 		}, 1000); // matches the topFloatUi.style.transition time.
-	}, 3000);
+	}, 10000); // 10 sec delay until hides top chat.
 }
 
 
