@@ -1524,7 +1524,7 @@ let gameSounds = {
 	startmove:    {filename: "sounds/up.mp3",      gain: 1,   filter: false},
 	info:         {filename: "sounds/info.mp3",    gain: 1,   filter: false},
 	kill:         {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
-	destroy:      {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
+	//destroy:      {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
 	move:         {filename: "sounds/move.mp3",    gain: 1,   filter: false},
 	protect:      {filename: "sounds/protect.mp3", gain: 0.4, filter: false},
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
@@ -1534,7 +1534,7 @@ let gameSounds = {
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
 	
 	// used for: soldier kills castle.
-	killCastle:   {filename: "sounds/kill-castle.mp3",     gain: 1,   filter: false},
+	killCastle:   {filename: "sounds/kill-castle-short.mp3",     gain: 0.4,   filter: false},
 	
 	// used for: knight kills peasant, horse kills knight.
 	swordKill:    {filename: "sounds/sword-kill.mp3",      gain: 1,   filter: false},
@@ -4952,7 +4952,7 @@ function executeAction(playerId, action) {
 					gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 					if(!isAiPlayer(playerId)){
-						sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
+						sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
 					}
 					
 					//console.warn("moveCheck.action === 'attack'");
@@ -5113,9 +5113,9 @@ function executeAction(playerId, action) {
 						actionForUndo.killedUnit = { ...targetUnit }; // Store copy
 						gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 						updates.push({ type: 'unit_removed', unitId: targetUnit.id });
-						//sounds.push(CASTLE_DATA[targetUnit.type] ? 'destroy' : 'kill');
+						//sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
 						if(!isAiPlayer(playerId)){
-							sounds.push('kill');
+							sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
 						}
 						
 						//console.warn("buildCheck.action === 'attack'");
