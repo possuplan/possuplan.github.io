@@ -2525,10 +2525,14 @@ let hideTimeout2 = null;
 
 function clearTimeouts(){
 	if(hideTimeout){
+		console.log("clearTimeout(hideTimeout);");
 		clearTimeout(hideTimeout);
+		hideTimeout = null;
 	}
 	if(hideTimeout2){
+		console.log("clearTimeout(hideTimeout2);");
 		clearTimeout(hideTimeout2);
+		hideTimeout2 = null;
 	}
 }
 
@@ -2538,13 +2542,17 @@ function hideTopFloatUi(){
 	topFloatUi.style.opacity = '1';
 	topFloatUi.style.display = 'flex';
 	
+	console.log("topFloatUi.style.opacity = '1';");
 	hideTimeout = setTimeout(() => {
 		topFloatUi.style.opacity = '0';
+		console.log("topFloatUi.style.opacity = '0';");
 		
 		hideTimeout2 = setTimeout(() => {
 			topFloatUi.style.display = 'none';
+			
+			console.log("topFloatUi.style.display = 'none';");
 		}, 1000); // matches the transition time
-	}, 10000);
+	}, 3000);
 }
 
 
@@ -2577,11 +2585,29 @@ function toggleUiTopLeft(toggleValue = null){
 }
 
 
-function pushChatMessage(from, message, color = '#FFF') {
+function pushChatMessage(from, message, isSpectator, color = '#FFF') {
+	
+	// moved on top here so it will be ready for rendering chat.
+	// show chat messages on top if topleft ui is not open
+	if(!showTopLeftUi){
+		//console.warn("hideTopFloatUi");
+		hideTopFloatUi();
+	}
+	
+	
+	let spectag = "";
+	let nameStr = `${from}:`;
+	
+	if(isSpectator){
+		spectag = " (spec)";
+		color = "#FFFFFF"; // force spectator color.
+		nameStr = `(${from}):`;
+	}
+
 	const item = document.createElement('div');
 	item.innerHTML = `<strong style="color: ${color};" class="msgfromtext"></strong><span class="msgtext"></span>`;
-	
-	const safeMsgFrom = document.createTextNode(`${from}:`);
+
+	const safeMsgFrom = document.createTextNode(nameStr);
 	const safeMsg = document.createTextNode(` ${message}`);
 	item.querySelector(".msgfromtext").appendChild(safeMsgFrom);
 	item.querySelector(".msgtext").appendChild(safeMsg);
@@ -2592,23 +2618,36 @@ function pushChatMessage(from, message, color = '#FFF') {
 	const item2 = item.cloneNode(true);
 	topFloatUiChatMessages.appendChild(item2);
 	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
+	
+	// trim old items for the floating UI
+	while (topFloatUiChatMessages.children.length > 3) {
+		topFloatUiChatMessages.removeChild(topFloatUiChatMessages.firstElementChild);
+	}
+	
 }
 
-// sendmessage addmessage pushmessage
-function addChatMessage(from, message, color = '#FFF') {
-	pushChatMessage(from, message, color);
+
+// sendmessage addmessage pushmessage sendchatmessage
+function addChatMessage(from, message, isSpectator, color = '#FFF') {
+	pushChatMessage(from, message, isSpectator, color);
+}
+
+
+function addCurrentTurnChatMessage(){
+	addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${getCurrentTurnPlayer().name}'s turn.`);
+}
+
+
+// pushsystemchat
+function addSystemChatMessage(message, color = '#FFF') {
 	
+	// moved on top here so it will be ready for rendering chat.
 	// show chat messages on top if topleft ui is not open
 	if(!showTopLeftUi){
-		//console.warn("hideTopFloatUi");
+		//console.warn("hideTopFloatUi2");
 		hideTopFloatUi();
 	}
-
-}
-
-
-
-function addSystemChatMessage(message, color = '#FFF') {
+	
 	const item = document.createElement('div');
 	item.innerHTML = `<strong style="color: ${color};">${message}</strong>`;
 	chatMessages.appendChild(item);
@@ -2617,12 +2656,7 @@ function addSystemChatMessage(message, color = '#FFF') {
 	const item2 = item.cloneNode(true);
 	topFloatUiChatMessages.appendChild(item2);
 	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
-	
-	// show chat messages on top if topleft ui is not open
-	if(!showTopLeftUi){
-		//console.warn("hideTopFloatUi2");
-		hideTopFloatUi();
-	}
+
 }
 
 
@@ -5773,9 +5807,6 @@ function spectatorUiMode(){
 }
 
 
-function addCurrentTurnChatMessage(){
-	addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${getCurrentTurnPlayer().name}'s turn.`);
-}
 
 
 
@@ -5796,6 +5827,7 @@ function handleHostData(data) {
 			showPage('game');
 			updateGameUI();
 			centerToFirstUnit();
+			addCurrentTurnChatMessage();
 			break;
 		case 'full_state':
 			gameState = data.state;
@@ -5826,7 +5858,7 @@ function handleHostData(data) {
 			updateLobbyUI();
 			break;
 		case 'chat':
-			addChatMessage(data.from, data.message, lightenHexColor(data.color, 0.3));
+			addChatMessage(data.from, data.message, data.isSpectator, lightenHexColor(data.color, 0.3));
 			break;
 		case 'tile_changed': 
 			{
@@ -5915,6 +5947,9 @@ function handleClientData(peerId, data) {
 				player.color = "#FFFFFF";
 				player.isSpectator = true; // Always spectator if game in progress
 			}
+			
+			let specflag = player.isSpectator ? " as a spectator" : "";
+			
 			// If player "takes" a loaded name, update that
 			if (data.loadedPlayerName) {
 				const p = loadedGameState.players.find(lp => lp.name === data.loadedPlayerName);
@@ -5922,7 +5957,7 @@ function handleClientData(peerId, data) {
 			}
 			broadcastLobbyState();
 			if(gameState.settings.gameStarted){
-				addSystemChatMessage(`${player.name} has joined.`, "#AAAAFF");
+				addSystemChatMessage(`${player.name} has joined${specflag}.`, "#AAAAFF");
 			}
 			break;
 		case 'player_update':
@@ -5934,6 +5969,7 @@ function handleClientData(peerId, data) {
 			broadcast({
 				type: 'chat',
 				from: player.name,
+				isSpectator: player.isSpectator,
 				message: data.message,
 				color: player.color
 			});
@@ -6054,7 +6090,8 @@ function setupConnection(conn) {
 		if (localPlayer.isHost) {
 			const player = getPlayer(conn.peer);
 			if (player) {
-				addSystemChatMessage(`${player.name} has left.`, "#FFFF00");
+				let specflag = player.isSpectator ? " (spectator)" : "";
+				addSystemChatMessage(`${player.name}${specflag} has left.`, "#FFFF00");
 				//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
 				gameState.players = gameState.players.map(p =>
 					p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
@@ -7534,8 +7571,6 @@ function startGame() {
 	}
 	
 	
-	addCurrentTurnChatMessage();
-	
 	
 	setProtectedTiles();
 	
@@ -7941,8 +7976,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 		// enter key "enter"
 		if (e.key === 'Enter') {
 			toggleUiTopLeft(false);
-			if(chatInput.value.trim() !== ''){
-				sendToHost({ type: 'chat', message: chatInput.value.trim() });
+			chatInput.value = chatInput.value.trim(); // avoid leaving empty message if pressed space in accident.
+			if(chatInput.value !== ''){
+				// send only the needed info, host handles adding colors etc.
+				sendToHost({ 
+					type: 'chat', 
+					message: chatInput.value.trim(),
+				});
 				chatInput.value = '';
 			}
 		}
