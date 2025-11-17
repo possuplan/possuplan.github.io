@@ -2843,17 +2843,17 @@ function initCanvas() {
 
 
 
-function getHexAnglePos(i, px, py){
+function getHexAnglePos(i, px, py, multi = 1){
 	const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
-	const x = px + HEX_SIZE * Math.cos(angle);
-	const y = py + HEX_SIZE * Math.sin(angle);
+	const x = px + HEX_SIZE*multi * Math.cos(angle);
+	const y = py + HEX_SIZE*multi * Math.sin(angle);
 	return {x, y};
 }
 
 
-function drawHexLine(i, px, py){
-	let p1 = getHexAnglePos(i, px, py);
-	let p2 = getHexAnglePos(i+1, px, py);
+function drawHexLine(i, px, py, multi = 1){
+	let p1 = getHexAnglePos(i, px, py, multi);
+	let p2 = getHexAnglePos(i+1, px, py, multi);
 	ctx.moveTo(p1.x, p1.y);
 	ctx.lineTo(p2.x, p2.y);
 }
@@ -2910,20 +2910,20 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 
 
 
-function drawHexagonPathLines(px, py, drawLines = null) {
+function drawHexagonPathLines(px, py, drawLines = null, multi = 1) {
 	if(drawLines){
 		if(drawLines.length > 0){
 			ctx.beginPath();
 			for(let i = 0; i < drawLines.length; i++){
 				let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
-				drawHexLine(ival, px, py);
+				drawHexLine(ival, px, py, multi);
 			}
 			//ctx.closePath(); // only needed for drawing filled hex.
 		}
 	}else{
 		ctx.beginPath();
 		for (let ival = 0; ival < 6; ival++) {
-			drawHexLine(ival, px, py);
+			drawHexLine(ival, px, py, multi);
 		}
 		//ctx.closePath(); // only needed for drawing filled hex.
 	}
@@ -3363,7 +3363,6 @@ function drawMapTiles(){
 
 
 
-
 // renderhighlights
 function drawHighlights(){
 
@@ -3423,7 +3422,12 @@ function drawHighlights(){
 				
 				
 				if(highlightedLines.length > 0){
-					drawHexagonPathLines(x, y, highlightedLines);
+					// set line radius multiplier:
+					// - draws selected pools lines inside the hex, so the lines wont overlap which makes it hard to see colors.
+					// - fixed to HEX_SIZE and the line width. if any of them changed, this multiplier needs to be changed.
+					let LM = 0.958; 
+
+					drawHexagonPathLines(x, y, highlightedLines, LM);
 					//drawHexagonPathLines(x, y, [0,1,2,3,4,5]);
 					
 					let player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
