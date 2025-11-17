@@ -219,7 +219,7 @@ label {
 	background: #000000;
 	border:1px solid #333333;
 	border-radius: 6px;
-	height: 100px;
+	height: 163px;
 	overflow-y:auto;
 	----margin-top: 15px;
 }
@@ -243,8 +243,8 @@ label {
 }
 
 .color-box {
-	width: 37px;
-	height: 37px;
+	width: 30px;
+	height: 30px;
 	border-radius: 50%;
 	cursor: pointer;
 	---border: 2px solid transparent;
@@ -909,11 +909,17 @@ input.disabled {
 		
 
 		<div class="input-group">
-			<div style="flex:5">
-				<label>Choose Color</label>
+			<div style="flex:1">
+				<label>Select Color</label>
 				<div id="host-room-color-picker" class="color-picker"></div>
 			</div>
-			<div style="flex: 2;">
+			<div style="flex:1">
+				<label>Custom Color</label>
+				<input type="color" id="colorInput" value="#3498db">
+			</div>
+			
+			
+			<div style="flex: 1;">
 				<label>Joined Players</label>
 				<div id="host-player-list" class="player-list"></div>
 			</div>
@@ -1610,8 +1616,19 @@ const DB_NAME = 'HexWarlordsDB';
 const DB_STORE_NAME = 'savedGames';
 
 const PLAYER_COLORS = [
-	'#FF2222', '#FFFF00', '#3333ee', '#FF9500', '#FF2D55', '#34C759',  '#30B0C7', 
-	'#ff22dd', '#A2845E', '#eeeeee', '#333333',
+	'#FF2222', 
+	'#FFFF00', 
+	'#3333ee', 
+	'#FF9500', 
+	'#30B0C7', 
+	'#339500',
+	'#34C759', 
+	'#FF2D55', 
+	'#ff22dd', 
+	'#A2845E', 
+	'#eeeeee', 
+	'#333333', 
+	
 ];
 
 
@@ -4047,43 +4064,21 @@ function handleHexClick(hex) {
 		return;
 	}
 	const myPlayer = getMyPlayer();
-	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
 	
-		
+	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
 		if(!isHexWater(hex.q, hex.r)){
-
 			// Spectator or not my turn, just select hex for highlighting pools:
 			selectedHex = hex;
 			selectedUnit = null; // Deselect
 			
 			buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
 			updateHighlights();
-			
-			
-			/*
-			let unitOnHex = getUnitAt(hex.q, hex.r);
-			if(unitOnHex && unitOnHex.ownerId === myPlayer.id){
-				// allow only selecting your own units:
-				selectedUnit = unitOnHex;
-				console.log("selectedUnit:");
-				console.log(selectedUnit);
-
-				placingUnit = null;
-				buildPopup.style.display = 'none';
-				updateHighlights();
-			}else{
-				selectedUnit = null; // Deselect
-				selectedHex = null;
-			}
-			*/
 		}else{
 			selectedUnit = null; // Deselect
 			selectedHex = null;
 		}
 		return;
 	}
-	
-
 
 	// --- PLACING A UNIT ---
 	if (placingUnit) {
@@ -4114,20 +4109,12 @@ function handleHexClick(hex) {
 			selectedHex = null;
 			deselected = true;
 		}
-
-		
 		if(!deselected){
 			// Check if clicking a valid move hex
 			// validMoveHexes = highlighted move area.
 			const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
-			//const unitOnHex = getUnitAt(hex.q, hex.r);
-			//console.error(unitOnHex);
-			//if (unitOnHex && unitOnHex.type === 'castle'){
-			//	isValidMove = false;
-			//}
 			
-			console.log("isValidMove: "+isValidMove);
-			
+			//console.log("isValidMove: "+isValidMove);
 		
 			if (isValidMove) {
 				sendToHost({
@@ -4179,12 +4166,10 @@ function handleHexClick(hex) {
 		}
 	} else {
 		// --- SELECTING AN UNIT ---
+		
 		if(!isHexWater(hex.q, hex.r)){
 			const unitOnHex = getUnitAt(hex.q, hex.r);
 			
-
-		
-
 			if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
 				// allow only selecting soldiers
 				if(unitOnHex.internalType === 'soldier'){
@@ -4195,6 +4180,10 @@ function handleHexClick(hex) {
 						if(!selectedUnit.hasMoved){
 							playSound('startmove');
 						}
+					}else{
+						// select the hex if cannot select unit.
+						selectedUnit = null;
+						selectedHex = hex;
 					}
 				}else{
 					// dont allow selecting castles.
@@ -4202,11 +4191,12 @@ function handleHexClick(hex) {
 					selectedHex = hex;
 				}
 			} else {
+				// no unit or not my unit
 				selectedUnit = null;
 				selectedHex = hex;
 			}
-
 		}else{
+			// was water tile
 			selectedUnit = null; // Deselect
 			selectedHex = null;
 		}
@@ -4532,12 +4522,12 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 
 function goodMove(action, target = null){
 	const move = { valid: true, action: action, target: target };
-	console.warn(move);
+	//console.warn(move);
 	return move;
 }
 function badMove(reason){
 	const move = { valid: false, reason: reason };
-	console.warn(move);
+	//console.warn(move);
 	return move;
 }
 
