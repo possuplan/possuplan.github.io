@@ -5294,6 +5294,8 @@ function executeAction(playerId, action) {
 			const lastAction = currentTurnActions.pop();
 			if (!lastAction) break;
 			
+			let unitActionHex = null; // used for sounds coords only.
+			
 			if (lastAction.type === 'move') {
 				const unit = gameState.units.find(u => u.id === lastAction.unitId);
 				if (unit) {
@@ -5301,6 +5303,8 @@ function executeAction(playerId, action) {
 					unit.r = lastAction.fromR;
 					unit.hasMoved = false;
 					updates.push({ type: 'unit_moved', unitId: unit.id, q: unit.q, r: unit.r, hasMoved: false });
+					
+					unitActionHex = {q: unit.q, r: unit.r};
 				}
 				if (lastAction.didClaim) {
 					const tile = getTileAt(lastAction.toQ, lastAction.toR);
@@ -5321,6 +5325,7 @@ function executeAction(playerId, action) {
 					//gameState.units.push(lastAction.killedUnit);
 					//addUnit(lastAction.killedUnit);
 					updates.push({ type: 'unit_added', unit: lastAction.killedUnit });
+					unitActionHex = {q: lastAction.killedUnit.q, r: lastAction.killedUnit.r};
 				}
 				
 				distributePoolSavings(findEconomyPools(playerId));
@@ -5336,6 +5341,8 @@ function executeAction(playerId, action) {
 				const pools = findEconomyPools(playerId);
 				addCost(pools, lastAction.cost);
 				
+				unitActionHex = {q: lastAction.unit.q, r: lastAction.unit.r};
+				
 				if (lastAction.didClaim) {
 					const tile = getTileAt(lastAction.unit.q, lastAction.unit.r);
 					if (tile) {
@@ -5348,6 +5355,7 @@ function executeAction(playerId, action) {
 					//gameState.units.push(lastAction.killedUnit);
 					//addUnit(lastAction.killedUnit);
 					updates.push({ type: 'unit_added', unit: lastAction.killedUnit });
+					unitActionHex = {q: lastAction.killedUnit.q, r: lastAction.killedUnit.r};
 				}
 				
 				if (lastAction.clearedObject) {
@@ -5370,16 +5378,26 @@ function executeAction(playerId, action) {
 
 				//gameState.units.push(lastAction.soldUnit);
 				//addUnit(lastAction.soldUnit);
+				console.warn("lastAction.soldUnit");
+				console.warn(lastAction.soldUnit);
 				updates.push({ type: 'unit_added', unit: lastAction.soldUnit });
 				
+				unitActionHex = {q: lastAction.soldUnit.q, r: lastAction.soldUnit.r};
 				
-				distributePoolSavings(findEconomyPools(playerId));
+				// not sure if this is needed...
+				//distributePoolSavings(findEconomyPools(playerId));
 			}
 			
 			updateHighlights();
 			
 			if(!isAiPlayer(playerId)){
-				sounds.push({name:'moveunit', q: lastAction.unit.q, r: lastAction.unit.r, action: action.type});
+				let qq = 0;
+				let rr = 0;
+				if(unitActionHex){
+					qq = unitActionHex.q;
+					rr = unitActionHex.r;
+				}
+				sounds.push({name:'moveunit', q: qq, r: rr, action: action.type});
 			}
 			break;
 		}
@@ -6125,7 +6143,8 @@ function handleHostData(data) {
 			addCurrentTurnChatMessage();
 			break;
 		case 'sound': {
-				playSound(data.name);
+				let soundName = data.name;
+				playSound(soundName);
 				
 				console.warn("'sound' data:");
 				console.warn(data);
@@ -6142,21 +6161,25 @@ function handleHostData(data) {
 						speed: 5,
 					};
 					let doExplosion = 0;
-					if(data.name === 'kill'){
+					if(soundName === 'kill'){
 						ep.color = "#FF0000";
 						ep.shape = 1; // circles
 						doExplosion = 1;
-					}else if(data.name === 'killCastle'){
+					}else if(soundName === 'killCastle'){
 						ep.color = "#555555";
 						ep.shape = 0; // triangles+squares
 						doExplosion = 1;
-					}else if(data.name === 'claimGrass'){
+					}else if(soundName === 'claimGrass'){
 						ep.color = "#00aa00";
 						ep.shape = 0; // triangles+squares
 						doExplosion = 1;
-					}else if(data.name === 'claimTree'){
+					}else if(soundName === 'claimTree'){
 						ep.color = "#00aa00";
 						ep.shape = 0; // triangles+squares
+						doExplosion = 1;
+					}else if(soundName === 'sell'){
+						ep.color = "#FFFF00";
+						ep.shape = 1; // circles
 						doExplosion = 1;
 					}
 					if(doExplosion){
