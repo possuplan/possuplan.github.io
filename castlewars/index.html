@@ -3721,6 +3721,141 @@ function drawUnitSelection(){
 }
 
 
+
+
+/**
+ * ==========================================
+ * CORE PARTICLE LOGIC
+ * ==========================================
+ */
+
+// Global array to store all active particles from all explosions
+let particles = [];
+
+// Utility: Get random number between min and max
+const randomRange = (min, max) => Math.random() * (max - min) + min;
+
+/**
+ * Creates an explosion effect.
+ * * @param {CanvasRenderingContext2D} ctx - The canvas context (used for reference, though drawing happens in loop)
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {string} color - Hex or RGB color string
+ * @param {number} shapeMode - 0 for Triangles+Squares, 1 for Circles
+ * @param {string} fadeMode - 'slow' for opacity decay, 'instant' for pop at end
+ * @param {number} amount - Number of particles
+ * @param {number} initialSpeed - Base speed of particles
+ */
+function createExplosion(x, y, color, shapeMode, fadeMode, amount, initialSpeed) {
+	for (let i = 0; i < amount; i++) {
+		// RANDOM SPEED LOGIC:
+		// We vary the speed by ±50% so they don't form a perfect expanding ring
+		const speedVariation = initialSpeed * 0.5; 
+		const speed = randomRange(initialSpeed - speedVariation, initialSpeed + speedVariation);
+		
+		// Random Angle (0 to 360 degrees in radians)
+		const angle = Math.random() * Math.PI * 2;
+
+		// Determine specific shape if in Mixed mode (0)
+		let specificShape = 'circle';
+		if (shapeMode == 0) {
+			specificShape = Math.random() > 0.5 ? 'square' : 'triangle';
+		}
+
+		// Create Particle Object
+		particles.push({
+			x: x,
+			y: y,
+			vx: Math.cos(angle) * speed,
+			vy: Math.sin(angle) * speed,
+			color: color,
+			shape: specificShape, // 'circle', 'square', or 'triangle'
+			fadeMode: fadeMode,   // 'slow' or 'instant'
+			
+			// LIFECYCLE LOGIC:
+			life: 1.0,            // Life starts at 1.0 (100%)
+			decay: randomRange(0.01, 0.03), // Random decay rate ensures they die at different times
+			
+			// Visual properties
+			size: randomRange(4, 8),
+			rotation: randomRange(0, 360),
+			rotationSpeed: randomRange(-0.2, 0.2)
+		});
+	}
+}
+
+
+/**
+ * Updates and draws all particles.
+ * Call this inside your requestAnimationFrame loop.
+ */
+function updateParticles() {
+	for (let i = particles.length - 1; i >= 0; i--) {
+		let p = particles[i];
+
+		// 1. Update Position
+		p.x += p.vx;
+		p.y += p.vy;
+
+		// Add a little friction (optional, makes explosion feel more physical)
+		p.vx *= 0.95; 
+		p.vy *= 0.95;
+
+		// Update Rotation (for squares/triangles)
+		p.rotation += p.rotationSpeed;
+
+		// 2. Lifecycle & Fade Logic
+		p.life -= p.decay;
+
+		// Calculate Opacity based on Fade Mode
+		let opacity = 1;
+		if (p.fadeMode === 'slow') {
+			// Opacity matches life percentage
+			opacity = Math.max(0, p.life);
+		} else {
+			// Instant: Stay full opacity until life < 0
+			opacity = p.life > 0 ? 1 : 0;
+		}
+
+		// 3. Remove dead particles
+		if (p.life <= 0) {
+			particles.splice(i, 1);
+			continue;
+		}
+
+		// 4. Draw Particle
+		ctx.save();
+		ctx.translate(p.x, p.y);
+		ctx.rotate(p.rotation);
+		ctx.globalAlpha = opacity;
+		ctx.fillStyle = p.color;
+
+		ctx.beginPath();
+
+		if (p.shape === 'circle') {
+			ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+			ctx.fill();
+		} 
+		else if (p.shape === 'square') {
+			ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+		} 
+		else if (p.shape === 'triangle') {
+			// Draw an equilateral triangle
+			const r = p.size / 1.5;
+			ctx.moveTo(0, -r);
+			ctx.lineTo(r, r);
+			ctx.lineTo(-r, r);
+			ctx.closePath();
+			ctx.fill();
+		}
+
+		ctx.restore();
+	}
+}
+
+
+
+
 function render() {
 	if (!gameState.settings.gameStarted) return;
 	
@@ -3761,7 +3896,10 @@ function render() {
 	drawUnits();
 	
 
+	updateParticles();
+	
 	ctx.restore();
+	
 	
 	requestAnimationFrame(render);
 }
@@ -4154,6 +4292,7 @@ function isHexWater(q, r){
 
 
 function handleHexClick(hex) {
+
 	// dont allow selecting while moving on the map.
 	if(isDragging){
 		return;
@@ -4915,7 +5054,7 @@ function executeAction(playerId, action) {
 			updates.push({ type: 'unit_removed', unitId: unit.id });
 			
 			if(!isAiPlayer(playerId)){
-				sounds.push('sell');
+				sounds.push({name:'sell', q: unit.q, r: unit.r, action: action.type});
 			}
 			break;
 		}
@@ -4952,7 +5091,11 @@ function executeAction(playerId, action) {
 					//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 					if(!isAiPlayer(playerId)){
-						sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
+						if(CASTLE_DATA[targetUnit.type]){
+							sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type});
+						}else{
+							sounds.push({name:'kill', q: targetUnit.q, r: targetUnit.r, action: action.type});
+						}
 					}
 					
 					//console.warn("moveCheck.action === 'attack'");
@@ -4974,14 +5117,14 @@ function executeAction(playerId, action) {
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
 					if(!isAiPlayer(playerId)){
 						if (!toTile.object) {
-							sounds.push('moveunit');
+							sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
 						}
 					}
 				}else{
 					// if moved inside own pool, play also sound.
 					if(!isAiPlayer(playerId)){
 						if (!toTile.object) {
-							sounds.push('moveunit');
+							sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
 						}
 					}
 				}
@@ -4989,11 +5132,11 @@ function executeAction(playerId, action) {
 				if (toTile.object) {
 					if(!isAiPlayer(playerId)){
 						if(toTile.object === 'tree'){
-							sounds.push('claimTree');
+							sounds.push({name:'claimTree', q: toQ, r: toR, action: action.type});
 						}else if(toTile.object === 'grass'){
-							sounds.push('claimGrass');
+							sounds.push({name:'claimGrass', q: toQ, r: toR, action: action.type});
 						}else{
-							sounds.push('moveunit');
+							sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
 						}
 					}
 					toTile.object = null;
@@ -5061,13 +5204,13 @@ function executeAction(playerId, action) {
 						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
 						if(!isAiPlayer(playerId)){
 							if (!tile.object) {
-								sounds.push('moveunit');
+								sounds.push({name:'moveunit', q: q, r: r, action: action.type});
 							}
 						}
 					}else{
 						if(!isAiPlayer(playerId)){
 							if (!tile.object) {
-								sounds.push('moveunit');
+								sounds.push({name:'moveunit', q: q, r: r, action: action.type});
 							}
 						}
 					}
@@ -5076,11 +5219,11 @@ function executeAction(playerId, action) {
 					if (tile.object) {
 						if(!isAiPlayer(playerId)){
 							if(tile.object === 'tree'){
-								sounds.push('claimTree');
+								sounds.push({name:'claimTree', q: q, r: r, action: action.type});
 							}else if(tile.object === 'grass'){
-								sounds.push('claimGrass');
+								sounds.push({name:'claimGrass', q: q, r: r, action: action.type});
 							}else{
-								sounds.push('moveunit');
+								sounds.push({name:'moveunit', q: q, r: r, action: action.type});
 							}
 						}
 						clearedObject = tile.object;
@@ -5113,9 +5256,14 @@ function executeAction(playerId, action) {
 						actionForUndo.killedUnit = { ...targetUnit }; // Store copy
 						//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 						updates.push({ type: 'unit_removed', unitId: targetUnit.id });
-						//sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
+						
 						if(!isAiPlayer(playerId)){
-							sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
+							if(CASTLE_DATA[targetUnit.type]){
+								sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type});
+							}else{
+								sounds.push({name:'kill', q: targetUnit.q, r: targetUnit.r, action: action.type});
+							}
+							
 						}
 						
 						//console.warn("buildCheck.action === 'attack'");
@@ -5125,7 +5273,6 @@ function executeAction(playerId, action) {
 					console.warn("actionForUndo");
 					console.warn(actionForUndo);
 					updates.push({ type: 'unit_added', unit: newUnit });
-					//sounds.push('moveunit');
 					
 					distributePoolSavings(findEconomyPools(playerId));
 					if (tile.ownerId) {
@@ -5232,7 +5379,7 @@ function executeAction(playerId, action) {
 			updateHighlights();
 			
 			if(!isAiPlayer(playerId)){
-				sounds.push('moveunit');
+				sounds.push({name:'moveunit', q: lastAction.unit.q, r: lastAction.unit.r, action: action.type});
 			}
 			break;
 		}
@@ -5244,7 +5391,7 @@ function executeAction(playerId, action) {
 			
 			executeEndTurn(playerId);
 			if(!isAiPlayer(playerId)){
-				broadcast({ type: 'sound', name: "move" });
+				broadcast({ type: 'sound', name: "move", q:0, r:0, action: action.type});
 			}
 			return; // end turn handles its own broadcasts
 		}
@@ -5261,7 +5408,7 @@ function executeAction(playerId, action) {
 	}
 	const uniqueSounds = [...new Set(sounds)];
 	for (const sound of uniqueSounds) {
-		broadcast({ type: 'sound', name: sound });
+		broadcast({ type: 'sound', ...sound});
 	}
 	
 	//console.log("executeAction endswitch 2");
@@ -5779,8 +5926,6 @@ function executeEndTurn(playerId) {
 	
 	let allSoldiersKilled = [];
 	
-	//sounds.push('move');
-	
 	for (const pool of pools) {
 		pool.totalSavings += pool.totalIncome;
 		pool.totalSavings -= pool.totalWages;
@@ -5791,7 +5936,6 @@ function executeEndTurn(playerId) {
 			for (const soldier of pool.soldiers) {
 				allSoldiersKilled.push(soldier);
 			}
-			//sounds.push('kill'); // or 'famine'
 		}
 	}
 	
@@ -5873,7 +6017,7 @@ function spectatorUiMode(){
 
 
 function addUnit(unit){
-	gameState.units.push(newunit);
+	gameState.units.push(unit);
 }
 
 
@@ -5980,8 +6124,48 @@ function handleHostData(data) {
 
 			addCurrentTurnChatMessage();
 			break;
-		case 'sound':
-			playSound(data.name);
+		case 'sound': {
+				playSound(data.name);
+				
+				console.warn("'sound' data:");
+				console.warn(data);
+				
+				if(data.action !== 'action_undo'){
+					const { x, y } = axialToPixel(data.q, data.r);
+					let ep = {
+						x: x,
+						y: y,
+						color: "#FFFFFF",
+						shape: 0,
+						fade: "slow",
+						count: 30,
+						speed: 5,
+					};
+					let doExplosion = 0;
+					if(data.name === 'kill'){
+						ep.color = "#FF0000";
+						ep.shape = 1; // circles
+						doExplosion = 1;
+					}else if(data.name === 'killCastle'){
+						ep.color = "#555555";
+						ep.shape = 0; // triangles+squares
+						doExplosion = 1;
+					}else if(data.name === 'claimGrass'){
+						ep.color = "#00aa00";
+						ep.shape = 0; // triangles+squares
+						doExplosion = 1;
+					}else if(data.name === 'claimTree'){
+						ep.color = "#00aa00";
+						ep.shape = 0; // triangles+squares
+						doExplosion = 1;
+					}
+					if(doExplosion){
+						console.warn("createExplosion");
+						console.warn(ep);
+						createExplosion(x, y, ep.color, ep.shape, ep.fade, ep.count, ep.speed);
+					}
+				}
+			}
 			break;
 		case 'savings_update':
 			myCurrentSavings = data.total;
