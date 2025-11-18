@@ -4911,7 +4911,7 @@ function executeAction(playerId, action) {
 			addCost(pools, sellPrice);
 			
 			// remove unit:
-			gameState.units = gameState.units.filter(u => u.id !== unit.id);
+			//gameState.units = gameState.units.filter(u => u.id !== unit.id);
 			updates.push({ type: 'unit_removed', unitId: unit.id });
 			
 			if(!isAiPlayer(playerId)){
@@ -4949,7 +4949,7 @@ function executeAction(playerId, action) {
 				if (moveCheck.action === 'attack') {
 					const targetUnit = moveCheck.target;
 					actionForUndo.killedUnit = { ...targetUnit }; // Store copy
-					gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
+					//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 					if(!isAiPlayer(playerId)){
 						sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
@@ -5111,7 +5111,7 @@ function executeAction(playerId, action) {
 					if (buildCheck.action === 'attack') {
 						const targetUnit = buildCheck.target;
 						actionForUndo.killedUnit = { ...targetUnit }; // Store copy
-						gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
+						//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 						updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 						//sounds.push(CASTLE_DATA[targetUnit.type] ? 'killCastle' : 'kill');
 						if(!isAiPlayer(playerId)){
@@ -5171,7 +5171,8 @@ function executeAction(playerId, action) {
 					}
 				}
 				if (lastAction.killedUnit) {
-					gameState.units.push(lastAction.killedUnit);
+					//gameState.units.push(lastAction.killedUnit);
+					//addUnit(lastAction.killedUnit);
 					updates.push({ type: 'unit_added', unit: lastAction.killedUnit });
 				}
 				
@@ -5182,7 +5183,7 @@ function executeAction(playerId, action) {
 				}
 				
 			} else if (lastAction.type === 'build') {
-				gameState.units = gameState.units.filter(u => u.id !== lastAction.unit.id);
+				//gameState.units = gameState.units.filter(u => u.id !== lastAction.unit.id);
 				updates.push({ type: 'unit_removed', unitId: lastAction.unit.id });
 				
 				const pools = findEconomyPools(playerId);
@@ -5197,7 +5198,8 @@ function executeAction(playerId, action) {
 					}
 				}
 				if (lastAction.killedUnit) {
-					gameState.units.push(lastAction.killedUnit);
+					//gameState.units.push(lastAction.killedUnit);
+					//addUnit(lastAction.killedUnit);
 					updates.push({ type: 'unit_added', unit: lastAction.killedUnit });
 				}
 				
@@ -5219,7 +5221,8 @@ function executeAction(playerId, action) {
 				const pools = findEconomyPools(playerId);
 				deductCost(pools, lastAction.sellPrice);
 
-				gameState.units.push(lastAction.soldUnit);
+				//gameState.units.push(lastAction.soldUnit);
+				//addUnit(lastAction.soldUnit);
 				updates.push({ type: 'unit_added', unit: lastAction.soldUnit });
 				
 				
@@ -5806,7 +5809,7 @@ function executeEndTurn(playerId) {
 			tile.actionTurnNumber = gameState.turn.turnNumber;
 			broadcast({ type: 'object_changed', q: soldier.q, r: soldier.r, object: tile.object });
 		}
-		gameState.units = gameState.units.filter(u => u.id !== soldier.id);
+		//gameState.units = gameState.units.filter(u => u.id !== soldier.id);
 		broadcast({ type: 'unit_removed', unitId: soldier.id });
 	}
 	
@@ -5868,6 +5871,10 @@ function spectatorUiMode(){
 }
 
 
+
+function addUnit(unit){
+	gameState.units.push(newunit);
+}
 
 
 
@@ -5945,7 +5952,8 @@ function handleHostData(data) {
 		case 'unit_added':
 			console.log("unit_added: gameState.units.push(data.unit);");
 			console.log(data.unit);
-			gameState.units.push(data.unit);
+			//gameState.units.push(data.unit);
+			addUnit(data.unit);
 			needsUIUpdate = true;
 			break;
 		case 'unit_removed':
@@ -7513,7 +7521,8 @@ function spawnSoldier(q, r, playerId, type){
 		ownerIndex: getPlayerIndex(playerId),
 	};
 	
-	gameState.units.push(soldier);
+	//gameState.units.push(soldier);
+	addUnit(soldier);
 }
 
 function spawnCastle(q, r, playerId, type){
@@ -7530,7 +7539,8 @@ function spawnCastle(q, r, playerId, type){
 		ownerIndex: getPlayerIndex(playerId),
 	};
 	
-	gameState.units.push(castle);
+	//gameState.units.push(castle);
+	addUnit(castle);
 }
 
 function startGame() {
