@@ -1948,7 +1948,7 @@ if(use_orig){
 		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
 		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: 3, offsetY: 5},
 		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: 2, offsetY: 5},
-		'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1, offsetX: 0},
+		'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1.6, offsetX: 0},
 		'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
 
 		'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
@@ -3854,6 +3854,10 @@ function updateParticles() {
 }
 
 
+function clearShieldingUnitsTips(){
+	shieldingUnits = null;
+	shieldingStartTime = 0;
+}
 
 
 function render() {
@@ -3895,8 +3899,24 @@ function render() {
 	// UNITS DRAWING:
 	drawUnits();
 	
-
 	updateParticles();
+	
+
+	// draw "stop" text on top of units that were shielding a move or placement.
+	if(shieldingUnits){
+		if(performance.now()-shieldingStartTime < 1000){
+			for(let i = 0; i < shieldingUnits.length; i++){
+				let shieldingUnit = shieldingUnits[i];
+				const { x, y } = axialToPixel(shieldingUnit.q, shieldingUnit.r);
+				
+				drawObject(ctx, x, y, "protect");
+			}
+		}else{
+			shieldingUnits = null;
+			shieldingStartTime = 0;
+		}
+	}
+	
 	
 	ctx.restore();
 	
@@ -4289,10 +4309,13 @@ function isHexWater(q, r){
 	return false;
 }
 
-
+// array of units which trigger protect sound.
+let shieldingUnits = null;
+let shieldingStartTime = 0;
 
 function handleHexClick(hex) {
-
+	shieldingUnits = null;
+	
 	// dont allow selecting while moving on the map.
 	if(isDragging){
 		return;
@@ -4325,6 +4348,10 @@ function handleHexClick(hex) {
 				r: hex.r
 			});
 		} else {
+			if(buildCheck.reason && buildCheck.reason === "low_level"){
+				shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, getUnitLevel(placingUnit.type));
+				shieldingStartTime = performance.now();
+			}
 			playSound('protect');
 		}
 		placingUnit = null; // "deselect", must do that because there is no cancel button (yet?)
@@ -4365,7 +4392,10 @@ function handleHexClick(hex) {
 				if(!isHexWater(hex.q, hex.r)){
 					const isInvalidMove = invalidMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
 					if(isInvalidMove){
-						playSound("protect");
+						shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, selectedUnit.level);
+						shieldingStartTime = performance.now();
+					
+						playSound('protect');
 					}
 					
 					const unitOnHex = getUnitAt(hex.q, hex.r);
@@ -4719,28 +4749,16 @@ function isCastle(unit){
 
 
 
-function getShieldLevel_orig(q, r, perspectiveOwnerId) {
-	let maxShield = 0;
-	for (const n of getHexNeighbors(q, r)) {
-		const unit = getUnitAt(n.q, n.r);
-		if (unit && unit.ownerId !== perspectiveOwnerId) {
-			// It's an enemy unit
-			maxShield = Math.max(maxShield, unit.level);
-		}
-	}
-	return maxShield;
-}
 
 
 function getShieldLevel(q, r, perspectiveOwnerId) {
 	let maxShield = 0;
 	const tile = getTileAt(q, r);
 	
-	for (const n of getHexNeighbors(q, r)) {
-		const unit = getUnitAt(n.q, n.r);
-		//const nTile = getTileAt(n.q, n.r);
-		if (tile && unit){
-			if (tile.ownerId === unit.ownerId){
+	if(tile){
+		for (const n of getHexNeighbors(q, r)) {
+			const unit = getUnitAt(n.q, n.r);
+			if (unit && tile.ownerId === unit.ownerId){
 				if (unit.ownerId !== perspectiveOwnerId) {
 					// It's an enemy unit
 					maxShield = Math.max(maxShield, unit.level);
@@ -4750,6 +4768,37 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 	}
 	return maxShield;
 }
+
+
+function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
+	const tile = getTileAt(q, r);
+	let units = [];
+	
+	if(tile){
+		const unit = getUnitAt(q, r);
+		if (unit && tile.ownerId === unit.ownerId){
+			if (unit.ownerId !== perspectiveOwnerId) {
+				// It's an enemy unit
+				if(compareUnitLevel <= unit.level){
+					units.push(unit);
+				}
+			}
+		}
+		for (const n of getHexNeighbors(q, r)) {
+			const unit = getUnitAt(n.q, n.r);
+			if (unit && tile.ownerId === unit.ownerId){
+				if (unit.ownerId !== perspectiveOwnerId) {
+					// It's an enemy unit
+					if(compareUnitLevel <= unit.level){
+						units.push(unit);
+					}
+				}
+			}
+		}
+	}
+	return units;
+}
+
 
 
 
@@ -4823,7 +4872,7 @@ function isMoveValid(unit, toHex, player) {
 	}
 
 	if (!isBorderHex) {
-		return badMove('Too far.');
+		return badMove('out_of_range');
 	}
 	
 	// It's a valid border hex, now check shields and targets
@@ -4836,7 +4885,7 @@ function isMoveValid(unit, toHex, player) {
 		if (unit.level > shieldLevel && unit.level > targetUnit.level) {
 			return goodMove('attack', targetUnit);
 		} else {
-			return badMove('Target unit level is too high or shielded.');
+			return badMove('low_level');
 		}
 	}
 	
@@ -4847,7 +4896,7 @@ function isMoveValid(unit, toHex, player) {
 		} else {
 			// todo: think again....
 			if(toTile.ownerId !== unit.ownerId){
-				return badMove('Blocked by enemy shield.');
+				return badMove('low_level');
 			}else{
 				return goodMove('move');
 			}
@@ -4888,7 +4937,7 @@ function isPlacementValid(unitType, hex, player) {
 	
 	const tile = getTileAt(hex.q, hex.r);
 	if (!tile || tile.type === 'water'){
-		return badMove("must be on land"); // Must be on land
+		return badMove("not_land"); // Must be on land
 	}
 	
 	// if there is an unit on the hex:
@@ -4899,7 +4948,7 @@ function isPlacementValid(unitType, hex, player) {
 		
 		// checks for castles and soldiers placement too.
 		if(hexUnit.ownerId === player.id){
-			return badMove("must be empty"); // Must be empty
+			return badMove("not_empty"); // Must be empty
 		}else{
 			// if trying to kill enemy player:
 			// todo: probably need to check if trying to place castle, 
@@ -4918,14 +4967,14 @@ function isPlacementValid(unitType, hex, player) {
 			}
 			// if not in build radius:
 			if (!isNeighborOwned){
-				return badMove("out of range");
+				return badMove("out_of_range");
 			}else{
 
 				// if it was in build radius:
 				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
 				// if the enemy unit level was higher than placed unit level:
 				if(shieldLevel >= unitLevel || hexUnit.level >= unitLevel){
-					return badMove("level is too low");
+					return badMove("low_level");
 				}else{
 					return goodMove('attack', hexUnit);
 				}
@@ -4942,7 +4991,7 @@ function isPlacementValid(unitType, hex, player) {
 				//console.log("tile.ownerId !== player.id");
 				//console.log(tile.ownerId+" != "+player.id);
 			}
-			return badMove("must own hex"); // Must own hex
+			return badMove("not_my_hex"); // Must own hex
 		}
 		// if there is object:
 		// original game allows placing castles on objects.
@@ -4973,13 +5022,13 @@ function isPlacementValid(unitType, hex, player) {
 			
 			// if not in build radius:
 			if (!isNeighborOwned){
-				return badMove("out of range");
+				return badMove("out_of_range");
 			}else{
 				// if it was in build radius:
 				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
 				// if the enemy unit level was higher than placed unit level:
 				if(shieldLevel >= unitLevel){
-					return badMove("level is too low");
+					return badMove("low_level");
 				}
 			}
 		}
@@ -8276,6 +8325,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	endTurnBtn.onclick = () => {
 		if (!endTurnBtn.disabled && isMyTurn()) {
+			// end turn, and clear shielding units tips ("stop" image display)
+			clearShieldingUnitsTips();
 			sendToHost({ type: 'action_end_turn' });
 		}
 	};
