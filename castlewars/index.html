@@ -388,6 +388,10 @@ label {
 	padding-top: 7px;
 }
 
+.ui-number {
+	color: #FFFF00;
+}
+
 .ui-panel-controls > .info-left {
 	flex: 0 0 auto;     /* don't grow, don't shrink below content size */
 	width: auto;
@@ -1072,10 +1076,10 @@ input.disabled {
 			<div class="ui-panel ui-panel-controls">
 				<div class="info-left">
 					<div class="top-row" id="ui-right-top-row-id">
-						<div id="player-savings">Savings: 0</div>
-						<div id="player-income">Income: 0</div>
-						<div id="player-wages">Wages: 0</div>
-						<div id="player-balance">Balance: 0</div>
+						<div>Savings: <span id="player-savings" class="ui-number">0</span></div>
+						<div>Income: <span id="player-income" class="ui-number">0</span></div>
+						<div>Wages: <span id="player-wages" class="ui-number">0</span></div>
+						<div>Balance: <span id="player-balance" class="ui-number">0</span></div>
 					</div>
 				</div>
 				<div class="info-right">
@@ -4249,9 +4253,9 @@ function updateGameUI() {
 	
 	// Update savings
 	if (myPlayer && !myPlayer.isSpectator) {
-		playerSavings.textContent = `Savings: ${myCurrentSavings}`;
+		playerSavings.textContent = myCurrentSavings;
 	} else {
-		playerSavings.textContent = "Spectating";
+		//playerSavings.textContent = "Spectating";
 	}
 }
 
@@ -6206,7 +6210,7 @@ function handleHostData(data) {
 			break;
 		case 'savings_update':
 			myCurrentSavings = data.total;
-			playerSavings.textContent = `Savings: ${myCurrentSavings}`;
+			playerSavings.textContent = myCurrentSavings;
 			break;
 	}
 	
