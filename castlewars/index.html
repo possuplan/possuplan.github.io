@@ -3618,20 +3618,9 @@ function drawUnitsByType(unitType){
 			// draw unit:
 			
 			
-			/*
-	// wasSpawned true if spawned at game load.
-	if(unit.internalType === 'castle'){
-		unit.creationTime = Date.now(), 
-		unit.animationFinished = false, // ensure no animation will be visible.
-		unit.animationStyle = 1, // 1 = appear from bottom to up, 0 = no animation.
-	}else if(unit.internalType === 'soldier'){
-		unit.creationTime = Date.now(), 
-		unit.animationFinished = false, // ensure no animation will be visible.
-		unit.animationStyle = 2, // 2 = appear from zero size to normal size, 0 = no animation.
-	}
-			*/
 			let cropBottomPercent = 0; // how much from the bottom is cropped out.
-			let animationLen = 600;
+			let animationLenCastle = 600;
+			let animationLenSoldier = 200;
 			let buildOffsetY = 0;
 			
 			let animate = true;
@@ -3643,9 +3632,10 @@ function drawUnitsByType(unitType){
 			}
 			if(unit.creationTime && animate){
 				let timeDiff = Date.now() - unit.creationTime;
+				let animationEnded = false;
 				
-				if(timeDiff < animationLen){
-					if(unit.animationStyle == 1){
+				if(unit.animationStyle == 1){
+					if(timeDiff < animationLenCastle){
 						// for castles
 						// forward in time as much as it should be cut at start:
 						let startPercent = 0.19;
@@ -3657,30 +3647,48 @@ function drawUnitsByType(unitType){
 						}else if(unit.type === 'fortress'){
 							startPercent = 0.15;
 						}
-						let startAnimDiff = timeDiff+animationLen*startPercent;
-						if(startAnimDiff > animationLen){
-							startAnimDiff = animationLen;
+						let startAnimDiff = timeDiff+animationLenCastle*startPercent;
+						if(startAnimDiff > animationLenCastle){
+							startAnimDiff = animationLenCastle;
 						}
-						let animPercent = 1-(startAnimDiff/animationLen);
+						let animPercent = 1-(startAnimDiff/animationLenCastle);
 						
 						// set crop to start at 20%
 						cropBottomPercent = animPercent+startPercent;
 						
 						buildOffsetY = dh*(1-animPercent)-dh;
-					}else if(unit.animationStyle == 2){
-						// for soldiers
-						
+					}else{
+						animationEnded = true;
 					}
-				}else{
+				}else if(unit.animationStyle == 2){
+					if(timeDiff < animationLenSoldier){
+						// for soldiers
+						let animPercent = timeDiff/animationLenSoldier;
+						animPercent = animPercent+0.3;
+						if(animPercent > 1){
+							animPercent = 1;
+						}
+						scale = imginfo.scale*0.9*animPercent; // 0.9 global scale
+						ratio = img.height/img.width;
+						drawSize = 50;
+						hsize = drawSize/2;
+						offsetX = imginfo.offsetX;
+						offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+						dx = x-((hsize-offsetX)*scale);
+						dy = y-((hsize-offsetY+10)*ratio*scale);
+						dw = drawSize*scale;
+						dh = drawSize*ratio*scale;
+					}else{
+						animationEnded = true;
+					}
+				}
+				if(animationEnded){
 					cropBottomPercent = 0;
 					animate = false;
 					unit.animationFinished = true;
 				}
-				
 			}
-			
-			//cropBottomPercent = Math.random();
-			
+		
 			drawImageMippedCropped(ctx, imageKey, dx, dy-buildOffsetY, dw, dh, -1, cropBottomPercent);
 		}
 	}
