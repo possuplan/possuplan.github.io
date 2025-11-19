@@ -1882,6 +1882,8 @@ let highlightedPool = []; // [{q, r}] for highlighting connected hexes
 let enemyHighlightedPool = []; // [{q, r}] for highlighting connected hexes
 let validMoveHexes = []; // [{q, r}] for green move highlight
 let invalidMoveHexes = []; // [{q, r}] for red move highlight
+let selectedPool = [];
+
 let myCurrentSavings = 0; // Client-side savings
 
 // --- IMAGE CACHING ---
@@ -4160,13 +4162,13 @@ function render() {
 	drawObjects();
 	
 	// MOVEMENT RANGE DRAWING:
-	//drawMovementRanges();
+	drawMovementRanges();
+	// PLACEMENT HIGHLIGHT DRAWING:
+	drawPlacementHighlight();
 	
 	// UNIT SELECTION DRAWING:
 	drawUnitSelection();
 	
-	// PLACEMENT HIGHLIGHT DRAWING:
-	//drawPlacementHighlight();
 	
 	// explosion particles
 	updateParticles();
@@ -4634,7 +4636,7 @@ function updateSelectedPoolInfo(selectedHex){
 	console.warn(selectedHex);
 	console.warn(localPlayerPools);
 	
-	let selectedPool = findSelectedPool(selectedHex);
+	selectedPool = findSelectedPool(selectedHex);
 	if(selectedPool){
 		console.warn("selectedPool:");
 		console.warn(selectedPool);
@@ -4728,7 +4730,7 @@ function handleHexClick(hex) {
 		if(hex.q === selectedUnit.q && hex.r === selectedUnit.r){
 			// deselect if clicked same unit again:
 			selectedUnit = null;
-			selectedHex = null;
+			//selectedHex = null;
 			deselected = true;
 		}
 		if(!deselected){
@@ -4747,7 +4749,7 @@ function handleHexClick(hex) {
 				});
 				// Deselect
 				selectedUnit = null;
-				selectedHex = null;
+				//selectedHex = null;
 			} else {
 				// Clicked somewhere else, check for new selection
 				if(isLandTile){
@@ -4917,6 +4919,16 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 }
 
 
+function isHexInPool(pool, hex){
+	if(pool && pool.hexes){
+		for(let p = 0; p < pool.hexes.length; p++){
+			if(pool.hexes[p].q == hex.q && pool.hexes[p].r == hex.r){
+				return true;
+			}
+		}
+	}
+	return false;
+}
 
 
 function updateHighlights() {
@@ -4933,6 +4945,7 @@ function updateHighlights() {
 	} else if (selectedHex) {
 		poolStartHex = selectedHex;
 	}
+
 	
 	const myPlayer = getMyPlayer();
 	if (!myPlayer) return;
@@ -5045,7 +5058,7 @@ function updateHighlights() {
 function openBuildPopup(type) {
 	placingUnit = null;
 	selectedUnit = null;
-	selectedHex = null;
+	//selectedHex = null;
 	
 	const data = (type === 'soldier') ? SOLDIER_DATA : CASTLE_DATA;
 	const mySavings = getMyTotalSavings();
@@ -5289,6 +5302,12 @@ function isPlacementValid(unitType, hex, player) {
 
 	//return isMoveValid(unit, hex, player);
 	
+	// find the player pool if any was selected:
+	//let selectedPool = findSelectedPool(poolStartHex);
+	//let hexInPool = isHexInPool(selectedPool, hex);
+	//console.warn("isPlacementValid: selectedPool");
+	//console.warn(selectedPool);
+	
 	let unitLevel = getUnitLevel(unitType);
 	
 	let logallowed = prevhex !== (hex.q+","+hex.r);
@@ -5304,7 +5323,7 @@ function isPlacementValid(unitType, hex, player) {
 	if (!tile || tile.type === 'water'){
 		return badMove("not_land"); // Must be on land
 	}
-	
+
 	// if there is an unit on the hex:
 	const hexUnit = getUnitAt(hex.q, hex.r);
 	if (hexUnit){
@@ -5322,10 +5341,11 @@ function isPlacementValid(unitType, hex, player) {
 			//console.log("hexUnit.ownerId !== player.id");
 			
 			// Check if any neighbour is my land:
+			// and the neighbour hex is in selectedPool
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id) {
+				if (nTile && nTile.ownerId === player.id && isHexInPool(selectedPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -5349,8 +5369,8 @@ function isPlacementValid(unitType, hex, player) {
 	
 	// if new unit is a castle:
 	if (isTypeCastle(unitType)) {
-		// if not your tile:
-		if (tile.ownerId !== player.id){
+		// if not your tile or not in your selected pool:
+		if (tile.ownerId !== player.id || !isHexInPool(selectedPool, hex)){
 			if(logallowed){
 				//console.log("trying to place castle");
 				//console.log("tile.ownerId !== player.id");
@@ -5376,10 +5396,11 @@ function isPlacementValid(unitType, hex, player) {
 			}
 			
 			// Check if any neighbour is my land:
+			// and is in selectedPool
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id) {
+				if (nTile && nTile.ownerId === player.id && isHexInPool(selectedPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -5395,6 +5416,11 @@ function isPlacementValid(unitType, hex, player) {
 				if(shieldLevel >= unitLevel){
 					return badMove("low_level");
 				}
+			}
+		}else{
+			// was my land, check if its in selected pool:
+			if(!isHexInPool(selectedPool, hex)){
+				return badMove("not_my_hex");
 			}
 		}
 	}
@@ -6679,6 +6705,7 @@ function handleHostData(data) {
 			
 			// update local player pools for being able to select a pool and display its pool info:
 			localPlayerPools = findEconomyPools(localPlayer.id);
+			selectedPool = findSelectedPool(selectedHex);
 			console.log("localPlayerPools:");
 			console.log(localPlayerPools);
 
@@ -8787,7 +8814,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 			if(selectedUnit){
 				sendToHost({ type: 'action_sell', unitId: selectedUnit.id });
 				selectedUnit = null; // Deselect
-				selectedHex = null;
+				//selectedHex = null;
 				console.log("Deselected unit");
 			}
 		}
