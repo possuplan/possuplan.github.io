@@ -360,6 +360,7 @@ label {
 	---width: 100%;
 	overflow-y: hidden;
 	---border-top-left-radius: 8px;
+	height:120px;
 }
 
 /* Top row: texts side by side */
@@ -367,13 +368,16 @@ label {
 #ui-right .top-row {
 	display: flex;
 	flex-direction: column; /* keep stats stacked vertically */
-	justify-content: flex-start; /* avoid pushing things to far right */
+	---justify-content: flex-start; /* avoid pushing things to far right */
+	justify-content: space-between;
 	align-items: flex-end; /* if you want the numbers aligned right inside left panel */
-	---gap: 3px;
+	gap: 0px;
 	padding-right: 10px;
 	margin-bottom: 10px;
 	min-width: 0;
-    line-height: 24px;
+	height:100%;
+	min-height:0;
+    ---line-height: 24px;
 }
 
 
@@ -388,6 +392,10 @@ label {
 	padding-top: 7px;
 }
 
+.info-item {
+
+}
+
 .ui-number {
 	color: #FFFF00;
 }
@@ -398,6 +406,8 @@ label {
 	min-width: 0;       /* allow shrinking in tight containers */
 	display: block;
 	padding-left:10px;
+	height:100%;
+	padding-bottom:10px;
 }
 
 .ui-panel-controls > .info-right {
@@ -1076,10 +1086,10 @@ input.disabled {
 			<div class="ui-panel ui-panel-controls">
 				<div class="info-left">
 					<div class="top-row" id="ui-right-top-row-id">
-						<div>Savings: <span id="player-savings" class="ui-number">0</span></div>
-						<div>Income: <span id="player-income" class="ui-number">0</span></div>
-						<div>Wages: <span id="player-wages" class="ui-number">0</span></div>
-						<div>Balance: <span id="player-balance" class="ui-number">0</span></div>
+						<div class="info-item">Savings: <span id="player-savings" class="ui-number">0</span></div>
+						<div class="info-item">Income: <span id="player-income" class="ui-number">0</span></div>
+						<div class="info-item">Wages: <span id="player-wages" class="ui-number">0</span></div>
+						<div class="info-item">Balance: <span id="player-balance" class="ui-number">0</span></div>
 					</div>
 				</div>
 				<div class="info-right">
