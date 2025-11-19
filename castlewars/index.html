@@ -401,6 +401,19 @@ label {
 	color: #FFFF00;
 }
 
+.ui-number.yellow {
+	color: #FFFF00;
+}
+.ui-number.red {
+	color: #FF2222;
+}
+.ui-number.gray {
+	color: #888888;
+}
+.ui-number.white {
+	color: #FFFFFF;
+}
+
 .ui-panel-controls > .info-left {
 	flex: 0 0 auto;     /* don't grow, don't shrink below content size */
 	width: auto;
@@ -993,15 +1006,13 @@ input.disabled {
 			</div>
 		</div>
 		
+		<button id="start-game-btn" class="primary">Start Game</button>
+		
 		<div id="loaded-game-info-container" class="loaded-game-info" style="display: none;">
 			<p><strong>Saved Game:</strong> <span id="load-game-date"></span></p>
 			<p><strong>Players:</strong></p>
 			<ul id="load-game-players"></ul>
 		</div>
-		
-		<button id="start-game-btn" class="primary">Start Game</button>
-		
-
 	</div>
 </div>
 
@@ -1085,7 +1096,7 @@ input.disabled {
 
 
 			<div class="ui-panel ui-panel-controls">
-				<div class="info-left">
+				<div class="info-left" id="info-left">
 					<div class="top-row" id="ui-right-top-row-id">
 						<div class="info-item">Savings: <span id="player-savings" class="ui-number">0</span></div>
 						<div class="info-item">Income: <span id="player-income" class="ui-number">0</span></div>
@@ -1093,7 +1104,7 @@ input.disabled {
 						<div class="info-item">Balance: <span id="player-balance" class="ui-number">0</span></div>
 					</div>
 				</div>
-				<div class="info-right">
+				<div class="info-right" id="info-right">
 					<div class="button-row" id="ui-right-button-row1-id">
 						<button id="sell-unit-btn" class="gamebutton" title="Sell warrior"></button>
 						<button id="build-soldier-btn" class="gamebutton" title="Recruit warrior"></button>
@@ -1547,6 +1558,7 @@ function hexToHSL(hex) {
 let gameRules = {
 	tileIncome: 1,
 };
+
 // sounds =
 let gameSounds = {
 	moveunit:     {filename: "sounds/down.mp3",    gain: 1,   filter: false},
@@ -1786,6 +1798,8 @@ let localPlayer = {
 	isDead: false,
 	isAI: false,
 };
+let localPlayerPools = []; // economy pools for local player.
+
 let db = null;
 let loadedGameState = null;
 
@@ -2391,6 +2405,10 @@ const playerSavings = document.getElementById('player-savings');
 const playerIncome = document.getElementById('player-income');
 const playerWages = document.getElementById('player-wages');
 const playerBalance = document.getElementById('player-balance');
+
+const infoLeft = document.getElementById('info-left');
+
+
 
 const buildSoldierBtn = document.getElementById('build-soldier-btn');
 const buildCastleBtn = document.getElementById('build-castle-btn');
@@ -3430,9 +3448,28 @@ function drawHighlights(){
 					
 					if(dashedMode){
 						// your pool highlight
+						
+						let isSelectedPool = false;
+						// check if this tile is currently selected individual pool:
+						if(highlightedPool && highlightedPool.length > 0){
+							for(let p = 0; p < highlightedPool.length; p++){
+								let pool = highlightedPool[p];
+								if(pool.q == q && pool.r == r){
+									isSelectedPool = true;
+									break;
+								}
+							}
+						}
+
 						ctx.setLineDash([12.5, 15]);
-						ctx.strokeStyle = 'rgba(255,255,0, 1)';
-						ctx.lineWidth = 4;
+						if(isSelectedPool){
+							ctx.strokeStyle = 'rgba(255,255,0, 1)';
+							ctx.lineWidth = 4;
+						}else{
+							ctx.strokeStyle = 'rgba(255,255,255, 1)';
+							ctx.lineWidth = 3;
+						}
+						
 						ctx.lineCap = 'round';
 						ctx.stroke();
 						ctx.lineCap = 'butt'; // reset to default
@@ -4264,16 +4301,29 @@ function updateGameUI() {
 	
 	// Update savings
 	if (myPlayer && !myPlayer.isSpectator) {
-		playerSavings.textContent = myCurrentSavings;
+		//playerSavings.textContent = myCurrentSavings;
 	} else {
 		//playerSavings.textContent = "Spectating";
 	}
 }
 
+
+// used to change ui-number color for now.
+function setColor(el, colorClass) {
+    const colors = ["red", "gray", "yellow", "white"]; // all possible color classes
+
+    el.classList.remove(...colors); // remove any that might be present
+    el.classList.add(colorClass); // add the one you want
+}
+
+
 function getMyTotalSavings() {
 	// This is now just a client-side getter
 	return myCurrentSavings;
 }
+
+
+
 
 // =================================================================
 // --- GAME LOGIC - ACTIONS
@@ -4289,31 +4339,111 @@ function isHexWater(q, r){
 	return false;
 }
 
+function isTileWater(tile){
+	if(!tile){ // out of bounds, mark as water:
+		return true;
+	}else if(tile.type == "water"){
+		return true;
+	}
+	return false;
+}
+
+
 // array of units which trigger protect sound.
 let shieldingUnits = null;
 let shieldingStartTime = 0;
 
+function findSelectedPool(selectedHex){
+	if(localPlayerPools && selectedHex){
+		for(let p = 0; p < localPlayerPools.length; p++){
+			let pool = localPlayerPools[p];
+			for(let h = 0; h < pool.hexes.length; h++){
+				let hex = pool.hexes[h];
+				if(hex.q == selectedHex.q && hex.r == selectedHex.r){
+					return pool;
+				}
+			}
+		}
+	}
+	return null;
+}
+
+
+function formatDecimal(num) {
+    const fixed = num.toFixed(2); // "12.30"
+    if (fixed.endsWith("00")) return String(num|0); // integer case
+    if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
+    return fixed; // both decimals meaningful
+}
+
+function hidePoolInfo(){
+	infoLeft.style.display = "none";
+}
+
+function showPoolInfo(){
+	infoLeft.style.display = "block";
+}
+
+function updateSelectedPoolInfo(selectedHex){
+	// localPlayerPools
+	console.warn("updateSelectedPoolInfo");
+	console.warn(selectedHex);
+	console.warn(localPlayerPools);
+	
+	let selectedPool = findSelectedPool(selectedHex);
+	if(selectedPool){
+		console.warn("selectedPool:");
+		console.warn(selectedPool);
+		let totalBalance = (selectedPool.totalSavings + selectedPool.totalIncome) - selectedPool.totalWages;
+		playerSavings.textContent = formatDecimal(selectedPool.totalSavings);
+		playerIncome.textContent = formatDecimal(selectedPool.totalIncome);
+		playerWages.textContent = formatDecimal(selectedPool.totalWages);
+		playerBalance.textContent = formatDecimal(totalBalance);
+		
+		showPoolInfo();
+	}
+	
+}
+
 function handleHexClick(hex) {
 	shieldingUnits = null;
-	
+
 	// dont allow selecting while moving on the map.
 	if(isDragging){
 		return;
 	}
 	const myPlayer = getMyPlayer();
 	
+	let clickedHexTile = getTileAt(hex.q, hex.r);
+	let isLandTile = !isTileWater(clickedHexTile);
+	
+	
+	let updatePools = false;
+	// update pools only if clicked own tiles:
+	if(clickedHexTile && clickedHexTile.ownerId === localPlayer.id){
+		updatePools = true;
+	}
+	// hide pool info initially, show it in updateSelectedPoolInfo if called:
+	hidePoolInfo();
+	
 	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
-		if(!isHexWater(hex.q, hex.r)){
+		if(isLandTile){
 			// Spectator or not my turn, just select hex for highlighting pools:
 			selectedHex = hex;
 			selectedUnit = null; // Deselect
 			
 			buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
 			updateHighlights();
+			
+			// update here before return or it wont be updated.
+			if(updatePools){
+				updateSelectedPoolInfo(hex);
+			}
 		}else{
 			selectedUnit = null; // Deselect
 			selectedHex = null;
 		}
+
 		return;
 	}
 
@@ -4327,6 +4457,11 @@ function handleHexClick(hex) {
 				q: hex.q,
 				r: hex.r
 			});
+			
+			// update here before return or it wont be updated.
+			if(updatePools){
+				updateSelectedPoolInfo(hex);
+			}
 		} else {
 			if(buildCheck.reason && buildCheck.reason === "low_level"){
 				shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, getUnitLevel(placingUnit.type));
@@ -4336,6 +4471,8 @@ function handleHexClick(hex) {
 		}
 		placingUnit = null; // "deselect", must do that because there is no cancel button (yet?)
 		updateHighlights();
+		
+		
 		return;
 	}
 	
@@ -4369,7 +4506,7 @@ function handleHexClick(hex) {
 				selectedHex = null;
 			} else {
 				// Clicked somewhere else, check for new selection
-				if(!isHexWater(hex.q, hex.r)){
+				if(isLandTile){
 					const isInvalidMove = invalidMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
 					if(isInvalidMove){
 						shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, selectedUnit.level);
@@ -4391,7 +4528,7 @@ function handleHexClick(hex) {
 							if(!isInvalidMove){
 								selectedUnit = null; // Deselect
 								selectedHex = hex;
-								console.log("deselected");
+								//console.log("deselected");
 							}
 						}
 					}else{
@@ -4399,7 +4536,7 @@ function handleHexClick(hex) {
 						if(!isInvalidMove){
 							selectedUnit = null; // Deselect
 							selectedHex = hex;
-							console.log("deselected");
+							//console.log("deselected");
 						}
 					}
 				}else{
@@ -4411,14 +4548,14 @@ function handleHexClick(hex) {
 	} else {
 		// --- SELECTING AN UNIT ---
 		
-		if(!isHexWater(hex.q, hex.r)){
+		if(isLandTile){
 			const unitOnHex = getUnitAt(hex.q, hex.r);
 			
 			if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
 				// allow only selecting soldiers
 				if(unitOnHex.internalType === 'soldier'){
 					if(!unitOnHex.hasMoved){
-						console.log("selected new unit");
+						//console.log("selected new unit");
 						selectedUnit = unitOnHex;
 						selectedHex = hex;
 						if(!selectedUnit.hasMoved){
@@ -4444,6 +4581,10 @@ function handleHexClick(hex) {
 			selectedUnit = null; // Deselect
 			selectedHex = null;
 		}
+	}
+	
+	if(updatePools){
+		updateSelectedPoolInfo(hex);
 	}
 	
 	updateHighlights();
@@ -5492,9 +5633,13 @@ function updatePlayerSavings(playerId) {
 	
 	sendToPlayer(playerId, { 
 		type: 'savings_update', 
-		total: Math.floor(newTotalSavings) 
+		total: Math.floor(newTotalSavings),
 	});
 }
+
+
+
+
 
 function findEconomyPools(playerId) {
 	// Finds all contiguous land areas for a given player
@@ -5558,13 +5703,17 @@ function findEconomyPools(playerId) {
 		}
 		pools.push(pool);
 	}
+	console.warn("findEconomyPools for "+playerId);
+	console.warn(pools);
 	return pools;
 }
+
+
 
 function distributePoolSavings(pools) {
 	// Takes a list of pools (from findEconomyPools) and distributes
 	// their savings evenly among their hexes.
-	let updates = [];
+	//let updates = [];
 	for (const pool of pools) {
 		if (pool.hexes.length === 0) continue;
 		
@@ -5579,7 +5728,7 @@ function distributePoolSavings(pools) {
 		}
 	}
 	// Return updates if we ever need them
-	return updates;
+	//return updates;
 }
 
 function deductCost(pools, cost) {
@@ -5980,6 +6129,7 @@ function executeEndTurn(playerId) {
 		if (pool.totalSavings < 0) {
 			// Bankrupt!
 			pool.totalSavings = 0;
+			// todo: update modified info to localplayer?
 			for (const soldier of pool.soldiers) {
 				allSoldiersKilled.push(soldier);
 			}
@@ -6175,9 +6325,6 @@ function handleHostData(data) {
 				let soundName = data.name;
 				playSound(soundName);
 				
-				console.warn("'sound' data:");
-				console.warn(data);
-				
 				if(data.action !== 'action_undo'){
 					const { x, y } = axialToPixel(data.q, data.r);
 					let ep = {
@@ -6212,16 +6359,24 @@ function handleHostData(data) {
 						doExplosion = 1;
 					}
 					if(doExplosion){
-						console.warn("createExplosion");
-						console.warn(ep);
 						createExplosion(x, y, ep.color, ep.shape, ep.fade, ep.count, ep.speed);
 					}
 				}
 			}
 			break;
 		case 'savings_update':
+			// this is kinda useless, since the client should calculate them themselves to get full array of pool hexes for being able to know which pool is clicked.
 			myCurrentSavings = data.total;
-			playerSavings.textContent = myCurrentSavings;
+			//playerSavings.textContent = myCurrentSavings;
+			
+			console.log("savings_update:");
+			console.log(data);
+			
+			// update local player pools for being able to select a pool and display its pool info:
+			localPlayerPools = findEconomyPools(localPlayer.id);
+			console.log("localPlayerPools:");
+			console.log(localPlayerPools);
+
 			break;
 	}
 	
