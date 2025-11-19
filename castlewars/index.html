@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 	<link rel="manifest" href="site.webmanifest">
-	
-    <title>Castle Wars</title>
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-	
+
+	<title>Castle Wars</title>
+	<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
 	<script src="config.js"></script> <!-- LOCAL=true on public, false on my pc config -->
 
 	<script>
@@ -153,12 +153,13 @@ button {
 
 	font-size: 15px;
 	height: 47px;
+
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: contain;
 }
 
 
-.gamebutton.active {
-	---background-color: #1e8117;
-}
 
 
 
@@ -169,13 +170,10 @@ button {
 }
 
 button:hover {
-	background: var(--btn-hover-bg);
+	background-color: var(--btn-hover-bg);
 }
 
 
-button:active {
-	---transform: scale(0.98);
-}
 
 button.primary {
 	background-color: #00428e;
@@ -258,7 +256,6 @@ label {
 }
 
 .color-box.disabled {
-	---opacity: 0.3;
 	cursor: not-allowed;
 	
 	background: repeating-linear-gradient(
@@ -359,32 +356,52 @@ label {
 	right:0;
 	display: flex;
 	flex-direction: column; /* stack rows vertically */
-	---gap: 10px;
-
-	max-width: 200px;
-	width: 100%;
-	---height: 96px; /* let it grow naturally */
-	
+	---max-width: 200px;
+	---width: 100%;
 	overflow-y: hidden;
-	
-	border-top-left-radius: 8px;
+	---border-top-left-radius: 8px;
 }
 
 /* Top row: texts side by side */
+
 #ui-right .top-row {
 	display: flex;
-	flex-direction: column;
-	justify-content: space-between; /* turn-info left, savings right */
-	align-items: flex-end;
-	gap: 0px;
-	padding-right:10px;
+	flex-direction: column; /* keep stats stacked vertically */
+	justify-content: flex-start; /* avoid pushing things to far right */
+	align-items: flex-end; /* if you want the numbers aligned right inside left panel */
+	gap: 3px;
+	padding-right: 10px;
 	margin-bottom: 10px;
+	min-width: 0;
 }
 
+
 .ui-panel-controls {
+	display: flex;
+	flex-direction: row;
+	gap: 8px;
+	align-items: flex-start; /* don't stretch vertically */
+	box-sizing: border-box;
+	width: 100%;
 	border-top-left-radius: 10px;
 	padding-top: 7px;
 }
+
+.ui-panel-controls > .info-left {
+	flex: 0 0 auto;     /* don't grow, don't shrink below content size */
+	width: auto;
+	min-width: 0;       /* allow shrinking in tight containers */
+	display: block;
+	padding-left:10px;
+}
+
+.ui-panel-controls > .info-right {
+	flex: 1 1 auto;     /* grow to fill remaining space */
+	min-width: 0;       /* allows flex children to shrink correctly */
+	display: block;
+	width:200px;
+}
+
 
 #turn-info {
 	padding: 4px;
@@ -395,22 +412,35 @@ label {
 }
 
 /* Optional: style buttons as a row */
+
 #ui-right .button-row {
 	display: flex;
 	flex-direction: row;
 	gap: 10px;
+	width: 100%;
+	box-sizing: border-box;
 }
 
+
 /* Make buttons stretch evenly */
+
 #ui-right .button-row button {
-	flex: 1;  /* each button takes equal width */
+	flex: 1 1 0;                /* equal width buttons that can shrink/grow */
+	display: flex;              /* make button a flex container */
+	align-items: center;        /* vertical center */
+	justify-content: center;    /* horizontal center */
+	padding: 6px;               /* adjust as needed */
+	box-sizing: border-box;
+	min-width: 0;               /* important for flex shrink */
+	height: 44px;               /* optional: keep consistent height */
 }
+
 
 #player-ui-list {
 	max-height: 133px;
-	
-    border-top: 1px solid #3e3e3e;
-    border-bottom: 1px solid #3e3e3e;
+
+	border-top: 1px solid #3e3e3e;
+	border-bottom: 1px solid #3e3e3e;
 }
 
 #player-ui-list .player-list-item {
@@ -476,7 +506,7 @@ label {
 
 
 #build-popup-close {
-	margin-top: 10px;
+	margin-top: 5px;
 	width: 66px;
 	height: 42px;
 	margin-left: 121px;
@@ -782,46 +812,27 @@ input.disabled {
 
 #build-soldier-btn {
 	background-image: url('images/orig-scaled/128x128/soldier1.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-	background-position-x: 4px;
-	background-position-y: -2px;
+
 }
 
 #build-castle-btn {
 	background-image: url('images/orig-scaled/128x128/castle1.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-	background-position-x: 4px;
-	background-position-y: -2px;
 }
 
 #undo-btn {
 	background-image: url('images/ui/undo.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-	background-position: center;
 }
 
 #toggle-ui-btn {
 	background-image: url('images/ui/chat.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-	background-position: center;
 }
 
 #sell-unit-btn {
 	background-image: url('images/ui/sell.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-	background-position: center;
 }
 
 #end-turn-btn {
 	background-image: url('images/ui/endturn.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-	background-position: center;
 }
 
 </style>
@@ -1055,26 +1066,28 @@ input.disabled {
 		
 		<div id="ui-right">
 			
-			<div>
-				<div class="top-row" id="ui-right-top-row-id">
-					<div id="player-savings">Savings: 0</div>
-					<div id="player-income">Income: 0</div>
-					<div id="player-wages">Wages: 0</div>
-					<div id="player-balance">Balance: 0</div>
-				</div>
-			</div>
-			
-			<div class="ui-panel ui-panel-controls">
 
-				<div class="button-row" id="ui-right-button-row1-id">
-					<button id="sell-unit-btn" class="gamebutton" title="Sell warrior"></button>
-					<button id="build-soldier-btn" class="gamebutton" title="Recruit warrior"></button>
-					<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
+
+			<div class="ui-panel ui-panel-controls">
+				<div class="info-left">
+					<div class="top-row" id="ui-right-top-row-id">
+						<div id="player-savings">Savings: 0</div>
+						<div id="player-income">Income: 0</div>
+						<div id="player-wages">Wages: 0</div>
+						<div id="player-balance">Balance: 0</div>
+					</div>
 				</div>
-				<div class="button-row" id="ui-right-button-row2-id">
-					<button id="end-turn-btn" class="gamebutton primary" title="End turn"></button>
-					<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
-					<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
+				<div class="info-right">
+					<div class="button-row" id="ui-right-button-row1-id">
+						<button id="sell-unit-btn" class="gamebutton" title="Sell warrior"></button>
+						<button id="build-soldier-btn" class="gamebutton" title="Recruit warrior"></button>
+						<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
+					</div>
+					<div class="button-row" id="ui-right-button-row2-id">
+						<button id="end-turn-btn" class="gamebutton primary" title="End turn"></button>
+						<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
+						<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -1609,56 +1622,7 @@ function playSound(key) {
 }
 
 
-/*
-function loadSound(src) {
-	return fetch(src)
-		.then(res => res.arrayBuffer())
-		.then(data => soundContext.decodeAudioData(data))
-		.then(decoded => {
-			soundBuffers[src] = decoded; // store buffer by filename
-			return decoded; // also return it
-		});
-}
-*/
 
-
-/*
-function playSound(src) {
-	let sound = gameSounds[src];
-	if(!sound){
-		console.warn("sound not found: "+src);
-		return;
-	}
-	console.warn("playSound: "+src);
-	
-	const buffer = soundBuffers[sound.filename];
-	if (!buffer) return; // sound not loaded yet
-
-	const source = soundContext.createBufferSource();
-	source.buffer = buffer;
-
-	// Create a gain node for volume control
-	const gainNode = soundContext.createGain();
-	gainNode.gain.value = sound.gain; // 1.0 = 100%, 0.5 = 50%, etc.
-
-	if (sound.filter) {
-		// Create and use filter
-		const filter = soundContext.createBiquadFilter();
-		filter.type = "lowpass";
-		filter.frequency.value = 3000; // let only frequencies below ~3kHz pass
-
-		source.connect(filter);
-		filter.connect(gainNode);
-	} else {
-		// Connect directly
-		source.connect(gainNode);
-	}
-
-	gainNode.connect(soundContext.destination);
-	source.start();
-}
-
-*/
 
 // --- Prevent default touch behavior for scrolling/zooming ---
 document.body.addEventListener('touchstart', e => {
