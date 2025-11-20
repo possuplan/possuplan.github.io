@@ -830,38 +830,52 @@ input.disabled {
 }
 
 
-#end-turn-btn[disabled] {
-	background-color:var(--btn-bg);
+
+
+
+
+#build-soldier-btn {
+	background-image: url('images/orig-scaled/128x128/soldier1.png');
+}
+#build-soldier-btn.disabled {
+	filter: brightness(0.5);
 }
 
+
+#build-castle-btn {
+	background-image: url('images/orig-scaled/128x128/castle1.png');
+}
+#build-castle-btn.disabled {
+	filter: brightness(0.5);
+}
+
+
+#undo-btn {
+	background-image: url('images/ui/undo.png');
+}
 #undo-btn[disabled] {
 	background-color:var(--btn-bg);
 }
 
 
-#build-soldier-btn {
-	background-image: url('images/orig-scaled/128x128/soldier1.png');
-
-}
-
-#build-castle-btn {
-	background-image: url('images/orig-scaled/128x128/castle1.png');
-}
-
-#undo-btn {
-	background-image: url('images/ui/undo.png');
-}
-
 #toggle-ui-btn {
 	background-image: url('images/ui/chat.png');
 }
 
+
 #sell-unit-btn {
 	background-image: url('images/ui/sell.png');
 }
+#sell-unit-btn.disabled {
+	filter: brightness(0.5);
+}
+
 
 #end-turn-btn {
 	background-image: url('images/ui/endturn.png');
+}
+#end-turn-btn[disabled] {
+	background-color:var(--btn-bg);
 }
 
 </style>
@@ -1096,7 +1110,7 @@ input.disabled {
 
 
 			<div class="ui-panel ui-panel-controls">
-				<div class="info-left" id="info-left">
+				<div class="info-left" id="info-left" style="display:none">
 					<div class="top-row" id="ui-right-top-row-id">
 						<div class="info-item">Savings: <span id="player-savings" class="ui-number">0</span></div>
 						<div class="info-item">Income: <span id="player-income" class="ui-number">0</span></div>
@@ -1738,26 +1752,46 @@ const HEX_SIZE = 40; // Radius of hexagon
 const SQRT3 = Math.sqrt(3);
 
 
-// soldiers =
+// soldiers soldier_units
 const SOLDIER_DATA = {
 	// listed in this order.
 	// visibleName = text shown to user.
 	// name = internal name, same as the key (maybe useful later).
 	"dragon":  { visibleName: "Dragon",  name: "dragon",  type:"soldier", level: 4, cost: 40, wage: 54, sell: 20, prefix: 'D' },
 	"horse":   { visibleName: "Horse",   name: "horse",   type:"soldier", level: 3, cost: 30, wage: 18, sell: 15, prefix: 'H' },
+	// game help says knight wage is 10 ??
 	"knight":  { visibleName: "Knight",  name: "knight",  type:"soldier", level: 2, cost: 20, wage: 8, sell: 10, prefix: 'K' },
 	"peasant": { visibleName: "Peasant", name: "peasant", type:"soldier", level: 1, cost: 10, wage: 3, sell: 5, prefix: 'P' },
 };
 
 
 
-// castles =
+// castles castle_units
 const CASTLE_DATA = {
 	// listed in this order.
 	"fortress": { visibleName: "Fortress",name: "fortress", type:"castle", level: 3, cost: 200, prefix: 'F' },
 	"castle":   { visibleName: "Castle",  name: "castle",   type:"castle", level: 2, cost: 40, prefix: 'C' },
 	"hut":      { visibleName: "Hut",     name: "hut",      type:"castle", level: 1, cost: 10, prefix: 'h' },
 };
+
+
+function getCheapestCost(data, type) {
+	let cheapest = null;
+	for (const key in data) {
+		const entry = data[key];
+		if (entry.type === type) {
+			if (!cheapest || entry.cost < cheapest.cost) {
+				cheapest = entry;
+			}
+		}
+	}
+	return cheapest.cost;
+}
+
+// used to check if can afford any castle or soldier:
+let minCastleCost = getCheapestCost(CASTLE_DATA, "castle");
+let minSoldierCost = getCheapestCost(SOLDIER_DATA, "soldier");
+
 
 
 // todo: use this array instead of 2 separate arrays for soldiers and castles.
@@ -1876,6 +1910,15 @@ let selectedHex = null; // {q, r}
 let selectedUnit = null;
 let placingUnit = null; // e.g., { type: 'Peasant', cost: 100 }
 let currentTurnActions = []; // For undo
+
+function deselectHex(){
+	console.log("deselectHex");
+	selectedHex = null;
+}
+function deselectUnit(){
+	console.log("deselectUnit");
+	selectedUnit = null;
+}
 
 let shakingUnits = []; // { id, endTime }
 let highlightedPool = []; // [{q, r}] for highlighting connected hexes
@@ -3393,9 +3436,15 @@ function drawHighlights(){
 	}
 	
 	if(highlightedPool.length > 0){
+		// pool length is zero if no pool selected.
 		let tile = getTileAt(highlightedPool[0].q, highlightedPool[0].r);
 		highlightedPlayer = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 	}
+	// use selectedPool for highlighting:
+	//if(selectedPool && selectedPool.hexes && selectedPool.hexes.length > 0){
+	//	let tile = getTileAt(selectedPool.hexes[0].q, selectedPool.hexes[0].r);
+	//	highlightedPlayer = getPlayerByIndex(tile.ownerIndex);
+	//}
 
 
 	// draw highlighted lines for all pools:
@@ -3574,7 +3623,8 @@ function drawObjects(){
 }
 
 
-
+let animationLenCastle = 600;
+let animationLenSoldier = 250;
 
 // draw only specific type of units; "soldier" or "castle"
 function drawUnitsByType(unitType){
@@ -3621,8 +3671,6 @@ function drawUnitsByType(unitType){
 			
 			
 			let cropBottomPercent = 0; // how much from the bottom is cropped out.
-			let animationLenCastle = 600;
-			let animationLenSoldier = 200;
 			let buildOffsetY = 0;
 			
 			let animate = true;
@@ -3666,7 +3714,7 @@ function drawUnitsByType(unitType){
 					if(timeDiff < animationLenSoldier){
 						// for soldiers
 						let animPercent = timeDiff/animationLenSoldier;
-						animPercent = animPercent+0.3;
+						animPercent = animPercent+0.2;
 						if(animPercent > 1){
 							animPercent = 1;
 						}
@@ -3769,7 +3817,7 @@ let cur_buildCheck = null;
 // renderPlacementHighlight 
 function drawPlacementHighlight(){
 
-/*
+
 	// Draw selected hex outline
 	if (selectedHex) {
 		const { x, y } = axialToPixel(selectedHex.q, selectedHex.r);
@@ -3780,7 +3828,7 @@ function drawPlacementHighlight(){
 		ctx.stroke();
 		ctx.lineCap = 'butt'; // reset to default
 	}
-	*/
+	
 	
 	
 	// Draw placement highlight
@@ -4133,6 +4181,8 @@ function drawProtectMessages(){
 }
 
 
+let drawRanges = 0;
+
 
 function render() {
 	if (!gameState.settings.gameStarted) return;
@@ -4161,10 +4211,13 @@ function render() {
 	// OBJECTS DRAWING:
 	drawObjects();
 	
-	// MOVEMENT RANGE DRAWING:
-	drawMovementRanges();
-	// PLACEMENT HIGHLIGHT DRAWING:
-	drawPlacementHighlight();
+	// only for debugging:
+	if(drawRanges){
+		// MOVEMENT RANGE DRAWING:
+		drawMovementRanges();
+		// PLACEMENT HIGHLIGHT DRAWING:
+		drawPlacementHighlight();
+	}
 	
 	// UNIT SELECTION DRAWING:
 	drawUnitSelection();
@@ -4601,12 +4654,17 @@ let shieldingStartTime = 0;
 
 function findSelectedPool(selectedHex){
 	if(localPlayerPools && selectedHex){
-		for(let p = 0; p < localPlayerPools.length; p++){
-			let pool = localPlayerPools[p];
-			for(let h = 0; h < pool.hexes.length; h++){
-				let hex = pool.hexes[h];
-				if(hex.q == selectedHex.q && hex.r == selectedHex.r){
-					return pool;
+		let clickedHexTile = getTileAt(selectedHex.q, selectedHex.r);
+		if(clickedHexTile.ownerId === localPlayer.id){
+		
+			
+			for(let p = 0; p < localPlayerPools.length; p++){
+				let pool = localPlayerPools[p];
+				for(let h = 0; h < pool.hexes.length; h++){
+					let hex = pool.hexes[h];
+					if(hex.q == selectedHex.q && hex.r == selectedHex.r){
+						return pool;
+					}
 				}
 			}
 		}
@@ -4630,13 +4688,11 @@ function showPoolInfo(){
 	infoLeft.style.display = "block";
 }
 
-function updateSelectedPoolInfo(selectedHex){
-	// localPlayerPools
-	console.warn("updateSelectedPoolInfo");
-	console.warn(selectedHex);
-	console.warn(localPlayerPools);
+function updateSelectedPoolUi(){
+	// disable by default, enable later:
+	buildSoldierBtn.classList.add("disabled");
+	buildCastleBtn.classList.add("disabled");
 	
-	selectedPool = findSelectedPool(selectedHex);
 	if(selectedPool){
 		console.warn("selectedPool:");
 		console.warn(selectedPool);
@@ -4646,10 +4702,41 @@ function updateSelectedPoolInfo(selectedHex){
 		playerWages.textContent = formatDecimal(selectedPool.totalWages);
 		playerBalance.textContent = formatDecimal(totalBalance);
 		
+		if(selectedPool.totalSavings >= minSoldierCost){
+			buildSoldierBtn.classList.remove("disabled");
+		}
+		if(selectedPool.totalSavings >= minCastleCost){
+			buildCastleBtn.classList.remove("disabled");
+		}
+
 		showPoolInfo();
+	}else{
+		hidePoolInfo();
 	}
-	
 }
+
+function updateSelectedPoolInfo(selectedHex){
+	// localPlayerPools
+	console.warn("updateSelectedPoolInfo");
+	console.warn(selectedHex);
+	console.warn(localPlayerPools);
+	
+	selectedPool = findSelectedPool(selectedHex);
+	updateSelectedPoolUi();
+	console.log("updateSelectedPoolInfo: selectedPool");
+	console.log(selectedPool);
+}
+
+function getSelectedPoolHex(){
+	if(selectedPool && selectedPool.hexes && selectedPool.hexes.length > 0){
+		return {q: selectedPool.hexes[0].q, r: selectedPool.hexes[0].r};
+	}else{
+		console.error("getSelectedPoolHex: tried to call without selectedPool set.");
+		return null;
+	}
+}
+
+
 
 function handleHexClick(hex) {
 	shieldingUnits = null;
@@ -4664,19 +4751,21 @@ function handleHexClick(hex) {
 	let isLandTile = !isTileWater(clickedHexTile);
 	
 	
-	let updatePools = false;
+	//let updatePools = false;
+	let updatePools = true; // currently always updates info, so it will set selectedPool to null if not player own pool.
 	// update pools only if clicked own tiles:
-	if(clickedHexTile && clickedHexTile.ownerId === localPlayer.id){
-		updatePools = true;
-	}
+	//if(clickedHexTile && clickedHexTile.ownerId === localPlayer.id){
+	//	updatePools = true;
+	//}
+	
 	// hide pool info initially, show it in updateSelectedPoolInfo if called:
-	hidePoolInfo();
+	//hidePoolInfo();
 	
 	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
 		if(isLandTile){
 			// Spectator or not my turn, just select hex for highlighting pools:
 			selectedHex = hex;
-			selectedUnit = null; // Deselect
+			deselectUnit(); // Deselect
 			
 			buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
 			updateHighlights();
@@ -4686,12 +4775,14 @@ function handleHexClick(hex) {
 				updateSelectedPoolInfo(hex);
 			}
 		}else{
-			selectedUnit = null; // Deselect
-			selectedHex = null;
+			deselectUnit(); // Deselect
+			deselectHex();
 		}
 
 		return;
 	}
+	
+
 
 	// --- PLACING A UNIT ---
 	if (placingUnit) {
@@ -4701,7 +4792,8 @@ function handleHexClick(hex) {
 				type: 'action_build',
 				unitType: placingUnit.type,
 				q: hex.q,
-				r: hex.r
+				r: hex.r,
+				poolHex: getSelectedPoolHex(), // remember first hex from selected pool.
 			});
 			
 			// update here before return or it wont be updated.
@@ -4729,8 +4821,8 @@ function handleHexClick(hex) {
 
 		if(hex.q === selectedUnit.q && hex.r === selectedUnit.r){
 			// deselect if clicked same unit again:
-			selectedUnit = null;
-			//selectedHex = null;
+			deselectUnit();
+			//deselectHex();
 			deselected = true;
 		}
 		if(!deselected){
@@ -4745,11 +4837,12 @@ function handleHexClick(hex) {
 					type: 'action_move',
 					unitId: selectedUnit.id,
 					toQ: hex.q,
-					toR: hex.r
+					toR: hex.r,
+					poolHex: getSelectedPoolHex(),
 				});
 				// Deselect
-				selectedUnit = null;
-				//selectedHex = null;
+				deselectUnit();
+				//deselectHex();
 			} else {
 				// Clicked somewhere else, check for new selection
 				if(isLandTile){
@@ -4772,7 +4865,7 @@ function handleHexClick(hex) {
 						}else{
 							// deselect when clicking enemy unit that was not protected:
 							if(!isInvalidMove){
-								selectedUnit = null; // Deselect
+								deselectUnit(); // Deselect
 								selectedHex = hex;
 								//console.log("deselected");
 							}
@@ -4780,14 +4873,14 @@ function handleHexClick(hex) {
 					}else{
 						// deselect when clicked just land that was not protected:
 						if(!isInvalidMove){
-							selectedUnit = null; // Deselect
+							deselectUnit(); // Deselect
 							selectedHex = hex;
 							//console.log("deselected");
 						}
 					}
 				}else{
-					selectedUnit = null; // Deselect
-					selectedHex = null;
+					deselectUnit(); // Deselect
+					deselectHex();
 				}
 			}
 		}
@@ -4809,23 +4902,23 @@ function handleHexClick(hex) {
 						}
 					}else{
 						// select the hex if cannot select unit.
-						selectedUnit = null;
+						deselectUnit();
 						selectedHex = hex;
 					}
 				}else{
 					// dont allow selecting castles.
-					selectedUnit = null;
+					deselectUnit();
 					selectedHex = hex;
 				}
 			} else {
 				// no unit or not my unit
-				selectedUnit = null;
+				deselectUnit();
 				selectedHex = hex;
 			}
 		}else{
 			// was water tile
-			selectedUnit = null; // Deselect
-			selectedHex = null;
+			deselectUnit(); // Deselect
+			deselectHex();
 		}
 	}
 	
@@ -5057,8 +5150,8 @@ function updateHighlights() {
 
 function openBuildPopup(type) {
 	placingUnit = null;
-	selectedUnit = null;
-	//selectedHex = null;
+	deselectUnit();
+	//deselectHex();
 	
 	const data = (type === 'soldier') ? SOLDIER_DATA : CASTLE_DATA;
 	const mySavings = getMyTotalSavings();
@@ -5302,9 +5395,6 @@ function isPlacementValid(unitType, hex, player) {
 
 	//return isMoveValid(unit, hex, player);
 	
-	// find the player pool if any was selected:
-	//let selectedPool = findSelectedPool(poolStartHex);
-	//let hexInPool = isHexInPool(selectedPool, hex);
 	//console.warn("isPlacementValid: selectedPool");
 	//console.warn(selectedPool);
 	
@@ -5474,7 +5564,10 @@ function executeAction(playerId, action) {
 			
 			//console.log("executeAction: action_sell");
 			
-			const { unitId } = action;
+			const { unitId, poolHex } = action;
+			console.log("poolHex");
+			console.log(poolHex);
+			
 			const unit = gameState.units.find(u => u.id === unitId);
 			if (!unit || unit.ownerId !== playerId) return;
 			
@@ -5484,9 +5577,11 @@ function executeAction(playerId, action) {
 				type: 'sell', 
 				soldUnit: unit, 
 				sellPrice: sellPrice,
+				poolHex: poolHex,
 			};
 			
 			const pools = findEconomyPools(playerId);
+			
 			addCost(pools, sellPrice);
 			
 			// remove unit:
@@ -5503,7 +5598,10 @@ function executeAction(playerId, action) {
 			
 			//console.log("executeAction action_move");
 			
-			const { unitId, toQ, toR } = action;
+			const { unitId, toQ, toR, poolHex } = action;
+			console.log("poolHex");
+			console.log(poolHex);
+			
 			const unit = gameState.units.find(u => u.id === unitId);
 			if (!unit || unit.ownerId !== playerId) return;
 			
@@ -5523,6 +5621,7 @@ function executeAction(playerId, action) {
 					didClaim: oldOwner !== playerId,
 					oldOwner: oldOwner,
 					clearedObject: oldObject,
+					poolHex: poolHex,
 				};
 				
 				if (moveCheck.action === 'attack') {
@@ -5587,8 +5686,6 @@ function executeAction(playerId, action) {
 					}
 					toTile.object = null;
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
-					
-
 				}
 				
 				distributePoolSavings(findEconomyPools(playerId));
@@ -5606,9 +5703,13 @@ function executeAction(playerId, action) {
 		case 'action_build': {
 			// build unit
 			
+			
 			//console.log("executeAction action_build");
 			
-			const { unitType, q, r } = action;
+			const { unitType, q, r, poolHex } = action;
+			console.log("poolHex");
+			console.log(poolHex);
+			
 			const data = SOLDIER_DATA[unitType] || CASTLE_DATA[unitType];
 			if (!data) return;
 			
@@ -5698,6 +5799,7 @@ function executeAction(playerId, action) {
 						didClaim: didClaim, 
 						oldOwner: oldOwner,
 						clearedObject: clearedObject,
+						poolHex: poolHex,
 					};
 					/*
 					actionForUndo = {
@@ -5758,6 +5860,10 @@ function executeAction(playerId, action) {
 			
 			const lastAction = currentTurnActions.pop();
 			if (!lastAction) break;
+			
+			let poolHex = lastAction.poolHex;
+			console.log("poolHex");
+			console.log(poolHex);
 			
 			let unitActionHex = null; // used for sounds coords only.
 			
@@ -5971,8 +6077,13 @@ function findEconomyPools(playerId) {
 			pool.hexes.push({ q, r, tile: currentTile });
 			pool.totalSavings += currentTile.savings;
 			
-			// Add income (if no object on it)
-			if (!currentTile.object) {
+			// Add income if no grass/tree on it, cross (dead) gives income for now.
+			let addIncome = true;
+			if(currentTile.object && currentTile.object !== 'dead'){
+				// if object was set, and it is not dead (so it is tree or grass)
+				addIncome = false;
+			}
+			if (addIncome) {
 				pool.totalIncome += gameRules.tileIncome;
 			}
 			
@@ -6008,22 +6119,33 @@ function findEconomyPools(playerId) {
 function distributePoolSavings(pools) {
 	// Takes a list of pools (from findEconomyPools) and distributes
 	// their savings evenly among their hexes.
-	//let updates = [];
+
+	// Normalize input so we always work with an array:
+	if (!Array.isArray(pools)) {
+		pools = [pools];
+	}
+
 	for (const pool of pools) {
-		if (pool.hexes.length === 0) continue;
+		if (!pool || pool.hexes.length === 0) continue;
+		
+		// calculate total savings from the pool:
+		//let poolTotalSavings = 0;
+		//for (const hex of pool.hexes) {
+		//	poolTotalSavings += hex.tile.savings;
+		//}
 		
 		const savingsPerHex = pool.totalSavings / pool.hexes.length;
+		// distribute the savings evenly per hex:
+		//const savingsPerHex = poolTotalSavings / pool.hexes.length;
 		for (const hex of pool.hexes) {
-			if (hex.tile.savings !== savingsPerHex) {
+			//if (hex.tile.savings !== savingsPerHex) {
 				hex.tile.savings = savingsPerHex;
 				// Don't need to broadcast savings changes,
 				// they are implicit and only matter to the host
 				// and the player (who gets a total).
-			}
+			//}
 		}
 	}
-	// Return updates if we ever need them
-	//return updates;
 }
 
 function deductCost(pools, cost) {
@@ -6535,15 +6657,16 @@ function handleHostData(data) {
 	//console.log("handleHostData: data.type = "+data.type);
 	
 	switch (data.type) {
-		case 'game_start':
+		case 'game_start': {
 			markDirty();
 			gameState = data.state;
 			showPage('game');
 			updateGameUI();
 			centerToFirstUnit();
 			addCurrentTurnChatMessage();
-			break;
-		case 'full_state':
+		}
+		break;
+		case 'full_state': {
 			gameState = data.state;
 			console.warn("handleHostData full_state");
 			
@@ -6558,55 +6681,59 @@ function handleHostData(data) {
 			}
 			showPage('game');
 			updateGameUI();
-			break;
-		case 'lobby_update':
+		}
+		break;
+		case 'lobby_update': {
 			gameState.settings = data.settings;
 			gameState.players = data.players;
 			gameState.map = data.map;
 			lobbyLoadedMapImg.src = data.map.imageData;
 			updateLobbyUI();
-			break;
-		case 'map_update':
+		}
+		break;
+		case 'map_update': {
 			gameState.map = data.map;
 			lobbyLoadedMapImg.src = data.map.imageData;
 			updateLobbyUI();
-			break;
-		case 'chat':
+		}
+		break;
+		case 'chat': {
 			addChatMessage(data.from, data.message, data.isSpectator, lightenHexColor(data.color, 0.3));
-			break;
-		case 'tile_changed': 
-			{
-				const tile = getTileAt(data.q, data.r);
-				if (tile) {
-					if (data.ownerId !== undefined) setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
-					if (data.object !== undefined) tile.object = data.object;
-				}
-				needsUIUpdate = true;
+		}
+		break;
+		case 'tile_changed': {
+			const tile = getTileAt(data.q, data.r);
+			if (tile) {
+				if (data.ownerId !== undefined) setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
+				if (data.object !== undefined) tile.object = data.object;
 			}
-			break;
-		case 'object_changed':
-			{
-				const tile = getTileAt(data.q, data.r);
-				if (tile) {
-					if (data.object !== undefined){
-						tile.object = data.object;
-					}
+			needsUIUpdate = true;
+		}
+		break;
+		case 'object_changed': {
+			const tile = getTileAt(data.q, data.r);
+			if (tile) {
+				if (data.object !== undefined){
+					tile.object = data.object;
 				}
-				needsUIUpdate = true;
 			}
-			break;
-		case 'unit_added':
+			needsUIUpdate = true;
+		}
+		break;
+		case 'unit_added': {
 			console.log("unit_added: gameState.units.push(data.unit);");
 			console.log(data.unit);
 			//gameState.units.push(data.unit);
 			addUnit(data.unit);
 			needsUIUpdate = true;
-			break;
-		case 'unit_removed':
+		}
+		break;
+		case 'unit_removed': {
 			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
 			needsUIUpdate = true;
-			break;
-		case 'unit_moved':
+		}
+		break;
+		case 'unit_moved': {
 			const unit = gameState.units.find(u => u.id === data.unitId);
 			if (unit) {
 				unit.q = data.q;
@@ -6614,102 +6741,115 @@ function handleHostData(data) {
 				unit.hasMoved = data.hasMoved;
 			}
 			needsUIUpdate = true;
-			break;
-		case 'turn_changed':
+		}
+		break;
+		case 'turn_changed': {
 			gameState.turn.currentPlayerIndex = data.currentPlayerIndex;
 			gameState.turn.turnNumber = data.turnNumber;
 
-			selectedUnit = null;
-			selectedHex = null;
+			deselectUnit();
+			//deselectHex();
 			updateHighlights();
 			updateGameUI();
 
 			addCurrentTurnChatMessage();
-			break;
+		}
+		break;
 		case 'sound': {
-				let soundName = data.name;
-				let playerId = data.playerId;
-				playSound(soundName);
-				
-				if(data.action !== 'action_undo'){
-					const { x, y } = axialToPixel(data.q, data.r);
-					let ep = {
-						x: x,
-						y: y,
-						color: "#FFFFFF",
-						shapeMode: 0,
-						fadeMode: "slow",
-						amount: 30,
-						initialSpeed: 5,
-						life: 1.3,
-						decay: {min:0.01, max:0.03},
-						rotationSpeed: {min:-0.2, max:0.2},
-					};
+			let soundName = data.name;
+			let playerId = data.playerId;
+			playSound(soundName);
+			
+			if(data.action !== 'action_undo'){
+				const { x, y } = axialToPixel(data.q, data.r);
+				let ep = {
+					x: x,
+					y: y,
+					color: "#FFFFFF",
+					shapeMode: 0,
+					fadeMode: "slow",
+					amount: 30,
+					initialSpeed: 5,
+					life: 1.3,
+					decay: {min:0.01, max:0.03},
+					rotationSpeed: {min:-0.2, max:0.2},
+				};
 
-					let doExplosion = 0;
-					if(soundName === 'kill'){
-						ep.color = "#FF0000";
-						ep.shapeMode = 1; // circles
-						doExplosion = 1;
-						ep.initialSpeed = 5;
-						ep.amount = 120;
-					}else if(soundName === 'killCastle'){
-						ep.color = "#E3A7B6";
-						ep.shapeMode = 0; // triangles+squares
-						doExplosion = 1;
-						ep.initialSpeed = 5;
-						ep.amount = 90;
-					}else if(soundName === 'claimGrass'){
-						ep.color = "#73923E";
-						ep.shapeMode = 0; // triangles+squares
-						doExplosion = 1;
-						ep.initialSpeed = 2.5;
-						ep.amount = 40;
-					}else if(soundName === 'claimTree'){
-						ep.color = "#65A51D";
-						ep.shapeMode = 0; // triangles+squares
-						doExplosion = 1;
-						ep.initialSpeed = 2.5;
-						ep.amount = 50;
-					}else if(soundName === 'sell'){
-						ep.color = "#FFFF00";
-						ep.shapeMode = 1; // circles
-						doExplosion = 1;
-						ep.initialSpeed = 5;
-						ep.amount = 30;
-					}else if(soundName === 'build'){
-						let player = getPlayer(playerId);
-						ep.color = darkenHexColor(player.color, 0.3);//"#666666";
-						ep.shapeMode = 0; // triangles+squares
-						doExplosion = 1;
-						ep.initialSpeed = 2;
-						ep.amount = 60;
-						ep.life = 2;
-						ep.decay = {min:0.005, max:0.015};
-						ep.fadeMode = "slow";
-						ep.rotationSpeed = {min:0, max:0};
-					}
-					if(doExplosion){
-						createExplosion(x, y, ep);
-					}
+				let doExplosion = 0;
+				if(soundName === 'kill'){
+					ep.color = "#FF0000";
+					ep.shapeMode = 1; // circles
+					doExplosion = 1;
+					ep.initialSpeed = 5;
+					ep.amount = 120;
+				}else if(soundName === 'killCastle'){
+					ep.color = "#E3A7B6";
+					ep.shapeMode = 0; // triangles+squares
+					doExplosion = 1;
+					ep.initialSpeed = 5;
+					ep.amount = 90;
+				}else if(soundName === 'claimGrass'){
+					ep.color = "#73923E";
+					ep.shapeMode = 0; // triangles+squares
+					doExplosion = 1;
+					ep.initialSpeed = 2.5;
+					ep.amount = 40;
+				}else if(soundName === 'claimTree'){
+					ep.color = "#65A51D";
+					ep.shapeMode = 0; // triangles+squares
+					doExplosion = 1;
+					ep.initialSpeed = 2.5;
+					ep.amount = 50;
+				}else if(soundName === 'sell'){
+					ep.color = "#FFFF00";
+					ep.shapeMode = 1; // circles
+					doExplosion = 1;
+					ep.initialSpeed = 5;
+					ep.amount = 30;
+				}else if(soundName === 'build'){
+					let player = getPlayer(playerId);
+					// create darker and grayer hex color from player.color:
+					let newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
+					ep.color = newcolor;
+					ep.shapeMode = 0; // triangles+squares
+					doExplosion = 1;
+					ep.initialSpeed = 2;
+					ep.amount = 60;
+					ep.life = 2;
+					ep.decay = {min:0.005, max:0.015};
+					ep.fadeMode = "slow";
+					ep.rotationSpeed = {min:0, max:0};
+				}
+				if(doExplosion){
+					createExplosion(x, y, ep);
 				}
 			}
-			break;
-		case 'savings_update':
+		}
+		break;
+		case 'savings_update': {
 			// this is kinda useless, since the client should calculate them themselves to get full array of pool hexes for being able to know which pool is clicked.
 			myCurrentSavings = data.total;
 			//playerSavings.textContent = myCurrentSavings;
 			
-			console.log("savings_update:");
-			console.log(data);
-			
+			console.warn("##############################################################################");
+			console.warn("##############################################################################");
+			console.warn("## savings_update:");
+			console.warn("##############################################################################");
+			console.warn("##############################################################################");
+			console.warn(data);
+		
 			// update local player pools for being able to select a pool and display its pool info:
 			localPlayerPools = findEconomyPools(localPlayer.id);
 			selectedPool = findSelectedPool(selectedHex);
+			updateSelectedPoolUi();
+			
 			console.log("localPlayerPools:");
 			console.log(localPlayerPools);
-
-			break;
+			console.log("selectedPool:");
+			console.log(selectedPool);
+			
+		}
+		break;
 	}
 	
 	// non-synced updates executed on every action:
@@ -8812,9 +8952,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 			console.log("action_sell");
 			console.log(selectedUnit);
 			if(selectedUnit){
-				sendToHost({ type: 'action_sell', unitId: selectedUnit.id });
-				selectedUnit = null; // Deselect
-				//selectedHex = null;
+				sendToHost({ 
+					type: 'action_sell', 
+					unitId: selectedUnit.id,
+					poolHex: getSelectedPoolHex(),
+				});
+				deselectUnit(); // Deselect
+				//deselectHex();
 				console.log("Deselected unit");
 			}
 		}
