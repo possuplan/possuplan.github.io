@@ -2186,7 +2186,7 @@ async function loadImages() {
 									let waterAllPath = "images/water-all.bmp";
 									let bmpAll = await load8BitBMP(waterAllPath);
 
-									// 1️⃣ Create shuffled pool of frame indices 0–12, repeated 5 times
+									// Create shuffled pool of frame indices 0–12, repeated 5 times
 									const baseIndices = Array.from({ length: frameCount }, (_, i) => i);
 									const shuffledPool = [];
 									for (let i = 0; i < 5; i++) {
@@ -2198,7 +2198,7 @@ async function loadImages() {
 										shuffledPool.push(...arr);
 									}
 
-									// 2️⃣ Fill initial 8×8 tile map from shuffled pool
+									// Fill initial 8×8 tile map from shuffled pool
 									const tileMap = [];
 									let poolIndex = 0;
 									for (let y = 0; y < gridSize; y++) {
@@ -2214,7 +2214,7 @@ async function loadImages() {
 										tileMap.push(row);
 									}
 
-									// 3️⃣ Build 13 big animation frames (each 256×256)
+									// Build 13 big animation frames (each 256×256)
 									obj.animFrames = [];
 									for (let frameIdx = 0; frameIdx < frameCount; frameIdx++) {
 										const off = new OffscreenCanvas(outputSize, outputSize);
@@ -2232,7 +2232,7 @@ async function loadImages() {
 											}
 										}
 
-										// 4️⃣ Generate mipmaps + patterns for this composite frame
+										// Generate mipmaps + patterns for this composite frame
 										const bitmap = await createImageBitmap(off);
 										const mipmaps = await generateMipmaps(bitmap, 6);
 										const patterns = mipmaps.map(mipmap => {
@@ -2248,7 +2248,7 @@ async function loadImages() {
 										});
 									}
 
-									// 5️⃣ Metadata (same structure as small animated textures)
+									// Metadata (same structure as small animated textures)
 									obj.frameCount = frameCount;
 									obj.frameDuration = 100; // adjust if you want faster/slower
 									obj.currentFrame = 0;
@@ -2626,6 +2626,8 @@ function broadcast(data) {
 	// Host handles its own data
 	handleHostData(data);
 }
+
+
 
 
 let hideTimeout = null;
@@ -3267,6 +3269,7 @@ function drawInfiniteWater(){
 
 let drawnTiles = 0;
 let previous_drawnTiles = 0;
+let drawDebugText = 0;
 
 
 // rendertiles drawtiles rendermaptiles render tiles render map tiles
@@ -3290,6 +3293,9 @@ function drawMapTiles(){
 		}
 		
 		if (tile.type === 'water') {
+			// debug text for water tiles:
+			//ctx.fillStyle = "#FFFFFF";
+			//ctx.fillText("W", x, y+20);
 			if(useInfiniteWater){
 				continue; // skip water tiles.
 			}
@@ -3397,14 +3403,28 @@ function drawMapTiles(){
 					// todo: make own images for each player texture?
 					// Multiply by player color
 					ctx.globalCompositeOperation = "multiply";
-					ctx.fillStyle =  color; // e.g. "#ff0000"
+					ctx.fillStyle = color; // e.g. "#ff0000"
 					ctx.fillRect(dx, dy, dWidth, dHeight);
 					ctx.globalCompositeOperation = "source-over";
+					
+					// draw tile savings debug info:
+					//drawText(x, y, tile.savings);
+					if(drawDebugText){
+						ctx.fillStyle = "#FFFFFF";
+						ctx.fillText(formatNumber(tile.savings, 4), x, y+20);
+					}
+				
 					
 				}else{
 					// draw dirt image:
 					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
 					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+					
+					if(drawDebugText){
+						ctx.fillStyle = "#000000";
+						ctx.fillText(formatNumber(tile.savings, 4), x, y+23);
+					}
+				
 				}
 
 			}
@@ -4196,6 +4216,8 @@ function render() {
 
 	//console.log(tileZoomMipLevel);
   
+
+	
 	// Save the context state
 	ctx.save();
 	drawInfiniteWater();
@@ -4204,6 +4226,11 @@ function render() {
 	ctx.scale(viewport.zoom, viewport.zoom);
 	
 
+  	ctx.textAlign = 'center';
+	ctx.textBaseline = 'middle';
+	ctx.font = `12px sans-serif`;
+	
+	
 	// MAP TILE DRAWING:
 	drawMapTiles();
 
@@ -4689,6 +4716,21 @@ function formatDecimal(num) {
     if (fixed.endsWith("00")) return String(num|0); // integer case
     if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
     return fixed; // both decimals meaningful
+}
+
+function formatNumber(num, decimals = 2) {
+    // clamp decimals to 1–5
+    decimals = Math.min(5, Math.max(1, decimals));
+
+    const fixed = num.toFixed(decimals);
+
+    // strip trailing zeros
+    let stripped = fixed.replace(/0+$/, '');
+
+    // if everything after the decimal was zeros, remove the decimal entirely
+    if (stripped.endsWith('.')) stripped = stripped.slice(0, -1);
+
+    return stripped;
 }
 
 function hidePoolInfo(){
@@ -5769,7 +5811,7 @@ function executeAction(playerId, action) {
 					if (!isCastle(newUnit) && tile.ownerId !== playerId) {
 						//tile.ownerId = playerId;
 						setTileOwner(tile, playerId);
-						toTile.savings = 0; // not sure if this should be done here...
+						tile.savings = 0; // not sure if this should be done here...
 						didClaim = true;
 						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId, savings: 0 });
 						if(!isAiPlayer(playerId)){
@@ -6052,10 +6094,16 @@ function updatePlayerSavings(playerId) {
 	
 	sendToPlayer(playerId, { 
 		type: 'savings_update', 
-		total: Math.floor(newTotalSavings),
+		//total: Math.floor(newTotalSavings),
+		total: newTotalSavings,
 	});
 }
 
+
+function drawText(x, y, text){
+	ctx.fillStyle = "#FFFFFF";
+	ctx.fillText(text, x, y);
+}
 
 
 
@@ -7983,11 +8031,9 @@ function loadParsedMap(parsedMap, compact = false){
 	console.log(parsedMap);
 	
 	// TODO: check if width/height is used properly in the loops! not sure which is which...
-	//for (let q = -Math.floor(width/2), y = 0; q <= Math.floor(width/2); q++, y++) {
 	for (let q = 0, y = 0; q < width; q++, y++) {
 		let roff = 0;
 	
-		//for (let r = -Math.floor(height/2), x = 0; r <= Math.floor(height/2); r++, x++) {
 		for (let r = 0, x = 0; r < height; r++, x++) {
 			if((x % 2) == 1){
 				roff++;
@@ -8005,6 +8051,7 @@ function loadParsedMap(parsedMap, compact = false){
 					info = parsedMap.data[yy][xx];
 				}
 				let object = null;
+				// original code to load trees from map file, too boring and non-random looking.
 				//if(info.object == "tree"){
 				//	tree = "tree";
 				//}
@@ -8111,40 +8158,7 @@ function generateMap(width, height) {
 	
 	//loadParsedMap(loadedmap, true);
 	
-	console.log(`Generating map ${width}x${height}`);
-	/*
-	// "random" map generator:
-	gameState.map.tiles = {};
-	
-	
-	
-	// Create a "rhombus" shape of hexes
-	for (let q = -Math.floor(width/2); q <= Math.floor(width/2); q++) {
-		for (let r = -Math.floor(height/2); r <= Math.floor(height/2); r++) {
-			// This creates a rectangle in axial coords
-			// We can refine this later
-			setTileAt(q, r, { type: 'water', ownerId: null, object: null, savings: 0 });
-		}
-	}
-	
-	// Add 15x15 land square in middle
-	const landSize = 15;
-	const qStart = -Math.floor(landSize/2);
-	const rStart = -Math.floor(landSize/2);
-	
-	for (let q = qStart; q < qStart + landSize; q++) {
-		for (let r = rStart; r < rStart + landSize; r++) {
-			const tile = getTileAt(q, r);
-			if (tile) {
-				tile.type = 'land';
-			}
-			// add random trees:
-			if(Math.random() < 0.1){
-				tile.object = 'tree';
-			}
-		}
-	}
-	*/
+	console.log("generating map outlines");
 	
 
 	// generate outlines for all land pieces in the map:
@@ -8180,11 +8194,11 @@ function generateMap(width, height) {
 
 
 function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1)); // random index from 0 to i
-    [array[i], array[j]] = [array[j], array[i]];   // swap elements
-  }
-  return array;
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1)); // random index from 0 to i
+		[array[i], array[j]] = [array[j], array[i]];   // swap elements
+	}
+	return array;
 }
 
 
@@ -8255,7 +8269,6 @@ function spawnPlayers(){
 	for (let q = 0, y = 0; q < width; q++, y++) {
 		let roff = 0;
 	
-		//for (let r = -Math.floor(height/2), x = 0; r <= Math.floor(height/2); r++, x++) {
 		for (let r = 0, x = 0; r < height; r++, x++) {
 			if((x % 2) == 1){
 				roff++;
@@ -8763,6 +8776,39 @@ function closeBuildPopup(){
 }
 
 
+const LOOKUP = { gameState };
+
+
+function parseOutCommand(cmd) {
+	// Expect format: "/out someName"
+	const parts = cmd.trim().split(/\s+/);
+
+	if (parts.length !== 2 || parts[0] !== "/out") {
+		return null;
+	}
+
+	const varName = parts[1];
+
+	// Look up global variable
+	const value = LOOKUP[varName];//window[varName];
+
+	if (value === undefined) {
+		console.error("varName '"+varName+"' not found");
+		return null;
+	}else{
+		console.warn("parseOutCommand: ");
+		console.warn(value);
+		console.log(window);
+	}
+	
+	
+	return JSON.stringify(LOOKUP[varName]);
+
+	//return JSON.stringify(value);
+}
+
+
+
 // =================================================================
 // --- EVENT LISTENERS
 // =================================================================
@@ -8940,15 +8986,28 @@ window.addEventListener('DOMContentLoaded', async () => {
 		// enter key "enter"
 		if (e.key === 'Enter') {
 			toggleUiTopLeft(false);
-			chatInput.value = chatInput.value.trim(); // avoid leaving empty message if pressed space in accident.
+			let message = chatInput.value.trim();
+			chatInput.value = message; // avoid leaving empty message if pressed space in accident.
 			if(chatInput.value !== ''){
 				// send only the needed info, host handles adding colors etc.
 				sendToHost({ 
 					type: 'chat', 
-					message: chatInput.value.trim(),
+					message: message,
 				});
 				chatInput.value = '';
+				
+				// process local commands:
+				if(message === "/debug"){
+					drawDebugText = !drawDebugText;
+					drawRanges = !drawRanges;
+				}
+				// process "/out gameState" command:
+				let output = parseOutCommand(message);
+				if(output){
+					addSystemChatMessage(output, '#FFF');
+				}
 			}
+			
 		}
 	};
 	
