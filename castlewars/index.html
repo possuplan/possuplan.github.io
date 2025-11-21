@@ -2785,7 +2785,8 @@ function getPlayer(playerId) {
 }
 
 function getPlayerByIndex(playerIndex) {
-	if(gameState.players[playerIndex]){
+	// -1 is no-owner.
+	if(playerIndex !== -1 && gameState.players[playerIndex]){
 		return gameState.players[playerIndex];
 	}else{
 		return null;
@@ -2793,6 +2794,7 @@ function getPlayerByIndex(playerIndex) {
 }
 
 function getPlayerIndex(playerId) {
+	// will return -1 if not found any.
 	return gameState.players.findIndex(p => p.id === playerId);
 }
 
@@ -4509,10 +4511,19 @@ function setTileOwner(tile, ownerId){
 	tile.ownerId = ownerId;
 	if(ownerId){
 		tile.ownerIndex = getPlayerIndex(ownerId);
+		if(tile.ownerIndex === -1){
+			tile.ownerId = null; // make sure to set ownerId null if playerIndex was -1 (not found).
+		}
 	}else{
-		tile.ownerIndex = null;
+		tile.ownerIndex = -1; // no owner, ownerId is null.
 	}
 }
+
+function claimTile(tile, ownerId){
+	setTileOwner(tile, ownerId);
+	tile.savings = 0; // clear savings.
+}
+
 
 
 // will set water outline to the tile, or if doesnt exist yet, adds new tile with that info.
@@ -5613,12 +5624,15 @@ function executeAction(playerId, action) {
 				const oldOwner = toTile.ownerId;
 				const oldObject = toTile.object;
 				
+				const oldSavings = toTile.savings;
+				
 				actionForUndo = {
 					type: 'move',
 					unitId: unit.id,
 					fromQ, fromR,
 					toQ, toR,
 					didClaim: oldOwner !== playerId,
+					oldSavings: oldSavings,
 					oldOwner: oldOwner,
 					clearedObject: oldObject,
 					poolHex: poolHex,
@@ -5652,8 +5666,9 @@ function executeAction(playerId, action) {
 				// Claim hex
 				if (toTile.ownerId !== playerId) {
 					setTileOwner(toTile, playerId);
+					toTile.savings = 0; // not sure if this should be done here...
 					//toTile.ownerId = playerId;
-					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
+					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId, savings: 0 });
 					if(!isAiPlayer(playerId)){
 						if (!toTile.object) {
 							if(!actionForUndo.killedUnit){
@@ -5743,6 +5758,7 @@ function executeAction(playerId, action) {
 					
 					const tile = getTileAt(q, r);
 					const oldOwner = tile.ownerId;
+					const oldSavings = tile.savings;
 					
 					let playMoveUnit = false;
 					let moveUnitType = 0; // 0 = move, 1 = build
@@ -5753,8 +5769,9 @@ function executeAction(playerId, action) {
 					if (!isCastle(newUnit) && tile.ownerId !== playerId) {
 						//tile.ownerId = playerId;
 						setTileOwner(tile, playerId);
+						toTile.savings = 0; // not sure if this should be done here...
 						didClaim = true;
-						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
+						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId, savings: 0 });
 						if(!isAiPlayer(playerId)){
 							if (!tile.object) {
 								playMoveUnit = true;
@@ -5797,6 +5814,7 @@ function executeAction(playerId, action) {
 						unit: newUnit, 
 						cost: data.cost, 
 						didClaim: didClaim, 
+						oldSavings: oldSavings,
 						oldOwner: oldOwner,
 						clearedObject: clearedObject,
 						poolHex: poolHex,
@@ -5882,7 +5900,7 @@ function executeAction(playerId, action) {
 					if (tile) {
 						//tile.ownerId = lastAction.oldOwner;
 						setTileOwner(tile, lastAction.oldOwner);
-						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
+						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId, savings: lastAction.oldSavings });
 					}
 				}
 				if (lastAction.clearedObject) {
@@ -5919,7 +5937,7 @@ function executeAction(playerId, action) {
 					if (tile) {
 						//tile.ownerId = null;
 						setTileOwner(tile, lastAction.oldOwner);
-						updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId });
+						updates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId, savings: lastAction.oldSavings});
 					}
 				}
 				if (lastAction.killedUnit) {
@@ -6704,8 +6722,16 @@ function handleHostData(data) {
 		case 'tile_changed': {
 			const tile = getTileAt(data.q, data.r);
 			if (tile) {
-				if (data.ownerId !== undefined) setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
-				if (data.object !== undefined) tile.object = data.object;
+				if (data.ownerId !== undefined){
+					setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
+				}
+				// if savings were changed due to claiming tile; claimed tile will reset savings to zero.
+				if (data.savings !== undefined){
+					tile.savings = data.savings;
+				}
+				if (data.object !== undefined){
+					tile.object = data.object;
+				}
 			}
 			needsUIUpdate = true;
 		}
