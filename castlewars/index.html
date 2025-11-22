@@ -1754,6 +1754,8 @@ function getNextFreeColor(player = null){
 	return randomColor();
 }
 
+/////////////////////////////
+// GLOBALS:
 
 const SPECTATOR_COLOR = '#FFFFFF';
 const UNCLAIMED_COLOR = '#555555';
@@ -1762,6 +1764,8 @@ const LAND_COLOR = '#224422'; // Unclaimed land
 const HEX_SIZE = 40; // Radius of hexagon
 const SQRT3 = Math.sqrt(3);
 
+let HEX_LINE_MULTI = 0.958; // used to draw inside hex so the thick line wont get outside of hex.
+let PULSE_SPEED = 0.005; // used for pulsating effects.
 
 // soldiers soldier_units
 const SOLDIER_DATA = {
@@ -1995,6 +1999,7 @@ if(use_orig){
 		'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
 		'land':     {path:'images/land2.jpg', scale:1, offsetX: 0}, 
 		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
+		//'dirt2':     {path:'images-unused/test3.png', scale:1, offsetX: 0, isPattern: true},
 		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
 		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
 		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: 3, offsetY: 5},
@@ -3047,6 +3052,11 @@ function drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, miplevel = -1)
 	ctx.drawImage(mip, dx, dy, dWidth, dHeight);
 }
 
+
+
+
+
+
 function drawImageMippedCropped(ctx, imageName, dx, dy, dWidth, dHeight, miplevel = -1, cropBottomPercent = 0){
 	const imgObj = imageAssets[imageName];
 	if(miplevel == -1) miplevel = zoomMipLevel;
@@ -3276,17 +3286,94 @@ function drawInfiniteWater(){
 
 
 
+// * Returns a new CanvasPattern with a color multiplied on top of the original pattern.
+// * @param {CanvasRenderingContext2D} ctx - The target context to create the pattern for.
+// * @param {CanvasPattern} pattern - The cached pattern to colorize.
+// * @param {string} color - The color to multiply with, e.g., "#ff0000".
+// * @param {number} width - Width of the pattern tile.
+// * @param {number} height - Height of the pattern tile.
+// * @returns {CanvasPattern} - A new CanvasPattern with the color applied.
+function createColoredPattern(ctx, pattern, color, width, height) {
+    // Offscreen canvas to render the colored pattern
+    const off = document.createElement("canvas");
+    off.width = width;
+    off.height = height;
+    const offCtx = off.getContext("2d");
+
+    // Draw the original pattern onto the offscreen canvas
+    offCtx.fillStyle = pattern;
+    offCtx.fillRect(0, 0, width, height);
+
+    // Apply the color using multiply
+    offCtx.globalCompositeOperation = "multiply";
+    offCtx.fillStyle = color;
+    offCtx.fillRect(0, 0, width, height);
+
+    // Reset composite operation
+    offCtx.globalCompositeOperation = "source-over";
+
+    // Create a new pattern from the offscreen canvas
+    return ctx.createPattern(off, "repeat");
+}
+
+
+
+
 
 
 let drawnTiles = 0;
 let previous_drawnTiles = 0;
 let drawDebugText = 0;
 
+let scaleMatrix = null;
+
+function getTexMipLevel(){
+	let miplevel = zoomMipLevel;
+	if(miplevel == -1) miplevel = zoomMipLevel;
+	return miplevel;
+}
+
+function getTexMipScale(){
+	return Math.pow(0.5, getTexMipLevel());
+}
+
+function transformPattern(imageName){
+	//let miplevel = getTexMipLevel();
+	//const patternObj = imageAssets[imageName];
+	//const pattern = imageAssets[imageName].patterns[miplevel];
+
+	//const mipScale = Math.pow(0.5, miplevel);
+	//const scaleMatrix = new DOMMatrix().scaleSelf(1/getTexMipScale());
+	//pattern.setTransform(scaleMatrix); // scaleMatrix set in render() each frame.
+	imageAssets[imageName].patterns[getTexMipLevel()].setTransform(scaleMatrix); // scaleMatrix set in render() each frame.
+
+}
+
+function fillPattern(ctx, imageName){
+	//let miplevel = getTexMipLevel();
+	//const patternObj = imageAssets[imageName];
+	//const pattern = patternObj.patterns[miplevel];
+	//pattern.setTransform(scaleMatrix); // scaleMatrix set in render() each frame.
+	//transformPattern(imageName);
+    ctx.fillStyle = imageAssets[imageName].patterns[getTexMipLevel()];
+    ctx.fill();
+}
+
+
+let use_fill = 0;
+
 
 // rendertiles drawtiles rendermaptiles render tiles render map tiles
 function drawMapTiles(){
 
 	let tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
+	
+	// calculate scale matrix for tile textures:
+
+	if(use_fill){
+		scaleMatrix = new DOMMatrix().scaleSelf(1/getTexMipScale());
+		transformPattern('dirt2');
+	}
 	
 	
 	// --- DRAW TILES ---
@@ -3369,16 +3456,16 @@ function drawMapTiles(){
 			let img = null;
 			let imageName = "";
 			if(tile.ownerId){
-				imageName = tile.type;
-				img = getImage(tile.type);
+				imageName = 'land'; // tile.type
+				img = getImage(imageName);
 			}else{
 				// no owner, use dirt image:
 				if(tile.type === 'water') {
-					imageName = "water";
-					img = getImage("water");
+					imageName = 'water';
+					img = getImage(imageName);
 				}else{
-					imageName = "dirt";
-					img = getImage("dirt");
+					imageName = 'dirt';
+					img = getImage(imageName);
 				}
 			}
 
@@ -3403,7 +3490,6 @@ function drawMapTiles(){
 					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 	
-					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
 					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
 					let color = player.color;
@@ -3428,8 +3514,15 @@ function drawMapTiles(){
 					
 				}else{
 					// draw dirt image:
-					//ctx.drawImage(img, dx, dy, dWidth, dHeight);
-					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+					
+					if(use_fill){
+						// slower... todo: think how to speed up.
+						fillPattern(ctx, imageName);
+					}else{
+						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+					}
+
+					
 					
 					if(drawDebugText){
 						ctx.fillStyle = "#000000";
@@ -3524,9 +3617,8 @@ function drawHighlights(){
 					// set line radius multiplier:
 					// - draws selected pools lines inside the hex, so the lines wont overlap which makes it hard to see colors.
 					// - fixed to HEX_SIZE and the line width. if any of them changed, this multiplier needs to be changed.
-					let LM = 0.958; 
 
-					drawHexagonPathLines(x, y, highlightedLines, LM);
+					drawHexagonPathLines(x, y, highlightedLines, HEX_LINE_MULTI);
 					//drawHexagonPathLines(x, y, [0,1,2,3,4,5]);
 					
 					let player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
@@ -3631,11 +3723,15 @@ function drawHighlights(){
 
 
 
-
+let draw_objects = 1;
 
 // renderobjects
 function drawObjects(){
 
+	if(!draw_objects){
+		return;
+	}
+	
 	// Draw objects (trees etc) on top of pool edges:
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
@@ -3649,7 +3745,7 @@ function drawObjects(){
 			continue;
 		}
 		
-		if (tile.type === 'land' && tile.object) {
+		if (tile.object) {
 			drawObject(ctx, x, y, tile.object);
 		}
 	}
@@ -3787,35 +3883,43 @@ function drawUnits(){
 	drawUnitsByType("castle");
 	drawUnitsByType("soldier");
 	
-	let pulseOffsetX = 10+(-8*pulseScale(0,2, 0.005));
+	let pulseOffsetX = 10+(-8*pulseScale(0,2, PULSE_SPEED));
 	
 	let currentTurnPlayer = getCurrentTurnPlayer();
-
-	// drawarrows draw arrows renderarrows render arrows drawing
+	
+	
 	// draw arrow signs (yellow triangles):
-	for (const unit of gameState.units) {
-		let { x, y } = axialToPixel(unit.q, unit.r);
+	// drawarrows draw arrows renderarrows render arrows drawing draw triangles drawtriangles
+	if(isMyTurn()){
+		for (const unit of gameState.units) {
+			let { x, y } = axialToPixel(unit.q, unit.r);
 
-		// --- Culling Check ---
-		if(checkCulling(x, y)){
-			continue;
-		}
-		
-		// no idea why this is here... probably loaded game missing players fix?
-		const owner = getPlayerByIndex(unit.ownerIndex);
-		if (!owner) continue;
+			// --- Culling Check ---
+			if(checkCulling(x, y)){
+				continue;
+			}
+			
+			// dont draw arrow for selected unit
+			if(selectedUnit){
+				if(selectedUnit.q === unit.q && selectedUnit.r === unit.r){
+					continue;
+				}
+			}
+			// no idea why this is here... probably loaded game missing players fix?
+			//const owner = getPlayerByIndex(unit.ownerIndex);
+			//if (!owner) continue;
 
-		const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
-		
-		if(data.type == 'soldier'){
-			if(currentTurnPlayer.id === unit.ownerId && isMyTurn()){
-				// draw yellow arrow sign:
-				if (!unit.hasMoved) {
-					drawTriangle(ctx, x+pulseOffsetX, y);
+			//const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
+			
+			if(unit.internalType == 'soldier'){
+				if(currentTurnPlayer.id === unit.ownerId){
+					// draw yellow arrow sign:
+					if (!unit.hasMoved) {
+						drawTriangle(ctx, x+pulseOffsetX, y);
+					}
 				}
 			}
 		}
-		
 	}
 	
 	//console.log("unitsDrawn = "+unitsDrawn);
@@ -3899,18 +4003,20 @@ function pulseScale(min, max, speed = 0.003) {
 	return min + (max - min) * n;
 }
 
+
+
 function drawUnitSelection(){
 	if(selectedUnit){
 		const { x, y } = axialToPixel(selectedUnit.q, selectedUnit.r);
 
-		let scale = pulseScale(0.6, 1.0);
+		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
 		drawHexagonPathLines(x, y, null, scale);
 		
 
 		// your pool highlight
 		ctx.setLineDash([12.5*scale, 15*scale]);
 		ctx.strokeStyle = 'rgba(255,255,255, 1)';
-		ctx.lineWidth = 4;
+		ctx.lineWidth = 4*scale;
 		ctx.lineCap = 'round';
 		ctx.stroke();
 		ctx.lineCap = 'butt'; // reset to default
@@ -4247,10 +4353,13 @@ function insideRect(rect, x, y){
 	return true;
 }
 
+
+
+
 // draw circles pointers suuntimat drawoverlay
 function drawMoveDirectionsOverlay() {
 	
-	let pulse = pulseScale(1, 1.5, 0.005);
+	let pulse = 0.8*pulseScale(1, 1.5, PULSE_SPEED);
 	
 	let canvasRect = {
 		x1: 0,
@@ -8226,7 +8335,7 @@ function loadParsedMap(parsedMap, compact = false){
 				//	tree = "tree";
 				//}
 				// add random trees 20% chance:
-				if(!info.owner && Math.random() < 0.2){
+				if(!info.owner && info.type !== 'water' && Math.random() < 0.2){
 					object = "tree";
 				}
 				setTileAt(qq, rr, { type: info.type, ownerId: null, object: object, savings: 0 });
