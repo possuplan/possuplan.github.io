@@ -3787,9 +3787,11 @@ function drawUnits(){
 	drawUnitsByType("castle");
 	drawUnitsByType("soldier");
 	
+	let pulseOffsetX = 10+(-8*pulseScale(0,2, 0.005));
 	
 	let currentTurnPlayer = getCurrentTurnPlayer();
 
+	// drawarrows draw arrows renderarrows render arrows drawing
 	// draw arrow signs (yellow triangles):
 	for (const unit of gameState.units) {
 		let { x, y } = axialToPixel(unit.q, unit.r);
@@ -3809,7 +3811,7 @@ function drawUnits(){
 			if(currentTurnPlayer.id === unit.ownerId && isMyTurn()){
 				// draw yellow arrow sign:
 				if (!unit.hasMoved) {
-					drawTriangle(ctx, x, y);
+					drawTriangle(ctx, x+pulseOffsetX, y);
 				}
 			}
 		}
@@ -4248,7 +4250,7 @@ function insideRect(rect, x, y){
 // draw circles pointers suuntimat drawoverlay
 function drawMoveDirectionsOverlay() {
 	
-	let pulse = pulseScale(1, 1.5);
+	let pulse = pulseScale(1, 1.5, 0.005);
 	
 	let canvasRect = {
 		x1: 0,
@@ -4267,9 +4269,10 @@ function drawMoveDirectionsOverlay() {
 			continue;
 		}
 		
-		// get canvas coordinates:
+		// get unit world coordinates:
 		let worldPos = axialToPixel(unit.q, unit.r);
 		
+		// get screen coordinates for unit:
 		let x = worldPos.x*viewport.zoom + viewport.x;
 		let y = worldPos.y*viewport.zoom + viewport.y;
 
