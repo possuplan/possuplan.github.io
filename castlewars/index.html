@@ -840,12 +840,18 @@ input.disabled {
 #build-soldier-btn.disabled {
 	filter: brightness(0.5);
 }
+#build-soldier-btn[disabled] {
+	filter: brightness(0.5);
+}
 
 
 #build-castle-btn {
 	background-image: url('images/orig-scaled/128x128/castle1.png');
 }
 #build-castle-btn.disabled {
+	filter: brightness(0.5);
+}
+#build-castle-btn[disabled] {
 	filter: brightness(0.5);
 }
 
@@ -855,6 +861,7 @@ input.disabled {
 }
 #undo-btn[disabled] {
 	background-color:var(--btn-bg);
+	filter: brightness(0.5);
 }
 
 
@@ -869,6 +876,9 @@ input.disabled {
 #sell-unit-btn.disabled {
 	filter: brightness(0.5);
 }
+#sell-unit-btn[disabled] {
+	filter: brightness(0.5);
+}
 
 
 #end-turn-btn {
@@ -876,6 +886,7 @@ input.disabled {
 }
 #end-turn-btn[disabled] {
 	background-color:var(--btn-bg);
+	filter: brightness(0.5);
 }
 
 </style>
@@ -3864,7 +3875,7 @@ function drawPlacementHighlight(){
 		if(prev_highlight !== cur_highlight){
 			//console.warn("prev_drawPlacementHighlight !== curstr");
 			
-			const buildCheck = isPlacementValid(placingUnit.type, mouseHex, getMyPlayer());
+			const buildCheck = isPlacementValid(placingUnit.type, mouseHex, getMyPlayer(), getSelectedPoolHex());
 			cur_buildCheck = buildCheck;
 			prev_highlight = cur_highlight;
 		}
@@ -3880,15 +3891,22 @@ function drawPlacementHighlight(){
 	}
 }
 
-
+function pulseScale(min, max, speed = 0.003) {
+	const t = performance.now() * speed;
+	const n = (Math.sin(t) + 1) / 2; // 0 → 1
+	return min + (max - min) * n;
+}
 
 function drawUnitSelection(){
 	if(selectedUnit){
 		const { x, y } = axialToPixel(selectedUnit.q, selectedUnit.r);
-		drawHexagonPathLines(x, y);
+
+		let scale = pulseScale(0.6, 1.0);
+		drawHexagonPathLines(x, y, null, scale);
+		
 
 		// your pool highlight
-		ctx.setLineDash([12.5, 15]);
+		ctx.setLineDash([12.5*scale, 15*scale]);
 		ctx.strokeStyle = 'rgba(255,255,255, 1)';
 		ctx.lineWidth = 4;
 		ctx.lineCap = 'round';
@@ -4203,6 +4221,97 @@ function drawProtectMessages(){
 }
 
 
+
+
+// Draw a 2px-thick circle in the center; the canvas background remains transparent
+function drawCircle(cx, cy, radius, lineWidth = 10, strokeStyle = '#ff0000') {
+	ctx.beginPath();
+	
+	ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+	ctx.lineWidth = lineWidth;
+	ctx.strokeStyle = strokeStyle;
+	
+	ctx.stroke();
+}
+
+
+
+
+function insideRect(rect, x, y){
+	if(x < rect.x1) return false;
+	if(x > rect.x2) return false;
+	if(y < rect.y1) return false;
+	if(y > rect.y2) return false;
+	return true;
+}
+
+// draw circles pointers suuntimat drawoverlay
+function drawMoveDirectionsOverlay() {
+	
+	let pulse = pulseScale(1, 1.5);
+	
+	let canvasRect = {
+		x1: 0,
+		y1: 0,
+		x2: canvas.width,
+		y2: canvas.height
+	};
+
+	ctx.save();
+
+	for (const unit of gameState.units) {
+		// only show my player soldiers that havent moved yet:
+		if(unit.internalType !== 'soldier' ||
+			unit.ownerId !== localPlayer.id ||
+			unit.hasMoved){
+			continue;
+		}
+		
+		// get canvas coordinates:
+		let worldPos = axialToPixel(unit.q, unit.r);
+		
+		let x = worldPos.x*viewport.zoom + viewport.x;
+		let y = worldPos.y*viewport.zoom + viewport.y;
+
+		if(insideRect(canvasRect, x, y)){
+			continue; // it's visible, no need to draw edge indicator
+		}
+
+		// Find intersection point on canvas edge
+		let edgeX = x;
+		let edgeY = y;
+
+		// Clamp to screen bounds
+		if (x < 0) edgeX = 0;
+		if (x > canvas.width) edgeX = canvas.width;
+		if (y < 0) edgeY = 0;
+		if (y > canvas.height) edgeY = canvas.height;
+
+
+		let opacity = 1;
+		
+		// black edges for visibility:
+		ctx.beginPath();
+		ctx.arc(edgeX, edgeY, 25*pulse, 0, Math.PI * 2);
+		ctx.fillStyle = `rgba(0,0,0, ${opacity})`;
+		ctx.fill();
+		
+		drawCircle(edgeX, edgeY, 20*pulse, 3, `rgba(255,255,255, ${opacity})`);
+		
+		// draw with player color:
+		ctx.beginPath();
+		ctx.arc(edgeX, edgeY, 17*pulse, 0, Math.PI * 2);
+		ctx.fillStyle = hexToRgba("#FFFF00", opacity);
+		ctx.fill();
+	}
+	
+	ctx.restore();
+}
+
+
+
+
+
 let drawRanges = 0;
 
 
@@ -4259,11 +4368,15 @@ function render() {
 	drawUnits();
 	
 
-	
 	// draw "stop!" messages on protecting units
 	drawProtectMessages();
 	
+	
 	ctx.restore();
+	
+	
+	// draw dots for unmoved units outside of screen:
+	drawMoveDirectionsOverlay();
 	
 	
 	requestAnimationFrame(render);
@@ -4374,6 +4487,7 @@ function handleTouchStart(e) {
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
 
 	if(!placingUnit){
+		// close build popup if clicked outside while not building an unit:
 		const touchedOutside =
 			!buildPopup.contains(target) &&
 			!buildSoldierBtn.contains(target) &&
@@ -4612,6 +4726,7 @@ function updateGameUI() {
 	const canPlay = isMyTurn() && !myPlayer.isSpectator;
 	buildSoldierBtn.disabled = !canPlay;
 	buildCastleBtn.disabled = !canPlay;
+	sellUnitBtn.disabled = true;
 	endTurnBtn.disabled = !canPlay;
 	
 	
@@ -4658,7 +4773,13 @@ function getMyTotalSavings() {
 	// This is now just a client-side getter
 	return myCurrentSavings;
 }
-
+function getSelectedPoolSavings() {
+	// This is now just a client-side getter
+	if(selectedPool){
+		return selectedPool.totalSavings;
+	}
+	return 0;
+}
 
 
 
@@ -4768,13 +4889,13 @@ function updateSelectedPoolUi(){
 	}
 }
 
-function updateSelectedPoolInfo(selectedHex){
+function updateSelectedPoolInfo(hex){
 	// localPlayerPools
 	console.warn("updateSelectedPoolInfo");
-	console.warn(selectedHex);
+	console.warn(hex);
 	console.warn(localPlayerPools);
 	
-	selectedPool = findSelectedPool(selectedHex);
+	selectedPool = findSelectedPool(hex);
 	updateSelectedPoolUi();
 	console.log("updateSelectedPoolInfo: selectedPool");
 	console.log(selectedPool);
@@ -4793,6 +4914,8 @@ function getSelectedPoolHex(){
 
 function handleHexClick(hex) {
 	shieldingUnits = null;
+	
+	sellUnitBtn.disabled = true;
 
 	// dont allow selecting while moving on the map.
 	if(isDragging){
@@ -4802,7 +4925,7 @@ function handleHexClick(hex) {
 	
 	let clickedHexTile = getTileAt(hex.q, hex.r);
 	let isLandTile = !isTileWater(clickedHexTile);
-	
+	let poolHex = getSelectedPoolHex();
 	
 	//let updatePools = false;
 	let updatePools = true; // currently always updates info, so it will set selectedPool to null if not player own pool.
@@ -4826,6 +4949,7 @@ function handleHexClick(hex) {
 			// update here before return or it wont be updated.
 			if(updatePools){
 				updateSelectedPoolInfo(hex);
+				updatePools = false;
 			}
 		}else{
 			deselectUnit(); // Deselect
@@ -4839,19 +4963,20 @@ function handleHexClick(hex) {
 
 	// --- PLACING A UNIT ---
 	if (placingUnit) {
-		const buildCheck = isPlacementValid(placingUnit.type, hex, myPlayer);
+		const buildCheck = isPlacementValid(placingUnit.type, hex, myPlayer, poolHex);
 		if (buildCheck.valid) {
 			sendToHost({
 				type: 'action_build',
 				unitType: placingUnit.type,
 				q: hex.q,
 				r: hex.r,
-				poolHex: getSelectedPoolHex(), // remember first hex from selected pool.
+				poolHex: poolHex, // remember first hex from selected pool.
 			});
 			
 			// update here before return or it wont be updated.
 			if(updatePools){
 				updateSelectedPoolInfo(hex);
+				updatePools = false;
 			}
 		} else {
 			if(buildCheck.reason && buildCheck.reason === "low_level"){
@@ -4881,6 +5006,7 @@ function handleHexClick(hex) {
 		if(!deselected){
 			// Check if clicking a valid move hex
 			// validMoveHexes = highlighted move area.
+			// poolHex guaranteed to be in validMoveHexes.
 			const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
 			
 			//console.log("isValidMove: "+isValidMove);
@@ -4891,7 +5017,7 @@ function handleHexClick(hex) {
 					unitId: selectedUnit.id,
 					toQ: hex.q,
 					toR: hex.r,
-					poolHex: getSelectedPoolHex(),
+					poolHex: poolHex,
 				});
 				// Deselect
 				deselectUnit();
@@ -4903,7 +5029,14 @@ function handleHexClick(hex) {
 					if(isInvalidMove){
 						shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, selectedUnit.level);
 						shieldingStartTime = performance.now();
-					
+						sellUnitBtn.disabled = false;
+						console.log("clicked hex:");
+						console.log(hex);
+						console.log("selected unit hex:");
+						console.log({q:selectedUnit.q, r:selectedUnit.r});
+						updateSelectedPoolInfo({q:selectedUnit.q, r:selectedUnit.r});
+						updatePools = false; // ensure it wont update pools with the hex we try to move onto.
+						
 						playSound('protect');
 					}
 					
@@ -4912,6 +5045,7 @@ function handleHexClick(hex) {
 						if (unitOnHex.ownerId === localPlayer.id) {
 							if(unitOnHex.internalType === 'soldier' && !unitOnHex.hasMoved){
 								selectedUnit = unitOnHex; // Select new unit
+								sellUnitBtn.disabled = false;
 								selectedHex = hex;
 								playSound('startmove');
 							}
@@ -4949,6 +5083,7 @@ function handleHexClick(hex) {
 					if(!unitOnHex.hasMoved){
 						//console.log("selected new unit");
 						selectedUnit = unitOnHex;
+						sellUnitBtn.disabled = false;
 						selectedHex = hex;
 						if(!selectedUnit.hasMoved){
 							playSound('startmove');
@@ -5207,7 +5342,8 @@ function openBuildPopup(type) {
 	//deselectHex();
 	
 	const data = (type === 'soldier') ? SOLDIER_DATA : CASTLE_DATA;
-	const mySavings = getMyTotalSavings();
+	const poolSavings = getSelectedPoolSavings();
+	
 	
 	let buildprefix = "Buy";
 	let buildsuffix = type;
@@ -5223,7 +5359,7 @@ function openBuildPopup(type) {
 	
 	for (const key in data) {
 		const item = data[key];
-		const canAfford = mySavings >= item.cost;
+		const canAfford = poolSavings >= item.cost;
 		const itemEl = document.createElement('div');
 		itemEl.className = 'build-item';
 		if (!canAfford) itemEl.classList.add('disabled');
@@ -5239,6 +5375,7 @@ function openBuildPopup(type) {
 				placingUnit = {
 					type: item.name, // "soldier" etc.
 					cost: item.cost,
+					poolHex: getSelectedPoolHex(), // not needed here? called in handleHexClick() also.
 				};
 				buildPopup.style.display = 'none';
 			};
@@ -5248,7 +5385,12 @@ function openBuildPopup(type) {
 	buildPopup.style.display = 'block';
 }
 
-
+function unitExists(unitType){
+	if(SOLDIER_DATA[unitType] || CASTLE_DATA[unitType]){
+		return true;
+	}
+	return false;
+}
 
 function getUnitLevel(unitType){
 	if(SOLDIER_DATA[unitType]){
@@ -5260,14 +5402,31 @@ function getUnitLevel(unitType){
 	return 0; // fallback.
 }
 
+function getUnitCost(unitType){
+	if(SOLDIER_DATA[unitType]){
+		return SOLDIER_DATA[unitType].cost;
+	}
+	if(CASTLE_DATA[unitType]){
+		return CASTLE_DATA[unitType].cost;
+	}
+	return 0; // fallback.
+}
+
+
 
 // iscastle is_castle
 function isTypeCastle(unitType){
 	return !!CASTLE_DATA[unitType];
 }
+function isTypeSoldier(unitType){
+	return !!SOLDIER_DATA[unitType];
+}
 
 function isCastle(unit){
 	return unit && unit.internalType === 'castle';
+}
+function isSoldier(unit){
+	return unit && unit.internalType === 'soldier';
 }
 
 
@@ -5442,7 +5601,7 @@ let prevhex = "";
 let placementframe = 0;
 
 // isvalidplacement
-function isPlacementValid(unitType, hex, player) {
+function isPlacementValid(unitType, hex, player, poolHex) {
 	//placementframe++;
 	//console.log("placementframe: "+placementframe);
 
@@ -5451,7 +5610,15 @@ function isPlacementValid(unitType, hex, player) {
 	//console.warn("isPlacementValid: selectedPool");
 	//console.warn(selectedPool);
 	
+	if(!unitExists(unitType)){
+		return badMove("unit_not_exist"); // unit type doesnt exist!
+	}
+	
 	let unitLevel = getUnitLevel(unitType);
+	let unitCost = getUnitCost(unitType);
+	// todo: add check if selected pool can afford the unit.
+	//       problem is that selectedpool is not tracked for AI's...
+
 	
 	let logallowed = prevhex !== (hex.q+","+hex.r);
 	if(logallowed){
@@ -5770,7 +5937,7 @@ function executeAction(playerId, action) {
 			const data = SOLDIER_DATA[unitType] || CASTLE_DATA[unitType];
 			if (!data) return;
 			
-			const buildCheck = isPlacementValid(unitType, {q, r}, player);
+			const buildCheck = isPlacementValid(unitType, {q, r}, player, poolHex);
 			if (buildCheck.valid) {
 				const pools = findEconomyPools(playerId);
 				let totalSavings = 0;
@@ -5808,7 +5975,7 @@ function executeAction(playerId, action) {
 						moveUnitType = 1;
 					}
 					
-					if (!isCastle(newUnit) && tile.ownerId !== playerId) {
+					if (isSoldier(newUnit) && tile.ownerId !== playerId) {
 						//tile.ownerId = playerId;
 						setTileOwner(tile, playerId);
 						tile.savings = 0; // not sure if this should be done here...
@@ -6155,7 +6322,7 @@ function findEconomyPools(playerId) {
 			
 			// Check for soldier
 			const unit = getUnitAt(q, r);
-			if (unit && !isCastle(unit) && SOLDIER_DATA[unit.type]) {
+			if (unit && isSoldier(unit) && SOLDIER_DATA[unit.type]) {
 				pool.soldiers.push(unit);
 				pool.totalWages += SOLDIER_DATA[unit.type].wage;
 			}
