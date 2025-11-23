@@ -889,6 +889,14 @@ input.disabled {
 	filter: brightness(0.5);
 }
 
+
+#spectate-btn[disabled] {
+	filter: brightness(0.5);
+}
+#join-btn[disabled] {
+	filter: brightness(0.5);
+}
+
 </style>
 </head>
 <body>
@@ -7390,7 +7398,7 @@ function initPeerJS() {
 			connectionStatus.textContent = 'Connected to Peer server.';
 			console.log('My peer ID is: ' + id);
 			// Enable buttons
-			hostBtn.disabled = false;
+			hostBtn.disabled = false; // DOMContentLoaded sets to false so we can still host while waiting for connection.
 			joinBtn.disabled = false;
 			spectateBtn.disabled = false;
 		});
@@ -9175,7 +9183,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 	await loadImages();
 	
-	hostBtn.disabled = true;
+	//hostBtn.disabled = true;
+	hostBtn.disabled = false; // allow hosting while connecting to peerjs.
 	joinBtn.disabled = true;
 	spectateBtn.disabled = true;
 	
