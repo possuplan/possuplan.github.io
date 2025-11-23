@@ -225,13 +225,21 @@ label {
 .player-list-item {
 	padding: 5px;
 	border-bottom: 1px solid var(--border-color);
-	
-
 	word-break: break-all;
 }
+
 .player-list-item:last-child {
 	border-bottom: none;
 }
+
+.ai-player-item {
+	cursor: pointer;
+}
+.ai-player-item:hover::after {
+    content: " (kick)";
+    color: white;
+}
+
 
 .color-picker {
 	display: flex;
@@ -5010,17 +5018,16 @@ function isTileWater(tile){
 let shieldingUnits = null;
 let shieldingStartTime = 0;
 
-function findSelectedPool(selectedHex){
-	if(localPlayerPools && selectedHex){
-		let clickedHexTile = getTileAt(selectedHex.q, selectedHex.r);
-		if(clickedHexTile.ownerId === localPlayer.id){
+function findSelectedPool(findHex, pools = localPlayerPools, ownerId = localPlayer.id){
+	if(pools && findHex){
+		let clickedHexTile = getTileAt(findHex.q, findHex.r);
 		
-			
-			for(let p = 0; p < localPlayerPools.length; p++){
-				let pool = localPlayerPools[p];
+		if(clickedHexTile && clickedHexTile.ownerId === ownerId){
+			for(let p = 0; p < pools.length; p++){
+				let pool = pools[p];
 				for(let h = 0; h < pool.hexes.length; h++){
 					let hex = pool.hexes[h];
-					if(hex.q == selectedHex.q && hex.r == selectedHex.r){
+					if(hex.q == findHex.q && hex.r == findHex.r){
 						return pool;
 					}
 				}
@@ -5033,8 +5040,8 @@ function findSelectedPool(selectedHex){
 
 function formatDecimal(num) {
     const fixed = num.toFixed(2); // "12.30"
-    if (fixed.endsWith("00")) return String(num|0); // integer case
-    if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
+    //if (fixed.endsWith("00")) return String(num|0); // integer case
+    //if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
     return fixed; // both decimals meaningful
 }
 
@@ -5141,20 +5148,24 @@ function handleHexClick(hex) {
 			// Spectator or not my turn, just select hex for highlighting pools:
 			selectedHex = hex;
 			deselectUnit(); // Deselect
-			
-			buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
-			updateHighlights();
-			
-			// update here before return or it wont be updated.
-			if(updatePools){
-				updateSelectedPoolInfo(hex);
-				updatePools = false;
-			}
+
+			//buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
+			//updateHighlights();
+
 		}else{
 			deselectUnit(); // Deselect
 			deselectHex();
 		}
-
+		
+		buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
+		
+		updateHighlights();
+			
+		// update here before return or it wont be updated.
+		if(updatePools){
+			updateSelectedPoolInfo(hex);
+			updatePools = false;
+		}
 		return;
 	}
 	
@@ -5815,8 +5826,9 @@ function isPlacementValid(unitType, hex, player, poolHex) {
 	
 	let unitLevel = getUnitLevel(unitType);
 	let unitCost = getUnitCost(unitType);
-	// todo: add check if selected pool can afford the unit.
-	//       problem is that selectedpool is not tracked for AI's...
+	// todo: add check if can afford? also checked in action_build though.
+
+	let actionPool = findSelectedPool(poolHex, findEconomyPools(player.id), player.id);
 
 	
 	let logallowed = prevhex !== (hex.q+","+hex.r);
@@ -5850,11 +5862,11 @@ function isPlacementValid(unitType, hex, player, poolHex) {
 			//console.log("hexUnit.ownerId !== player.id");
 			
 			// Check if any neighbour is my land:
-			// and the neighbour hex is in selectedPool
+			// and the neighbour hex is in actionPool
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id && isHexInPool(selectedPool, nTile)) {
+				if (nTile && nTile.ownerId === player.id && isHexInPool(actionPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -5879,7 +5891,7 @@ function isPlacementValid(unitType, hex, player, poolHex) {
 	// if new unit is a castle:
 	if (isTypeCastle(unitType)) {
 		// if not your tile or not in your selected pool:
-		if (tile.ownerId !== player.id || !isHexInPool(selectedPool, hex)){
+		if (tile.ownerId !== player.id || !isHexInPool(actionPool, hex)){
 			if(logallowed){
 				//console.log("trying to place castle");
 				//console.log("tile.ownerId !== player.id");
@@ -5905,11 +5917,11 @@ function isPlacementValid(unitType, hex, player, poolHex) {
 			}
 			
 			// Check if any neighbour is my land:
-			// and is in selectedPool
+			// and is in actionPool
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id && isHexInPool(selectedPool, nTile)) {
+				if (nTile && nTile.ownerId === player.id && isHexInPool(actionPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -5928,7 +5940,7 @@ function isPlacementValid(unitType, hex, player, poolHex) {
 			}
 		}else{
 			// was my land, check if its in selected pool:
-			if(!isHexInPool(selectedPool, hex)){
+			if(!isHexInPool(actionPool, hex)){
 				return badMove("not_my_hex");
 			}
 		}
@@ -5957,10 +5969,10 @@ function getUnitSellPrice(unit){
 }
 
 
-
+// HOST-ONLY function
 function executeAction(playerId, action) {
 	//console.log("executeAction");
-	// HOST-ONLY function
+
 	if (!localPlayer.isHost) return;
 	//console.log("executeAction 2");
 	
@@ -5999,9 +6011,15 @@ function executeAction(playerId, action) {
 				poolHex: poolHex,
 			};
 			
-			const pools = findEconomyPools(playerId);
+			//const pools = findEconomyPools(playerId);
+			//addCost(pools, sellPrice);
 			
-			addCost(pools, sellPrice);
+			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+
+			console.log("actionPool:");
+			console.log(actionPool);
+
+			addCost(actionPool, sellPrice);
 			
 			// remove unit:
 			//gameState.units = gameState.units.filter(u => u.id !== unit.id);
@@ -6031,7 +6049,6 @@ function executeAction(playerId, action) {
 				const toTile = getTileAt(toQ, toR);
 				const oldOwner = toTile.ownerId;
 				const oldObject = toTile.object;
-				
 				const oldSavings = toTile.savings;
 				
 				actionForUndo = {
@@ -6111,10 +6128,10 @@ function executeAction(playerId, action) {
 					updates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
 				}
 				
-				distributePoolSavings(findEconomyPools(playerId));
+				//distributePoolSavings(findEconomyPools(playerId));
 				if (oldOwner) {
 					affectedPlayers.add(oldOwner);
-					distributePoolSavings(findEconomyPools(oldOwner));
+					//distributePoolSavings(findEconomyPools(oldOwner));
 				}
 				
 				//console.warn(actionForUndo);
@@ -6137,13 +6154,30 @@ function executeAction(playerId, action) {
 			if (!data) return;
 			
 			const buildCheck = isPlacementValid(unitType, {q, r}, player, poolHex);
+
 			if (buildCheck.valid) {
-				const pools = findEconomyPools(playerId);
-				let totalSavings = 0;
-				pools.forEach(p => totalSavings += p.totalSavings);
+				//const pools = findEconomyPools(playerId);
+				//let totalSavings = 0;
+				// calculate total savings from all pools:
+				//pools.forEach(pool => totalSavings += pool.totalSavings);
+				
+				// get selected pool
+				let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+
+				console.log("actionPool:");
+				console.log(actionPool);
+
+				let totalSavings = actionPool.totalSavings;
+				
+					
+				const tile = getTileAt(q, r);
+				const oldOwner = tile.ownerId;
+				const oldObject = tile.object;
+				const oldSavings = tile.savings;
+				
 				
 				if (totalSavings >= data.cost) {
-					deductCost(pools, data.cost);
+					deductCost(actionPool, data.cost);
 					
 					const newUnit = {
 						id: getUID(),
@@ -6154,6 +6188,7 @@ function executeAction(playerId, action) {
 						level: data.level,
 						hasMoved: true,
 						ownerIndex: getPlayerIndex(playerId),
+						oldOwner: oldOwner,
 						internalType: data.type,
 					};
 					//console.log("action_build: gameState.units.push(newUnit);");
@@ -6163,10 +6198,7 @@ function executeAction(playerId, action) {
 					//gameState.units.push(newUnit); // if used here then host gets the unit double!
 					
 					let didClaim = false;
-					
-					const tile = getTileAt(q, r);
-					const oldOwner = tile.ownerId;
-					const oldSavings = tile.savings;
+
 					
 					let playMoveUnit = false;
 					let moveUnitType = 0; // 0 = move, 1 = build
@@ -6267,14 +6299,21 @@ function executeAction(playerId, action) {
 					console.warn(actionForUndo);
 					updates.push({ type: 'unit_added', unit: newUnit });
 					
-					distributePoolSavings(findEconomyPools(playerId));
-					if (tile.ownerId) {
-						affectedPlayers.add(tile.ownerId);
-						distributePoolSavings(findEconomyPools(tile.ownerId));
+					//distributePoolSavings(findEconomyPools(playerId));
+					//if (tile.ownerId) {
+						//affectedPlayers.add(tile.ownerId);
+						//distributePoolSavings(findEconomyPools(tile.ownerId));
+					//}
+					if (oldOwner) {
+						affectedPlayers.add(oldOwner);
+						//distributePoolSavings(findEconomyPools(oldOwner));
 					}
 					
 					//console.warn(actionForUndo);
 				}
+			}else{
+				console.error("buildCheck failed:");
+				console.error(buildCheck);
 			}
 			break;
 		}
@@ -6325,18 +6364,24 @@ function executeAction(playerId, action) {
 					unitActionHex = {q: lastAction.killedUnit.q, r: lastAction.killedUnit.r};
 				}
 				
-				distributePoolSavings(findEconomyPools(playerId));
+				//distributePoolSavings(findEconomyPools(playerId));
 				if(lastAction.oldOwner) {
 					affectedPlayers.add(lastAction.oldOwner);
-					distributePoolSavings(findEconomyPools(lastAction.oldOwner));
+					//distributePoolSavings(findEconomyPools(lastAction.oldOwner));
 				}
 				
 			} else if (lastAction.type === 'build') {
 				//gameState.units = gameState.units.filter(u => u.id !== lastAction.unit.id);
 				updates.push({ type: 'unit_removed', unitId: lastAction.unit.id });
 				
-				const pools = findEconomyPools(playerId);
-				addCost(pools, lastAction.cost);
+				//const pools = findEconomyPools(playerId);
+				//addCost(pools, lastAction.cost);
+				let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+
+				console.log("actionPool:");
+				console.log(actionPool);
+
+				addCost(actionPool, lastAction.cost);
 				
 				unitActionHex = {q: lastAction.unit.q, r: lastAction.unit.r};
 				
@@ -6362,16 +6407,24 @@ function executeAction(playerId, action) {
 						updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
 					}
 				}
-				distributePoolSavings(findEconomyPools(playerId));
+				//distributePoolSavings(findEconomyPools(playerId));
 				if(lastAction.oldOwner) {
 					affectedPlayers.add(lastAction.oldOwner);
-					distributePoolSavings(findEconomyPools(lastAction.oldOwner));
+					//distributePoolSavings(findEconomyPools(lastAction.oldOwner));
 				}
 			} else if (lastAction.type === 'sell') {
 				// handle un-selling the unit.
 				
-				const pools = findEconomyPools(playerId);
-				deductCost(pools, lastAction.sellPrice);
+				//const pools = findEconomyPools(playerId);
+				//deductCost(pools, lastAction.sellPrice);
+				
+				// get selected pool
+				let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+
+				console.log("actionPool:");
+				console.log(actionPool);
+
+				deductCost(actionPool, lastAction.sellPrice);
 
 				//gameState.units.push(lastAction.soldUnit);
 				//addUnit(lastAction.soldUnit);
@@ -6429,7 +6482,13 @@ function executeAction(playerId, action) {
 	//console.log("executeAction endswitch 2");
 	
 	// Send savings updates to all affected players
-	affectedPlayers.forEach(pid => updatePlayerSavings(pid));
+	//affectedPlayers.forEach(pid => updatePlayerSavings(pid));
+	
+	// send savings update to ALL players: (was bugged before, so host didnt get update).
+	for(let p = 0; p < gameState.players.length; p++){
+		let pid = gameState.players[p].id;
+		updatePlayerSavings(pid);
+	}
 	
 	//console.log("executeAction endswitch 3");
 	
@@ -6445,23 +6504,35 @@ function executeAction(playerId, action) {
 // --- ECONOMY & TURN LOGIC (HOST-SIDE)
 // =================================================================
 function updatePlayerSavings(playerId) {
-	//console.log("updatePlayerSavings");
+	console.log("updatePlayerSavings");
 	
 	if (!playerId) return;
 	const newPools = findEconomyPools(playerId);
-	let newTotalSavings = 0;
+	//let newTotalSavings = 0;
+	
+	// create pools info array:
+	let poolsInfo = [];
+	for(let p = 0; p < newPools.length; p++){
+		let pool = newPools[p];
+		poolsInfo.push({
+			totalIncome: pool.totalIncome,
+			totalSavings: pool.totalSavings,
+			totalWages: pool.totalWages,
+		});
+	}
 	
 	//console.log("updatePlayerSavings 2: newPools.len = "+newPools.length);
 	
-	newPools.forEach(p => newTotalSavings += p.totalSavings);
+	//newPools.forEach(pool => newTotalSavings += pool.totalSavings);
 	
-	console.log("newTotalSavings");
-	console.log(newTotalSavings);
+	console.log("poolsInfo:");
+	console.log(poolsInfo);
 	
 	sendToPlayer(playerId, { 
 		type: 'savings_update', 
 		//total: Math.floor(newTotalSavings),
-		total: newTotalSavings,
+		//total: newTotalSavings,
+		poolsInfo: poolsInfo,
 	});
 }
 
@@ -6549,6 +6620,8 @@ function findEconomyPools(playerId) {
 
 
 function distributePoolSavings(pools) {
+	console.warn("distributePoolSavings:");
+	console.warn(pools);
 	// Takes a list of pools (from findEconomyPools) and distributes
 	// their savings evenly among their hexes.
 
@@ -6581,26 +6654,48 @@ function distributePoolSavings(pools) {
 }
 
 function deductCost(pools, cost) {
+	
+	console.log("deductCost: "+cost);
+	// Normalize input so we always work with an array:
+	if (!Array.isArray(pools)) {
+		pools = [pools];
+	}
+	
 	// Deducts cost proportionally from all pools
+	/*
 	let totalSavings = 0;
-	pools.forEach(p => totalSavings += p.totalSavings);
+	pools.forEach(pool => totalSavings += pool.totalSavings);
 	if (totalSavings < cost) return false; // Should not happen
 	
 	for (const pool of pools) {
 		const proportion = pool.totalSavings / totalSavings;
 		pool.totalSavings -= cost * proportion;
 	}
-	distributePoolSavings(pools);
-	return true;
+	*/
+	if (pools.length > 0) {
+		//pools[0].totalSavings -= cost;
+		pools[0].hexes[0].tile.savings -= cost;
+	}
+	//distributePoolSavings(pools);
+	//return true;
 }
 
 function addCost(pools, cost) {
+	
+	console.log("addCost: "+cost);
+	
+	// Normalize input so we always work with an array:
+	if (!Array.isArray(pools)) {
+		pools = [pools];
+	}
+	
 	// Refunds cost. Just add it to the first pool.
 	// distributePoolSavings will spread it evenly.
 	if (pools.length > 0) {
-		pools[0].totalSavings += cost;
+		//pools[0].totalSavings += cost;
+		pools[0].hexes[0].tile.savings += cost;
 	}
-	distributePoolSavings(pools);
+	//distributePoolSavings(pools);
 }
 
 
@@ -6969,6 +7064,8 @@ function executeEndTurn(playerId) {
 	const player = getPlayer(playerId);
 	const pools = findEconomyPools(playerId);
 	
+	console.log("executeEndTurn");
+	
 	let allSoldiersKilled = [];
 	
 	for (const pool of pools) {
@@ -7268,7 +7365,8 @@ function handleHostData(data) {
 		break;
 		case 'savings_update': {
 			// this is kinda useless, since the client should calculate them themselves to get full array of pool hexes for being able to know which pool is clicked.
-			myCurrentSavings = data.total;
+			//myCurrentSavings = data.total;
+			let poolsInfo = data.poolsInfo; // array of pools savings/income/wages info.
 			//playerSavings.textContent = myCurrentSavings;
 			
 			console.warn("##############################################################################");
@@ -7279,7 +7377,15 @@ function handleHostData(data) {
 			console.warn(data);
 		
 			// update local player pools for being able to select a pool and display its pool info:
+			// todo: make sure the poolsInfo array matches with localPlayerPools array... could get glitchy if it was updated between send/receice commands??
 			localPlayerPools = findEconomyPools(localPlayer.id);
+			for(let p = 0; p < poolsInfo.length; p++){
+				let poolInfo = poolsInfo[p];
+				let pool = localPlayerPools[p];
+				pool.totalIncome = poolInfo.totalIncome;
+				pool.totalSavings = poolInfo.totalSavings;
+				pool.totalWages = poolInfo.totalWages;
+			}
 			selectedPool = findSelectedPool(selectedHex);
 			updateSelectedPoolUi();
 			
@@ -7677,6 +7783,27 @@ function hexagonSVG(color, size = 35){
 
 
 
+hostPlayerList.addEventListener('click', (event) => {
+	const item = event.target.closest('.ai-player-item');
+	if (!item) return; // ignore clicks outside .ai-player-item
+
+	const peerId = item.dataset.peer;
+	kickPlayer(peerId);
+});
+
+
+function kickPlayer(peerId){
+	const allPlayers = document.querySelectorAll('.player-list-item');
+	allPlayers.forEach(player => {
+		if (player.dataset.peer === peerId) {
+			player.remove(); // remove from DOM
+		}
+	});
+	gameState.players = gameState.players.filter(player => player.id !== peerId);
+	broadcastLobbyState();
+}
+
+
 // =================================================================
 // --- LOBBY UI & LOGIC
 // =================================================================
@@ -7689,6 +7816,10 @@ function updateHostLobbyUI() {
 		if(!p.quitted){
 			const item = document.createElement('div');
 			item.className = 'player-list-item';
+			item.dataset.peer = p.id;
+			if(p.isAI){
+				item.classList.add("ai-player-item");
+			}
 			let specTag = p.isSpectator ? ' (spec)' : '';
 			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
 			item.textContent = `${p.name}${specTag}`;
