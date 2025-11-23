@@ -2027,7 +2027,7 @@ if(use_orig){
 		//'soldier4': {path:'images/orig-scaled/128x128/soldier4.png', scale:1.8, offsetX: 0, offsetY: 3},
 	};
 	if(use_fill){
-		imageAssets['dirt2'] = {path:'images/dirt3.png', scale:1, offsetX: 0, isPattern: true};
+		imageAssets['dirt'] = {path:'images/dirt3.png', scale:1, offsetX: 0, isPattern: true};
 	}
 }else{
 	imageAssets = {
@@ -3377,7 +3377,7 @@ function drawMapTiles(){
 
 	if(use_fill){
 		scaleMatrix = new DOMMatrix().scaleSelf(1/getTexMipScale());
-		transformPattern('dirt2');
+		transformPattern('dirt');
 	}
 	
 	
