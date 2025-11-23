@@ -6459,7 +6459,7 @@ function executeAction(playerId, action) {
 			
 			executeEndTurn(playerId);
 			if(!isAiPlayer(playerId)){
-				broadcast({ type: 'sound', name: "move", q:0, r:0, action: action.type});
+				broadcast({ type: 'sound', name: "move", q:0, r:0, playerId: 0, action: action.type});
 			}
 			return; // end turn handles its own broadcasts
 		}
@@ -7294,7 +7294,6 @@ function handleHostData(data) {
 		break;
 		case 'sound': {
 			let soundName = data.name;
-			let playerId = data.playerId;
 			playSound(soundName);
 			
 			if(data.action !== 'action_undo'){
@@ -7344,7 +7343,7 @@ function handleHostData(data) {
 					ep.initialSpeed = 5;
 					ep.amount = 30;
 				}else if(soundName === 'build'){
-					let player = getPlayer(playerId);
+					let player = getPlayer(data.playerId);
 					// create darker and grayer hex color from player.color:
 					let newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
 					ep.color = newcolor;
