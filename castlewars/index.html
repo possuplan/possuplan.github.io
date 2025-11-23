@@ -2088,7 +2088,8 @@ function drawEdgeTriangle(ctx, x, y, angleDeg) {
     // Pulse distance along the pointing direction
 	// 2 = line width, so it will hit the edge without going outside of it and be cut.
 	// 20 = unit triangle pulse distance.
-    let pulse = pulseScale(2, 20, PULSE_SPEED);
+    //let pulse = pulseScale(2, 20, PULSE_SPEED);
+	let pulse = 2; // disable for now. 2px distance from edge so the line wont be cut.
 
     // Convert angle to radians
     let angleRad = angleDeg * (Math.PI / 180);
