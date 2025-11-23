@@ -2070,22 +2070,15 @@ function drawRightTriangle(ctx, x, y, height, width) {
 	ctx.stroke();
 }
 
+
 // direction = 0,1,2,3 = to right, to bottom, to left, to up
 function drawTriangle(ctx, x, y, angle = 0){
 	let scale = 0.45;
 	let h = 76;
 	let w = h/2;
-	//drawRightTriangle(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale);
-	//drawTriangleDirection(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale, direction);
 	drawTriangleAtAngle(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale, angle);
 }
 
-function drawEdgeTriangle2(ctx, x, y, angleDeg){
-	let scale = 0.45;
-	let h = 76;
-	let w = h/2;
-	drawTriangleAtAngle(ctx, x, y, h*scale, w*scale, angleDeg);
-}
 
 function drawEdgeTriangle(ctx, x, y, angleDeg) {
     let scale = 0.45;
@@ -2093,8 +2086,9 @@ function drawEdgeTriangle(ctx, x, y, angleDeg) {
     let w = h / 2;
 
     // Pulse distance along the pointing direction
-	// 2 = line width, so it will hit the edge exactly.
-    let pulse = pulseScale(2, 25, PULSE_SPEED);
+	// 2 = line width, so it will hit the edge without going outside of it and be cut.
+	// 20 = unit triangle pulse distance.
+    let pulse = pulseScale(2, 20, PULSE_SPEED);
 
     // Convert angle to radians
     let angleRad = angleDeg * (Math.PI / 180);
@@ -2142,47 +2136,6 @@ function drawTriangleAtAngle(ctx, x, y, height, width, angleDeg = 0) {
 }
 
 
-function drawTriangleDirection(ctx, x, y, height, width, direction = 0) {
-    let h2 = height / 2;
-
-    ctx.beginPath();
-
-    switch (direction) {
-        case 0: // right
-            ctx.moveTo(x - width, y - h2);   // top-left
-            ctx.lineTo(x - width, y + h2);   // bottom-left
-            ctx.lineTo(x, y);                // tip right
-            ctx.closePath();
-            break;
-
-        case 1: // down
-			
-            ctx.moveTo(x - h2, y - width);  // top-left
-            ctx.lineTo(x + h2, y - width);  // top-right
-            ctx.lineTo(x, y);                // tip down
-            ctx.closePath();
-            break;
-
-        case 2: // left
-            ctx.moveTo(x + width, y - h2);   // top-right
-            ctx.lineTo(x + width, y + h2);   // bottom-right
-            ctx.lineTo(x, y);                // tip left
-            ctx.closePath();
-            break;
-
-        case 3: // up
-            ctx.moveTo(x - h2, y + width);  // bottom-left
-            ctx.lineTo(x + h2, y + width);  // bottom-right
-            ctx.lineTo(x, y);                // tip up
-            ctx.closePath();
-            break;
-    }
-
-    ctx.strokeStyle = 'yellow';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-}
 
 
 
