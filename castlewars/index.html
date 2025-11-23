@@ -1767,6 +1767,9 @@ const SQRT3 = Math.sqrt(3);
 let HEX_LINE_MULTI = 0.958; // used to draw inside hex so the thick line wont get outside of hex.
 let PULSE_SPEED = 0.005; // used for pulsating effects.
 
+
+let use_fill = 1;
+
 // soldiers soldier_units
 const SOLDIER_DATA = {
 	// listed in this order.
@@ -1999,7 +2002,7 @@ if(use_orig){
 		'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
 		'land':     {path:'images/land2.jpg', scale:1, offsetX: 0}, 
 		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
-		//'dirt2':     {path:'images-unused/test3.png', scale:1, offsetX: 0, isPattern: true},
+
 		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
 		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
 		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: 3, offsetY: 5},
@@ -2023,6 +2026,9 @@ if(use_orig){
 		//'soldier3': {path:'images/orig-scaled/128x128/soldier3.png', scale:1.8, offsetX: 0},
 		//'soldier4': {path:'images/orig-scaled/128x128/soldier4.png', scale:1.8, offsetX: 0, offsetY: 3},
 	};
+	if(use_fill){
+		imageAssets['dirt2'] = {path:'images/dirt3.png', scale:1, offsetX: 0, isPattern: true};
+	}
 }else{
 	imageAssets = {
 		'land': {path:'images/land2.jpg', scale:1, offsetX: 0}, 
@@ -3360,7 +3366,6 @@ function fillPattern(ctx, imageName){
 }
 
 
-let use_fill = 0;
 
 
 // rendertiles drawtiles rendermaptiles render tiles render map tiles
