@@ -2070,12 +2070,120 @@ function drawRightTriangle(ctx, x, y, height, width) {
 	ctx.stroke();
 }
 
-function drawTriangle(ctx, x, y){
+// direction = 0,1,2,3 = to right, to bottom, to left, to up
+function drawTriangle(ctx, x, y, angle = 0){
 	let scale = 0.45;
 	let h = 76;
 	let w = h/2;
-	drawRightTriangle(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale);
+	//drawRightTriangle(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale);
+	//drawTriangleDirection(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale, direction);
+	drawTriangleAtAngle(ctx, x-HEX_SIZE/2, y+HEX_SIZE/3, h*scale, w*scale, angle);
 }
+
+function drawEdgeTriangle2(ctx, x, y, angleDeg){
+	let scale = 0.45;
+	let h = 76;
+	let w = h/2;
+	drawTriangleAtAngle(ctx, x, y, h*scale, w*scale, angleDeg);
+}
+
+function drawEdgeTriangle(ctx, x, y, angleDeg) {
+    let scale = 0.45;
+    let h = 76;
+    let w = h / 2;
+
+    // Pulse distance along the pointing direction
+	// 2 = line width, so it will hit the edge exactly.
+    let pulse = pulseScale(2, 25, PULSE_SPEED);
+
+    // Convert angle to radians
+    let angleRad = angleDeg * (Math.PI / 180);
+
+    // Offset x and y by pulse along the angle
+    let offsetX = Math.cos(angleRad) * pulse;
+    let offsetY = Math.sin(angleRad) * pulse;
+
+    // Draw the triangle shifted by the pulse
+    drawTriangleAtAngle(ctx, x - offsetX, y - offsetY, h * scale, w * scale, angleDeg);
+}
+
+
+
+function drawTriangleAtAngle(ctx, x, y, height, width, angleDeg = 0) {
+    const h2 = height / 2;
+    const angle = angleDeg * (Math.PI / 180);
+
+    // Base triangle pointing RIGHT
+    const points = [
+        { x: 0,       y: 0 },       // tip
+        { x: -width,  y: -h2 },     // top base corner
+        { x: -width,  y:  h2 }      // bottom base corner
+    ];
+
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+
+    // Rotate & translate points
+    const rotated = points.map(p => ({
+        x: x + (p.x * cosA - p.y * sinA),
+        y: y + (p.x * sinA + p.y * cosA)
+    }));
+
+    ctx.beginPath();
+    ctx.moveTo(rotated[0].x, rotated[0].y);
+    ctx.lineTo(rotated[1].x, rotated[1].y);
+    ctx.lineTo(rotated[2].x, rotated[2].y);
+    ctx.closePath();
+
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+}
+
+
+function drawTriangleDirection(ctx, x, y, height, width, direction = 0) {
+    let h2 = height / 2;
+
+    ctx.beginPath();
+
+    switch (direction) {
+        case 0: // right
+            ctx.moveTo(x - width, y - h2);   // top-left
+            ctx.lineTo(x - width, y + h2);   // bottom-left
+            ctx.lineTo(x, y);                // tip right
+            ctx.closePath();
+            break;
+
+        case 1: // down
+			
+            ctx.moveTo(x - h2, y - width);  // top-left
+            ctx.lineTo(x + h2, y - width);  // top-right
+            ctx.lineTo(x, y);                // tip down
+            ctx.closePath();
+            break;
+
+        case 2: // left
+            ctx.moveTo(x + width, y - h2);   // top-right
+            ctx.lineTo(x + width, y + h2);   // bottom-right
+            ctx.lineTo(x, y);                // tip left
+            ctx.closePath();
+            break;
+
+        case 3: // up
+            ctx.moveTo(x - h2, y + width);  // bottom-left
+            ctx.lineTo(x + h2, y + width);  // bottom-right
+            ctx.lineTo(x, y);                // tip up
+            ctx.closePath();
+            break;
+    }
+
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+}
+
 
 
 async function load8BitBMP(url) {
@@ -4361,10 +4469,10 @@ function insideRect(rect, x, y){
 
 
 
-// draw circles pointers suuntimat drawoverlay
+// draw circles pointers suuntimat drawoverlay dots
 function drawMoveDirectionsOverlay() {
 	
-	let pulse = 0.8*pulseScale(1, 1.5, PULSE_SPEED);
+	let pulse = 0.6*pulseScale(1, 1.5, PULSE_SPEED);
 	
 	let canvasRect = {
 		x1: 0,
@@ -4397,14 +4505,25 @@ function drawMoveDirectionsOverlay() {
 		// Find intersection point on canvas edge
 		let edgeX = x;
 		let edgeY = y;
-
+		
+		let angle = 0;
+		
 		// Clamp to screen bounds
-		if (x < 0) edgeX = 0;
-		if (x > canvas.width) edgeX = canvas.width;
-		if (y < 0) edgeY = 0;
-		if (y > canvas.height) edgeY = canvas.height;
+		if (x > canvas.width){ edgeX = canvas.width; angle = 0; }
+		if (y > canvas.height){ edgeY = canvas.height; angle = 90; }
+		if (x < 0){ edgeX = 0; angle = 180; }
+		if (y < 0){ edgeY = 0; angle = 270; }
+		
+		if (x > canvas.width && y > canvas.height){ angle = 45; }
+		if (x < 0 && y > canvas.height){ angle = 90+45; }
+		if (x < 0 && y < 0){ angle = 180+45; }
+		if (x > canvas.width && y < 0){ angle = 270+45; }
+		
+		
 
+		drawEdgeTriangle(ctx, edgeX, edgeY, angle);
 
+		/*
 		let opacity = 1;
 		
 		// black edges for visibility:
@@ -4420,6 +4539,7 @@ function drawMoveDirectionsOverlay() {
 		ctx.arc(edgeX, edgeY, 17*pulse, 0, Math.PI * 2);
 		ctx.fillStyle = hexToRgba("#FFFF00", opacity);
 		ctx.fill();
+		*/
 	}
 	
 	ctx.restore();
