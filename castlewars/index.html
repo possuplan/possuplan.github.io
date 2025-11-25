@@ -169,6 +169,18 @@ button {
 	-webkit-tap-highlight-color: transparent;
 }
 
+#build-soldier-btn.cancel,
+#build-castle-btn.cancel {
+	background:#d03535;
+}
+
+#build-soldier-btn.cancel::after,
+#build-castle-btn.cancel::after {
+	content: "Cancel";
+	color: white;
+}
+
+	
 button:hover {
 	background-color: var(--btn-hover-bg);
 }
@@ -2016,7 +2028,7 @@ if(use_orig){
 		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
 		'water-anim': {path:'images/water-anim.png', scale:1, offsetX: 0, isPattern: true, isAnimated: true, animationData: waterAnimData},
 		'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
-		'land':     {path:'images/land2.jpg', scale:1, offsetX: 0}, 
+		'land':     {path:'images/land2b2.jpg', scale:1, offsetX: 0}, 
 		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
 
 		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
@@ -3591,7 +3603,7 @@ function drawMapTiles(){
 					//drawText(x, y, tile.savings);
 					if(drawDebugText){
 						ctx.fillStyle = "#FFFFFF";
-						ctx.fillText(formatNumber(tile.savings, 4), x, y+20);
+						ctx.fillText(formatNumber(tile.savings, 8), x, y+22);
 					}
 				
 					
@@ -4060,11 +4072,12 @@ function drawPlacementHighlight(){
 		
 		let cur_highlight =  mouseHex.q+", "+mouseHex.r;
 		
-		// run isPlacementValid() only when mouse has moved to new hex:
+		// run isPlacementValid() only when mouse has moved to different hex:
 		if(prev_highlight !== cur_highlight){
 			//console.warn("prev_drawPlacementHighlight !== curstr");
 			
-			const buildCheck = isPlacementValid(placingUnit.type, mouseHex, getMyPlayer(), getSelectedPoolHex());
+			
+			const buildCheck = isPlacementValid(placingUnit.type, mouseHex, getMyPlayer(), getSelectedPoolHex(), false);
 			cur_buildCheck = buildCheck;
 			prev_highlight = cur_highlight;
 		}
@@ -4544,7 +4557,7 @@ function render() {
 
   	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
-	ctx.font = `12px sans-serif`;
+	ctx.font = `6px sans-serif`;
 	
 	
 	// MAP TILE DRAWING:
@@ -4701,7 +4714,7 @@ function handleTouchStart(e) {
 			!buildCastleBtn.contains(target);
 
 		if (touchedOutside && isBuildPopupOpen()) {
-			closeBuildPopup();
+			cancelBuildPopup();
 		}
 	}
 
@@ -5130,6 +5143,8 @@ function handleHexClick(hex) {
 	const myPlayer = getMyPlayer();
 	
 	let clickedHexTile = getTileAt(hex.q, hex.r);
+	console.warn("clickedHexTile");
+	console.warn(clickedHexTile);
 	let isLandTile = !isTileWater(clickedHexTile);
 	let poolHex = getSelectedPoolHex();
 	
@@ -5156,8 +5171,10 @@ function handleHexClick(hex) {
 			deselectUnit(); // Deselect
 			deselectHex();
 		}
+
+		hideBuildPopup(); //buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
 		
-		buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
+		
 		
 		updateHighlights();
 			
@@ -5183,6 +5200,7 @@ function handleHexClick(hex) {
 				poolHex: poolHex, // remember first hex from selected pool.
 			});
 			
+			
 			// update here before return or it wont be updated.
 			if(updatePools){
 				updateSelectedPoolInfo(hex);
@@ -5198,6 +5216,9 @@ function handleHexClick(hex) {
 		placingUnit = null; // "deselect", must do that because there is no cancel button (yet?)
 		updateHighlights();
 		
+
+		buildSoldierBtn.classList.remove("cancel");
+		buildCastleBtn.classList.remove("cancel");
 		
 		return;
 	}
@@ -5554,6 +5575,8 @@ function openBuildPopup(type) {
 	const data = (type === 'soldier') ? SOLDIER_DATA : CASTLE_DATA;
 	const poolSavings = getSelectedPoolSavings();
 	
+	buildSoldierBtn.classList.remove("cancel");
+	buildCastleBtn.classList.remove("cancel");
 	
 	let buildprefix = "Buy";
 	let buildsuffix = type;
@@ -5569,7 +5592,8 @@ function openBuildPopup(type) {
 	
 	for (const key in data) {
 		const item = data[key];
-		const canAfford = poolSavings >= item.cost;
+		//const canAfford = poolSavings >= item.cost;
+		const canAfford = canAffordCheck(poolSavings, item.cost);
 		const itemEl = document.createElement('div');
 		itemEl.className = 'build-item';
 		if (!canAfford) itemEl.classList.add('disabled');
@@ -5583,16 +5607,28 @@ function openBuildPopup(type) {
 		if (canAfford) {
 			itemEl.onclick = () => {
 				placingUnit = {
-					type: item.name, // "soldier" etc.
+					type: item.name, // "peasant" etc.
 					cost: item.cost,
 					poolHex: getSelectedPoolHex(), // not needed here? called in handleHexClick() also.
 				};
-				buildPopup.style.display = 'none';
+
+				console.log("placingUnit");
+				console.log(placingUnit);
+				console.log("type");
+				console.log(type);
+				if(type === 'soldier'){
+					buildSoldierBtn.classList.add("cancel");
+				}else if(type === 'castle'){
+					buildCastleBtn.classList.add("cancel");
+				}
+				//buildPopup.style.display = 'none';
+				hideBuildPopup();
 			};
 		}
 		buildPopupList.appendChild(itemEl);
 	}
-	buildPopup.style.display = 'block';
+	//buildPopup.style.display = 'block';
+	showBuildPopup();
 }
 
 function unitExists(unitType){
@@ -5811,7 +5847,7 @@ let prevhex = "";
 let placementframe = 0;
 
 // isvalidplacement
-function isPlacementValid(unitType, hex, player, poolHex) {
+function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 	//placementframe++;
 	//console.log("placementframe: "+placementframe);
 
@@ -5828,7 +5864,7 @@ function isPlacementValid(unitType, hex, player, poolHex) {
 	let unitCost = getUnitCost(unitType);
 	// todo: add check if can afford? also checked in action_build though.
 
-	let actionPool = findSelectedPool(poolHex, findEconomyPools(player.id), player.id);
+	let actionPool = findSelectedPool(poolHex, findEconomyPools(player.id, log_enabled), player.id);
 
 	
 	let logallowed = prevhex !== (hex.q+","+hex.r);
@@ -5875,14 +5911,15 @@ function isPlacementValid(unitType, hex, player, poolHex) {
 			if (!isNeighborOwned){
 				return badMove("out_of_range");
 			}else{
-
-				// if it was in build radius:
-				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
-				// if the enemy unit level was higher than placed unit level:
-				if(shieldLevel >= unitLevel || hexUnit.level >= unitLevel){
-					return badMove("low_level");
-				}else{
-					return goodMove('attack', hexUnit);
+				if(isTypeSoldier(unitType)){
+					// if it was in build radius:
+					let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
+					// if the enemy unit level was higher than placed unit level:
+					if(shieldLevel >= unitLevel || hexUnit.level >= unitLevel){
+						return badMove("low_level");
+					}else{
+						return goodMove('attack', hexUnit);
+					}
 				}
 			}
 		}
@@ -6019,7 +6056,7 @@ function executeAction(playerId, action) {
 			console.log("actionPool:");
 			console.log(actionPool);
 
-			addCost(actionPool, sellPrice);
+			addCost(actionPool, sellPrice, poolHex);
 			
 			// remove unit:
 			//gameState.units = gameState.units.filter(u => u.id !== unit.id);
@@ -6330,6 +6367,13 @@ function executeAction(playerId, action) {
 			console.log("poolHex");
 			console.log(poolHex);
 			
+			console.log("lastAction:");
+			console.log(lastAction);
+			
+			console.log("playerId:");
+			console.log(playerId);
+			
+			
 			let unitActionHex = null; // used for sounds coords only.
 			
 			if (lastAction.type === 'move') {
@@ -6378,10 +6422,10 @@ function executeAction(playerId, action) {
 				//addCost(pools, lastAction.cost);
 				let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
 
-				console.log("actionPool:");
+				console.log("addCost to actionPool, cost = "+lastAction.cost);
 				console.log(actionPool);
 
-				addCost(actionPool, lastAction.cost);
+				addCost(actionPool, lastAction.cost, poolHex);
 				
 				unitActionHex = {q: lastAction.unit.q, r: lastAction.unit.r};
 				
@@ -6545,7 +6589,7 @@ function drawText(x, y, text){
 
 
 
-function findEconomyPools(playerId) {
+function findEconomyPools(playerId, log_enabled = true) {
 	// Finds all contiguous land areas for a given player
 	const pools = [];
 	const visited = new Set(); // 'q,r,t'
@@ -6612,13 +6656,53 @@ function findEconomyPools(playerId) {
 		}
 		pools.push(pool);
 	}
-	console.warn("findEconomyPools for "+playerId);
-	console.warn(pools);
+	if(log_enabled){
+		console.warn("findEconomyPools for "+playerId);
+		console.warn(pools);
+	}
 	return pools;
 }
 
+function distributePoolSavings(pools) {
+	// Normalize input so we always work with an array:
+	if (!Array.isArray(pools)) {
+		pools = [pools];
+	}
 
+	for (const pool of pools) {
+		if (!pool || pool.hexes.length === 0) continue;
+		
+		const count = pool.hexes.length;
+		const total = pool.totalSavings;
+		
+		// 1. Calculate the standard share per tile
+		const share = total / count;
+		
+		// 2. Track exactly how much we have handed out so far
+		let distributedSoFar = 0;
 
+		for (let i = 0; i < count; i++) {
+			const hex = pool.hexes[i];
+
+			if (i === count - 1) {
+				// --- THE FIX ---
+				// The last tile doesn't get the division result.
+				// It gets the difference. This absorbs the 0.00000002 error.
+				hex.tile.savings = total - distributedSoFar;
+			} else {
+				hex.tile.savings = share;
+				distributedSoFar += share;
+			}
+		}
+	}
+}
+
+function canAffordCheck(savings, cost) {
+	const EPSILON = 0.000001; // The margin of error
+	return savings >= cost - EPSILON;
+}
+
+/*
 function distributePoolSavings(pools) {
 	console.warn("distributePoolSavings:");
 	console.warn(pools);
@@ -6653,6 +6737,8 @@ function distributePoolSavings(pools) {
 	}
 }
 
+*/
+
 function deductCost(pools, cost) {
 	
 	console.log("deductCost: "+cost);
@@ -6679,11 +6765,8 @@ function deductCost(pools, cost) {
 	//distributePoolSavings(pools);
 	//return true;
 }
-
-function addCost(pools, cost) {
-	
-	console.log("addCost: "+cost);
-	
+/*
+function addCost(pools, cost, poolHex) {
 	// Normalize input so we always work with an array:
 	if (!Array.isArray(pools)) {
 		pools = [pools];
@@ -6692,10 +6775,34 @@ function addCost(pools, cost) {
 	// Refunds cost. Just add it to the first pool.
 	// distributePoolSavings will spread it evenly.
 	if (pools.length > 0) {
-		//pools[0].totalSavings += cost;
 		pools[0].hexes[0].tile.savings += cost;
 	}
 	//distributePoolSavings(pools);
+}
+*/
+
+function addCost(pools, cost, preferredHex = null) {
+	console.log("addCost: " + cost);
+
+	// Normalize input so we always work with an array:
+	if (!Array.isArray(pools)) {
+		pools = [pools];
+	}
+
+	if (pools.length > 0 && pools[0].hexes.length > 0) {
+		let targetTile = pools[0].hexes[0].tile; // Default fallback
+
+		// If a safe hex is provided, try to find it in the pool
+		if (preferredHex) {
+			const match = pools[0].hexes.find(h => h.q === preferredHex.q && h.r === preferredHex.r);
+			if (match) {
+				targetTile = match.tile;
+			}
+		}
+
+		targetTile.savings += cost;
+		console.log(`Refunded ${cost} to tile ${targetTile.q},${targetTile.r}`);
+	}
 }
 
 
@@ -9068,6 +9175,7 @@ function startGame() {
 
 
 // checks all tiles if they are protected or not.
+// only used in drawMapTiles() function.
 function setProtectedTiles(){
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
@@ -9115,7 +9223,7 @@ document.addEventListener('keydown', (event) => {
 function handleOutside(e) {
 	if (!buildPopup.contains(e.target) && !buildSoldierBtn.contains(e.target) && !buildCastleBtn.contains(e.target)) {
 		if(isBuildPopupOpen()){
-			closeBuildPopup();
+			cancelBuildPopup();
 			return true;
 		}
 	}
@@ -9266,10 +9374,20 @@ function loadSavedGame(roomName){
 }
 
 
-function closeBuildPopup(){
-	buildPopup.style.display = 'none';
+// cancels building an unit and closes the popup
+function cancelBuildPopup(){
+	hideBuildPopup();
 	placingUnit = null;
 }
+
+function hideBuildPopup(){
+	buildPopup.style.display = 'none';
+}
+function showBuildPopup(){
+	buildPopup.style.display = 'block';
+}
+
+
 
 
 const LOOKUP = { gameState };
@@ -9508,10 +9626,24 @@ window.addEventListener('DOMContentLoaded', async () => {
 		}
 	};
 	
-	buildSoldierBtn.onclick = () => openBuildPopup('soldier');
-	buildCastleBtn.onclick = () => openBuildPopup('castle');
+	buildSoldierBtn.onclick = () => {
+		if (buildSoldierBtn.classList.contains("cancel")) {
+			buildSoldierBtn.classList.remove("cancel");
+			cancelBuildPopup();
+		}else{
+			openBuildPopup('soldier');
+		}
+	};
+	buildCastleBtn.onclick = () => {
+		if (buildCastleBtn.classList.contains("cancel")) {
+			buildCastleBtn.classList.remove("cancel");
+			cancelBuildPopup();
+		}else{
+			openBuildPopup('castle');
+		}
+	};
 	buildPopupClose.onclick = () => {
-		closeBuildPopup();
+		cancelBuildPopup();
 	};
 	
 	endTurnBtn.onclick = () => {
