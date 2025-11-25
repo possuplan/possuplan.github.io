@@ -722,6 +722,34 @@ button.redbutton:hover {
 
 
 
+
+.turn-popup-overlay {
+	display: none;
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	justify-content: center;
+	align-items: center;
+	pointer-events: none;
+}
+
+.turn-popup {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 20px;
+	background: rgba(0, 0, 0, 0.5);
+	border-radius: 40px;
+}
+
+.turn-popup-text {
+	font: 45px sans-serif;
+	color: #FFFFFF;
+	text-align: center;
+}
+
+
+
 /* Popup backdrop */
 .popup-overlay {
 	display: none;
@@ -980,6 +1008,14 @@ input.disabled {
 <body>
 
 <input type="hidden" id="dirty-flag">
+
+<div id="turn-popup-overlay" class="turn-popup-overlay">
+	<div class="turn-popup" id="turn-popup">
+		<div class="turn-popup-text" id="turn-popup-text">
+			YOUR TURN
+		</div>
+	</div>
+</div>
 
 <div id="map-popup-overlay" class="popup-overlay">
 	<div class="popup" id="map-popup">
@@ -1438,6 +1474,9 @@ function getSelectedServer(){
 
 
 const popupOverlay = document.getElementById('map-popup-overlay');
+const turnPopupOverlay = document.getElementById('turn-popup-overlay');
+
+
 const popup = document.getElementById('map-popup');
 
 
@@ -1504,6 +1543,19 @@ function loadRandomMap(){
 loadRandomBtn.addEventListener('click', () => {
 	loadRandomMap();
 });
+
+
+
+
+function showTurnPopup(){
+	turnPopupOverlay.style.display = 'flex';
+}
+function hideTurnPopup(){
+	if(turnPopupOverlay.style.display !== 'none'){
+		turnPopupOverlay.style.display = 'none';
+	}
+}
+
 
 
 
@@ -3092,7 +3144,49 @@ function addChatMessage(from, message, isSpectator, color = '#FFF') {
 
 function addCurrentTurnChatMessage(){
 	addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${getCurrentTurnPlayer().name}'s turn.`);
+	
+	if(isMyTurn()){
+		showTurnPopup();
+	}
 }
+
+
+
+// pointer* events already catch: mouse touch stylus
+// But keeping touch* is harmless and sometimes useful for older browsers.
+// scroll catches mouse-wheel, touch drag, inertia scrolling, etc.
+const userActivityEvents = [
+	"click",
+	"mousedown",
+	"mouseup",
+	//"mousemove",
+	"wheel",
+	"keydown",
+	"keyup",
+	"touchstart",
+	"touchmove",
+	"touchend",
+	"pointerdown",
+	//"pointermove",
+	"pointerup",
+	"scroll",
+];
+
+userActivityEvents.forEach(event => {
+	// passive: true keeps performance good for things like scroll and touch events.
+	window.addEventListener(event, throttledMarkUserActive, { passive: true });
+});
+
+let lastActiveTime = 0;
+function throttledMarkUserActive() {
+	const now = Date.now();
+	if (now - lastActiveTime > 500) {  // adjust interval as needed
+		hideTurnPopup();
+		lastActiveTime = now;
+	}
+}
+
+
 
 
 // pushsystemchat
@@ -7175,6 +7269,8 @@ function ai_find_best_move(player){
 }
 */
 
+
+// find_ai_best_move findaibestmove aifindbestmove aimove ai_move
 function ai_find_best_move(player) {
 	//console.log("ai_find_best_move (improved)");
 
