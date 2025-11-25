@@ -46,15 +46,66 @@ unless you claim new hex which increases your income by 1, and makes income-wage
 or if joining two pools together to get the balance positive.
 
 
-	
-	*/
-	//////////////////////////////////////////////
-	//
-	//  force to public server here for quick testing:
-	//
-	//window.APP_CONFIG.LOCAL = false; // this is true on my pc by default. on release version false.
-	</script>
-	
+
+*/
+//////////////////////////////////////////////
+//
+//  force to public server here for quick testing:
+//
+//window.APP_CONFIG.LOCAL = false; // this is true on my pc by default. on release version false.
+
+
+// set debug mode, without debug there will be no console.log/warn at all.
+let DEBUGMODE = 1;
+
+// Save originals ONCE
+const _log = console.log.bind(console);
+const _warn = console.warn.bind(console);
+
+function debugMode(onoff = -1){
+	if(onoff == -1){
+		DEBUGMODE = !DEBUGMODE;
+	}else{
+		DEBUGMODE = onoff;
+	}
+	if (!DEBUGMODE) {
+		console.log = function() {};
+		console.warn = function() {};
+	} else {
+		console.log = _log;
+		console.warn = _warn;
+	}
+}
+
+debugMode(DEBUGMODE);
+
+
+
+
+
+/*
+// NOTE: this will forget the original line number... sigh.
+
+const originalConsoleLog = console.log;
+const originalConsoleWarn = console.warn;
+
+// Override console.log
+console.log = function (...args) {
+	if(DEBUGMODE){
+		originalConsoleLog.apply(console, args); // preserves call site
+	}
+};
+// Override console.warn
+console.warn = function (...args) {
+	if(DEBUGMODE){
+		originalConsoleWarn.apply(console, args); // preserves call site
+	}
+};*/
+
+
+
+</script>
+
 
 
     
@@ -5347,9 +5398,9 @@ function handleHexClick(hex) {
 	// maybe this should be called first? or not...
 	//updateSelectedPoolInfo(hex);
 	
-	let poolHex = getSelectedPoolHex();
-	console.log("handleHexClick: poolHex:");
-	console.log(poolHex);
+	//let poolHex = getSelectedPoolHex();
+	//console.log("handleHexClick: poolHex:");
+	//console.log(poolHex);
 	
 	//let updatePools = false;
 	let updatePools = true; // currently always updates info, so it will set selectedPool to null if not player own pool.
@@ -5393,6 +5444,10 @@ function handleHexClick(hex) {
 
 	// --- PLACING A UNIT ---
 	if (placingUnit) {
+		let poolHex = getSelectedPoolHex();
+		console.log("handleHexClick: placingUnit poolHex:");
+		console.log(poolHex);
+
 		const buildCheck = isPlacementValid(placingUnit.type, hex, myPlayer, poolHex);
 		if (buildCheck.valid) {
 			sendToHost({
@@ -5428,6 +5483,10 @@ function handleHexClick(hex) {
 	
 	// --- MOVING A UNIT ---
 	if (selectedUnit) {
+		
+		let poolHex = getSelectedPoolHex();
+		console.log("handleHexClick: selectedUnit poolHex:");
+		console.log(poolHex);
 		
 		let deselected = false;
 
@@ -6208,32 +6267,6 @@ function getUnitSellPrice(unit){
 	return 0;
 }
 
-let DEBUGMODE = 1;
-
-/*
-
-// NOTE: this will forget the original line number... sigh.
-
-const originalConsoleLog = console.log;
-const originalConsoleWarn = console.warn;
-
-// Override console.log
-console.log = function(...args) {
-	if(DEBUGMODE){
-		originalConsoleLog(...args);
-	}
-};
-// Override console.warn
-console.warn = function(...args) {
-	if(DEBUGMODE){
-		originalConsoleWarn(...args);
-	}
-};
-*/
-
-function debugMode(onoff){
-	DEBUGMODE = !DEBUGMODE;
-}
 
 
 
@@ -6287,7 +6320,7 @@ function executeAction(playerId, action) {
 			console.log("actionPool:");
 			console.log(actionPool);
 
-			addCost(actionPool, sellPrice, poolHex);
+			addCost(actionPool, sellPrice, poolHex, action.type);
 			
 			// remove unit:
 			//gameState.units = gameState.units.filter(u => u.id !== unit.id);
@@ -6398,7 +6431,7 @@ function executeAction(playerId, action) {
 					
 					// add tree claiming money:
 					if(toTile.object === 'tree'){
-						addCost(actionPool, 1, poolHex);
+						addCost(actionPool, 1, poolHex, action.type);
 					}
 					
 					toTile.object = null;
@@ -6457,7 +6490,7 @@ function executeAction(playerId, action) {
 				
 				
 				if (totalSavings >= data.cost) {
-					deductCost(actionPool, data.cost);
+					deductCost(actionPool, data.cost, poolHex, action.type);
 					
 					const newUnit = {
 						id: getUID(),
@@ -6526,7 +6559,7 @@ function executeAction(playerId, action) {
 						
 						// add tree claiming money:
 						if(tile.object === 'tree'){
-							addCost(actionPool, 1, poolHex);
+							addCost(actionPool, 1, poolHex, action.type);
 						}
 						
 						clearedObject = tile.object;
@@ -6651,7 +6684,12 @@ function executeAction(playerId, action) {
 					if (tile) {
 						// undo tree claiming money:
 						if(lastAction.clearedObject === 'tree'){
-							deductCost(actionPool, 1, poolHex);
+							console.log("lastAction.type === 'move'");
+							console.log("lastAction.clearedObject === 'tree'");
+							console.log(actionPool);
+							console.log(poolHex);
+							
+							deductCost(actionPool, 1, poolHex, action.type);
 						}
 						tile.object = lastAction.clearedObject;
 						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, object: tile.object });
@@ -6680,7 +6718,7 @@ function executeAction(playerId, action) {
 				console.log("addCost to actionPool, cost = "+lastAction.cost);
 				console.log(actionPool);
 
-				addCost(actionPool, lastAction.cost, poolHex);
+				addCost(actionPool, lastAction.cost, poolHex, action.type);
 				
 				unitActionHex = {q: lastAction.unit.q, r: lastAction.unit.r};
 				
@@ -6704,7 +6742,7 @@ function executeAction(playerId, action) {
 					if (tile) {
 						// undo tree claiming money:
 						if(lastAction.clearedObject === 'tree'){
-							deductCost(actionPool, 1, poolHex);
+							deductCost(actionPool, 1, poolHex, action.type);
 						}
 						tile.object = lastAction.clearedObject;
 						updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
@@ -6727,7 +6765,7 @@ function executeAction(playerId, action) {
 				console.log("actionPool:");
 				console.log(actionPool);
 
-				deductCost(actionPool, lastAction.sellPrice);
+				deductCost(actionPool, lastAction.sellPrice, poolHex, action.type);
 
 				//gameState.units.push(lastAction.soldUnit);
 				//addUnit(lastAction.soldUnit);
@@ -6922,6 +6960,7 @@ function findEconomyPools(playerId, log_enabled = true) {
 	return pools;
 }
 
+
 function distributePoolSavings(pools) {
 	// Normalize input so we always work with an array:
 	if (!Array.isArray(pools)) {
@@ -6998,50 +7037,35 @@ function distributePoolSavings(pools) {
 
 */
 
-function deductCost(pools, cost) {
-	
-	console.log("deductCost: "+cost);
-	// Normalize input so we always work with an array:
-	if (!Array.isArray(pools)) {
-		pools = [pools];
-	}
-	
-	// Deducts cost proportionally from all pools
-	/*
-	let totalSavings = 0;
-	pools.forEach(pool => totalSavings += pool.totalSavings);
-	if (totalSavings < cost) return false; // Should not happen
-	
-	for (const pool of pools) {
-		const proportion = pool.totalSavings / totalSavings;
-		pool.totalSavings -= cost * proportion;
-	}
-	*/
-	if (pools.length > 0) {
-		//pools[0].totalSavings -= cost;
-		pools[0].hexes[0].tile.savings -= cost;
-	}
-	//distributePoolSavings(pools);
-	//return true;
-}
-/*
-function addCost(pools, cost, poolHex) {
-	// Normalize input so we always work with an array:
-	if (!Array.isArray(pools)) {
-		pools = [pools];
-	}
-	
-	// Refunds cost. Just add it to the first pool.
-	// distributePoolSavings will spread it evenly.
-	if (pools.length > 0) {
-		pools[0].hexes[0].tile.savings += cost;
-	}
-	//distributePoolSavings(pools);
-}
-*/
 
-function addCost(pools, cost, preferredHex = null) {
-	console.log("addCost: " + cost);
+
+function deductCost(pools, cost, preferredHex = null, actionType = "unknown") {
+	console.log("deductCost: " + cost);
+
+	// Normalize input so we always work with an array:
+	if (!Array.isArray(pools)) {
+		pools = [pools];
+	}
+
+	if (pools.length > 0 && pools[0].hexes.length > 0) {
+		let targetTile = pools[0].hexes[0].tile; // Default fallback
+
+		// If a safe hex is provided, try to find it in the pool
+		if (preferredHex) {
+			const match = pools[0].hexes.find(h => h.q === preferredHex.q && h.r === preferredHex.r);
+			if (match) {
+				targetTile = match.tile;
+			}
+		}
+
+		targetTile.savings -= cost;
+		console.log(`Charged ${cost} from tile ${targetTile.q},${targetTile.r}`);
+	}
+}
+
+
+function addCost(pools, cost, preferredHex = null, actionType = "unknown") {
+	console.log("addCost on action '"+actionType+"': " + cost);
 
 	// Normalize input so we always work with an array:
 	if (!Array.isArray(pools)) {
@@ -7168,11 +7192,11 @@ function ai_find_best_move(player) {
 			const tile = getTileAt(move.q, move.r);
 			if (!tile || tile.ownerId === player.id) continue;
 			const check = isMoveValid(unit, move, player);
-			if (check.valid) possibleMoves.push(move);
+			if (check.valid) possibleMoves.push({move:move, poolHex:{q:unit.q, r:unit.r}});
 		}
 
-		for (const move of possibleMoves) {
-			const tile = getTileAt(move.q, move.r);
+		for (const moveInfo of possibleMoves) {
+			const tile = getTileAt(moveInfo.move.q, moveInfo.move.r);
 			let score = 0;
 
 			// === Base scoring ===
@@ -7183,7 +7207,7 @@ function ai_find_best_move(player) {
 			if (tile.ownerId && tile.ownerId !== player.id) score += 10;
 
 			// === Attack scoring ===
-			const enemyUnit = gameState.units.find(u => u.q === move.q && u.r === move.r);
+			const enemyUnit = gameState.units.find(u => u.q === moveInfo.move.q && u.r === moveInfo.move.r);
 			if (enemyUnit) {
 				if (unit.level > enemyUnit.level) {
 					score += 25; // easy kill
@@ -7194,7 +7218,7 @@ function ai_find_best_move(player) {
 
 			// === Territorial influence ===
 			// More valuable if this move borders more enemy land (potential cutoff)
-			const neighbors = getHexNeighbors(move.q, move.r);
+			const neighbors = getHexNeighbors(moveInfo.move.q, moveInfo.move.r);
 			let enemyAdj = 0;
 			for (const n of neighbors) {
 				const nt = getTileAt(n.q, n.r);
@@ -7215,8 +7239,9 @@ function ai_find_best_move(player) {
 				bestMove = {
 					type: "action_move",
 					unitId: unit.id,
-					toQ: move.q,
-					toR: move.r
+					toQ: moveInfo.move.q,
+					toR: moveInfo.move.r,
+					poolHex: moveInfo.poolHex,
 				};
 			}
 		}
@@ -7734,11 +7759,11 @@ function handleHostData(data) {
 			let poolsInfo = data.poolsInfo; // array of pools savings/income/wages info.
 			//playerSavings.textContent = myCurrentSavings;
 			
-			console.warn("##############################################################################");
-			console.warn("##############################################################################");
+			//console.warn("##############################################################################");
+			//console.warn("##############################################################################");
 			console.warn("## savings_update:");
-			console.warn("##############################################################################");
-			console.warn("##############################################################################");
+			//console.warn("##############################################################################");
+			//console.warn("##############################################################################");
 			console.warn(data);
 		
 			// update local player pools for being able to select a pool and display its pool info:
@@ -8919,10 +8944,13 @@ function loadParsedMap(parsedMap, compact = false){
 				//	tree = "tree";
 				//}
 				// add random trees 20% chance:
-				if(!info.owner && info.type !== 'water' && randomFunc() < 0.2){
+				//if(!info.owner && info.type !== 'water' && randomFunc() < 0.2){
 					//object = "tree";
+				//}
+				// dont add water tiles into the tilesData, they are useless.
+				if(info.type !== 'water'){
+					setTileAt(qq, rr, { type: info.type, ownerId: null, object: object, savings: 0 });
 				}
-				setTileAt(qq, rr, { type: info.type, ownerId: null, object: object, savings: 0 });
 			}
 		}
 	}
