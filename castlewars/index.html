@@ -451,11 +451,11 @@ label {
 	align-items: flex-end; /* if you want the numbers aligned right inside left panel */
 	gap: 0px;
 	padding-right: 10px;
-	margin-bottom: 10px;
+	---margin-bottom: 10px;
 	min-width: 0;
 	height:100%;
 	min-height:0;
-    ---line-height: 24px;
+    line-height: 24px;
 }
 
 
@@ -1538,9 +1538,11 @@ const lobbyPreviewTile = document.getElementById("lobby-preview-tile");
 
 
 hostPreviewTile.addEventListener("click", () => {
+	hostCustomColorPicker.value = getMyPlayer().color;
 	hostCustomColorPicker.click();
 });
 lobbyPreviewTile.addEventListener("click", () => {
+	lobbyCustomColorPicker.value = getMyPlayer().color;
 	lobbyCustomColorPicker.click();
 });
 
@@ -1564,7 +1566,7 @@ lobbyCustomColorPicker.addEventListener('input', (e) => {
 
 
 hostCustomColorPicker.addEventListener('change', (e) => {
-	//console.log("Final color:", e.target.value);
+	console.log("Final color:", e.target.value);
 	let color = e.target.value;
 	let textColor = getPlayerTextColor(color);
 	updatePlayerColor(color, textColor);
@@ -1572,7 +1574,7 @@ hostCustomColorPicker.addEventListener('change', (e) => {
 });
 
 lobbyCustomColorPicker.addEventListener('change', (e) => {
-	//console.log("Final color:", e.target.value);
+	console.log("Final color:", e.target.value);
 	let color = e.target.value;
 	let textColor = getPlayerTextColor(color);
 	updatePlayerColor(color, textColor);
@@ -2380,6 +2382,7 @@ function deselectHex(){
 function deselectUnit(){
 	console.log("deselectUnit");
 	selectedUnit = null;
+	sellUnitBtn.disabled = true;
 }
 
 let shakingUnits = []; // { id, endTime }
@@ -8755,7 +8758,7 @@ function kickPlayer(peerId){
 
 function updateHostLobbyUI() {
 	
-	updateHostPreviewTile(getPlayer(localPlayer.id).color);
+	updateHostPreviewTile(getMyPlayer().color);
 	
 	// for host player:
 	hostPlayerList.innerHTML = '';
@@ -8828,7 +8831,7 @@ function updatePlayerColor(color, textColor){
 
 function updateLobbyUI() {
 	
-	updateLobbyPreviewTile(getPlayer(localPlayer.id).color);
+	updateLobbyPreviewTile(getMyPlayer().color);
 
 	// Update settings info
 	lobbyRoomNameTitle.textContent = `Joining: ${gameState.settings.roomName}`;
