@@ -7322,6 +7322,8 @@ function executeAction(playerId, action) {
 			//console.log("executeAction action_end_turn");
 			
 			executeEndTurn(playerId);
+			
+
 			if(!isAiPlayer(playerId)){
 				broadcast({ type: 'sound', name: "move", q:0, r:0, playerId: 0, action: action.type});
 			}
@@ -8165,6 +8167,8 @@ function handleHostData(data) {
 			}
 			needsUIUpdate = true;
 			updateHighlights();
+			
+			updateLocalPoolsInfo();
 		}
 		break;
 		case 'object_changed': {
@@ -8175,6 +8179,8 @@ function handleHostData(data) {
 				}
 			}
 			needsUIUpdate = true;
+			
+			updateLocalPoolsInfo();
 		}
 		break;
 		case 'unit_added': {
@@ -8184,12 +8190,16 @@ function handleHostData(data) {
 			addUnit(data.unit);
 			needsUIUpdate = true;
 			updateHighlights();
+			
+			updateLocalPoolsInfo();
 		}
 		break;
 		case 'unit_removed': {
 			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
 			needsUIUpdate = true;
 			updateHighlights();
+			
+			updateLocalPoolsInfo();
 		}
 		break;
 		case 'unit_moved': {
@@ -8201,6 +8211,8 @@ function handleHostData(data) {
 			}
 			needsUIUpdate = true;
 			updateHighlights();
+			
+			updateLocalPoolsInfo();
 		}
 		break;
 		case 'turn_changed': {
@@ -8213,6 +8225,8 @@ function handleHostData(data) {
 			updateGameUI();
 
 			addCurrentTurnChatMessage();
+			
+			updateLocalPoolsInfo();
 		}
 		break;
 		case 'sound': {
@@ -8326,11 +8340,20 @@ function handleHostData(data) {
 	// non-synced updates executed on every action:
 	setProtectedTiles();
 	
+
+	
 	if (needsUIUpdate) {
 		updateGameUI();
 	}
 }
 
+
+function updateLocalPoolsInfo(){
+	// try to fix pools not updating wages when soldiers died etc...
+	localPlayerPools = findEconomyPools(localPlayer.id);
+	selectedPool = findSelectedPool(selectedHex);
+	updateSelectedPoolUi();
+}
 
 //
 // HOST-SIDE: Received data from a client
