@@ -400,7 +400,7 @@ label {
 .ui-panel {
 	pointer-events: auto;
 	background: rgba(0, 0, 0, 0.8);
-	backdrop-filter: blur(5px);
+	---backdrop-filter: blur(5px);
 	padding: 2px 6px 2px 6px;
 	max-height: 90vh;
 	overflow-y: auto;
@@ -543,6 +543,15 @@ label {
 }
 
 
+#ui-menu {
+	
+}
+
+#ui-menu .input-group {
+	margin-bottom:0;
+}
+
+
 #player-ui-list {
 	max-height: 133px;
 
@@ -576,8 +585,8 @@ label {
 	height: 145px;
 
 	border-bottom-right-radius: 8px;
-	
-	padding-left: 4px;
+
+    padding: 0 0 0 4px;
 }
 
 #chat-messages {
@@ -722,24 +731,19 @@ button.redbutton:hover {
 
 
 
-
+/* NOTE: display: flex with fullscreen overlay causes chrome to add dashed borders around the overlay !!! */
 .turn-popup-overlay {
 	display: none;
-	position: fixed;
-	inset: 0;
+	position: absolute;
+	top: 0;
 	z-index: 9999;
-	justify-content: center;
-	align-items: center;
-	pointer-events: none;
+	width: 100%;
 }
 
 .turn-popup {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	padding: 20px;
+	padding: 5px;
 	background: rgba(0, 0, 0, 0.5);
-	border-radius: 40px;
+	width: 100%;
 }
 
 .turn-popup-text {
@@ -747,6 +751,8 @@ button.redbutton:hover {
 	color: #FFFFFF;
 	text-align: center;
 }
+
+
 
 
 
@@ -1102,11 +1108,13 @@ input.disabled {
 			</div>
 			<div style="flex:1">
 				<span class="label">Custom Color</span>
-				<input type="color" id="colorInput" value="#3498db">
+				
+				<div id="host-preview-tile-wrapper">
+					<canvas id="host-preview-tile" style="width:110px; height:110px">
+				</div>
+				<input type="color" id="host-custom-color-input" style="visibility:hidden" value="#3498db">
 			</div>
-			
-			
-			<div style="flex: 1;">
+			<div style="flex:1">
 				<span class="label">Joined Players</span>
 				<div id="host-player-list" class="player-list"></div>
 			</div>
@@ -1173,11 +1181,19 @@ input.disabled {
 		<input type="text" id="lobby-player-name" value="Player">
 		
 		<div class="input-group">
-			<div style="flex:5">
-				<span class="label">Choose Color</span>
+			<div style="flex:1">
+				<span class="label">Select Color</span>
 				<div id="lobby-color-picker" class="color-picker"></div>
 			</div>
-			<div style="flex: 2;">
+			<div style="flex:1">
+				<span class="label">Custom Color</span>
+				
+				<div id="lobby-preview-tile-wrapper">
+					<canvas id="lobby-preview-tile" style="width:110px; height:110px">
+				</div>
+				<input type="color" id="lobby-custom-color-input" style="visibility:hidden" value="#3498db">
+			</div>
+			<div style="flex:1">
 				<span class="label">Joined Players</span>
 				<div id="lobby-player-list" class="player-list"></div>
 			</div>
@@ -1287,6 +1303,18 @@ let selectedServerIndex = 1; // default to render.com
 if(window.APP_CONFIG.LOCAL == true){
 	selectedServerIndex = 0;
 }
+
+
+// cache angle calculations:
+const HEX_CORNERS = [];
+for (let i = 0; i < 7; i++) { // 7 because i+1 is called, so it gets back to the first item.
+	const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 instead of +1 for pointy top
+	HEX_CORNERS.push({
+		x: Math.cos(angle),
+		y: Math.sin(angle)
+	});
+}
+
 
 // onlyLocal = only visible if window.APP_CONFIG.LOCAL = true
 // serverlist
@@ -1502,6 +1530,57 @@ const loadedMapImg = document.getElementById('loaded-map');
 const lobbyLoadedMapImg = document.getElementById('lobby-loaded-map');
 
 
+const hostCustomColorPicker = document.getElementById("host-custom-color-input");
+const lobbyCustomColorPicker = document.getElementById("lobby-custom-color-input");
+
+const hostPreviewTile = document.getElementById("host-preview-tile");
+const lobbyPreviewTile = document.getElementById("lobby-preview-tile");
+
+
+hostPreviewTile.addEventListener("click", () => {
+	hostCustomColorPicker.click();
+});
+lobbyPreviewTile.addEventListener("click", () => {
+	lobbyCustomColorPicker.click();
+});
+
+
+function updateHostPreviewTile(color){
+	createHexagonMaskedImage(getImage("land"), HEX_SIZE, 1, hostPreviewTile, color);
+}
+function updateLobbyPreviewTile(color){
+	createHexagonMaskedImage(getImage("land"), HEX_SIZE, 1, lobbyPreviewTile, color);
+}
+
+
+hostCustomColorPicker.addEventListener('input', (e) => {
+    console.log("Live color:", e.target.value);
+    updateHostPreviewTile(e.target.value);
+});
+lobbyCustomColorPicker.addEventListener('input', (e) => {
+    console.log("Live color:", e.target.value);
+    updateLobbyPreviewTile(e.target.value);
+});
+
+
+hostCustomColorPicker.addEventListener('change', (e) => {
+	//console.log("Final color:", e.target.value);
+	let color = e.target.value;
+	let textColor = getPlayerTextColor(color);
+	updatePlayerColor(color, textColor);
+	updateHostPreviewTile(e.target.value);
+});
+
+lobbyCustomColorPicker.addEventListener('change', (e) => {
+	//console.log("Final color:", e.target.value);
+	let color = e.target.value;
+	let textColor = getPlayerTextColor(color);
+	updatePlayerColor(color, textColor);
+	updateLobbyPreviewTile(e.target.value);
+});
+
+
+
 
 const imagePopup = document.getElementById('image-popup');
 const popupImg = document.getElementById('popup-img');
@@ -1548,7 +1627,7 @@ loadRandomBtn.addEventListener('click', () => {
 
 
 function showTurnPopup(){
-	turnPopupOverlay.style.display = 'flex';
+	turnPopupOverlay.style.display = 'block';
 }
 function hideTurnPopup(){
 	if(turnPopupOverlay.style.display !== 'none'){
@@ -1836,8 +1915,8 @@ document.body.addEventListener('touchend', e => {
 const DB_NAME = 'HexWarlordsDB';
 const DB_STORE_NAME = 'savedGames';
 
-const PLAYER_COLORS = [
-	'#FF2222', 
+const PLAYER_COLORS_ARR = [
+	'#FF2222',
 	'#FFFF00', 
 	'#3333ee', 
 	'#FF9500', 
@@ -1850,6 +1929,18 @@ const PLAYER_COLORS = [
 	'#eeeeee', 
 	'#444444', 
 ];
+
+// build player colors list with precomputed text colors:
+let PLAYER_COLORS = [];
+for(let i = 0; i < PLAYER_COLORS_ARR.length; i++){
+	let color = PLAYER_COLORS_ARR[i];
+	let textColor = getPlayerTextColor(color);
+	PLAYER_COLORS.push({color:color, textColor:textColor});
+}
+
+function getPlayerTextColor(color){
+	return lightenHexColor(color, 0.3);
+}
 
 
 
@@ -1870,8 +1961,7 @@ function randomColor() {
 }
 
 
-function getNextFreeColor(player = null){
-	
+function getNextFreeColors(player = null){
 	let usedColors = [];
 	for(let i = 0; i < gameState.players.length; i++){
 		let p = gameState.players[i];
@@ -1883,13 +1973,42 @@ function getNextFreeColor(player = null){
 	}
 	
 	for(let i = 0; i < PLAYER_COLORS.length; i++){
-		let color = PLAYER_COLORS[i];
+		if(!usedColors.includes(PLAYER_COLORS[i].color)){
+			return PLAYER_COLORS[i];
+		}
+	}
+	console.log("random color returned");
+	let newcolor = randomColor();
+	return {color:newcolor, textColor:getPlayerTextColor(newcolor)};
+}
+
+function getNextFreeTextColor(player = null){
+	return getNextFreeColors(player).textColor;
+}
+
+function getNextFreeColor(player = null){
+	
+	return getNextFreeColors(player).color;
+	/*
+	let usedColors = [];
+	for(let i = 0; i < gameState.players.length; i++){
+		let p = gameState.players[i];
+		if(!player || p.id !== player.id){
+			if(!p.quitted && !p.isSpectator){
+				usedColors.push(p.color);
+			}
+		}
+	}
+	
+	for(let i = 0; i < PLAYER_COLORS.length; i++){
+		let color = PLAYER_COLORS[i].color;
 		if(!usedColors.includes(color)){
 			return color;
 		}
 	}
 	console.log("random color returned");
 	return randomColor();
+	*/
 }
 
 
@@ -2088,6 +2207,8 @@ let HEX_LINE_MULTI = 0.958; // used to draw inside hex so the thick line wont ge
 let PULSE_SPEED = 0.005; // used for pulsating effects.
 
 
+
+
 let use_fill = 0;
 
 // soldiers soldier_units 
@@ -2168,6 +2289,7 @@ let localPlayer = {
 	id: null,
 	name: 'Player',
 	color: "#888888", // debug color
+	textColor: "#888888", // debug color
 	isSpectator: false,
 	isHost: false,
 	isDead: false,
@@ -2371,6 +2493,136 @@ if(use_orig){
 		'soldier4': {path:'images/soldier4.png', scale:1, offsetX: 0},
 	};
 }
+
+
+
+
+// * Creates a new transparent canvas element containing a source image
+// * clipped into a centered, anti-aliased hexagonal shape.
+// *
+// * @param {HTMLImageElement | HTMLCanvasElement} sourceImage - The original rectangular texture.
+// * @param {number} hexSize - The radius of the hexagon in pixels (e.g., 120).
+// * @param {number} textureScale - A multiplier to scale the source image (e.g., 1.0 for original size).
+// * @returns {HTMLCanvasElement} - A new canvas element with the masked hexagon image.
+function createHexagonMaskedImage(sourceImage, hexSize, textureScale = 1.0, canvasElem = null, color = null) {
+	let canvasOut;
+	if(canvasElem){
+		canvasOut = canvasElem;
+	}else{
+		canvasOut = document.createElement('canvas');
+	}
+
+	// FIX 1: Canvas is fixed at 256x256
+	const canvasSize = 256;
+	// The radius of the hexagon MUST be 128 (half of the canvas size) to fill it
+	const CANVAS_RADIUS = canvasSize/2; 
+
+	canvasOut.width = canvasSize;
+	canvasOut.height = canvasSize;
+	const ctxOut = canvasOut.getContext('2d');
+
+	// Clear the canvas if reusing it.
+	ctxOut.clearRect(0, 0, canvasSize, canvasSize);
+
+	// The center point of the new canvas (always 128)
+	const center = CANVAS_RADIUS; 
+
+	// Calculate source image draw dimensions
+	const drawWidth = sourceImage.width * textureScale;
+	const drawHeight = sourceImage.height * textureScale;
+
+	// Calculate top-left corner (to center the scaled image on the 256x256 canvas)
+	const drawX = center - (drawWidth / 2);
+	const drawY = center - (drawHeight / 2);
+
+	// FIX 2: Hexagon drawing coordinates must use the CANVAS_RADIUS (128)
+	let px = center; // Center X for the hexagon path (128)
+	let py = center; // Center Y for the hexagon path (128)
+	const padding = 0; 
+
+	// FIX 3: The radius 'r' for the path must be CANVAS_RADIUS (128)
+	const r = CANVAS_RADIUS + padding; 
+
+	ctxOut.save();
+
+	// --- 4. Define the Hexagonal Clipping Path using fixed CANVAS_RADIUS ---
+	ctxOut.beginPath();
+	// Path points are calculated relative to the canvas center (px, py)
+	ctxOut.moveTo(px + r * HEX_CORNERS[0].x, py + r * HEX_CORNERS[0].y);
+	ctxOut.lineTo(px + r * HEX_CORNERS[1].x, py + r * HEX_CORNERS[1].y);
+	ctxOut.lineTo(px + r * HEX_CORNERS[2].x, py + r * HEX_CORNERS[2].y);
+	ctxOut.lineTo(px + r * HEX_CORNERS[3].x, py + r * HEX_CORNERS[3].y);
+	ctxOut.lineTo(px + r * HEX_CORNERS[4].x, py + r * HEX_CORNERS[4].y);
+	ctxOut.lineTo(px + r * HEX_CORNERS[5].x, py + r * HEX_CORNERS[5].y);
+	ctxOut.closePath();
+
+	ctxOut.clip(); // Apply the clip
+
+	// --- 5. Draw the Scaled Source Image (Clipped) ---
+	ctxOut.drawImage(
+		sourceImage,
+		drawX,
+		drawY,
+		drawWidth,
+		drawHeight
+	);
+
+	// --- 6. Apply Color Multiplication (If specified) ---
+	if(color){
+		ctxOut.globalCompositeOperation = "multiply";
+		ctxOut.fillStyle = color;
+		ctxOut.fillRect(0, 0, canvasSize, canvasSize);
+	}
+
+	// --- 7. Restore context and reset composite operation ---
+	ctxOut.globalCompositeOperation = 'source-over';
+	ctxOut.restore();
+
+	return canvasOut;
+}
+
+
+		/*
+	const effectiveRadius = hexSize;
+
+	// --- Step 1: Draw the Hexagonal Mask Shape ---
+
+	// We draw the shape path slightly scaled down and use blur 
+	// to achieve a simple, performant anti-aliasing effect at the edge.
+
+	ctxOut.beginPath();
+
+	// The inner radius for the path, slightly less than full size
+	const pathRadius = effectiveRadius * 0.99; 
+
+	// Move to the first corner
+	ctxOut.moveTo(center + pathRadius * HEX_CORNERS[0].x, center + pathRadius * HEX_CORNERS[0].y);
+
+	// Draw lines to the remaining corners
+	for (let i = 1; i < 6; i++) {
+		ctxOut.lineTo(center + pathRadius * HEX_CORNERS[i].x, center + pathRadius * HEX_CORNERS[i].y);
+	}
+	ctxOut.closePath();
+
+	// Set a very small shadow/blur to ensure the edge is smoothly blended
+	ctxOut.shadowBlur = 1; 
+	ctxOut.shadowColor = 'black'; 
+	ctxOut.fillStyle = 'black';
+	ctxOut.fill(); 
+	
+	
+
+	// Reset the shadow properties for the next draw
+	ctxOut.shadowBlur = 0;
+    ctxOut.shadowColor = 'transparent';
+
+	// --- Step 2: Mask the Source Image ---
+
+	// Set composite operation to 'source-in'. 
+	// This means new drawings are only visible where the existing (black hex) shape is.
+	ctxOut.globalCompositeOperation = 'source-in';
+	
+	*/
 
 
 // draws ">" triangle where the pointy right side is the x y coordinate.
@@ -2937,6 +3189,7 @@ addAiBtn.addEventListener('click', () => {
         id: `AI-${ai_counter}-${randomStr}`,
         name: `AI-${ai_counter}`,
 		color: getNextFreeColor(),
+		textColor: getNextFreeTextColor(),
 		isSpectator: false,
 		isAI: true,
 		isDead: false,
@@ -2989,10 +3242,14 @@ function showPage(pageId) {
 
 // centers screen on q,r position.
 function centerTo(q, r){
-	const centerPx = axialToPixel(q, r); 
-	viewport.x = canvas.width / 2 - centerPx.x;
-	viewport.y = canvas.height / 2 - centerPx.y;
+	//const centerPx = axialToPixel(q, r);
+	const centerX = axialToPixelX(q, r);
+	const centerY = axialToPixelY(q, r);
+	
+	viewport.x = canvas.width / 2 - centerX;
+	viewport.y = canvas.height / 2 - centerY;
 }
+
 
 
 function sendToPlayer(playerId, data) {
@@ -3124,16 +3381,29 @@ function pushChatMessage(from, message, isSpectator, color = '#FFF') {
 	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 	
+	limitChatUIMessages();
+	
 	const item2 = item.cloneNode(true);
 	topFloatUiChatMessages.appendChild(item2);
 	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
 	
+	limitTopFloatUIMessages();
+}
+
+function limitTopFloatUIMessages(){
 	// trim old items for the floating UI
 	while (topFloatUiChatMessages.children.length > 3) {
 		topFloatUiChatMessages.removeChild(topFloatUiChatMessages.firstElementChild);
 	}
-	
 }
+function limitChatUIMessages(){
+	// --- FIX: Prevent Memory Leak ---
+	// no need to see that far in chat history anyway...
+	while (chatMessages.children.length > 100) {
+		chatMessages.removeChild(chatMessages.firstElementChild);
+	}
+}
+
 
 
 // sendmessage addmessage pushmessage sendchatmessage
@@ -3143,7 +3413,8 @@ function addChatMessage(from, message, isSpectator, color = '#FFF') {
 
 
 function addCurrentTurnChatMessage(){
-	addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${getCurrentTurnPlayer().name}'s turn.`);
+	let player = getCurrentTurnPlayer();
+	addSystemChatMessage(`Day ${gameState.turn.turnNumber}: ${player.name}'s turn.`, player.textColor);
 	
 	if(isMyTurn()){
 		showTurnPopup();
@@ -3172,6 +3443,7 @@ const userActivityEvents = [
 	"scroll",
 ];
 
+// hide "your turn" popup if any user input was given:
 userActivityEvents.forEach(event => {
 	// passive: true keeps performance good for things like scroll and touch events.
 	window.addEventListener(event, throttledMarkUserActive, { passive: true });
@@ -3204,10 +3476,13 @@ function addSystemChatMessage(message, color = '#FFF') {
 	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 	
+	limitChatUIMessages();
+	
 	const item2 = item.cloneNode(true);
 	topFloatUiChatMessages.appendChild(item2);
 	topFloatUiChatMessages.scrollTop = topFloatUiChatMessages.scrollHeight;
 
+	limitTopFloatUIMessages();
 }
 
 
@@ -3262,6 +3537,14 @@ function axialToPixel(q, r) {
 	const x = HEX_SIZE * (3/2 * q);
 	const y = HEX_SIZE * (SQRT3/2 * q + SQRT3 * r);
 	return { x, y };
+}
+
+// faster functions without object creation:
+function axialToPixelX(q, r) {
+	return HEX_SIZE * (3/2 * q);
+}
+function axialToPixelY(q, r) {
+	return HEX_SIZE * (SQRT3/2 * q + SQRT3 * r);
 }
 
 
@@ -3346,29 +3629,63 @@ function initCanvas() {
 
 
 
+function getHexAnglePosX(i, px, py, multi = 1){
+    return px + HEX_SIZE * multi * HEX_CORNERS[i].x;
+}
+
+function getHexAnglePosY(i, px, py, multi = 1){
+    return py + HEX_SIZE * multi * HEX_CORNERS[i].y;
+}
+
 function getHexAnglePos(i, px, py, multi = 1){
-	const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
-	const x = px + HEX_SIZE*multi * Math.cos(angle);
-	const y = py + HEX_SIZE*multi * Math.sin(angle);
+	const x = px + HEX_SIZE*multi * HEX_CORNERS[i].x;
+	const y = py + HEX_SIZE*multi * HEX_CORNERS[i].y;
+	
+	//const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
+	//const x = px + HEX_SIZE*multi * Math.cos(angle);
+	//const y = py + HEX_SIZE*multi * Math.sin(angle);
 	return {x, y};
 }
 
 
 function drawHexLine(i, px, py, multi = 1){
-	let p1 = getHexAnglePos(i, px, py, multi);
-	let p2 = getHexAnglePos(i+1, px, py, multi);
-	ctx.moveTo(p1.x, p1.y);
-	ctx.lineTo(p2.x, p2.y);
+	//let p1 = getHexAnglePos(i, px, py, multi);
+	//let p2 = getHexAnglePos(i+1, px, py, multi);
+	//ctx.moveTo(p1.x, p1.y);
+	//ctx.lineTo(p2.x, p2.y);
+	
+	// faster way, no object creations:
+	let r = HEX_SIZE * multi;
+
+	ctx.moveTo(
+		px + r * HEX_CORNERS[i].x, 
+		py + r * HEX_CORNERS[i].y
+	);
+	ctx.lineTo(
+		px + r * HEX_CORNERS[i+1].x, 
+		py + r * HEX_CORNERS[i+1].y
+	);
 }
 
 
 
 
+// used for water shading
+function drawFilledLine(x1, y1, x2, y2, height) {
+	ctx.beginPath();
+	ctx.moveTo(x1, y1);
+	ctx.lineTo(x2, y2);
+	ctx.lineTo(x2, y2 + height);
+	ctx.lineTo(x1, y1 + height);
+	ctx.closePath();
+	ctx.fill();
+}
 
-function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
-	const dx = x2 - x1;
-	const dy = y2 - y1;
 
+
+
+// general function to draw the old water shading, not used yet.
+function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI/2) {
 	// Compute perpendicular offset based on fixed pen angle
 	const offsetX = Math.cos(penAngle) * (penWidth / 2);
 	const offsetY = Math.sin(penAngle) * (penWidth / 2);
@@ -3386,26 +3703,36 @@ function drawCalligraphyLine(x1, y1, x2, y2, penWidth, penAngle = Math.PI / 2) {
 
 
 
-let waterShadingHeightHalf = 10; // half of the line height.
-let waterShadingHeight = waterShadingHeightHalf*2;
+let waterShadingHeight = 20;
 
 
 // water shading
 function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 	if(drawLines.length > 0){
-		let da = Math.PI / 2;
 		for(let i = 0; i < drawLines.length; i++){
 			let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
-			let p1 = getHexAnglePos(ival, px, py);
-			let p2 = getHexAnglePos(ival+1, px, py);
+			//let p1 = getHexAnglePos(ival, px, py);
+			//let p2 = getHexAnglePos(ival+1, px, py);
+			
+			// faster:
+			const x1 = px + HEX_SIZE * HEX_CORNERS[ival].x;
+			const y1 = py + HEX_SIZE * HEX_CORNERS[ival].y;
+			const x2 = px + HEX_SIZE * HEX_CORNERS[ival+1].x;
+			const y2 = py + HEX_SIZE * HEX_CORNERS[ival+1].y;
 
 			ctx.fillStyle = color;
 			
-			drawCalligraphyLine(
-				p1.x, p1.y+waterShadingHeightHalf, 
-				p2.x, p2.y+waterShadingHeightHalf, 
-				waterShadingHeight, da
+			drawFilledLine(
+				x1, y1, 
+				x2, y2, 
+				waterShadingHeight
 			);
+			
+			//drawFilledLine(
+			//	p1.x, p1.y, 
+			//	p2.x, p2.y, 
+			//	waterShadingHeight
+			//);
 		}
 	}
 }
@@ -3443,11 +3770,28 @@ function drawHexagonPathLines(px, py, drawLines = null, multi = 1) {
 // 4 = bottom right
 // 5 = bottom
 function drawHexagonPath(px, py, padding = 0) {
+    const r = HEX_SIZE + padding;
+    ctx.beginPath();
+    // Unrolled loop for speed and no Math.cos/sin calls
+    ctx.moveTo(px + r * HEX_CORNERS[0].x, py + r * HEX_CORNERS[0].y);
+    ctx.lineTo(px + r * HEX_CORNERS[1].x, py + r * HEX_CORNERS[1].y);
+    ctx.lineTo(px + r * HEX_CORNERS[2].x, py + r * HEX_CORNERS[2].y);
+    ctx.lineTo(px + r * HEX_CORNERS[3].x, py + r * HEX_CORNERS[3].y);
+    ctx.lineTo(px + r * HEX_CORNERS[4].x, py + r * HEX_CORNERS[4].y);
+    ctx.lineTo(px + r * HEX_CORNERS[5].x, py + r * HEX_CORNERS[5].y);
+    ctx.closePath();
+}
+
+/*
+function drawHexagonPath(px, py, padding = 0) {
 	ctx.beginPath();
 	for (let i = 0; i < 6; i++) {
-		const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
-		const x = px + (HEX_SIZE+padding) * Math.cos(angle);
-		const y = py + (HEX_SIZE+padding) * Math.sin(angle);
+		//const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
+		//const x = px + (HEX_SIZE+padding) * Math.cos(angle);
+		//const y = py + (HEX_SIZE+padding) * Math.sin(angle);
+		const x = px + (HEX_SIZE+padding) * HEX_CORNERS[i].x;
+		const y = py + (HEX_SIZE+padding) * HEX_CORNERS[i].y;
+		
 		if(i === 0){
 			ctx.moveTo(x, y);
 		}else{
@@ -3456,13 +3800,15 @@ function drawHexagonPath(px, py, padding = 0) {
 	}
 	ctx.closePath();
 }
-
+*/
 
 
 
 function drawHexagonOutlines(q, r, myId = -1){
 	let highlightedLines = [];
-	const { x, y } = axialToPixel(q, r);
+	//const { x, y } = axialToPixel(q, r);
+	const x = axialToPixelX(q, r);
+	const y = axialToPixelY(q, r);
 	
 	let hexNeigh = getHexNeighbors(q, r);
 
@@ -3645,6 +3991,16 @@ let useInfiniteWater = 1;
 let drawWaterTiles = 0;
 
 
+// faster than using translateSelf etc.
+function setMatrix(matrix, scale, x, y) {
+	matrix.a = scale;  // Scale X
+	matrix.b = 0;      // Skew Y
+	matrix.c = 0;      // Skew X
+	matrix.d = scale;  // Scale Y
+	matrix.e = x;      // Translate X
+	matrix.f = y;      // Translate Y
+}
+
 // draw water draw infinitewater draw infinite water render infinitewater render infinite water
 function drawInfiniteWater(){
 
@@ -3671,11 +4027,20 @@ function drawInfiniteWater(){
 					const pattern = frame.patterns[bigWaterAnimZoomMipLevel];
 					const mipScale = Math.pow(0.5, bigWaterAnimZoomMipLevel);
 
-					const matrix = new DOMMatrix()
-						.translate(viewport.x, viewport.y)
-						.scale(viewport.zoom * 1.6 / mipScale);
-
-					pattern.setTransform(matrix);
+					//matrixInfiniteWater.setMatrixValue(""); // Reset to identity (or use logic to reset)
+					//matrixInfiniteWater.translateSelf(viewport.x, viewport.y);
+					//matrixInfiniteWater.scaleSelf(viewport.zoom * 1.6 / mipScale);
+					
+					setMatrix(matrixInfiniteWater, 
+						viewport.zoom * 1.6 / mipScale, 
+						viewport.x, viewport.y
+					);
+					pattern.setTransform(matrixInfiniteWater);
+					
+					//const matrix = new DOMMatrix()
+					//	.translate(viewport.x, viewport.y)
+					//	.scale(viewport.zoom * 1.6 / mipScale);
+					//pattern.setTransform(matrix);
 					ctx.fillStyle = pattern;
 					ctx.fillRect(0, 0, canvas.width, canvas.height);
 				}
@@ -3692,11 +4057,20 @@ function drawInfiniteWater(){
 					const pattern = frame.patterns[waterAnimZoomMipLevel];
 					const mipScale = Math.pow(0.5, waterAnimZoomMipLevel);
 
-					const matrix = new DOMMatrix()
-						.translate(viewport.x, viewport.y)
-						.scale(viewport.zoom * 2.4 / mipScale);
-
-					pattern.setTransform(matrix);
+					//matrixInfiniteWater.setMatrixValue(""); // Reset to identity (or use logic to reset)
+					//matrixInfiniteWater.translateSelf(viewport.x, viewport.y);
+					//matrixInfiniteWater.scaleSelf(viewport.zoom * 2.4 / mipScale);
+					setMatrix(matrixInfiniteWater, 
+						viewport.zoom * 2.4 / mipScale, 
+						viewport.x, viewport.y
+					);
+					pattern.setTransform(matrixInfiniteWater);
+					
+					//const matrix = new DOMMatrix()
+					//	.translate(viewport.x, viewport.y)
+					//	.scale(viewport.zoom * 2.4 / mipScale);
+					//pattern.setTransform(matrix);
+					
 					ctx.fillStyle = pattern;
 					ctx.fillRect(0, 0, canvas.width, canvas.height);
 				}
@@ -3708,11 +4082,19 @@ function drawInfiniteWater(){
 			const pattern = patternObj.patterns[waterZoomMipLevel];
 			const mipScale = Math.pow(0.5, waterZoomMipLevel);
 			
-			const matrix = new DOMMatrix()
-				.translate(viewport.x, viewport.y) 
-				.scale(viewport.zoom*0.4/mipScale); // mipScale = scale to different mip level
-
-			pattern.setTransform(matrix);
+			//matrixInfiniteWater.setMatrixValue(""); // Reset to identity (or use logic to reset)
+			//matrixInfiniteWater.translateSelf(viewport.x, viewport.y);
+			//matrixInfiniteWater.scaleSelf(viewport.zoom * 0.4 / mipScale);
+			setMatrix(matrixInfiniteWater, 
+				viewport.zoom * 0.4 / mipScale, 
+				viewport.x, viewport.y
+			);
+			pattern.setTransform(matrixInfiniteWater);
+			
+			//const matrix = new DOMMatrix()
+			//	.translate(viewport.x, viewport.y) 
+			//	.scale(viewport.zoom*0.4/mipScale); // mipScale = scale to different mip level
+			//pattern.setTransform(matrix);
 
 			ctx.fillStyle = pattern;
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3764,7 +4146,7 @@ let drawnTiles = 0;
 let previous_drawnTiles = 0;
 let drawDebugText = 0;
 
-let scaleMatrix = null;
+
 
 function getTexMipLevel(){
 	let miplevel = zoomMipLevel;
@@ -3783,8 +4165,8 @@ function transformPattern(imageName){
 
 	//const mipScale = Math.pow(0.5, miplevel);
 	//const scaleMatrix = new DOMMatrix().scaleSelf(1/getTexMipScale());
-	//pattern.setTransform(scaleMatrix); // scaleMatrix set in render() each frame.
-	imageAssets[imageName].patterns[getTexMipLevel()].setTransform(scaleMatrix); // scaleMatrix set in render() each frame.
+	//pattern.setTransform(scaleMatrix); // scaleMatrix set in render function each frame.
+	imageAssets[imageName].patterns[getTexMipLevel()].setTransform(scaleMatrix); // scaleMatrix set in render function each frame.
 
 }
 
@@ -3792,13 +4174,16 @@ function fillPattern(ctx, imageName){
 	//let miplevel = getTexMipLevel();
 	//const patternObj = imageAssets[imageName];
 	//const pattern = patternObj.patterns[miplevel];
-	//pattern.setTransform(scaleMatrix); // scaleMatrix set in render() each frame.
+	//pattern.setTransform(scaleMatrix); // scaleMatrix set in render function each frame.
 	//transformPattern(imageName);
     ctx.fillStyle = imageAssets[imageName].patterns[getTexMipLevel()];
     ctx.fill();
 }
 
 
+// expensive for garbage collector to create every frame, just create once.
+let scaleMatrix = new DOMMatrix();
+let matrixInfiniteWater = new DOMMatrix();
 
 
 // rendertiles drawtiles rendermaptiles render tiles render map tiles
@@ -3809,7 +4194,11 @@ function drawMapTiles(){
 	// calculate scale matrix for tile textures:
 
 	if(use_fill){
-		scaleMatrix = new DOMMatrix().scaleSelf(1/getTexMipScale());
+		//scaleMatrix = new DOMMatrix().scaleSelf(1/getTexMipScale());
+		scaleMatrix.setMatrixValue(""); // Reset to identity (or use logic to reset)
+		//scaleMatrix.translateSelf(viewport.x, viewport.y);
+		scaleMatrix.scaleSelf(1/getTexMipScale());
+
 		transformPattern('dirt');
 	}
 	
@@ -3821,13 +4210,10 @@ function drawMapTiles(){
 		const q = tile.q;
 		const r = tile.r;
 
-		const { x, y } = axialToPixel(q, r);
+		//const { x, y } = axialToPixel(q, r);
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
 
-		// --- Culling Check ---
-		if(checkCulling(x, y, -waterShadingHeight)){
-			continue;
-		}
-		
 		if (tile.type === 'water') {
 			// debug text for water tiles:
 			//ctx.fillStyle = "#FFFFFF";
@@ -3836,6 +4222,13 @@ function drawMapTiles(){
 				continue; // skip water tiles.
 			}
 		}
+		
+		// --- Culling Check ---
+		if(checkCulling(x, y, -waterShadingHeight)){
+			continue;
+		}
+		
+
 		
 		let drawTile = true;
 		
@@ -4017,18 +4410,22 @@ function drawHighlights(){
 		const q = tile.q;
 		const r = tile.r;
 
-		const { x, y } = axialToPixel(q, r);
+		//const { x, y } = axialToPixel(q, r);
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
 
-		// --- Culling Check ---
-		if(checkCulling(x, y)){
-			continue;
-		}
-		
 		if (tile.type === 'water') {
 			if(useInfiniteWater){
 				continue; // skip water tiles.
 			}
 		}
+		
+		// --- Culling Check ---
+		if(checkCulling(x, y)){
+			continue;
+		}
+		
+
 		
 		
 		if(tile.ownerId){
@@ -4176,7 +4573,9 @@ function drawObjects(){
 		const q = tile.q;
 		const r = tile.r;
 
-		const { x, y } = axialToPixel(q, r);
+		//const { x, y } = axialToPixel(q, r);
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
 
 		// --- Culling Check ---
 		if(checkCulling(x, y)){
@@ -4200,7 +4599,9 @@ function drawUnitsByType(unitType){
 			continue;
 		}
 		
-		let { x, y } = axialToPixel(unit.q, unit.r);
+		//let { x, y } = axialToPixel(unit.q, unit.r);
+		const x = axialToPixelX(unit.q, unit.r);
+		const y = axialToPixelY(unit.q, unit.r);
 
 		// --- Culling Check ---
 		if(checkCulling(x, y)){
@@ -4330,8 +4731,10 @@ function drawUnits(){
 	// drawarrows draw arrows renderarrows render arrows drawing draw triangles drawtriangles
 	if(isMyTurn()){
 		for (const unit of gameState.units) {
-			let { x, y } = axialToPixel(unit.q, unit.r);
-
+			//let { x, y } = axialToPixel(unit.q, unit.r);
+			const x = axialToPixelX(unit.q, unit.r);
+			const y = axialToPixelY(unit.q, unit.r);
+			
 			// --- Culling Check ---
 			if(checkCulling(x, y)){
 				continue;
@@ -4371,7 +4774,9 @@ function drawMovementRanges(){
 	// Draw movement range
 	ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
 	for (const hex of validMoveHexes) {
-		const { x, y } = axialToPixel(hex.q, hex.r);
+		//const { x, y } = axialToPixel(hex.q, hex.r);
+		const x = axialToPixelX(hex.q, hex.r);
+		const y = axialToPixelY(hex.q, hex.r);
 		drawHexagonPath(x, y);
 		ctx.fill();
 	}
@@ -4379,7 +4784,9 @@ function drawMovementRanges(){
 	// Draw invalid move range
 	ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
 	for (const hex of invalidMoveHexes) {
-		const { x, y } = axialToPixel(hex.q, hex.r);
+		//const { x, y } = axialToPixel(hex.q, hex.r);
+		const x = axialToPixelX(hex.q, hex.r);
+		const y = axialToPixelY(hex.q, hex.r);
 		drawHexagonPath(x, y);
 		ctx.fill();
 	}
@@ -4397,7 +4804,10 @@ function drawPlacementHighlight(){
 
 	// Draw selected hex outline
 	if (selectedHex) {
-		const { x, y } = axialToPixel(selectedHex.q, selectedHex.r);
+		//const { x, y } = axialToPixel(selectedHex.q, selectedHex.r);
+		const x = axialToPixelX(selectedHex.q, selectedHex.r);
+		const y = axialToPixelY(selectedHex.q, selectedHex.r);
+		
 		drawHexagonPathLines(x, y);
 		ctx.strokeStyle = 'rgba(255,255,255, 0.4)';
 		ctx.lineWidth = 2;
@@ -4411,7 +4821,9 @@ function drawPlacementHighlight(){
 	// Draw placement highlight
 	if (placingUnit) {
 		const mouseHex = pixelToAxial(lastMousePos.x, lastMousePos.y);
-		const { x, y } = axialToPixel(mouseHex.q, mouseHex.r);
+		//const { x, y } = axialToPixel(mouseHex.q, mouseHex.r);
+		const x = axialToPixelX(mouseHex.q, mouseHex.r);
+		const y = axialToPixelY(mouseHex.q, mouseHex.r);
 		
 		let cur_highlight =  mouseHex.q+", "+mouseHex.r;
 		
@@ -4446,7 +4858,9 @@ function pulseScale(min, max, speed = 0.003) {
 
 function drawUnitSelection(){
 	if(selectedUnit){
-		const { x, y } = axialToPixel(selectedUnit.q, selectedUnit.r);
+		//const { x, y } = axialToPixel(selectedUnit.q, selectedUnit.r);
+		const x = axialToPixelX(selectedUnit.q, selectedUnit.r);
+		const y = axialToPixelY(selectedUnit.q, selectedUnit.r);
 
 		let scale = pulseScale(0.6, HEX_LINE_MULTI, PULSE_SPEED);
 		drawHexagonPathLines(x, y, null, scale);
@@ -4756,8 +5170,10 @@ function drawProtectMessages(){
 		if(performance.now()-shieldingStartTime < 1000){
 			for(let i = 0; i < shieldingUnits.length; i++){
 				let shieldingUnit = shieldingUnits[i];
-				const { x, y } = axialToPixel(shieldingUnit.q, shieldingUnit.r);
-				
+				//const { x, y } = axialToPixel(shieldingUnit.q, shieldingUnit.r);
+				const x = axialToPixelX(shieldingUnit.q, shieldingUnit.r);
+				const y = axialToPixelY(shieldingUnit.q, shieldingUnit.r);
+		
 				drawObject(ctx, x, y, "protect");
 			}
 		}else{
@@ -4818,11 +5234,13 @@ function drawMoveDirectionsOverlay() {
 		}
 		
 		// get unit world coordinates:
-		let worldPos = axialToPixel(unit.q, unit.r);
+		//let worldPos = axialToPixel(unit.q, unit.r);
+		const worldPosX = axialToPixelX(unit.q, unit.r);
+		const worldPosY = axialToPixelY(unit.q, unit.r);
 		
 		// get screen coordinates for unit:
-		let x = worldPos.x*viewport.zoom + viewport.x;
-		let y = worldPos.y*viewport.zoom + viewport.y;
+		let x = worldPosX*viewport.zoom + viewport.x;
+		let y = worldPosY*viewport.zoom + viewport.y;
 
 		if(insideRect(canvasRect, x, y)){
 			continue; // it's visible, no need to draw edge indicator
@@ -4878,6 +5296,7 @@ function drawMoveDirectionsOverlay() {
 let drawRanges = 0;
 
 
+
 function render() {
 	if (!gameState.settings.gameStarted) return;
 	
@@ -4900,7 +5319,7 @@ function render() {
 
   	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
-	ctx.font = `6px sans-serif`;
+	ctx.font = `11px sans-serif`;
 	
 	
 	// MAP TILE DRAWING:
@@ -5265,7 +5684,7 @@ function updateGameUI() {
 		if (p.id === currentTurnPlayer?.id) {
 			item.classList.add('current-turn');
 		}
-		let color = p.color;
+		let color = p.textColor;
 		let specTag = "";
 		if(p.isSpectator){
 			color = "white";
@@ -6489,9 +6908,9 @@ function executeAction(playerId, action) {
 				// Claim hex
 				if (toTile.ownerId !== playerId) {
 					setTileOwner(toTile, playerId);
-					toTile.savings = 0; // not sure if this should be done here...
+					toTile.savings = 0; // update host data.
 					//toTile.ownerId = playerId;
-					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId, savings: 0 });
+					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
 					if(!isAiPlayer(playerId)){
 						if (!toTile.object) {
 							if(!actionForUndo.killedUnit){
@@ -6540,6 +6959,7 @@ function executeAction(playerId, action) {
 				
 				//console.warn(actionForUndo);
 				
+				//updateHighlights();
 			}
 			break;
 		}
@@ -6616,9 +7036,9 @@ function executeAction(playerId, action) {
 					if (isSoldier(newUnit) && tile.ownerId !== playerId) {
 						//tile.ownerId = playerId;
 						setTileOwner(tile, playerId);
-						tile.savings = 0; // not sure if this should be done here...
+						tile.savings = 0; // update to host data.
 						didClaim = true;
-						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId, savings: 0 });
+						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
 						if(!isAiPlayer(playerId)){
 							if (!tile.object) {
 								playMoveUnit = true;
@@ -6723,11 +7143,15 @@ function executeAction(playerId, action) {
 					}
 					
 					//console.warn(actionForUndo);
+					
+					//updateHighlights();
 				}
 			}else{
 				console.error("buildCheck failed:");
 				console.error(buildCheck);
 			}
+
+			
 			break;
 		}
 		
@@ -6770,7 +7194,8 @@ function executeAction(playerId, action) {
 					if (tile) {
 						//tile.ownerId = lastAction.oldOwner;
 						setTileOwner(tile, lastAction.oldOwner);
-						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId, savings: lastAction.oldSavings });
+						tile.savings = lastAction.oldSavings; // update host data.
+						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
 					}
 				}
 				if (lastAction.clearedObject) {
@@ -6821,7 +7246,8 @@ function executeAction(playerId, action) {
 					if (tile) {
 						//tile.ownerId = null;
 						setTileOwner(tile, lastAction.oldOwner);
-						updates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId, savings: lastAction.oldSavings});
+						tile.savings = lastAction.oldSavings; // update host data.
+						updates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId});
 					}
 				}
 				if (lastAction.killedUnit) {
@@ -6873,7 +7299,7 @@ function executeAction(playerId, action) {
 				//distributePoolSavings(findEconomyPools(playerId));
 			}
 			
-			updateHighlights();
+			//updateHighlights();
 			
 			if(!isAiPlayer(playerId)){
 				let qq = 0;
@@ -7665,9 +8091,10 @@ function addUnit(unit){
 // =================================================================
 // --- GAME STATE SYNC (NETWORKING)
 // =================================================================
-
+//
+// CLIENT-SIDE: Received data from host
+//
 function handleHostData(data) {
-	// CLIENT-SIDE: Received data from host
 	let needsUIUpdate = false;
 	
 	//console.log("handleHostData: data.type = "+data.type);
@@ -7689,6 +8116,7 @@ function handleHostData(data) {
 			if (!localPlayer.isSpectator) {
 				localPlayer.isSpectator = true;
 				localPlayer.color = SPECTATOR_COLOR;
+				localPlayer.textColor = SPECTATOR_COLOR;
 				spectatorUiMode();
 				console.log("localPlayer");
 				console.log(localPlayer);
@@ -7714,7 +8142,7 @@ function handleHostData(data) {
 		}
 		break;
 		case 'chat': {
-			addChatMessage(data.from, data.message, data.isSpectator, lightenHexColor(data.color, 0.3));
+			addChatMessage(data.from, data.message, data.isSpectator, data.textColor);
 		}
 		break;
 		case 'tile_changed': {
@@ -7724,14 +8152,16 @@ function handleHostData(data) {
 					setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
 				}
 				// if savings were changed due to claiming tile; claimed tile will reset savings to zero.
-				if (data.savings !== undefined){
-					tile.savings = data.savings;
-				}
+				// NOT NEEDED FOR CLIENTS! clients doesnt need to know individual tiles savings.
+				//if (data.savings !== undefined){
+				//	tile.savings = data.savings;
+				//}
 				if (data.object !== undefined){
 					tile.object = data.object;
 				}
 			}
 			needsUIUpdate = true;
+			updateHighlights();
 		}
 		break;
 		case 'object_changed': {
@@ -7750,11 +8180,13 @@ function handleHostData(data) {
 			//gameState.units.push(data.unit);
 			addUnit(data.unit);
 			needsUIUpdate = true;
+			updateHighlights();
 		}
 		break;
 		case 'unit_removed': {
 			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
 			needsUIUpdate = true;
+			updateHighlights();
 		}
 		break;
 		case 'unit_moved': {
@@ -7765,6 +8197,7 @@ function handleHostData(data) {
 				unit.hasMoved = data.hasMoved;
 			}
 			needsUIUpdate = true;
+			updateHighlights();
 		}
 		break;
 		case 'turn_changed': {
@@ -7784,7 +8217,10 @@ function handleHostData(data) {
 			playSound(soundName);
 			
 			if(data.action !== 'action_undo'){
-				const { x, y } = axialToPixel(data.q, data.r);
+				//const { x, y } = axialToPixel(data.q, data.r);
+				const x = axialToPixelX(data.q, data.r);
+				const y = axialToPixelY(data.q, data.r);
+				
 				let ep = {
 					x: x,
 					y: y,
@@ -7892,9 +8328,13 @@ function handleHostData(data) {
 	}
 }
 
+
+//
+// HOST-SIDE: Received data from a client
+//
 function handleClientData(peerId, data) {
 	//console.log("handleClientData");
-	// HOST-SIDE: Received data from a client
+
 	const player = getPlayer(peerId);
 	if (!player) return;
 	
@@ -7905,12 +8345,18 @@ function handleClientData(peerId, data) {
 			player.name = data.name;
 			
 			if (!gameState.settings.gameStarted) {
-				player.color = getNextFreeColor();
+				let colors = getNextFreeColors();
+				player.color = colors.color;
+				player.textColor = colors.textColor;
 				player.isSpectator = data.isSpectator;
 			} else {
 				player.color = "#FFFFFF";
+				player.textColor = "#FFFFFF";
 				player.isSpectator = true; // Always spectator if game in progress
 			}
+			
+			console.warn("player joined: "+player.id);
+			
 			
 			let specflag = player.isSpectator ? " as a spectator" : "";
 			
@@ -7927,6 +8373,7 @@ function handleClientData(peerId, data) {
 		case 'player_update':
 			player.name = data.name;
 			player.color = data.color;
+			player.textColor = data.textColor;
 			broadcastLobbyState();
 			break;
 		case 'chat':
@@ -7935,7 +8382,8 @@ function handleClientData(peerId, data) {
 				from: player.name,
 				isSpectator: player.isSpectator,
 				message: data.message,
-				color: player.color
+				color: player.color,
+				textColor: player.textColor,
 			});
 			break;
 		case 'host_quit':
@@ -8023,6 +8471,7 @@ function setupConnection(conn) {
 				id: conn.peer,
 				name: 'Joining...', // Will be updated by 'join' message
 				color: "gray",
+				textColor: "gray",
 				isSpectator: false,
 				isAI: false,
 				isDead: false,
@@ -8055,7 +8504,7 @@ function setupConnection(conn) {
 			const player = getPlayer(conn.peer);
 			if (player) {
 				let specflag = player.isSpectator ? " (spectator)" : "";
-				addSystemChatMessage(`${player.name}${specflag} has left.`, "#FFFF00");
+				addSystemChatMessage(`&gt; ${player.name}${specflag} has left.`, "#FFFF00");
 				//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
 				gameState.players = gameState.players.map(p =>
 					p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
@@ -8077,8 +8526,8 @@ function setupConnection(conn) {
 			// We were disconnected from host
 			//alert('Disconnected from host. Returning to start page.');
 			console.warn('Disconnected from host. Returning to start page.');
-			addSystemChatMessage("Host has left the game.", "#FFFF00");
-			
+			addSystemChatMessage("&gt; Host has left the game.", "#FFFF00");
+			/*
 			let answer = confirm("Host has left the game, quit game?");
 			if(answer){
 				restartGame();
@@ -8089,6 +8538,7 @@ function setupConnection(conn) {
 			}else{
 				// maybe set some UI element to display "host quitted" or something.
 			}
+			*/
 		}
 	});
 }
@@ -8109,12 +8559,17 @@ function executeJoin(hostPeerId) {
 		setupConnection(conn);
 		
 		// Send our initial join info
+		let colors = getNextFreeColors();
 		conn.send({
 			type: 'join',
 			name: localPlayer.name,
-			color: getNextFreeColor(),
+			color: colors.color,
+			textColor: colors.textColor,
 			isSpectator: localPlayer.isSpectator
 		});
+		
+
+		
 		
 		// Go to lobby page
 		lobbyPlayerNameInput.value = localPlayer.name;
@@ -8133,6 +8588,7 @@ function joinGame(isSpectator) {
 	localPlayer.name = playerNameInput.value;
 	if (isSpectator) {
 		localPlayer.color = SPECTATOR_COLOR;
+		localPlayer.textColor = SPECTATOR_COLOR;
 		spectatorUiMode();
 		addSystemChatMessage("Joined as spectator");
 	}
@@ -8178,7 +8634,10 @@ function hostGame() {
 			localPlayer.id = id;
 			localPlayer.isHost = true;
 			localPlayer.name = playerNameInput.value;
-			localPlayer.color = getNextFreeColor();
+			
+			let colors = getNextFreeColors();
+			localPlayer.color = colors.color;
+			localPlayer.textColor = colors.textColor;
 			hostPeerId = myPeerId;
 			
 			// Use the desired ID, not the one from the 'open' event (which should be the same)
@@ -8295,6 +8754,9 @@ function kickPlayer(peerId){
 // =================================================================
 
 function updateHostLobbyUI() {
+	
+	updateHostPreviewTile(getPlayer(localPlayer.id).color);
+	
 	// for host player:
 	hostPlayerList.innerHTML = '';
 	const usedColors = [];
@@ -8307,7 +8769,7 @@ function updateHostLobbyUI() {
 				item.classList.add("ai-player-item");
 			}
 			let specTag = p.isSpectator ? ' (spec)' : '';
-			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
+			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.textColor;
 			item.textContent = `${p.name}${specTag}`;
 			hostPlayerList.appendChild(item);
 			if (p.color) usedColors.push(p.color);
@@ -8323,27 +8785,24 @@ function updateHostLobbyUI() {
 		lobbyPlayerNameInput.disabled = false;
 		//console.log("usedColors");
 		//console.log(usedColors);
-		PLAYER_COLORS.forEach(color => {
+		PLAYER_COLORS.forEach(colorInfo => {
 			const box = document.createElement('div');
 			box.className = 'color-box';
-			box.style.backgroundColor = color;
+			box.style.backgroundColor = colorInfo.color;
 			
-			if (localPlayer.color === color) {
+			if (localPlayer.color === colorInfo.color) {
 				box.classList.add('selected');
 			}
-			if (usedColors.includes(color) && localPlayer.color !== color) {
+			if (usedColors.includes(colorInfo.color) && localPlayer.color !== colorInfo.color) {
 				//console.log(usedColors);
 				box.classList.add('disabled');
 			} else {
 				box.onclick = () => {
 					//console.log("tried to change color");
-					localPlayer.color = color;
-					sendToHost({
-						type: 'player_update',
-						name: localPlayer.name,
-						color: localPlayer.color
-					});
-					updateLobbyUI(); // Re-render
+					hostCustomColorPicker.value = colorInfo.color;
+					updateHostPreviewTile(colorInfo.color);
+					
+					updatePlayerColor(colorInfo.color, colorInfo.textColor);
 				};
 			}
 			hostRoomColorPicker.appendChild(box);
@@ -8351,7 +8810,26 @@ function updateHostLobbyUI() {
 	}
 }
 
+
+function updatePlayerColor(color, textColor){
+	localPlayer.color = color;
+	localPlayer.textColor = textColor;
+
+	sendToHost({
+		type: 'player_update',
+		name: localPlayer.name,
+		color: localPlayer.color,
+		textColor: localPlayer.textColor,
+	});
+	updateLobbyUI(); // Re-render
+}
+
+
+
 function updateLobbyUI() {
+	
+	updateLobbyPreviewTile(getPlayer(localPlayer.id).color);
+
 	// Update settings info
 	lobbyRoomNameTitle.textContent = `Joining: ${gameState.settings.roomName}`;
 	lobbyMapSize.textContent = `${gameState.settings.mapWidth} x ${gameState.settings.mapHeight}`;
@@ -8366,12 +8844,14 @@ function updateLobbyUI() {
 			const item = document.createElement('div');
 			item.className = 'player-list-item';
 			let specTag = p.isSpectator ? ' (spec)' : '';
-			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.color;
+			item.style.color = p.isSpectator ? SPECTATOR_COLOR : p.textColor;
 			item.textContent = `${p.name}${specTag}`;
 			lobbyPlayerList.appendChild(item);
 			if (p.color) usedColors.push(p.color);
 		}
 	});
+	
+
 
 	// Update color picker
 	lobbyColorPicker.innerHTML = '';
@@ -8382,27 +8862,24 @@ function updateLobbyUI() {
 		lobbyPlayerNameInput.disabled = false;
 		//console.log("usedColors");
 		//console.log(usedColors);
-		PLAYER_COLORS.forEach(color => {
+		PLAYER_COLORS.forEach(colorInfo => {
 			const box = document.createElement('div');
 			box.className = 'color-box';
-			box.style.backgroundColor = color;
+			box.style.backgroundColor = colorInfo.color;
 			
-			if (localPlayer.color === color) {
+			if (localPlayer.color === colorInfo.color) {
 				box.classList.add('selected');
 			}
-			if (usedColors.includes(color) && localPlayer.color !== color) {
+			if (usedColors.includes(colorInfo.color) && localPlayer.color !== colorInfo.color) {
 				//console.log(usedColors);
 				box.classList.add('disabled');
 			} else {
 				box.onclick = () => {
 					//console.log("tried to change color");
-					localPlayer.color = color;
-					sendToHost({
-						type: 'player_update',
-						name: localPlayer.name,
-						color: localPlayer.color
-					});
-					updateLobbyUI(); // Re-render
+					lobbyCustomColorPicker.value = colorInfo.color;
+					updateLobbyPreviewTile(colorInfo.color);
+					
+					updatePlayerColor(colorInfo.color, colorInfo.textColor);
 				};
 			}
 			lobbyColorPicker.appendChild(box);
@@ -9559,10 +10036,11 @@ function startGame() {
 		const usedColors = gameState.players.map(p => p.color);
 		for (const p of playingPlayers) {
 			if (!p.color) {
-				while(usedColors.includes(PLAYER_COLORS[colorIdx])) {
+				while(usedColors.includes(PLAYER_COLORS[colorIdx].color)) {
 					colorIdx++;
 				}
-				p.color = PLAYER_COLORS[colorIdx];
+				p.color = PLAYER_COLORS[colorIdx].color;
+				p.textColor = PLAYER_COLORS[colorIdx].textColor;
 				usedColors.push(p.color);
 			}
 		}
@@ -9773,7 +10251,7 @@ function loadSavedGame(roomName){
 				state.gameState.players.filter(p => !p.isSpectator).forEach(p => {
 					const li = document.createElement('li');
 					li.textContent = `${p.name}`;
-					li.style.color = p.color;
+					li.style.color = p.textColor;
 					li.className = 'loaded-player';
 					li.onclick = () => {
 						if (li.classList.contains('taken')) return;
@@ -9792,6 +10270,7 @@ function loadSavedGame(roomName){
 						// Take this one
 						localPlayer.name = p.name;
 						localPlayer.color = p.color;
+						localPlayer.textColor = p.textColor;
 						playerNameInput.value = p.name;
 						localPlayer.isSpectator = false;
 						spectateHostBtn.classList.remove('active');
@@ -9869,6 +10348,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 	await loadImages();
 	
+	hostCustomColorPicker.value = "#FF00FF";
+	lobbyCustomColorPicker.value = "#FF00FF";
+
 	//hostBtn.disabled = true;
 	hostBtn.disabled = false; // allow hosting while connecting to peerjs.
 	joinBtn.disabled = true;
@@ -9914,7 +10396,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	spectateHostBtn.onclick = () => {
 		localPlayer.isSpectator = !localPlayer.isSpectator;
-		localPlayer.color = localPlayer.isSpectator ? SPECTATOR_COLOR : PLAYER_COLORS[0];
+		let colors = getNextFreeColors();
+		localPlayer.color = localPlayer.isSpectator ? SPECTATOR_COLOR : colors.color;
+		localPlayer.textColor = localPlayer.isSpectator ? SPECTATOR_COLOR : colors.textColor;
 		spectateHostBtn.classList.toggle('active', localPlayer.isSpectator);
 		broadcastLobbyState();
 	};
@@ -10008,7 +10492,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 		sendToHost({
 			type: 'player_update',
 			name: localPlayer.name,
-			color: localPlayer.color
+			color: localPlayer.color,
+			textColor: localPlayer.textColor,
 		});
 	};
 	
