@@ -1066,7 +1066,11 @@ input.disabled {
 	<div class="container">
 		<h1>Castle Wars</h1>
 		<label for="player-name">Player Name</label>
-		<input type="text" id="player-name" value="Player">
+		
+		<div class="input-group">
+			<input type="text" id="player-name" value="Player" style="flex: 3">
+			<button id="random-name-btn" style="flex: 1">Random</button>
+		</div>
 		
 		<label for="game-name-input">Game Room Name</label>
 		<input type="text" id="game-name-input" value="default-room">
@@ -1096,8 +1100,8 @@ input.disabled {
 		
 		<label for="host-room-player-name">Your Name</label>
 		<div class="input-group">
-			<input type="text" id="host-room-player-name" value="Player"  style="flex: 3;">
-			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1;">Spectate</button>
+			<input type="text" id="host-room-player-name" value="Player" style="flex: 3">
+			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1">Spectate</button>
 		</div>
 		
 
@@ -3049,11 +3053,40 @@ const pages = {
 	lobby: document.getElementById('lobby-page'),
 	game: document.getElementById('game-page'),
 };
+
+
+
+function getLocalStorageItem(name){
+	return localStorage.getItem(APP_NAME+"_"+name);
+}
+function setLocalStorageItem(name, value){
+	return localStorage.setItem(APP_NAME+"_"+name, value);
+}
+
+
 const playerNameInput = document.getElementById('player-name');
-playerNameInput.value = randomPlayerName();
-
 const hostRoomPlayerNameInput = document.getElementById('host-room-player-name');
+const lobbyPlayerNameInput = document.getElementById('lobby-player-name');
 
+const randomNameBtn = document.getElementById('random-name-btn');
+
+function giveRandomName(){
+	playerNameInput.value = randomPlayerName();
+}
+
+// set random nick on first start:
+playerNameInput.value = getLocalStorageItem("playerName") || randomPlayerName();
+
+// if player types own nick, it will remember it:
+playerNameInput.addEventListener("input", () => {
+	setLocalStorageItem("playerName", playerNameInput.value);
+});
+hostRoomPlayerNameInput.addEventListener("input", () => {
+	setLocalStorageItem("playerName", hostRoomPlayerNameInput.value);
+});
+lobbyPlayerNameInput.addEventListener("input", () => {
+	setLocalStorageItem("playerName", lobbyPlayerNameInput.value);
+});
 
 
 
@@ -3087,8 +3120,7 @@ const lobbyRoomNameTitle = document.getElementById('lobby-room-name-title');
 const lobbyMapSize = document.getElementById('lobby-map-size');
 const lobbyStartMoney = document.getElementById('lobby-start-money');
 const lobbyMapScale = document.getElementById('lobby-map-scale');
-const lobbyPlayerNameInput = document.getElementById('lobby-player-name');
-lobbyPlayerNameInput.value = randomPlayerName();
+
 
 const lobbyColorPicker = document.getElementById('lobby-color-picker');
 const hostRoomColorPicker = document.getElementById('host-room-color-picker');
@@ -7617,9 +7649,11 @@ function addCost(pools, cost, preferredHex = null, actionType = "unknown") {
 function getNextPlayerIndex(currentIndex){
 	let nextIndex = currentIndex;
 	// get next player index:
+	let counter = 0;
     do {
         nextIndex = (nextIndex + 1) % gameState.players.length;
-    } while (gameState.players[nextIndex].isSpectator);
+		counter++;
+    } while ((gameState.players[nextIndex].isSpectator || gameState.players[nextIndex].isDead) && counter < 1000);
 	
 	return nextIndex;
 }
@@ -7910,6 +7944,7 @@ function processEndOfDay(){
 	}
 	
 	
+	console.log("spread grass:");
 	
 	// spread grass, using keyed array so it wont spread into too far away, just neighbours:
 	for (const key in grassGrow) {
@@ -7924,7 +7959,6 @@ function processEndOfDay(){
 
 
 	
-	const tiles = gameState.map.tilesData;
 	
 	let treesPercent = 2/240; // 0.00833
 	let maxTrees = Math.round(landtilesCount*treesPercent);
@@ -7948,27 +7982,51 @@ function processEndOfDay(){
 		minTrees = 1;
 		maxTrees = random(1,2);
 	}
-	let curMaxTrees = random(minTrees, maxTrees);
+	let curMaxTrees = 2+random(minTrees, maxTrees);
 	
 	console.log("maxTrees: "+maxTrees+", curMaxTrees: "+curMaxTrees);
-	// add random trees:
+	
+	// grow trees growtrees spawntree()
+	// add random trees: 
+	const tiles = gameState.map.tilesData;
 	for (let i = 0; i < curMaxTrees; i++) {
-		let rti, tile, hasUnit;
-
+		/*
+		let rti, hasUnit, tile;
 		// Find a valid tile
+		let counter = 0;
 		do {
 			rti = random(0, tiles.length - 1);
 			tile = tiles[rti];
 			hasUnit = getUnitAt(tile.q, tile.r);
-		} while (tile.type === 'water' || tile.object || hasUnit);
-
-		// add tree:
-		tile.object = 'tree';
-		tile.actionTurnNumber = gameState.turn.turnNumber;
-		broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
-		console.warn("tree spawned at "+tile.q+tile.r);
+			counter++;
+		} while ((tile.type === 'water' || tile.object || hasUnit) && counter < 1000);
+		*/
+		let found = 0;
+		let tile = null;
+		for(let tries = 0; tries < 1000; tries++){
+			let rti = random(0, tiles.length - 1);
+			tile = tiles[rti];
+			if(tile.type === 'water' || tile.object || getUnitAt(tile.q, tile.r)){
+				continue;
+			}else{
+				found = 1;
+			}
+		}
+		
+		if(found){
+			console.log("found free tile:");
+			console.log(tile);
+			// add tree:
+			tile.object = 'tree';
+			tile.actionTurnNumber = gameState.turn.turnNumber;
+			broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
+			console.warn("tree spawned at "+tile.q+tile.r);
+		}else{
+			console.log("looped 1000 times and found no free tiles.");
+		}
 	}
 	
+	console.log("processEndOfDay done, save game:");
 	
 	
 	// Save this game state
@@ -9852,12 +9910,15 @@ function spawnPlayers(){
 	
 	// spawn extra players:
 	if(extraPlayers.length > 0){
+		let tiles = gameState.map.tilesData;
 		for(let i = 0; i < extraPlayers.length; i++){
 			// find free tile:
 			let randomTileIndex;
+			let counter = 0;
 			do {
-				randomTileIndex = random(0, gameState.map.tilesData.length-1);
-			} while (gameState.map.tilesData[randomTileIndex].ownerId || gameState.map.tilesData[randomTileIndex].type === "water");
+				randomTileIndex = random(0, tiles.length-1);
+				counter++;
+			} while ((tiles[randomTileIndex].ownerId || tiles[randomTileIndex].type === "water") && counter < 1000);
 			
 			let tile = gameState.map.tilesData[randomTileIndex];
 			let qq = tile.q;
@@ -10062,8 +10123,12 @@ function startGame() {
 		const usedColors = gameState.players.map(p => p.color);
 		for (const p of playingPlayers) {
 			if (!p.color) {
-				while(usedColors.includes(PLAYER_COLORS[colorIdx].color)) {
+				while(colorIdx < PLAYER_COLORS.length && usedColors.includes(PLAYER_COLORS[colorIdx].color)) {
 					colorIdx++;
+				}
+				// handle "no colors left":
+				if (colorIdx >= PLAYER_COLORS.length) {
+					colorIdx = 0;
 				}
 				p.color = PLAYER_COLORS[colorIdx].color;
 				p.textColor = PLAYER_COLORS[colorIdx].textColor;
@@ -10386,6 +10451,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	hostBtn.onclick = hostGame;
 	joinBtn.onclick = () => joinGame(false);
 	spectateBtn.onclick = () => joinGame(true);
+	randomNameBtn.onclick = () => giveRandomName();
 	playerNameInput.onchange = (e) => localPlayer.name = e.target.value;
 	
 
