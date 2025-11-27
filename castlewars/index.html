@@ -1829,6 +1829,8 @@ let gameSounds = {
 	
 	// used for: knight kills peasant, horse kills knight.
 	swordKill:    {filename: "sounds/sword-kill.mp3",      gain: 1,   filter: false},
+
+	diedByStarving: {filename: "sounds/died-by-starving.mp3",  gain: 1,   filter: false},
 };
 
 const soundContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -3991,7 +3993,7 @@ function trackFPS(){
 }
 
 
-function drawObject(ctx, x, y, objectName){
+function drawObject(ctx, x, y, objectName, tile = null){
 	let imageKey = objectName;
 	const img = getImage(imageKey);
 	
@@ -4009,8 +4011,84 @@ function drawObject(ctx, x, y, objectName){
 		let dw = drawSize*scale;
 		let dh = drawSize*ratio*scale;
 		
-		//ctx.drawImage(img, dx, dy, dw, dh);
-		drawImageMippedCropped(ctx, imageKey, dx, dy, dw, dh);
+		let cropBottomPercent = 0; // how much from the bottom is cropped out.
+		let buildOffsetY = 0;
+		
+		// if drawing actual tile object and not just object by name:
+		if(tile){
+
+			
+			let animate = true;
+			//if(unit.wasSpawned){
+			//	animate = false;
+			//}
+			if(tile.animationFinished){
+				animate = false;
+			}
+			if(tile.creationTime && animate){
+				let timeDiff = Date.now() - tile.creationTime;
+				let animationEnded = false;
+				
+				// 1 = appear from bottom to up
+				if(tile.animationStyle == 1){
+					if(timeDiff < animationLenTree){
+						// for castles
+						// forward in time as much as it should be cut at start:
+						let startPercent = 0.19;
+
+						if(tile.object === 'tree'){
+							startPercent = 0.20;
+						}else if(tile.object === 'grass'){
+							startPercent = 0.25;
+						}
+						let startAnimDiff = timeDiff+animationLenTree*startPercent;
+						if(startAnimDiff > animationLenTree){
+							startAnimDiff = animationLenTree;
+						}
+						let animPercent = 1-(startAnimDiff/animationLenTree);
+						
+						// set crop to start at 20%
+						cropBottomPercent = animPercent+startPercent;
+						
+						buildOffsetY = dh*(1-animPercent)-dh;
+					}else{
+						animationEnded = true;
+					}
+				}else if(tile.animationStyle == 2){
+					// 2 = appear from zero size to normal size
+					
+					if(timeDiff < animationLenGrass){
+						// for soldiers
+						let animPercent = timeDiff/animationLenGrass;
+						animPercent = animPercent+0.2;
+						if(animPercent > 1){
+							animPercent = 1;
+						}
+						scale = imginfo.scale*0.9*animPercent; // 0.9 global scale
+						ratio = img.height/img.width;
+						drawSize = 50;
+						hsize = drawSize/2;
+						offsetX = imginfo.offsetX;
+						offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+						dx = x-((hsize-offsetX)*scale);
+						dy = y-((hsize-offsetY+10)*ratio*scale);
+						dw = drawSize*scale;
+						dh = drawSize*ratio*scale;
+					}else{
+						animationEnded = true;
+					}
+				}
+				if(animationEnded){
+					cropBottomPercent = 0;
+					animate = false;
+					tile.animationFinished = true;
+				}
+			}
+		}
+	
+		drawImageMippedCropped(ctx, imageKey, dx, dy-buildOffsetY, dw, dh, -1, cropBottomPercent);
+		
+		//drawImageMippedCropped(ctx, imageKey, dx, dy, dw, dh);
 	}
 }
 
@@ -4618,14 +4696,18 @@ function drawObjects(){
 		}
 		
 		if (tile.object) {
-			drawObject(ctx, x, y, tile.object);
+			drawObject(ctx, x, y, tile.object, tile);
 		}
+		
 	}
 }
 
 
 let animationLenCastle = 600;
 let animationLenSoldier = 250;
+
+let animationLenTree = 600;
+let animationLenGrass = 400;
 
 // draw only specific type of units; "soldier" or "castle"
 function drawUnitsByType(unitType){
@@ -4741,6 +4823,7 @@ function drawUnitsByType(unitType){
 					unit.animationFinished = true;
 				}
 			}
+			
 		
 			drawImageMippedCropped(ctx, imageKey, dx, dy-buildOffsetY, dw, dh, -1, cropBottomPercent);
 		}
@@ -7918,7 +8001,20 @@ function processEndOfDay(){
 					if(turnDiff >= 4){
 						tile.object = 'grass';
 						tile.actionTurnNumber = gameState.turn.turnNumber;
-						broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
+						
+						// add animation info for host:
+						tile.creationTime = Date.now(); 
+						tile.animationFinished = false; // ensure no animation will be visible.
+						tile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
+						
+						broadcast({ 
+							type: 'object_changed', 
+							q: tile.q, 
+							r: tile.r, 
+							object: tile.object,
+							// add animation info: (other animation vars will be set on client side)
+							animationStyle: tile.animationStyle,
+						});
 					}
 				}else if(tile.object === 'grass'){
 					// spread grass 
@@ -7952,7 +8048,20 @@ function processEndOfDay(){
 			let nTile = grassGrow[key]; // was neighbour tile, so using nTile still here.
 			nTile.object = 'grass';
 			nTile.actionTurnNumber = gameState.turn.turnNumber;
-			broadcast({ type: 'object_changed', q: nTile.q, r: nTile.r, object: nTile.object });
+			
+			// add animation info for host:
+			nTile.creationTime = Date.now(); 
+			nTile.animationFinished = false; // ensure no animation will be visible.
+			nTile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
+			
+			broadcast({ 
+				type: 'object_changed', 
+				q: nTile.q, 
+				r: nTile.r, 
+				object: nTile.object,
+				// add animation info: (other animation vars will be set on client side)
+				animationStyle: nTile.animationStyle,
+			});
 		}
 	}
 
@@ -7982,11 +8091,11 @@ function processEndOfDay(){
 		minTrees = 1;
 		maxTrees = random(1,2);
 	}
-	let curMaxTrees = 2+random(minTrees, maxTrees);
+	let curMaxTrees = random(minTrees, maxTrees);
 	
 	console.log("maxTrees: "+maxTrees+", curMaxTrees: "+curMaxTrees);
 	
-	// grow trees growtrees spawntree()
+	// grow trees growtrees spawntrees()
 	// add random trees: 
 	const tiles = gameState.map.tilesData;
 	for (let i = 0; i < curMaxTrees; i++) {
@@ -8003,13 +8112,14 @@ function processEndOfDay(){
 		*/
 		let found = 0;
 		let tile = null;
-		for(let tries = 0; tries < 1000; tries++){
+		for(let tries = 0; tries < 100; tries++){
 			let rti = random(0, tiles.length - 1);
 			tile = tiles[rti];
 			if(tile.type === 'water' || tile.object || getUnitAt(tile.q, tile.r)){
 				continue;
 			}else{
 				found = 1;
+				break;
 			}
 		}
 		
@@ -8019,7 +8129,20 @@ function processEndOfDay(){
 			// add tree:
 			tile.object = 'tree';
 			tile.actionTurnNumber = gameState.turn.turnNumber;
-			broadcast({ type: 'object_changed', q: tile.q, r: tile.r, object: tile.object });
+			
+			// set animation info for host:
+			tile.creationTime = Date.now(); 
+			tile.animationFinished = false; // ensure no animation will be visible.
+			tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
+			
+			broadcast({ 
+				type: 'object_changed', 
+				q: tile.q, 
+				r: tile.r, 
+				object: tile.object, 
+				// add animation info: (other animation vars will be set on client side)
+				animationStyle: tile.animationStyle,
+			});
 			console.warn("tree spawned at "+tile.q+tile.r);
 		}else{
 			console.log("looped 1000 times and found no free tiles.");
@@ -8058,25 +8181,39 @@ function executeEndTurn(playerId) {
 		}
 	}
 	
-	// Distribute final savings
-	distributePoolSavings(pools);
-	updatePlayerSavings(playerId); // Update savings *after* calcs
-	
-	
 
-	// --- 2. Kill soldiers & turn to crosses ---
-	for (const soldier of allSoldiersKilled) {
-		const tile = getTileAt(soldier.q, soldier.r);
-		if (tile) {
-			tile.object = 'dead'; // Turn to dead (crosses)
-			tile.actionTurnNumber = gameState.turn.turnNumber;
-			broadcast({ type: 'object_changed', q: soldier.q, r: soldier.r, object: tile.object });
+	
+	if(allSoldiersKilled.length > 0){
+
+		// --- 2. Kill soldiers & turn to crosses ---
+		for (const soldier of allSoldiersKilled) {
+			const tile = getTileAt(soldier.q, soldier.r);
+			if (tile) {
+				tile.object = 'dead'; // Turn to dead (crosses)
+				tile.actionTurnNumber = gameState.turn.turnNumber;
+				
+				// add animation info for host:
+				tile.creationTime = Date.now(); 
+				tile.animationFinished = false; // ensure no animation will be visible.
+				tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
+				
+				broadcast({ 
+					type: 'object_changed', 
+					q: soldier.q, 
+					r: soldier.r, 
+					object: tile.object,
+					animationStyle: tile.animationStyle,
+				});
+			}
+			//gameState.units = gameState.units.filter(u => u.id !== soldier.id);
+			broadcast({ type: 'unit_removed', unitId: soldier.id });
 		}
-		//gameState.units = gameState.units.filter(u => u.id !== soldier.id);
-		broadcast({ type: 'unit_removed', unitId: soldier.id });
+		
+		// send sound for died soldiers just once:
+		broadcast({ type: 'sound', name: "diedByStarving", q:0, r:0, playerId: 0, action: "executeEndTurn"});
 	}
 	
-	
+
 
 	
 	// --- 3. Reset "hasMoved" for all *this player's* units ---
@@ -8093,8 +8230,14 @@ function executeEndTurn(playerId) {
 	// TODO: Add grass spreading and tree spawning logic
 	
 	// --- 5. Advance Turn ---
-
+	// this will update dead soldiers into grass, so need to call this BEFORE updatePlayerSavings
 	advanceToNextPlayer();
+	
+	//////////////////////////////////
+	// Distribute final savings
+	distributePoolSavings(pools);
+	updatePlayerSavings(playerId); // Update savings *after* calcs
+	
 	
 	//console.log("gameState.turn.currentPlayerIndex");
 	//console.log(gameState.turn.currentPlayerIndex);
@@ -8226,7 +8369,7 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			updateHighlights();
 			
-			updateLocalPoolsInfo();
+			//updateLocalPoolsInfo();
 		}
 		break;
 		case 'object_changed': {
@@ -8235,10 +8378,17 @@ function handleHostData(data) {
 				if (data.object !== undefined){
 					tile.object = data.object;
 				}
+				
+				if(data.animationStyle !== undefined){
+					// initialize client side animation info:
+					tile.creationTime = new Date();
+					tile.animationFinished = false;
+					tile.animationStyle = data.animationStyle;
+				}
 			}
 			needsUIUpdate = true;
 			
-			updateLocalPoolsInfo();
+			//updateLocalPoolsInfo();
 		}
 		break;
 		case 'unit_added': {
@@ -8249,7 +8399,7 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			updateHighlights();
 			
-			updateLocalPoolsInfo();
+			//updateLocalPoolsInfo();
 		}
 		break;
 		case 'unit_removed': {
@@ -8257,7 +8407,7 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			updateHighlights();
 			
-			updateLocalPoolsInfo();
+			//updateLocalPoolsInfo();
 		}
 		break;
 		case 'unit_moved': {
@@ -8270,7 +8420,7 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			updateHighlights();
 			
-			updateLocalPoolsInfo();
+			//updateLocalPoolsInfo();
 		}
 		break;
 		case 'turn_changed': {
@@ -8284,7 +8434,7 @@ function handleHostData(data) {
 
 			addCurrentTurnChatMessage();
 			
-			updateLocalPoolsInfo();
+			//updateLocalPoolsInfo();
 		}
 		break;
 		case 'sound': {
@@ -8405,7 +8555,7 @@ function handleHostData(data) {
 	}
 }
 
-
+// removed updateLocalPoolsInfo() since it broke the savings update. updateLocalPoolsInfo was originally fixing savings update when soldiers died, but i moved distributePoolSavings/updatePlayerSavings AFTER the units deaths/grass convert had been processed (after advanceToNextPlayer).
 function updateLocalPoolsInfo(){
 	// try to fix pools not updating wages when soldiers died etc...
 	localPlayerPools = findEconomyPools(localPlayer.id);
