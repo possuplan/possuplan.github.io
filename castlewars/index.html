@@ -8377,6 +8377,29 @@ function handleHostData(data) {
 			if (tile) {
 				if (data.object !== undefined){
 					tile.object = data.object;
+					
+					////////////////
+					// create explosion if unit died:
+					if(data.object === 'dead'){
+						//const { x, y } = axialToPixel(data.q, data.r);
+						const x = axialToPixelX(data.q, data.r);
+						const y = axialToPixelY(data.q, data.r);
+						
+						let ep = {
+							x: x,
+							y: y,
+						};
+						ep.color = "#FF0000";
+						ep.shapeMode = 1; // circles
+						ep.initialSpeed = 2;
+						ep.amount = 60;
+						ep.life = 2;
+						ep.decay = {min:0.005, max:0.015};
+						ep.fadeMode = "slow";
+						ep.rotationSpeed = {min:0, max:0};
+						
+						createExplosion(x, y, ep);
+					}
 				}
 				
 				if(data.animationStyle !== undefined){
