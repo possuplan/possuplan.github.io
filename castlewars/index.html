@@ -417,8 +417,8 @@ label {
 	pointer-events: none;
 	padding-right: 6px;
 	position: absolute;
-	top: 0;
-	right: 0;
+	top: 20px;
+	right: 20px;
 }
 
 #ui-left {
@@ -514,13 +514,7 @@ label {
 }
 
 
-#turn-info {
-	padding: 4px;
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	pointer-events: none;
-}
+
 
 /* Optional: style buttons as a row */
 
@@ -1260,7 +1254,7 @@ input.disabled {
 		<div id="top-float-ui-messages"></div>
 	</div>
 	
-	<div id="turn-info"></div>
+	
 	
 	<div id="game-ui">
 		<div id="ui-left">
@@ -1280,7 +1274,10 @@ input.disabled {
 				<div id="chat-messages"></div>
 				<input type="text" id="chat-input" placeholder="Type message..." disabled>
 			</div>
+			
 			<div id="debug-ui">
+				<div id="turn-info"></div>
+				<div id="fps-info"></div>
 			</div>
 		</div>
 		
@@ -4082,7 +4079,7 @@ function blendHexColor(color1, color2 = "#000000", percentage = 0.5) {
 
 
 
-const debugUi = document.getElementById("debug-ui");
+const debugUi = document.getElementById("fps-info");
 
 let lastTime = 0;
 let frameCount = 0;
@@ -6504,6 +6501,8 @@ function openBuildPopup(type) {
 					cost: item.cost,
 					poolHex: getSelectedPoolHex(), // not needed here? called in handleHexClick() also.
 				};
+				
+				playSound('startmove');
 
 				console.log("placingUnit");
 				console.log(placingUnit);
@@ -6520,9 +6519,11 @@ function openBuildPopup(type) {
 		}
 		buildPopupList.appendChild(itemEl);
 	}
+	
 	//buildPopup.style.display = 'block';
 	showBuildPopup();
 }
+
 
 function unitExists(unitType){
 	if(SOLDIER_DATA[unitType] || CASTLE_DATA[unitType]){
@@ -10666,6 +10667,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 				if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
 					centerAndSelectUnit(unit);
+					playSound('startmove');
 					break;
 				}
 			}
@@ -10704,6 +10706,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 				if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
 					centerAndSelectUnit(unit);
+					playSound('startmove');
 					break;
 				}
 			}
