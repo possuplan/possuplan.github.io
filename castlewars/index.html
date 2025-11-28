@@ -432,8 +432,10 @@ label {
 	position:absolute;
 	bottom:0;
 	right:0;
-	display: flex;
-	flex-direction: column; /* stack rows vertically */
+	
+	---display: flex;
+	---flex-direction: column; /* stack rows vertically */
+	
 	---max-width: 200px;
 	---width: 100%;
 	overflow-y: hidden;
@@ -491,6 +493,8 @@ label {
 .ui-number.white {
 	color: #FFFFFF;
 }
+
+
 
 .ui-panel-controls > .info-left {
 	flex: 0 0 auto;     /* don't grow, don't shrink below content size */
@@ -1002,6 +1006,27 @@ input.disabled {
 }
 
 
+.floatbuttons {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+}
+
+#next-unit-btn {
+	background-image: url('images/ui/next.png');
+	pointer-events:auto;
+	width: 60px;
+	height: 47px;
+	margin-right: 6px;
+}
+#next-unit-btn[disabled] {
+	background-color:var(--btn-bg);
+	filter: brightness(0.5);
+}
+
+
+
+
 #spectate-btn[disabled] {
 	filter: brightness(0.5);
 }
@@ -1068,7 +1093,7 @@ input.disabled {
 		<label for="player-name">Player Name</label>
 		
 		<div class="input-group">
-			<input type="text" id="player-name" value="Player" style="flex: 3">
+			<input type="text" id="player-name" value="" style="flex: 3">
 			<button id="random-name-btn" style="flex: 1">Random</button>
 		</div>
 		
@@ -1100,7 +1125,7 @@ input.disabled {
 		
 		<label for="host-room-player-name">Your Name</label>
 		<div class="input-group">
-			<input type="text" id="host-room-player-name" value="Player" style="flex: 3">
+			<input type="text" id="host-room-player-name" value="" style="flex: 3">
 			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1">Spectate</button>
 		</div>
 		
@@ -1182,7 +1207,7 @@ input.disabled {
 		
 
 		<label for="lobby-player-name">Your Name</label>
-		<input type="text" id="lobby-player-name" value="Player">
+		<input type="text" id="lobby-player-name" value="">
 		
 		<div class="input-group">
 			<div style="flex:1">
@@ -1260,7 +1285,10 @@ input.disabled {
 		
 		<div id="ui-right">
 			
-
+			<div class="floatbuttons">
+				<button id="next-unit-btn" class="gamebutton" title="Next unit"></button>
+			</div>
+			
 
 			<div class="ui-panel ui-panel-controls">
 				<div class="info-left" id="info-left" style="display:none">
@@ -1502,6 +1530,45 @@ function getSelectedServer(){
 	selectedServerIndex = parseInt(serverNameInput.value, 10);
 	return serversList[selectedServerIndex];
 }
+
+
+
+
+
+function getLocalStorageItem(name){
+	return localStorage.getItem(APP_NAME+"_"+name);
+}
+function setLocalStorageItem(name, value){
+	return localStorage.setItem(APP_NAME+"_"+name, value);
+}
+
+
+const playerNameInput = document.getElementById('player-name');
+const hostRoomPlayerNameInput = document.getElementById('host-room-player-name');
+const lobbyPlayerNameInput = document.getElementById('lobby-player-name');
+
+const randomNameBtn = document.getElementById('random-name-btn');
+
+function giveRandomName(){
+	playerNameInput.value = randomPlayerName();
+}
+
+// set random nick on first start:
+playerNameInput.value = getLocalStorageItem("playerName") || randomPlayerName();
+
+// if player types own nick, it will remember it:
+playerNameInput.addEventListener("input", () => {
+	setLocalStorageItem("playerName", playerNameInput.value);
+});
+hostRoomPlayerNameInput.addEventListener("input", () => {
+	setLocalStorageItem("playerName", hostRoomPlayerNameInput.value);
+});
+lobbyPlayerNameInput.addEventListener("input", () => {
+	setLocalStorageItem("playerName", lobbyPlayerNameInput.value);
+});
+
+
+
 
 
 
@@ -3058,37 +3125,6 @@ const pages = {
 
 
 
-function getLocalStorageItem(name){
-	return localStorage.getItem(APP_NAME+"_"+name);
-}
-function setLocalStorageItem(name, value){
-	return localStorage.setItem(APP_NAME+"_"+name, value);
-}
-
-
-const playerNameInput = document.getElementById('player-name');
-const hostRoomPlayerNameInput = document.getElementById('host-room-player-name');
-const lobbyPlayerNameInput = document.getElementById('lobby-player-name');
-
-const randomNameBtn = document.getElementById('random-name-btn');
-
-function giveRandomName(){
-	playerNameInput.value = randomPlayerName();
-}
-
-// set random nick on first start:
-playerNameInput.value = getLocalStorageItem("playerName") || randomPlayerName();
-
-// if player types own nick, it will remember it:
-playerNameInput.addEventListener("input", () => {
-	setLocalStorageItem("playerName", playerNameInput.value);
-});
-hostRoomPlayerNameInput.addEventListener("input", () => {
-	setLocalStorageItem("playerName", hostRoomPlayerNameInput.value);
-});
-lobbyPlayerNameInput.addEventListener("input", () => {
-	setLocalStorageItem("playerName", lobbyPlayerNameInput.value);
-});
 
 
 
@@ -3150,6 +3186,7 @@ const playerBalance = document.getElementById('player-balance');
 const infoLeft = document.getElementById('info-left');
 
 
+const nextUnitBtn = document.getElementById('next-unit-btn');
 
 const buildSoldierBtn = document.getElementById('build-soldier-btn');
 const buildCastleBtn = document.getElementById('build-castle-btn');
@@ -3244,17 +3281,94 @@ addAiBtn.addEventListener('click', () => {
 // =================================================================
 // --- UTILITY FUNCTIONS
 // =================================================================
-function centerToFirstUnit(){
-	// todo: will fail when loading a game where you are not a player.
-	let player = getMyPlayer();
-	
-	for (const unit of gameState.units) {
-		if(unit.ownerId === player.id){
-			centerTo(unit.q, unit.r);
-			break;
-		}
+
+// centers screen on q,r position.
+function centerTo(q, r) {
+    const centerX = axialToPixelX(q, r);
+    const centerY = axialToPixelY(q, r);
+
+    viewport.x = canvas.width  / 2 - centerX * viewport.zoom;
+    viewport.y = canvas.height / 2 - centerY * viewport.zoom;
+}
+
+function centerToPixelPos(centerX, centerY) {
+    viewport.x = canvas.width  / 2 - centerX * viewport.zoom;
+    viewport.y = canvas.height / 2 - centerY * viewport.zoom;
+}
+
+function centerToUnit(unit){
+	if(unit){
+		centerTo(unit.q, unit.r);
 	}
 }
+
+function centerToTile(tile){
+	if(tile){
+		centerTo(tile.q, tile.r);
+	}
+}
+
+function centerToFirstUnit(){
+	let player = getMyPlayer();
+	
+	let found = 0;
+	if(player && !player.isSpectator){
+		
+		// find first soldier unit to center to:
+		for (const unit of gameState.units) {
+			if(unit.internalType === 'soldier' && unit.ownerId === player.id){
+				centerToUnit(unit);
+				found = 1;
+				break;
+			}
+		}
+		// no soldier found: try to find a castle and center to it:
+		// this might be possible when loading a game, or if loaded map has castles set.
+		if(!found){
+			for (const unit of gameState.units) {
+				if(unit.internalType === 'castle' && unit.ownerId === player.id){
+					centerToUnit(unit);
+					found = 1;
+					break;
+				}
+			}
+		}
+		// if no units found at all, just choose first hex owned by player:
+		if(!found){
+			for(let i = 0; i < gameState.map.tilesData.length; i++){
+				let tile = gameState.map.tilesData[i];
+				if(tile.ownerId === player.id){
+					centerToTile(tile);
+					found = 1;
+					break;
+				}
+			}
+		}
+	}
+	
+	// if no valid center pos found, center to map middle:
+	if(!found){
+		let centerX = 0;
+		let centerY = 0;
+		let total = 0;
+		for(let i = 0; i < gameState.map.tilesData.length; i++){
+			let tile = gameState.map.tilesData[i];
+			const x = axialToPixelX(tile.q, tile.r);
+			const y = axialToPixelY(tile.q, tile.r);
+			centerX += x;
+			centerY += y;
+			total++;
+		}
+		if(total){
+			centerX = centerX/total;
+			centerY = centerY/total;
+		}
+		
+		centerToPixelPos(centerX, centerY);
+	}
+	
+}
+
 
 function showPage(pageId) {
 	Object.values(pages).forEach(page => page.classList.remove('active'));
@@ -3277,15 +3391,7 @@ function showPage(pageId) {
 
 
 
-// centers screen on q,r position.
-function centerTo(q, r){
-	//const centerPx = axialToPixel(q, r);
-	const centerX = axialToPixelX(q, r);
-	const centerY = axialToPixelY(q, r);
-	
-	viewport.x = canvas.width / 2 - centerX;
-	viewport.y = canvas.height / 2 - centerY;
-}
+
 
 
 
@@ -4998,12 +5104,20 @@ function drawUnitSelection(){
 
 
 
+// host only cheat function to give money
+function givemoney(amount){
+	if(selectedPool && selectedPool.hexes.length > 0){
+		selectedPool.hexes[0].tile.savings += amount;
+		updatePlayerSavings(getMyPlayer().id);
+		updateSelectedPoolInfo();
+		console.log("givemoney = "+amount);
+	}
+}
 
-/**
- * ==========================================
- * CORE PARTICLE LOGIC
- * ==========================================
- */
+
+//==========================================
+// CORE PARTICLE LOGIC
+//==========================================
 
 // Global array to store all active particles from all explosions
 let particles = [];
@@ -5012,17 +5126,10 @@ let particles = [];
 const randomRange = (min, max) => randomFunc() * (max - min) + min;
 
 
-/**
- * ==========================================
- * CORE PARTICLE LOGIC (BOUNCING EDITION)
- * ==========================================
- */
-
-
-/**
- * Creates an explosion with bouncing physics.
- */
-function createExplosion(x, y, ep) {
+// Creates an explosion with bouncing physics.
+function createExplosion(ep) {
+	let x = ep.x;
+	let y = ep.y;
 	let color = ep.color;
 	let shapeMode = ep.shapeMode;
 	let fadeMode = ep.fadeMode;
@@ -5030,7 +5137,7 @@ function createExplosion(x, y, ep) {
 	let initialSpeed = ep.initialSpeed;
 	let life = ep.life ?? 1.3;
 	let decay = ep.decay ?? {min:0.01, max:0.03};
-	let rotationSpeed = ep.rotationSpeed ?? {min:-0.2, max:0.2};
+	let rotationSpeed = ep.rotationSpeed ?? {min:-0.1, max:0.1};
 	
     for (let i = 0; i < amount; i++) {
         const speedVariation = initialSpeed * 0.5; 
@@ -5067,9 +5174,8 @@ function createExplosion(x, y, ep) {
     }
 }
 
-/**
- * Updates and draws particles with shadow and height offset.
- */
+
+// Updates and draws particles with shadow and height offset.
 function updateParticles() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
@@ -5158,123 +5264,10 @@ function updateParticles() {
         ctx.restore();
     }
 }
-/*
-// * Creates an explosion effect.
-// * * @param {CanvasRenderingContext2D} ctx - The canvas context (used for reference, though drawing happens in loop)
-// * @param {number} x - X coordinate
-// * @param {number} y - Y coordinate
-// * @param {string} color - Hex or RGB color string
-// * @param {number} shapeMode - 0 for Triangles+Squares, 1 for Circles
-// * @param {string} fadeMode - 'slow' for opacity decay, 'instant' for pop at end
-// * @param {number} amount - Number of particles
-// * @param {number} initialSpeed - Base speed of particles
-function createExplosion(x, y, color, shapeMode, fadeMode, amount, initialSpeed) {
-	for (let i = 0; i < amount; i++) {
-		// RANDOM SPEED LOGIC:
-		// We vary the speed by ±50% so they don't form a perfect expanding ring
-		const speedVariation = initialSpeed * 0.5; 
-		const speed = randomRange(initialSpeed - speedVariation, initialSpeed + speedVariation);
-		
-		// Random Angle (0 to 360 degrees in radians)
-		const angle = randomFunc() * Math.PI * 2;
-
-		// Determine specific shape if in Mixed mode (0)
-		let specificShape = 'circle';
-		if (shapeMode == 0) {
-			specificShape = randomFunc() > 0.5 ? 'square' : 'triangle';
-		}
-
-		// Create Particle Object
-		particles.push({
-			x: x,
-			y: y,
-			vx: Math.cos(angle) * speed,
-			vy: Math.sin(angle) * speed,
-			color: color,
-			shape: specificShape, // 'circle', 'square', or 'triangle'
-			fadeMode: fadeMode,   // 'slow' or 'instant'
-			
-			// LIFECYCLE LOGIC:
-			life: 1.0,            // Life starts at 1.0 (100%)
-			decay: randomRange(0.01, 0.03), // Random decay rate ensures they die at different times
-			
-			// Visual properties
-			size: randomRange(4, 8),
-			rotation: randomRange(0, 360),
-			rotationSpeed: randomRange(-0.2, 0.2)
-		});
-	}
-}
 
 
 
-// Updates and draws all particles.
-// Call this inside your requestAnimationFrame loop.
-function updateParticles() {
-	for (let i = particles.length - 1; i >= 0; i--) {
-		let p = particles[i];
 
-		// 1. Update Position
-		p.x += p.vx;
-		p.y += p.vy;
-
-		// Add a little friction (optional, makes explosion feel more physical)
-		p.vx *= 0.95; 
-		p.vy *= 0.95;
-
-		// Update Rotation (for squares/triangles)
-		p.rotation += p.rotationSpeed;
-
-		// 2. Lifecycle & Fade Logic
-		p.life -= p.decay;
-
-		// Calculate Opacity based on Fade Mode
-		let opacity = 1;
-		if (p.fadeMode === 'slow') {
-			// Opacity matches life percentage
-			opacity = Math.max(0, p.life);
-		} else {
-			// Instant: Stay full opacity until life < 0
-			opacity = p.life > 0 ? 1 : 0;
-		}
-
-		// 3. Remove dead particles
-		if (p.life <= 0) {
-			particles.splice(i, 1);
-			continue;
-		}
-
-		// 4. Draw Particle
-		ctx.save();
-		ctx.translate(p.x, p.y);
-		ctx.rotate(p.rotation);
-		ctx.globalAlpha = opacity;
-		ctx.fillStyle = p.color;
-
-		ctx.beginPath();
-
-		if (p.shape === 'circle') {
-			ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-			ctx.fill();
-		} 
-		else if (p.shape === 'square') {
-			ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-		} 
-		else if (p.shape === 'triangle') {
-			// Draw an equilateral triangle
-			const r = p.size / 1.5;
-			ctx.moveTo(0, -r);
-			ctx.lineTo(r, r);
-			ctx.lineTo(-r, r);
-			ctx.closePath();
-			ctx.fill();
-		}
-
-		ctx.restore();
-	}
-}
-
-*/
 
 
 function clearShieldingUnitsTips(){
@@ -8381,24 +8374,22 @@ function handleHostData(data) {
 					////////////////
 					// create explosion if unit died:
 					if(data.object === 'dead'){
-						//const { x, y } = axialToPixel(data.q, data.r);
-						const x = axialToPixelX(data.q, data.r);
-						const y = axialToPixelY(data.q, data.r);
+						const { x, y } = axialToPixel(data.q, data.r);
 						
 						let ep = {
 							x: x,
 							y: y,
+							color: "#FF0000",
+							shapeMode: 1, // circles
+							initialSpeed: 2,
+							amount: 30,
+							life: 2,
+							decay: {min:0.005, max:0.015},
+							fadeMode: "slow",
+							rotationSpeed: {min:0, max:0},
 						};
-						ep.color = "#FF0000";
-						ep.shapeMode = 1; // circles
-						ep.initialSpeed = 2;
-						ep.amount = 60;
-						ep.life = 2;
-						ep.decay = {min:0.005, max:0.015};
-						ep.fadeMode = "slow";
-						ep.rotationSpeed = {min:0, max:0};
 						
-						createExplosion(x, y, ep);
+						createExplosion(ep);
 					}
 				}
 				
@@ -8528,7 +8519,7 @@ function handleHostData(data) {
 					ep.rotationSpeed = {min:0, max:0};
 				}
 				if(doExplosion){
-					createExplosion(x, y, ep);
+					createExplosion(ep);
 				}
 			}
 		}
@@ -9429,9 +9420,8 @@ function getTileCountCompact(mapdata){
 }
 
 
-async function buildMapList(mapSizeName) {
+async function buildMapList(mapSizeName, totalMaps) {
 	const t = mapSizeName[0];
-	const totalMaps = 40;
 
 	const promises = Array.from({ length: totalMaps }, async (_, i) => {
 		const n = i + 1;
@@ -9481,16 +9471,17 @@ function blobToBase64(blob) {
 
 
 // only used when compiled-maps.json has to be updated.
+// compile maps compilemaps
 async function loadmaps(){
 	// other way to load them:
 	//await Promise.all([
-	//  buildMapList("normal"),
-	//  buildMapList("small")
+	//  buildMapList("normal", 40),
+	//  buildMapList("small", 41)
 	//]);
 
-	await buildMapList("normal");
+	await buildMapList("normal", 40);
 	console.log("buildMapList normal finished");
-	await buildMapList("small");
+	await buildMapList("small", 41);
 	console.log("buildMapList small finished");
 	
 	
@@ -9524,7 +9515,7 @@ async function loadMapsFromJSON() {
 
 
 let loadedMapCategory = "small";
-let loadedMapIndex = 0;
+let loadedMapIndex = 2;
 
 // load map on start:
 (async () => {
@@ -10832,6 +10823,46 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	buildPopupClose.onclick = () => {
 		cancelBuildPopup();
+	};
+	
+	nextUnitBtn.onclick = () => {
+		let player = getMyPlayer();
+		
+		if(player){
+			let selectedUnitIndex = 0;
+			
+			if(selectedUnit){
+				for(let i = 0; i < gameState.units.length; i++){
+					let unit = gameState.units[i];
+					if(unit.id === selectedUnit.id){
+						selectedUnitIndex = i+1;
+						if(selectedUnitIndex > gameState.units.length-1){
+							selectedUnitIndex = 0; // start from beginning again.
+						}
+						break;
+					}
+				}
+			}
+			
+			// start finding next unit after selected unit index:
+			for(let i = selectedUnitIndex; i < gameState.units.length; i++){
+				let unit = gameState.units[i];
+
+				if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
+					selectedUnit = unit;
+					selectedHex = {q:unit.q, r:unit.r};
+					
+					hideBuildPopup();
+					updateHighlights();
+					
+					updateSelectedPoolInfo(selectedHex);
+					
+					
+					centerToUnit(unit);
+					break;
+				}
+			}
+		}
 	};
 	
 	endTurnBtn.onclick = () => {
