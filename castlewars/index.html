@@ -510,7 +510,7 @@ label {
 	flex: 1 1 auto;     /* grow to fill remaining space */
 	min-width: 0;       /* allows flex children to shrink correctly */
 	display: block;
-	width:200px;
+	width:230px;
 }
 
 
@@ -1006,23 +1006,24 @@ input.disabled {
 }
 
 
-.floatbuttons {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-}
+
 
 #next-unit-btn {
 	background-image: url('images/ui/next.png');
-	pointer-events:auto;
-	width: 60px;
-	height: 47px;
-	margin-right: 6px;
 }
 #next-unit-btn[disabled] {
 	background-color:var(--btn-bg);
 	filter: brightness(0.5);
 }
+
+#previous-unit-btn {
+	background-image: url('images/ui/previous.png');
+}
+#previous-unit-btn[disabled] {
+	background-color:var(--btn-bg);
+	filter: brightness(0.5);
+}
+
 
 
 
@@ -1285,11 +1286,6 @@ input.disabled {
 		
 		<div id="ui-right">
 			
-			<div class="floatbuttons">
-				<button id="next-unit-btn" class="gamebutton" title="Next unit"></button>
-			</div>
-			
-
 			<div class="ui-panel ui-panel-controls">
 				<div class="info-left" id="info-left" style="display:none">
 					<div class="top-row" id="ui-right-top-row-id">
@@ -1304,10 +1300,12 @@ input.disabled {
 						<button id="sell-unit-btn" class="gamebutton" title="Sell warrior"></button>
 						<button id="build-soldier-btn" class="gamebutton" title="Recruit warrior"></button>
 						<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
+						<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
 					</div>
 					<div class="button-row" id="ui-right-button-row2-id">
 						<button id="end-turn-btn" class="gamebutton primary" title="End turn"></button>
-						<button id="undo-btn" class="gamebutton redbutton" title="Undo"></button>
+						<button id="previous-unit-btn" class="gamebutton" title="Previous unit"></button>
+						<button id="next-unit-btn" class="gamebutton" title="Next unit"></button>
 						<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
 					</div>
 				</div>
@@ -2062,28 +2060,7 @@ function getNextFreeTextColor(player = null){
 }
 
 function getNextFreeColor(player = null){
-	
 	return getNextFreeColors(player).color;
-	/*
-	let usedColors = [];
-	for(let i = 0; i < gameState.players.length; i++){
-		let p = gameState.players[i];
-		if(!player || p.id !== player.id){
-			if(!p.quitted && !p.isSpectator){
-				usedColors.push(p.color);
-			}
-		}
-	}
-	
-	for(let i = 0; i < PLAYER_COLORS.length; i++){
-		let color = PLAYER_COLORS[i].color;
-		if(!usedColors.includes(color)){
-			return color;
-		}
-	}
-	console.log("random color returned");
-	return randomColor();
-	*/
 }
 
 
@@ -2658,47 +2635,6 @@ function createHexagonMaskedImage(sourceImage, hexSize, textureScale = 1.0, canv
 }
 
 
-		/*
-	const effectiveRadius = hexSize;
-
-	// --- Step 1: Draw the Hexagonal Mask Shape ---
-
-	// We draw the shape path slightly scaled down and use blur 
-	// to achieve a simple, performant anti-aliasing effect at the edge.
-
-	ctxOut.beginPath();
-
-	// The inner radius for the path, slightly less than full size
-	const pathRadius = effectiveRadius * 0.99; 
-
-	// Move to the first corner
-	ctxOut.moveTo(center + pathRadius * HEX_CORNERS[0].x, center + pathRadius * HEX_CORNERS[0].y);
-
-	// Draw lines to the remaining corners
-	for (let i = 1; i < 6; i++) {
-		ctxOut.lineTo(center + pathRadius * HEX_CORNERS[i].x, center + pathRadius * HEX_CORNERS[i].y);
-	}
-	ctxOut.closePath();
-
-	// Set a very small shadow/blur to ensure the edge is smoothly blended
-	ctxOut.shadowBlur = 1; 
-	ctxOut.shadowColor = 'black'; 
-	ctxOut.fillStyle = 'black';
-	ctxOut.fill(); 
-	
-	
-
-	// Reset the shadow properties for the next draw
-	ctxOut.shadowBlur = 0;
-    ctxOut.shadowColor = 'transparent';
-
-	// --- Step 2: Mask the Source Image ---
-
-	// Set composite operation to 'source-in'. 
-	// This means new drawings are only visible where the existing (black hex) shape is.
-	ctxOut.globalCompositeOperation = 'source-in';
-	
-	*/
 
 
 // draws ">" triangle where the pointy right side is the x y coordinate.
@@ -3187,6 +3123,7 @@ const infoLeft = document.getElementById('info-left');
 
 
 const nextUnitBtn = document.getElementById('next-unit-btn');
+const previousUnitBtn = document.getElementById('previous-unit-btn');
 
 const buildSoldierBtn = document.getElementById('build-soldier-btn');
 const buildCastleBtn = document.getElementById('build-castle-btn');
@@ -3211,6 +3148,84 @@ const uiRight = document.getElementById('ui-right');
 const uiLeft = document.getElementById('ui-left');
 
 
+
+const UNIT_ADJECTIVES = [
+	"Iron", "Crimson", "Silent", "Wild", "Steady", "Grim", "Swift", "Brave",
+	"Stone", "Golden", "Night", "Feral", "Storm", "Scarlet", "Frozen", "Noble",
+];
+
+const UNIT_NOUNS = [
+	"Wolf", "Falcon", "Hammer", "Viper", "Saber", "Shield", "Reaver", "Hunter",
+	"Sentinel", "Warden", "Rider", "Striker", "Golem", "Specter", "Marauder", "Prowler",
+];
+
+let possibleUnitNames = [];
+createPossibleUnitNames();
+
+function createPossibleUnitNames(){
+	possibleUnitNames = [];
+	// 16x16 = 256 items array of unique names:
+	for(let a = 0; a < UNIT_ADJECTIVES.length; a++){
+		const adj = UNIT_ADJECTIVES[a];
+		for(let n = 0; n < UNIT_NOUNS.length; n++){
+			const noun = UNIT_NOUNS[n];
+			possibleUnitNames.push(`${adj}${noun}`);
+		}
+	}
+	possibleUnitNames = shuffle(possibleUnitNames);
+	console.log(possibleUnitNames);
+}
+
+function randomUnitName(){
+	// longest: CrimsonMarauder
+	//const adj = UNIT_ADJECTIVES[random(0, UNIT_ADJECTIVES.length-1)];
+	//const noun = UNIT_NOUNS[random(0, UNIT_NOUNS.length-1)];
+	//return `${adj}${noun}`;
+	return possibleUnitNames[random(0, possibleUnitNames.length-1)];
+}
+
+
+function findNextFreeRandomUnitName(playerId){
+	let unitName = "";
+	
+	let unitNamesList = [];
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+		if(unit.name && unit.ownerId === playerId && unit.internalType === 'soldier'){
+			unitNamesList.push(unit.name);
+		}
+	}
+	
+	// try to get a name that doesnt exist yet:
+	let found = 0;
+	for(let i = 0; i < possibleUnitNames.length; i++){
+		unitName = possibleUnitNames[i];
+		if(!unitNamesList.includes(unitName)){
+			// unique name found
+			found = 1;
+			break;
+		}
+	}
+	// if all names were used, just add number to end:
+	if(!found){
+		for(let number = 1; number < 10; number++){
+			for(let i = 0; i < possibleUnitNames.length; i++){
+				unitName = possibleUnitNames[i] + number;
+				if(!unitNamesList.includes(unitName)){
+					// unique name found
+					found = 1;
+					break;
+				}
+			}
+			if(found){
+				break;
+			}
+		}
+	}
+	// if still not found, just uses the last set unitName.
+	
+	return unitName;
+}
 
 
 // randomname random name random nick
@@ -3302,13 +3317,27 @@ function centerToUnit(unit){
 	}
 }
 
+function centerAndSelectUnit(unit){
+	if(unit){
+		selectedUnit = unit;
+		selectedHex = {q:unit.q, r:unit.r};
+		
+		hideBuildPopup();
+		updateHighlights();
+		updateSelectedPoolInfo(selectedHex);
+		
+		centerToUnit(unit);
+	}
+}
+
+
 function centerToTile(tile){
 	if(tile){
 		centerTo(tile.q, tile.r);
 	}
 }
 
-function centerToFirstUnit(){
+function centerAndSelectFirstUnit(selectUnit = false){
 	let player = getMyPlayer();
 	
 	let found = 0;
@@ -3317,7 +3346,7 @@ function centerToFirstUnit(){
 		// find first soldier unit to center to:
 		for (const unit of gameState.units) {
 			if(unit.internalType === 'soldier' && unit.ownerId === player.id){
-				centerToUnit(unit);
+				centerAndSelectUnit(unit);
 				found = 1;
 				break;
 			}
@@ -3327,7 +3356,7 @@ function centerToFirstUnit(){
 		if(!found){
 			for (const unit of gameState.units) {
 				if(unit.internalType === 'castle' && unit.ownerId === player.id){
-					centerToUnit(unit);
+					centerAndSelectUnit(unit);
 					found = 1;
 					break;
 				}
@@ -3925,25 +3954,6 @@ function drawHexagonPath(px, py, padding = 0) {
     ctx.closePath();
 }
 
-/*
-function drawHexagonPath(px, py, padding = 0) {
-	ctx.beginPath();
-	for (let i = 0; i < 6; i++) {
-		//const angle = 2 * Math.PI / 6 * (i + 1); // +0.5 for pointy top
-		//const x = px + (HEX_SIZE+padding) * Math.cos(angle);
-		//const y = py + (HEX_SIZE+padding) * Math.sin(angle);
-		const x = px + (HEX_SIZE+padding) * HEX_CORNERS[i].x;
-		const y = py + (HEX_SIZE+padding) * HEX_CORNERS[i].y;
-		
-		if(i === 0){
-			ctx.moveTo(x, y);
-		}else{
-			ctx.lineTo(x, y);
-		}
-	}
-	ctx.closePath();
-}
-*/
 
 
 
@@ -4558,6 +4568,8 @@ function drawMapTiles(){
 					//drawText(x, y, tile.savings);
 					if(drawDebugText){
 						ctx.fillStyle = "#FFFFFF";
+						ctx.font = "11px sans-serif";
+	
 						ctx.fillText(formatNumber(tile.savings, 8), x, y+22);
 					}
 				
@@ -4576,6 +4588,8 @@ function drawMapTiles(){
 					
 					if(drawDebugText){
 						ctx.fillStyle = "#000000";
+						ctx.font = "11px sans-serif";
+	
 						ctx.fillText(formatNumber(tile.savings, 4), x, y+23);
 					}
 				
@@ -4987,6 +5001,27 @@ function drawUnits(){
 		}
 	}
 	
+	// draw selected unit name on top of it:
+	if(selectedUnit){
+		const x = axialToPixelX(selectedUnit.q, selectedUnit.r);
+		const y = axialToPixelY(selectedUnit.q, selectedUnit.r);
+		let dx = x;
+		let dy = y-50;
+		let offset = 1;
+		ctx.font = "14px sans-serif";
+		ctx.lineWidth = 3; // outline thickness
+		ctx.strokeStyle = "black";
+		ctx.fillStyle = "white";
+		ctx.lineJoin = "round"; // prevents sharp corners on letters
+		ctx.strokeText(selectedUnit.name, dx, dy);
+
+		// fill
+		ctx.fillStyle = "white";
+		ctx.fillText(selectedUnit.name, dx, dy);
+	}
+	
+	
+	
 	//console.log("unitsDrawn = "+unitsDrawn);
 }
 
@@ -5374,27 +5409,7 @@ function drawMoveDirectionsOverlay() {
 		if (x < 0 && y < 0){ angle = 180+45; }
 		if (x > canvas.width && y < 0){ angle = 270+45; }
 		
-		
-
 		drawEdgeTriangle(ctx, edgeX, edgeY, angle);
-
-		/*
-		let opacity = 1;
-		
-		// black edges for visibility:
-		ctx.beginPath();
-		ctx.arc(edgeX, edgeY, 25*pulse, 0, Math.PI * 2);
-		ctx.fillStyle = `rgba(0,0,0, ${opacity})`;
-		ctx.fill();
-		
-		drawCircle(edgeX, edgeY, 20*pulse, 3, `rgba(255,255,255, ${opacity})`);
-		
-		// draw with player color:
-		ctx.beginPath();
-		ctx.arc(edgeX, edgeY, 17*pulse, 0, Math.PI * 2);
-		ctx.fillStyle = hexToRgba("#FFFF00", opacity);
-		ctx.fill();
-		*/
 	}
 	
 	ctx.restore();
@@ -5542,31 +5557,6 @@ let lastTouch = null;
 let lastDist = null; // for pinch-zoom
 
 
-/*
-function handleTouchStart(e) {
-	if (e.touches.length === 1) {
-		// Single touch (drag or tap)
-		const touch = e.touches[0];
-		isDragging = false;
-		touchStartPos = { x: touch.clientX, y: touch.clientY };
-		
-		const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
-		const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
-		
-		touchStartPos.canDrag = !unitOnHex;
-		lastTouch = { x: touch.clientX, y: touch.clientY };
-		lastDist = null;
-	} else if (e.touches.length === 2) {
-		// Pinch-zoom
-		isDragging = false; // Stop dragging
-		touchStartPos = null;
-		lastDist = Math.hypot(
-			e.touches[0].clientX - e.touches[1].clientX,
-			e.touches[0].clientY - e.touches[1].clientY
-		);
-	}
-}
-*/
 
 function isBuildPopupOpen(){
 	return buildPopup.style.display !== 'none';
@@ -5779,6 +5769,21 @@ function isMyTurn() {
 	return currentTurnPlayer && currentTurnPlayer.id === localPlayer.id;
 }
 
+function hasUnmovedUnits(){
+	if(!isMyTurn()){
+		return false;
+	}
+	const player = getMyPlayer();
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+
+		if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
+			return true;
+		}
+	}
+	return false;
+}
+
 
 // updateui update ui
 function updateGameUI() {
@@ -5822,6 +5827,8 @@ function updateGameUI() {
 	sellUnitBtn.disabled = true;
 	endTurnBtn.disabled = !canPlay;
 	
+	nextUnitBtn.disabled = !hasUnmovedUnits();
+	previousUnitBtn.disabled = !hasUnmovedUnits();
 	
 	
 	///////////////////////////////
@@ -6587,7 +6594,7 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 
 function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
 	const tile = getTileAt(q, r);
-	let units = [];
+	let unitsShielding = [];
 	
 	if(tile){
 		const unit = getUnitAt(q, r);
@@ -6595,7 +6602,7 @@ function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
 			if (unit.ownerId !== perspectiveOwnerId) {
 				// It's an enemy unit
 				if(compareUnitLevel <= unit.level){
-					units.push(unit);
+					unitsShielding.push(unit);
 				}
 			}
 		}
@@ -6605,13 +6612,13 @@ function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
 				if (unit.ownerId !== perspectiveOwnerId) {
 					// It's an enemy unit
 					if(compareUnitLevel <= unit.level){
-						units.push(unit);
+						unitsShielding.push(unit);
 					}
 				}
 			}
 		}
 	}
-	return units;
+	return unitsShielding;
 }
 
 
@@ -7203,16 +7210,7 @@ function executeAction(playerId, action) {
 						clearedObject: clearedObject,
 						poolHex: poolHex,
 					};
-					/*
-					actionForUndo = {
-						type: 'move',
-						unitId: unit.id,
-						fromQ, fromR,
-						toQ, toR,
-						didClaim: oldOwner !== playerId,
-						oldOwner: oldOwner,
-						clearedObject: oldObject,
-					};*/
+
 					
 					if (buildCheck.action === 'attack') {
 						const targetUnit = buildCheck.target;
@@ -7511,8 +7509,8 @@ function updatePlayerSavings(playerId) {
 }
 
 
-function drawText(x, y, text){
-	ctx.fillStyle = "#FFFFFF";
+function drawText(x, y, text, color = "#FFFFFF"){
+	ctx.fillStyle = color;
 	ctx.fillText(text, x, y);
 }
 
@@ -7633,42 +7631,6 @@ function canAffordCheck(savings, cost) {
 	return savings >= cost - EPSILON;
 }
 
-/*
-function distributePoolSavings(pools) {
-	console.warn("distributePoolSavings:");
-	console.warn(pools);
-	// Takes a list of pools (from findEconomyPools) and distributes
-	// their savings evenly among their hexes.
-
-	// Normalize input so we always work with an array:
-	if (!Array.isArray(pools)) {
-		pools = [pools];
-	}
-
-	for (const pool of pools) {
-		if (!pool || pool.hexes.length === 0) continue;
-		
-		// calculate total savings from the pool:
-		//let poolTotalSavings = 0;
-		//for (const hex of pool.hexes) {
-		//	poolTotalSavings += hex.tile.savings;
-		//}
-		
-		const savingsPerHex = pool.totalSavings / pool.hexes.length;
-		// distribute the savings evenly per hex:
-		//const savingsPerHex = poolTotalSavings / pool.hexes.length;
-		for (const hex of pool.hexes) {
-			//if (hex.tile.savings !== savingsPerHex) {
-				hex.tile.savings = savingsPerHex;
-				// Don't need to broadcast savings changes,
-				// they are implicit and only matter to the host
-				// and the player (who gets a total).
-			//}
-		}
-	}
-}
-
-*/
 
 
 
@@ -7760,55 +7722,6 @@ function randomItem(arr){
 	return arr[random(0, arr.length-1)];
 }
 
-/*
-// this function doesnt need polishing, its very rudimentary AI that just moves not yet moved units to free hex.
-function ai_find_best_move(player){
-	console.log("ai_find_best_move");
-	
-	for(let i = 0; i < gameState.units.length; i++){
-		let unit = gameState.units[i];
-		// skip already moved units:
-		if(unit.hasMoved){
-			continue;
-		}
-		// only allow own units movement:
-		if(unit.ownerId === player.id){
-			// handle only ai units.
-			let neigh = getHexNeighbors(unit.q, unit.r);
-			
-			console.log("neigh");
-			console.log(neigh);
-			
-			let possibleMovesTemp = findUnitPossibleMoves(unit, player);
-			let possibleMoves = [];
-			// remove your owned tiles from possible moves, dont make ai just move in his own land:
-			for(let t = 0; t < possibleMovesTemp.length; t++){
-				let possibleMove = possibleMovesTemp[t];
-				let possibleTile = getTileAt(possibleMove.q, possibleMove.r);
-				if(possibleTile.ownerId !== player.id){
-					let move = {q: possibleMove.q, r: possibleMove.r};
-					const moveCheck = isMoveValid(unit, move, player);
-					if (moveCheck.valid) {
-						possibleMoves.push(move);
-					}
-				}
-			}
-			if(possibleMoves.length > 0){
-				let randomMove = randomItem(possibleMoves);
-				return {
-					type: 'action_move',
-					unitId: unit.id,
-					toQ: randomMove.q,
-					toR: randomMove.r
-				};
-			}
-
-		}
-	}
-	
-	return null; // no valid move found. turn will end.
-}
-*/
 
 
 // find_ai_best_move findaibestmove aifindbestmove aimove ai_move
@@ -8092,17 +8005,6 @@ function processEndOfDay(){
 	// add random trees: 
 	const tiles = gameState.map.tilesData;
 	for (let i = 0; i < curMaxTrees; i++) {
-		/*
-		let rti, hasUnit, tile;
-		// Find a valid tile
-		let counter = 0;
-		do {
-			rti = random(0, tiles.length - 1);
-			tile = tiles[rti];
-			hasUnit = getUnitAt(tile.q, tile.r);
-			counter++;
-		} while ((tile.type === 'water' || tile.object || hasUnit) && counter < 1000);
-		*/
 		let found = 0;
 		let tile = null;
 		for(let tries = 0; tries < 100; tries++){
@@ -8281,6 +8183,9 @@ function addUnit(unit){
 		unit.creationTime = Date.now(); 
 		unit.animationFinished = false; // ensure no animation will be visible.
 		unit.animationStyle = 2; // 2 = appear from zero size to normal size, 0 = no animation.
+		if(!unit.name){
+			unit.name = findNextFreeRandomUnitName(unit.ownerId);
+		}
 	}
 	gameState.units.push(unit);
 }
@@ -8304,7 +8209,7 @@ function handleHostData(data) {
 			gameState = data.state;
 			showPage('game');
 			updateGameUI();
-			centerToFirstUnit();
+			centerAndSelectFirstUnit();
 			addCurrentTurnChatMessage();
 		}
 		break;
@@ -8775,18 +8680,7 @@ function setupConnection(conn) {
 			//alert('Disconnected from host. Returning to start page.');
 			console.warn('Disconnected from host. Returning to start page.');
 			addSystemChatMessage("&gt; Host has left the game.", "#FFFF00");
-			/*
-			let answer = confirm("Host has left the game, quit game?");
-			if(answer){
-				restartGame();
-				//showPage('start');
-				// Reset state?
-				// todo: causes weird bugs when the client player goes to start page and starts hosting his own room.
-				//resetGameState();
-			}else{
-				// maybe set some UI element to display "host quitted" or something.
-			}
-			*/
+
 		}
 	});
 }
@@ -9934,6 +9828,7 @@ function spawnTrees(test1 = 1){
 	}
 	
 	/*
+	// poissonDiskSampler version, makes too evenly spaced to my taste...
 	let treePlaces = [];
 
 	if(test1 == 1){
@@ -10659,86 +10554,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 		broadcastLobbyState();
 	};
 	
-	/*
-	// async needed here for await to work for getMostRecentSave()
-	loadGameBtn.onclick = async () => {
-		if (loadedGameState) {
-			// Unload
-			loadedGameState = null;
-			loadGameBtn.textContent = 'Load Game';
-			loadedGameInfoContainer.style.display = 'none';
-		} else {
-			// Load
-			let mostRecentSave = await getMostRecentSave();
-			console.log("mostRecentSave: "+mostRecentSave);
-			
-			const roomName = mostRecentSave;//gameNameInput.value;
-			loadGameFromDB(roomName, (state) => {
-				if (state) {
-					loadedGameState = state.gameState;
-					console.warn("loadedGameState:");
-					console.warn(loadedGameState);
-					
-					
-					//console.log(lobbyLoadedMapImg);
-					gameState.settings = loadedGameState.settings;
-					gameState.players = loadedGameState.players;
-					gameState.map = loadedGameState.map;
-					// update minimap for host:
-					loadedMapImg.src = loadedGameState.map.imageData;
-					updateHostLobbyUI();
-
-					//console.log(lobbyLoadedMapImg);
-
-					// update state to all players so they see the map loaded etc.
-					broadcastLobbyState(loadedGameState.settings, loadedGameState.players, loadedGameState.map);
-					
-					
-					
-					loadGameBtn.textContent = 'Unload Game';
-					loadGameDate.textContent = new Date(state.saveDate).toLocaleString();
-					loadGamePlayersList.innerHTML = '';
-					state.gameState.players.filter(p => !p.isSpectator).forEach(p => {
-						const li = document.createElement('li');
-						li.textContent = `${p.name}`;
-						li.style.color = p.color;
-						li.className = 'loaded-player';
-						li.onclick = () => {
-							if (li.classList.contains('taken')) return;
-							
-							// Mark others as not taken
-							loadGamePlayersList.querySelectorAll('li').forEach(item => {
-								if (item.textContent.endsWith(' (taken)')) {
-									const originalName = item.dataset.name;
-									const pData = loadedGameState.players.find(lp => lp.name === originalName);
-									if (pData) pData.isTaken = false;
-									item.textContent = originalName;
-									item.classList.remove('taken');
-								}
-							});
-							
-							// Take this one
-							localPlayer.name = p.name;
-							localPlayer.color = p.color;
-							playerNameInput.value = p.name;
-							localPlayer.isSpectator = false;
-							spectateHostBtn.classList.remove('active');
-							p.isTaken = true; // Mark in loaded state
-							li.textContent = `${p.name} (taken)`;
-							li.dataset.name = p.name;
-							li.classList.add('taken');
-							broadcastLobbyState(); // Update others
-						};
-						loadGamePlayersList.appendChild(li);
-					});
-					loadedGameInfoContainer.style.display = 'block';
-				} else {
-					alert('No saved game found for this room name: '+roomName);
-				}
-			});
-		}
-	};
-	*/
 	
 	startGameBtn.onclick = startGame;
 	
@@ -10828,40 +10643,74 @@ window.addEventListener('DOMContentLoaded', async () => {
 	nextUnitBtn.onclick = () => {
 		let player = getMyPlayer();
 		
-		if(player){
-			let selectedUnitIndex = 0;
+		if(player && isMyTurn()){
+			let startIndex = 0;
 			
 			if(selectedUnit){
 				for(let i = 0; i < gameState.units.length; i++){
 					let unit = gameState.units[i];
 					if(unit.id === selectedUnit.id){
-						selectedUnitIndex = i+1;
-						if(selectedUnitIndex > gameState.units.length-1){
-							selectedUnitIndex = 0; // start from beginning again.
+						startIndex = i+1;
+						if(startIndex > gameState.units.length-1){
+							startIndex = 0; // start from beginning again.
 						}
 						break;
 					}
 				}
 			}
 			
-			// start finding next unit after selected unit index:
-			for(let i = selectedUnitIndex; i < gameState.units.length; i++){
+			// search forward starting at selected index, wrapping around
+			for (let offset = 0; offset < gameState.units.length; offset++) {
+				const i = (startIndex + offset) % gameState.units.length;
 				let unit = gameState.units[i];
 
 				if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
-					selectedUnit = unit;
-					selectedHex = {q:unit.q, r:unit.r};
-					
-					hideBuildPopup();
-					updateHighlights();
-					
-					updateSelectedPoolInfo(selectedHex);
-					
-					
-					centerToUnit(unit);
+					centerAndSelectUnit(unit);
 					break;
 				}
 			}
+			
+			// disable next button if no next unit can be found:
+			previousUnitBtn.disabled = !hasUnmovedUnits();
+			nextUnitBtn.disabled = !hasUnmovedUnits();
+		}
+	};
+	
+	previousUnitBtn.onclick = () => {
+		let player = getMyPlayer();
+		
+		if(player && isMyTurn()){
+			let startIndex = 0;
+			
+			if(selectedUnit){
+				// search backwards the startIndex:
+				for(let i = gameState.units.length-1; i >= 0; i--){
+					let unit = gameState.units[i];
+					if(unit.id === selectedUnit.id){
+						startIndex = i-1;
+						if(startIndex < 0){
+							startIndex = gameState.units.length-1; // start from end again.
+						}
+						break;
+					}
+				}
+			}
+			
+			// search backwards starting at selected index, wrapping around
+			for (let offset = 0; offset < gameState.units.length; offset++) {
+				// +gameState.units.length to ensure no negative values given:
+				const i = (startIndex - offset + gameState.units.length) % gameState.units.length;
+				let unit = gameState.units[i];
+
+				if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
+					centerAndSelectUnit(unit);
+					break;
+				}
+			}
+			
+			// disable next button if no next unit can be found:
+			previousUnitBtn.disabled = !hasUnmovedUnits();
+			nextUnitBtn.disabled = !hasUnmovedUnits();
 		}
 	};
 	
