@@ -432,15 +432,7 @@ label {
 	position:absolute;
 	bottom:0;
 	right:0;
-	
-	---display: flex;
-	---flex-direction: column; /* stack rows vertically */
-	
-	---max-width: 200px;
-	---width: 100%;
 	overflow-y: hidden;
-	---border-top-left-radius: 8px;
-	---height:120px;
 }
 
 /* Top row: texts side by side */
@@ -1282,7 +1274,6 @@ input.disabled {
 		</div>
 		
 		<div id="ui-right">
-			
 			<div class="ui-panel ui-panel-controls">
 				<div class="info-left" id="info-left" style="display:none">
 					<div class="top-row" id="ui-right-top-row-id">
@@ -2343,6 +2334,7 @@ let localPlayer = {
 	isHost: false,
 	isDead: false,
 	isAI: false,
+	undoCounter: 0, // will be updated in 'undo_counter' message and used to determine if there are any undoing left.
 };
 let localPlayerPools = []; // economy pools for local player.
 
@@ -2511,6 +2503,11 @@ if(use_orig){
 		'soldier2': {path:'images/'+pathPrefix+'/soldier2.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
 		'soldier3': {path:'images/'+pathPrefix+'/soldier3.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
 		'soldier4': {path:'images/'+pathPrefix+'/soldier4.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
+		
+		'soldier1-b': {path:'images/'+pathPrefix+'/soldier1-b.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
+		'soldier2-b': {path:'images/'+pathPrefix+'/soldier2-b.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
+		'soldier3-b': {path:'images/'+pathPrefix+'/soldier3-b.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
+		'soldier4-b': {path:'images/'+pathPrefix+'/soldier4-b.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
 
 		//'castle1':  {path:'images/orig-scaled/128x128/castle1.png', scale:1.8, offsetX: 0},
 		//'castle2':  {path:'images/orig-scaled/128x128/castle2.png', scale:1.8, offsetX: 0},
@@ -3324,6 +3321,9 @@ function centerAndSelectUnit(unit){
 		updateSelectedPoolInfo(selectedHex);
 		
 		centerToUnit(unit);
+		
+		// enable sell button:
+		sellUnitBtn.disabled = false;
 	}
 }
 
@@ -4691,10 +4691,13 @@ function drawHighlights(){
 					let opacity = 0.5;
 					let dashedMode = 0;
 					
+					let poolSelected = 0;
+					
 					if(highlightedEnemy){
 						if(highlightedEnemy.id == tile.ownerId){
 							opacity = 1;
 							color = lightenHexColor(player.color, 0.6);
+							poolSelected = 1;
 						}
 					}
 					
@@ -4734,7 +4737,11 @@ function drawHighlights(){
 						ctx.setLineDash([]);
 					}else{
 						// enemy pool highlight
-						ctx.strokeStyle = hexToRgba(color, opacity);
+						let pulse = 1;
+						if(poolSelected){
+							pulse = pulseScale(0.3, 1.0, 0.008);
+						}
+						ctx.strokeStyle = hexToRgba(color, opacity*pulse);
 						ctx.lineWidth = 3;
 						ctx.lineCap = 'round';
 						ctx.stroke();
@@ -4852,8 +4859,18 @@ function drawUnitsByType(unitType){
 
 		const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
 		
-		let imageKey = `${data.type}${data.level}`;
+		let animSuffix = "";
+		if(unit.internalType === 'soldier'){
+			// disabled for now, seems confusing when there is constant movement on screen.
+			let useRandomPhase = 0; // 0 or 1 value to enable randomized animation phase.
+			
+			// causes image to be "soldier1-b.png" etc, the second and last frame for animation.
+			animSuffix = pulseScale(0,1, 0.002, unit.q*unit.r*useRandomPhase) < 0.5 ? "-b" : "";
+		}
+		
+		let imageKey = `${data.type}${data.level}${animSuffix}`;
 		const img = getImage(imageKey);
+		
 		
 		if (img && img.complete && img.width > 0) {
 			// Draw the image centered and scaled
@@ -4950,7 +4967,7 @@ function drawUnitsByType(unitType){
 
 
 
-// renderunits
+// renderunits render units
 function drawUnits(){
 	
 	// draw all units, castles first:
@@ -5104,9 +5121,9 @@ function drawPlacementHighlight(){
 	}
 }
 
-function pulseScale(min, max, speed = 0.003) {
+function pulseScale(min, max, speed = 0.003, sinoffset = 0) {
 	const t = performance.now() * speed;
-	const n = (Math.sin(t) + 1) / 2; // 0 → 1
+	const n = (Math.sin(t+sinoffset) + 1) / 2; // 0 → 1
 	return min + (max - min) * n;
 }
 
@@ -7271,7 +7288,12 @@ function executeAction(playerId, action) {
 			//console.log("executeAction action_undo");
 			
 			const lastAction = currentTurnActions.pop();
-			if (!lastAction) break;
+			
+
+			// if there was no undo left, break:
+			if (!lastAction){
+				break;
+			}
 			
 			let poolHex = lastAction.poolHex;
 			console.log("poolHex");
@@ -8250,6 +8272,20 @@ function handleHostData(data) {
 			addChatMessage(data.from, data.message, data.isSpectator, data.textColor);
 		}
 		break;
+		/*
+		case 'undo_counter': {
+			let playerId = data.playerId;
+			if(localPlayer.id === playerId){
+				// update my undo counter:
+				localPlayer.undoCounter = data.count;
+			}
+			
+			// send message to tell how much undo history is left for the player who undoed:
+			updates.push({ type: 'undo_counter', playerId: playerId, count: currentTurnActions.length });
+			
+		}
+		break;
+		*/
 		case 'tile_changed': {
 			const tile = getTileAt(data.q, data.r);
 			if (tile) {
