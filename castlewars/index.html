@@ -2246,7 +2246,7 @@ const SQRT3 = Math.sqrt(3);
 let HEX_LINE_MULTI = 0.958; // used to draw inside hex so the thick line wont get outside of hex.
 let PULSE_SPEED = 0.005; // used for pulsating effects.
 
-
+let NETWORK_HISTORY = []; // stores all network action messages and sounds. {updates, sounds}
 
 
 let use_fill = 0;
@@ -7474,6 +7474,13 @@ function executeAction(playerId, action) {
 		broadcast({ type: 'sound', playerId: playerId, ...sound});
 	}
 	
+	NETWORK_HISTORY.push({
+		updates: updates,
+		sounds: uniqueSounds,
+	});
+	
+	//console.log(NETWORK_HISTORY);
+	
 	//console.log("executeAction endswitch 2");
 	
 	// Send savings updates to all affected players
@@ -10151,6 +10158,8 @@ function startGame() {
 
 	if (!localPlayer.isHost) return;
 	
+	// clear network history.
+	NETWORK_HISTORY = [];
 
 	console.log("Starting game...");
 	
