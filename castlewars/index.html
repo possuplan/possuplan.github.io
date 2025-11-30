@@ -1979,7 +1979,7 @@ const DB_STORE_NAME = 'savedGames';
 const PLAYER_COLORS_ARR = [
 	'#FF2222',
 	'#FFFF00', 
-	'#3333ee', 
+	'#4444dd', 
 	'#FF9500', 
 	'#30B0C7', 
 	'#339500',
@@ -2327,6 +2327,7 @@ let hostPeerId = null;
 let connections = new Map(); // key: peerId, value: DataConnection
 let localPlayer = {
 	id: null,
+	playerIndex: -1,
 	name: 'Player',
 	color: "#888888", // debug color
 	textColor: "#888888", // debug color
@@ -2336,6 +2337,9 @@ let localPlayer = {
 	isAI: false,
 	undoCounter: 0, // will be updated in 'undo_counter' message and used to determine if there are any undoing left.
 };
+
+
+
 let localPlayerPools = []; // economy pools for local player.
 
 let db = null;
@@ -2354,6 +2358,10 @@ let gameState = {
 		roomName: 'default-room'
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
+	// associave array to get playerIndex from peerId, and the player data linking to players array if needed for quick access.
+	playersInfo: {
+		// peerId: {playerIndex: playerIndex, player: player}
+	},
 	map: { // Using axial coordinates (q, r)
 		// tiles[`${q},${r}`] = { type: 'land'/'water', ownerId: null, object: 'tree'/'grass'/'dead'/null, savings: 0 }
 		// these are initialized when map is generated:
@@ -3277,8 +3285,9 @@ addAiBtn.addEventListener('click', () => {
 		isAI: true,
 		isDead: false,
     };
-
-    gameState.players.push(aiPlayer);
+	
+    //gameState.players.push(aiPlayer);
+	addPlayer(aiPlayer);
     ai_counter++;
 
     // Update the UI for the host and broadcast the new state to all clients
@@ -3334,7 +3343,11 @@ function centerToTile(tile){
 	}
 }
 
-function centerAndSelectFirstUnit(selectUnit = false){
+function centerFirstUnit(){
+	centerAndSelectFirstUnit(false);
+}
+
+function centerAndSelectFirstUnit(selectUnit = true){
 	let player = getMyPlayer();
 	
 	let found = 0;
@@ -3343,7 +3356,11 @@ function centerAndSelectFirstUnit(selectUnit = false){
 		// find first soldier unit to center to:
 		for (const unit of gameState.units) {
 			if(unit.internalType === 'soldier' && unit.ownerId === player.id){
-				centerAndSelectUnit(unit);
+				if(selectUnit){
+					centerAndSelectUnit(unit);
+				}else{
+					centerToUnit(unit);
+				}
 				found = 1;
 				break;
 			}
@@ -3353,7 +3370,11 @@ function centerAndSelectFirstUnit(selectUnit = false){
 		if(!found){
 			for (const unit of gameState.units) {
 				if(unit.internalType === 'castle' && unit.ownerId === player.id){
-					centerAndSelectUnit(unit);
+					if(selectUnit){
+						centerAndSelectUnit(unit);
+					}else{
+						centerToUnit(unit);
+					}
 					found = 1;
 					break;
 				}
@@ -5374,6 +5395,10 @@ function insideRect(rect, x, y){
 // draw circles pointers suuntimat drawoverlay dots
 function drawMoveDirectionsOverlay() {
 	
+	if(!isMyTurn()){
+		return;
+	}
+	
 	let pulse = 0.6*pulseScale(1, 1.5, PULSE_SPEED);
 	
 	let canvasRect = {
@@ -6917,11 +6942,52 @@ function getUnitSellPrice(unit){
 }
 
 
+// Example usage:
+//const tileChangedUpdates = [
+//   { type: 'tile_changed', q: 1, r: 2, ownerId: 5 },
+//   { type: 'tile_changed', q: 1, r: 2, object: null }
+//];
+// Output:
+// [{ type: 'tile_changed', q: 1, r: 2, ownerId: 5, object: null }]
+//
+//const tileChangedUpdates = [
+//   { type: 'tile_changed', q: 1, r: 2, ownerId: 5 },
+//   { type: 'tile_changed', q: 1, r: 3, object: null }
+//];
+// Output:
+// [{ type: 'tile_changed', q: 1, r: 2, ownerId: 5 }]
+// [{ type: 'tile_changed', q: 1, r: 3, object: null }]
+function mergeUpdates(updates) {
+	const merged = [];
+
+	const map = new Map(); // key will be `${q},${r}`
+
+	for (const update of updates) {
+		const key = `${update.q},${update.r}`;
+		if (!map.has(key)) {
+			map.set(key, { ...update }); // clone the object
+		} else {
+			Object.assign(map.get(key), update); // merge new properties
+		}
+	}
+
+	return Array.from(map.values());
+}
+
+// push to updates all tile_changed updates that were merged into one:
+function pushMergedUpdates(updates, updatesList){
+	let mergedTileUpdates = mergeUpdates(updatesList);
+	for(let i = 0; i < mergedTileUpdates.length; i++){
+		updates.push(mergedTileUpdates[i]);
+	}
+}
+
+
 
 
 // HOST-ONLY function
 function executeAction(playerId, action) {
-	//console.log("executeAction");
+	console.log("executeAction");
 
 	if (!localPlayer.isHost) return;
 	//console.log("executeAction 2");
@@ -7016,6 +7082,10 @@ function executeAction(playerId, action) {
 					poolHex: poolHex,
 				};
 				
+				// add all tile changes into this, so only one tile_changed update is needed:
+				let tileChangedUpdates = [];
+				
+				
 				if (moveCheck.action === 'attack') {
 					const targetUnit = moveCheck.target;
 					actionForUndo.killedUnit = { ...targetUnit }; // Store copy
@@ -7041,12 +7111,16 @@ function executeAction(playerId, action) {
 				unit.hasMoved = true;
 				updates.push({ type: 'unit_moved', unitId: unit.id, q: toQ, r: toR, hasMoved: true });
 				
+
+				
 				// Claim hex
 				if (toTile.ownerId !== playerId) {
 					setTileOwner(toTile, playerId);
 					toTile.savings = 0; // update host data.
 					//toTile.ownerId = playerId;
-					updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
+					//updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
+					tileChangedUpdates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
+					
 					if(!isAiPlayer(playerId)){
 						if (!toTile.object) {
 							if(!actionForUndo.killedUnit){
@@ -7084,8 +7158,12 @@ function executeAction(playerId, action) {
 					}
 					
 					toTile.object = null;
-					updates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
+					//updates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
+					tileChangedUpdates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
 				}
+				
+				// push to updates all tile_changed updates that were merged into one:
+				pushMergedUpdates(updates, tileChangedUpdates);
 				
 				//distributePoolSavings(findEconomyPools(playerId));
 				if (oldOwner) {
@@ -7157,6 +7235,7 @@ function executeAction(playerId, action) {
 					//console.log("action_build: gameState.units.push(newUnit);");
 					//console.log(newUnit);
 					
+					let tileChangedUpdates = [];
 					
 					//gameState.units.push(newUnit); // if used here then host gets the unit double!
 					
@@ -7174,7 +7253,9 @@ function executeAction(playerId, action) {
 						setTileOwner(tile, playerId);
 						tile.savings = 0; // update to host data.
 						didClaim = true;
-						updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
+						//updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
+						tileChangedUpdates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
+						
 						if(!isAiPlayer(playerId)){
 							if (!tile.object) {
 								playMoveUnit = true;
@@ -7214,8 +7295,8 @@ function executeAction(playerId, action) {
 						
 						clearedObject = tile.object;
 						tile.object = null;
-						updates.push({ type: 'tile_changed', q: q, r: r, object: null });
-
+						//updates.push({ type: 'tile_changed', q: q, r: r, object: null });
+						tileChangedUpdates.push({ type: 'tile_changed', q: q, r: r, object: null });
 					}
 					
 					actionForUndo = {
@@ -7258,6 +7339,10 @@ function executeAction(playerId, action) {
 					console.warn("actionForUndo");
 					console.warn(actionForUndo);
 					updates.push({ type: 'unit_added', unit: newUnit });
+					
+					
+					// push to updates all tile_changed updates that were merged into one:
+					pushMergedUpdates(updates, tileChangedUpdates);
 					
 					//distributePoolSavings(findEconomyPools(playerId));
 					//if (tile.ownerId) {
@@ -7308,6 +7393,7 @@ function executeAction(playerId, action) {
 			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
 
 
+			let tileChangedUpdates = [];
 			
 			let unitActionHex = null; // used for sounds coords only.
 			
@@ -7327,7 +7413,9 @@ function executeAction(playerId, action) {
 						//tile.ownerId = lastAction.oldOwner;
 						setTileOwner(tile, lastAction.oldOwner);
 						tile.savings = lastAction.oldSavings; // update host data.
-						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
+						//updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
+						tileChangedUpdates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
+						
 					}
 				}
 				if (lastAction.clearedObject) {
@@ -7343,7 +7431,9 @@ function executeAction(playerId, action) {
 							deductCost(actionPool, 1, poolHex, action.type);
 						}
 						tile.object = lastAction.clearedObject;
-						updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, object: tile.object });
+						//updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, object: tile.object });
+						tileChangedUpdates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, object: tile.object });
+						
 					}
 				}
 				if (lastAction.killedUnit) {
@@ -7379,7 +7469,9 @@ function executeAction(playerId, action) {
 						//tile.ownerId = null;
 						setTileOwner(tile, lastAction.oldOwner);
 						tile.savings = lastAction.oldSavings; // update host data.
-						updates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId});
+						//updates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId});
+						tileChangedUpdates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId});
+						
 					}
 				}
 				if (lastAction.killedUnit) {
@@ -7397,7 +7489,9 @@ function executeAction(playerId, action) {
 							deductCost(actionPool, 1, poolHex, action.type);
 						}
 						tile.object = lastAction.clearedObject;
-						updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
+						//updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
+						tileChangedUpdates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
+						
 					}
 				}
 				//distributePoolSavings(findEconomyPools(playerId));
@@ -7432,6 +7526,9 @@ function executeAction(playerId, action) {
 			}
 			
 			//updateHighlights();
+			
+			// push to updates all tile_changed updates that were merged into one:
+			pushMergedUpdates(updates, tileChangedUpdates);
 			
 			if(!isAiPlayer(playerId)){
 				let qq = 0;
@@ -7474,12 +7571,6 @@ function executeAction(playerId, action) {
 		broadcast({ type: 'sound', playerId: playerId, ...sound});
 	}
 	
-	NETWORK_HISTORY.push({
-		updates: updates,
-		sounds: uniqueSounds,
-	});
-	
-	//console.log(NETWORK_HISTORY);
 	
 	//console.log("executeAction endswitch 2");
 	
@@ -8077,8 +8168,12 @@ function processEndOfDay(){
 	console.log("processEndOfDay done, save game:");
 	
 	
-	// Save this game state
-	saveGameToDB(gameState);
+	// Save this game state (host only)
+	// the client doesnt have tile.savings etc in their gamestate, 
+	//   so im not sure if it should be saved for clients... 
+	//    although, it doesnt matter for replaying.
+	//gameState.networkHistory = NETWORK_HISTORY;
+	//saveGameToDB(gameState);
 }
 
 
@@ -8239,7 +8334,15 @@ function handleHostData(data) {
 			gameState = data.state;
 			showPage('game');
 			updateGameUI();
-			centerAndSelectFirstUnit();
+			if(isMyTurn()){
+				//centerAndSelectFirstUnit();
+				// probably better to not select it, since if it was not my turn,
+				// then its ambiguous which unit should be selected/centered,
+				// so its more logical if none of the players gets unit selected at start?
+				centerFirstUnit(); // dont select unit, just center to it.
+			}else{
+				centerFirstUnit(); // dont select unit, just center to it.
+			}
 			addCurrentTurnChatMessage();
 		}
 		break;
@@ -8264,6 +8367,8 @@ function handleHostData(data) {
 		case 'lobby_update': {
 			gameState.settings = data.settings;
 			gameState.players = data.players;
+			rebuildPlayersInfo();
+			//gameState.playersInfo = data.playersInfo;
 			gameState.map = data.map;
 			lobbyLoadedMapImg.src = data.map.imageData;
 			updateLobbyUI();
@@ -8511,6 +8616,40 @@ function handleHostData(data) {
 	// non-synced updates executed on every action:
 	setProtectedTiles();
 	
+	
+	// add only these messages to NETWORK_HISTORY:
+	switch (data.type) {
+		case 'chat': 
+		case 'tile_changed': 
+		case 'object_changed': 
+		case 'unit_added': 
+		case 'unit_removed': 
+		case 'unit_moved': 
+		//case 'turn_changed': 
+		case 'sound': {
+			console.warn("XXYY: handleHostData:");
+			console.warn("XXYY: "+JSON.stringify(data));
+			
+			NETWORK_HISTORY.push(data);
+		}
+		break;
+		case 'turn_changed':
+			console.warn("XXYY: handleHostData:");
+			console.warn("XXYY: "+JSON.stringify(data));
+			
+			NETWORK_HISTORY.push(data);
+			
+			// Save this game state (host and client)
+			// note: clients doesnt have tile.savings etc defined, 
+			//       but it shouldnt affect replaying the game.
+			//       IT WILL make it unplayable though, so loading the game wont work.
+			// maybe catch 'savings_update' as well, so it will keep track of pools savings?
+			gameState.networkHistory = NETWORK_HISTORY;
+			saveGameToDB(gameState);
+			
+			console.warn("XXYY: game saved, network history saved.");
+		break;
+	}
 
 	
 	if (needsUIUpdate) {
@@ -8530,7 +8669,7 @@ function updateLocalPoolsInfo(){
 // HOST-SIDE: Received data from a client
 //
 function handleClientData(peerId, data) {
-	//console.log("handleClientData");
+	console.log("handleClientData");
 
 	const player = getPlayer(peerId);
 	if (!player) return;
@@ -8598,6 +8737,41 @@ function handleClientData(peerId, data) {
 				executeAction(peerId, data);
 			}
 			break;
+	}
+	
+}
+
+
+function addPlayer(player){
+	player.playerIndex = gameState.players.length;
+	player.isDead = false; // reset dead state.
+	gameState.players.push(player);
+
+	// used to get playerIndex from peerId:
+	gameState.playersInfo[player.id] = {
+		playerIndex: player.playerIndex,
+		player: player,
+	};
+}
+
+
+// only used before game starts, and should be used only there.
+// if a player needs to be kicked during game, then he should be set as spectator.
+function removePlayer(peerId){
+	gameState.players = gameState.players.filter(player => player.id !== peerId);
+	rebuildPlayersInfo();
+}
+
+
+// make sure the indexes match the players array if players were removed from the array.
+function rebuildPlayersInfo(){
+	gameState.playersInfo = {};
+	for(let i = 0; i < gameState.players.length; i++){
+		let player = gameState.players[i];
+		gameState.playersInfo[player.id] = {
+			playerIndex: i,
+			player: player,
+		};
 	}
 }
 
@@ -8673,14 +8847,24 @@ function setupConnection(conn) {
 				isAI: false,
 				isDead: false,
 			};
-			gameState.players.push(newPlayer);
+			//gameState.players.push(newPlayer);
+			addPlayer(newPlayer);
 			
 			if (gameState.settings.gameStarted) {
 				// Send full game state to new player (who will join as spec)
-				conn.send({ type: 'full_state', state: gameState });
+				conn.send({ 
+					type: 'full_state', 
+					state: gameState,
+				});
 			} else {
 				// Send lobby state
-				conn.send({ type: 'lobby_update', settings: gameState.settings, players: gameState.players, map: gameState.map });
+				conn.send({ 
+					type: 'lobby_update', 
+					settings: gameState.settings, 
+					players: gameState.players,
+					playersInfo: gameState.playersInfo,
+					map: gameState.map,
+				});
 			}
 		}
 	});
@@ -8703,9 +8887,12 @@ function setupConnection(conn) {
 				let specflag = player.isSpectator ? " (spectator)" : "";
 				addSystemChatMessage(`&gt; ${player.name}${specflag} has left.`, "#FFFF00");
 				//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
+				
+				// set quitted player as spec and quitted:
 				gameState.players = gameState.players.map(p =>
 					p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
 				);
+				
 				if (gameState.settings.gameStarted) {
 					// let others play if quitter was in turn:
 					if(conn.peer == gameState.players[gameState.turn.currentPlayerIndex].id){
@@ -8835,7 +9022,9 @@ function hostGame() {
 			
 			// Reset player list and add host
 			gameState.players = []; 
-			gameState.players.push(localPlayer);
+			gameState.playersInfo = {}; // reset links by peerId->playerIndex
+			//gameState.players.push(localPlayer);
+			addPlayer(localPlayer);
 			
 			
 
@@ -8923,14 +9112,19 @@ hostPlayerList.addEventListener('click', (event) => {
 });
 
 
+
+
+
 function kickPlayer(peerId){
 	const allPlayers = document.querySelectorAll('.player-list-item');
-	allPlayers.forEach(player => {
-		if (player.dataset.peer === peerId) {
-			player.remove(); // remove from DOM
+	allPlayers.forEach(playerElem => {
+		if (playerElem.dataset.peer === peerId) {
+			playerElem.remove(); // remove from DOM
 		}
 	});
-	gameState.players = gameState.players.filter(player => player.id !== peerId);
+	//gameState.players = gameState.players.filter(player => player.id !== peerId);
+	removePlayer(peerId);
+	
 	broadcastLobbyState();
 }
 
@@ -9082,6 +9276,7 @@ function broadcastLobbyState(settings = gameState.settings, players = gameState.
 		type: 'lobby_update',
 		settings: gameState.settings,
 		players: gameState.players,
+		playersInfo: gameState.playersInfo,
 		map: gameState.map,
 	});
 }
@@ -10175,9 +10370,13 @@ function startGame() {
 		// Add all current spectators
 		for (const p of connections.keys()) {
 			const player = getPlayer(p);
-			if (player && player.isSpectator) newPlayerList.push(player);
+			if (player && player.isSpectator){
+				newPlayerList.push(player);
+			}
 		}
-		if (localPlayer.isSpectator) newPlayerList.push(localPlayer);
+		if (localPlayer.isSpectator){
+			newPlayerList.push(localPlayer);
+		}
 		
 		// Match players
 		for (const loadedP of loadedPlayers) {
@@ -10189,6 +10388,8 @@ function startGame() {
 			if (matchingCurrentPlayer) {
 				// This player takes the slot
 				loadedP.id = matchingCurrentPlayer.id; // Assign new PeerID
+				// TODO: should not change the id since its the peerId...
+				// just rewrite the units ownerId's with the actual playing player id.
 				newPlayerList.push(loadedP);
 			} else {
 				// No one took this slot. Mark as AI or disconnected?
@@ -10198,6 +10399,7 @@ function startGame() {
 			}
 		}
 		gameState.players = newPlayerList;
+		rebuildPlayersInfo();
 		
 	} else {
 		
@@ -10212,7 +10414,7 @@ function startGame() {
 		
 		// Filter out players without connection from play (unless they are host or ai):
 		gameState.players = gameState.players.filter(p => p.id === localPlayer.id || connections.has(p.id) || p.isAI);
-		
+		rebuildPlayersInfo();
 		
 
 		// list playing players for colors: (not sure what is this for)
@@ -10467,13 +10669,16 @@ function loadSavedGame(roomName){
 						localPlayer.name = p.name;
 						localPlayer.color = p.color;
 						localPlayer.textColor = p.textColor;
-						playerNameInput.value = p.name;
 						localPlayer.isSpectator = false;
+						
+						playerNameInput.value = p.name;
+						
 						spectateHostBtn.classList.remove('active');
 						p.isTaken = true; // Mark in loaded state
 						li.textContent = `${p.name} (taken)`;
 						li.dataset.name = p.name;
 						li.classList.add('taken');
+						
 						broadcastLobbyState(); // Update others
 					};
 					loadGamePlayersList.appendChild(li);
