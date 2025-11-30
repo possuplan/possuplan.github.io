@@ -2248,14 +2248,16 @@ let PULSE_SPEED = 0.005; // used for pulsating effects.
 
 let NETWORK_HISTORY = []; // stores all network action messages and sounds. {updates, sounds}
 let INITIAL_STATE = {}; // gameState during game start. used for replays.
+let GAME_START_TIME = 0;
 
 function addNetworkHistory(data){
 	// add timestamp for when the action was received, will make replays more realistic feeling.
 	NETWORK_HISTORY.push({
 		...data, // {type: 'tile_changed', ...} etc.
-		_T: Date.now(), // milliseconds from year 1970.
+		_T: Math.floor(performance.now()-GAME_START_TIME), // milliseconds from start of game.
 	});
 }
+
 
 
 
@@ -5197,6 +5199,18 @@ function givemoney(amount){
 	}
 }
 
+function givemoneyall(amount){
+	for(let i = 0; i < gameState.map.tilesData.length; i++){
+		let tile = gameState.map.tilesData[i];
+		if(tile.ownerId){
+			tile.savings += amount;
+		}
+	}
+	updatePlayerSavings(getMyPlayer().id);
+	updateSelectedPoolInfo();
+	console.log("givemoneyall = "+amount);
+}
+
 
 //==========================================
 // CORE PARTICLE LOGIC
@@ -5211,6 +5225,191 @@ const randomRange = (min, max) => randomFunc() * (max - min) + min;
 
 // Creates an explosion with bouncing physics.
 function createExplosion(ep) {
+    let x = ep.x;
+    let y = ep.y;
+    let color = ep.color;
+    let shapeMode = ep.shapeMode;
+    let fadeMode = ep.fadeMode;
+    let amount = ep.amount;
+    let initialSpeed = ep.initialSpeed;
+    let life = ep.life ?? 1.3;
+    let decay = ep.decay ?? { min: 0.01, max: 0.03 };
+    let rotationSpeed = ep.rotationSpeed ?? { min: -0.1, max: 0.1 };
+    let fadeAtGround = ep.fadeAtGround ?? 0;
+	let toFloor = ep.toFloor ?? 0;
+	let upSpeedMulti = ep.upSpeedMulti ?? 1;
+
+    for (let i = 0; i < amount; i++) {
+        let speedVariation = initialSpeed * 0.5;
+        let speed = randomRange(initialSpeed - speedVariation, initialSpeed + speedVariation);
+        let angle = randomFunc() * Math.PI * 2;
+		let gravity = 0.25;
+		let vz = randomRange(2, 6)*upSpeedMulti;
+		let size = randomRange(4, 8);
+		if(toFloor){
+			vz = randomRange(1, 1.5);
+			size = randomRange(1, 3);
+			//speed *= 1.5;
+		}
+
+        let specificShape = 'circle';
+        if (shapeMode == 0) {
+            specificShape = randomFunc() > 0.5 ? 'square' : 'triangle';
+        }
+
+        particles.push({
+            // GROUND COORDINATES (The floor position)
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+
+            // HEIGHT COORDINATES (The "Fake Z" axis)
+            z: 0,                    // Start on the ground
+            vz: vz,   // Initial upward "pop" velocity
+            gravity: gravity,           // How heavy the particle is
+            bounceFactor: 0.6,       // Bounciness
+
+            // BLOOD/STREAK LOGIC
+            hitGround: false,        // Has it touched the floor yet?
+            groundHitX: 0,           // Where did it land?
+            groundHitY: 0,           // Where did it land?
+
+            color: color,
+            shape: specificShape,
+            fadeMode: fadeMode,
+            life: life,
+            decay: randomRange(decay.min, decay.max),
+            size: size,
+            rotation: randomRange(0, 360),
+            rotationSpeed: randomRange(rotationSpeed.min, rotationSpeed.max),
+            fadeAtGround: fadeAtGround,
+			toFloor: toFloor,
+        });
+    }
+}
+
+
+// Updates and draws particles with shadow and height offset.
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+
+        // --- 1. PHYSICS UPDATE ---
+
+        // Move across the ground
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // General Air Friction
+        p.vx *= 0.95;
+        p.vy *= 0.95;
+
+        // Height Physics (Gravity)
+        p.vz -= p.gravity;
+        p.z += p.vz;
+
+        // Floor Collision
+        if (p.z <= 0) {
+            if (p.fadeAtGround) {
+                // If this is the FIRST time hitting the ground, save coordinates
+                if (!p.hitGround) {
+                    p.hitGround = true;
+                    p.groundHitX = p.x;
+                    p.groundHitY = p.y;
+                }
+
+                p.z = 0;
+                p.vz = 0; 
+                
+                // Increase friction greatly to make the blood "slide" to a stop
+                p.vx *= 0.8; 
+                p.vy *= 0.8;
+            } else {
+                // Standard bouncing logic
+                p.z = 0;
+                p.vz *= -p.bounceFactor;
+                p.vx *= 0.8;
+                p.vy *= 0.8;
+                if (Math.abs(p.vz) < 1) p.vz = 0;
+            }
+        }
+
+        // Rotation & Lifecycle
+        p.rotation += p.rotationSpeed;
+        p.life -= p.decay;
+
+        let opacity = 1;
+        if (p.fadeMode === 'slow') {
+            opacity = Math.max(0, p.life);
+        } else {
+            opacity = p.life > 0 ? 1 : 0;
+        }
+
+        if (p.life < 0.01) {
+            particles.splice(i, 1);
+            continue;
+        }
+
+        // --- 2. DRAWING ---
+
+        // A. Draw Shadow (Only if not already on the ground as a splat)
+        if (!p.hitGround || !p.fadeAtGround) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.scale(1, 0.5);
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // B. Draw Blood Stripe (The smear on the floor)
+        if (p.fadeAtGround && p.hitGround) {
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = p.size;      // Stripe width matches particle size
+            ctx.lineCap = "round";       // Makes the ends of the smear round
+            
+            ctx.beginPath();
+            ctx.moveTo(p.groundHitX, p.groundHitY); // Start where it first hit
+            ctx.lineTo(p.x, p.y);                   // Draw to current position
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // C. Draw Particle Body
+        // We subtract Z from Y to move it "up" the screen visually
+        ctx.save();
+        ctx.translate(p.x, p.y - p.z);
+        ctx.rotate(p.rotation);
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = p.color;
+
+        ctx.beginPath();
+        if (p.shape === 'circle') {
+            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (p.shape === 'square') {
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        } else if (p.shape === 'triangle') {
+            const r = p.size / 1.5;
+            ctx.moveTo(0, -r);
+            ctx.lineTo(r, r);
+            ctx.lineTo(-r, r);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+
+
+// Creates an explosion with bouncing physics.
+function createExplosion1(ep) {
 	let x = ep.x;
 	let y = ep.y;
 	let color = ep.color;
@@ -5221,6 +5420,7 @@ function createExplosion(ep) {
 	let life = ep.life ?? 1.3;
 	let decay = ep.decay ?? {min:0.01, max:0.03};
 	let rotationSpeed = ep.rotationSpeed ?? {min:-0.1, max:0.1};
+	let fadeAtGround = ep.fadeAtGround ?? 0;
 	
     for (let i = 0; i < amount; i++) {
         const speedVariation = initialSpeed * 0.5; 
@@ -5252,14 +5452,15 @@ function createExplosion(ep) {
             decay: randomRange(decay.min, decay.max), 
             size: randomRange(4, 8),
             rotation: randomRange(0, 360),
-            rotationSpeed: randomRange(rotationSpeed.min, rotationSpeed.max)
+            rotationSpeed: randomRange(rotationSpeed.min, rotationSpeed.max),
+			fadeAtGround: fadeAtGround,
         });
     }
 }
 
 
 // Updates and draws particles with shadow and height offset.
-function updateParticles() {
+function updateParticles1() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
 
@@ -5279,15 +5480,21 @@ function updateParticles() {
 
         // Floor Collision (The Bounce)
         if (p.z <= 0) {
-            p.z = 0;               // Snap to floor
-            p.vz *= -p.bounceFactor; // Reverse velocity & lose energy
-            
-            // Friction applied specifically when hitting the ground
-            p.vx *= 0.8; 
-            p.vy *= 0.8;
+			if(p.fadeAtGround){
+				
+				p.z = 0; // Snap to floor
+				p.vz = 0; // Stop bouncing (for blood)
+			}else{
+				p.z = 0; // Snap to floor
+				p.vz *= -p.bounceFactor; // Reverse velocity & lose energy
+				
+				// Friction applied specifically when hitting the ground
+				p.vx *= 0.8; 
+				p.vy *= 0.8;
 
-            // Stop bouncing if velocity is tiny (prevents micro-vibrating)
-            if (Math.abs(p.vz) < 1) p.vz = 0;
+				// Stop bouncing if velocity is tiny (prevents micro-vibrating)
+				if (Math.abs(p.vz) < 1) p.vz = 0;
+			}
         }
 
         // Rotation
@@ -6077,6 +6284,11 @@ function handleHexClick(hex) {
 	let clickedHexTile = getTileAt(hex.q, hex.r);
 	console.warn("handleHexClick: clickedHexTile:");
 	console.warn(clickedHexTile);
+	if(clickedHexTile){
+		//makeExplosion({name:'kill', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
+		//makeExplosion({name:'kill2', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
+	}
+	
 	let isLandTile = !isTileWater(clickedHexTile);
 	// maybe this should be called first? or not...
 	//updateSelectedPoolInfo(hex);
@@ -7055,7 +7267,7 @@ function executeAction(playerId, action) {
 			updates.push({ type: 'unit_removed', unitId: unit.id });
 			
 			if(!isAiPlayer(playerId)){
-				sounds.push({name:'sell', q: unit.q, r: unit.r, action: action.type});
+				sounds.push({name:'sell', q: unit.q, r: unit.r, action: action.type, level: unit.level});
 			}
 			break;
 		}
@@ -7106,9 +7318,9 @@ function executeAction(playerId, action) {
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 					if(!isAiPlayer(playerId)){
 						if(CASTLE_DATA[targetUnit.type]){
-							sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type});
+							sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
 						}else{
-							sounds.push({name:'kill', q: targetUnit.q, r: targetUnit.r, action: action.type});
+							sounds.push({name:'kill', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
 						}
 					}
 					
@@ -7332,9 +7544,9 @@ function executeAction(playerId, action) {
 						
 						if(!isAiPlayer(playerId)){
 							if(CASTLE_DATA[targetUnit.type]){
-								sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type});
+								sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
 							}else{
-								sounds.push({name:'kill', q: targetUnit.q, r: targetUnit.r, action: action.type});
+								sounds.push({name:'kill', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
 							}
 							playMoveUnit = false;
 						}
@@ -8329,6 +8541,161 @@ function addUnit(unit){
 }
 
 
+function makeExplosion(data){
+
+	//const { x, y } = axialToPixel(data.q, data.r);
+	const x = axialToPixelX(data.q, data.r);
+	const y = axialToPixelY(data.q, data.r);
+	
+	let level = 1;
+	if(data.level){
+		level = data.level;
+	}
+		
+	let ep = {
+		x: x,
+		y: y,
+		color: "#FFFFFF",
+		shapeMode: 0,
+		fadeMode: "slow",
+		amount: 30,
+		initialSpeed: 5,
+		life: 1.3,
+		decay: {min:0.01, max:0.03},
+		rotationSpeed: {min:-0.2, max:0.2},
+	};
+
+	let doExplosion = 0;
+	if(data.name === 'kill'){
+		doExplosion = 0; // explosions are created here, dont call it again.
+		
+		//////////////////
+		// create splat trails explosion:
+		ep.color = "#AA0000";
+		ep.shapeMode = 1; // circles
+		ep.initialSpeed = 6;
+		ep.toFloor = 1;
+		ep.fadeAtGround = 1;
+		ep.life = 4;
+
+		// different amount for different level units:
+		if(level == 1){
+			ep.amount = 60;
+		}else if(level == 2){
+			ep.amount = 70;
+		}else if(level == 3){
+			ep.amount = 80;
+		}else{
+			ep.amount = 80; // for any other higher level in case more were added later.
+		}
+		createExplosion(ep);
+		
+		//////////////////
+		// create normal secondary explosion:
+		ep.color = "#CC0000";
+		ep.initialSpeed = 2;
+		ep.upSpeedMulti = 0.6;
+		ep.toFloor = 0;
+		ep.fadeAtGround = 1;
+		ep.life = 2;
+		
+		createExplosion(ep);
+		
+	}else if(data.name === 'kill2'){
+		doExplosion = 1;
+		
+		ep.color = "#AA0000";
+		ep.shapeMode = 1; // circles
+		ep.initialSpeed = 2;
+		ep.upSpeedMulti = 0.6;
+		ep.toFloor = 0;
+		ep.fadeAtGround = 1;
+		ep.life = 2;
+
+		//ep.decay = {min:0.005, max:0.015};
+
+		// different amount for different level units:
+		if(level == 1){
+			ep.amount = 80;
+		}else if(level == 2){
+			ep.amount = 90;
+		}else if(level == 3){
+			ep.amount = 100;
+		}else{
+			ep.amount = 100; // for any other higher level in case more were added later.
+		}
+	}else if(data.name === 'killCastle'){
+		doExplosion = 1;
+		
+		ep.color = "#E3A7B6";
+		ep.shapeMode = 0; // triangles+squares
+		ep.initialSpeed = 5;
+
+		// different amount for different level units:
+		if(level == 1){
+			ep.amount = 40;
+		}else if(level == 2){
+			ep.amount = 60;
+		}else if(level == 3){
+			ep.amount = 80;
+		}else{
+			ep.amount = 80; // for any other higher level in case more were added later.
+		}
+	}else if(data.name === 'claimGrass'){
+		doExplosion = 1;
+		
+		ep.color = "#73923E";
+		ep.shapeMode = 0; // triangles+squares
+		ep.initialSpeed = 2.5;
+		ep.amount = 40;
+	}else if(data.name === 'claimTree'){
+		doExplosion = 1;
+		
+		ep.color = "#65A51D";
+		ep.shapeMode = 0; // triangles+squares
+		ep.initialSpeed = 2.5;
+		ep.amount = 50;
+	}else if(data.name === 'sell'){
+		doExplosion = 1;
+		
+		ep.color = "#FFFF00";
+		ep.shapeMode = 1; // circles
+		ep.initialSpeed = 5;
+
+		// different amount for different level units:
+		if(level == 1){
+			ep.amount = 20;
+		}else if(level == 2){
+			ep.amount = 50;
+		}else if(level == 3){
+			ep.amount = 80;
+		}else if(level == 4){
+			ep.amount = 110;
+		}else{
+			ep.amount = 110; // for any other higher level in case more were added later.
+		}
+	}else if(data.name === 'build'){
+		doExplosion = 1;
+		
+		let player = getPlayer(data.playerId);
+		// create darker and grayer hex color from player.color:
+		let newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
+		ep.color = newcolor;
+		ep.shapeMode = 0; // triangles+squares
+		ep.initialSpeed = 2;
+		ep.amount = 60;
+		ep.life = 2;
+		ep.decay = {min:0.005, max:0.015};
+		ep.fadeMode = "slow";
+		ep.rotationSpeed = {min:0, max:0};
+	}
+	
+	if(doExplosion){
+		createExplosion(ep);
+	}
+}
+
+
 
 // =================================================================
 // --- GAME STATE SYNC (NETWORKING)
@@ -8343,6 +8710,8 @@ function handleHostData(data) {
 	
 	switch (data.type) {
 		case 'game_start': {
+			GAME_START_TIME = performance.now();
+			
 			markDirty();
 			gameState = data.state;
 			showPage('game');
@@ -8519,75 +8888,10 @@ function handleHostData(data) {
 		}
 		break;
 		case 'sound': {
-			let soundName = data.name;
-			playSound(soundName);
+			playSound(data.name);
 			
 			if(data.action !== 'action_undo'){
-				//const { x, y } = axialToPixel(data.q, data.r);
-				const x = axialToPixelX(data.q, data.r);
-				const y = axialToPixelY(data.q, data.r);
-				
-				let ep = {
-					x: x,
-					y: y,
-					color: "#FFFFFF",
-					shapeMode: 0,
-					fadeMode: "slow",
-					amount: 30,
-					initialSpeed: 5,
-					life: 1.3,
-					decay: {min:0.01, max:0.03},
-					rotationSpeed: {min:-0.2, max:0.2},
-				};
-
-				let doExplosion = 0;
-				if(soundName === 'kill'){
-					ep.color = "#FF0000";
-					ep.shapeMode = 1; // circles
-					doExplosion = 1;
-					ep.initialSpeed = 5;
-					ep.amount = 120;
-				}else if(soundName === 'killCastle'){
-					ep.color = "#E3A7B6";
-					ep.shapeMode = 0; // triangles+squares
-					doExplosion = 1;
-					ep.initialSpeed = 5;
-					ep.amount = 90;
-				}else if(soundName === 'claimGrass'){
-					ep.color = "#73923E";
-					ep.shapeMode = 0; // triangles+squares
-					doExplosion = 1;
-					ep.initialSpeed = 2.5;
-					ep.amount = 40;
-				}else if(soundName === 'claimTree'){
-					ep.color = "#65A51D";
-					ep.shapeMode = 0; // triangles+squares
-					doExplosion = 1;
-					ep.initialSpeed = 2.5;
-					ep.amount = 50;
-				}else if(soundName === 'sell'){
-					ep.color = "#FFFF00";
-					ep.shapeMode = 1; // circles
-					doExplosion = 1;
-					ep.initialSpeed = 5;
-					ep.amount = 30;
-				}else if(soundName === 'build'){
-					let player = getPlayer(data.playerId);
-					// create darker and grayer hex color from player.color:
-					let newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
-					ep.color = newcolor;
-					ep.shapeMode = 0; // triangles+squares
-					doExplosion = 1;
-					ep.initialSpeed = 2;
-					ep.amount = 60;
-					ep.life = 2;
-					ep.decay = {min:0.005, max:0.015};
-					ep.fadeMode = "slow";
-					ep.rotationSpeed = {min:0, max:0};
-				}
-				if(doExplosion){
-					createExplosion(ep);
-				}
+				makeExplosion(data);
 			}
 		}
 		break;
@@ -10418,6 +10722,7 @@ function spawnCastle(q, r, playerId, type){
 }
 
 function startGame() {
+	
 
 	if (!localPlayer.isHost) return;
 	
@@ -10915,7 +11220,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	
 	refreshCanvasBtn.onclick = () => {
-		resizeCanvas();	
+		addSystemChatMessage(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
+
+		resizeCanvas();
 	};
 
 	quitGameBtn.onclick = () => {
