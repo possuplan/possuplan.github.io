@@ -2247,6 +2247,16 @@ let HEX_LINE_MULTI = 0.958; // used to draw inside hex so the thick line wont ge
 let PULSE_SPEED = 0.005; // used for pulsating effects.
 
 let NETWORK_HISTORY = []; // stores all network action messages and sounds. {updates, sounds}
+let INITIAL_STATE = {}; // gameState during game start. used for replays.
+
+function addNetworkHistory(data){
+	// add timestamp for when the action was received, will make replays more realistic feeling.
+	NETWORK_HISTORY.push({
+		...data, // {type: 'tile_changed', ...} etc.
+		_T: Date.now(), // milliseconds from year 1970.
+	});
+}
+
 
 
 let use_fill = 0;
@@ -4215,7 +4225,7 @@ function drawObject(ctx, x, y, objectName, tile = null){
 				if(animationEnded){
 					cropBottomPercent = 0;
 					animate = false;
-					tile.animationFinished = true;
+					tile.animationFinished = 1;
 				}
 			}
 		}
@@ -4684,17 +4694,20 @@ function drawHighlights(){
 			if(neighbours && neighbours.length > 0){
 				let highlightedLines = [];
 				// ({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r}
+				// [q,r,tileIndex] (NEW FORMAT for smaller gamestate.maptiles)
 				for(let n = 0; n < neighbours.length; n++){
-					let neigh = neighbours[n];
+					//let neigh = neighbours[n];
+					let neighTileIndex = neighbours[n];
+					let neighbourIndex = n;
 					// -1 = water tile:
-					if(neigh.tileIndex != -1){
-						let nTile = gameState.map.tilesData[neigh.tileIndex];
+					if(neighTileIndex != -1){
+						let nTile = gameState.map.tilesData[neighTileIndex];
 						if(nTile.ownerId !== tile.ownerId){
-							highlightedLines.push(neigh.neighbourIndex);
+							highlightedLines.push(neighbourIndex);
 						}
 					}else{
 						// water tiles: add by default.
-						highlightedLines.push(neigh.neighbourIndex);
+						highlightedLines.push(neighbourIndex);
 					}
 				}
 				
@@ -4975,7 +4988,7 @@ function drawUnitsByType(unitType){
 				if(animationEnded){
 					cropBottomPercent = 0;
 					animate = false;
-					unit.animationFinished = true;
+					unit.animationFinished = 1;
 				}
 			}
 			
@@ -7108,8 +7121,8 @@ function executeAction(playerId, action) {
 				// Move unit
 				unit.q = toQ;
 				unit.r = toR;
-				unit.hasMoved = true;
-				updates.push({ type: 'unit_moved', unitId: unit.id, q: toQ, r: toR, hasMoved: true });
+				unit.hasMoved = 1;
+				updates.push({ type: 'unit_moved', unitId: unit.id, q: toQ, r: toR, hasMoved: 1 });
 				
 
 				
@@ -7221,13 +7234,13 @@ function executeAction(playerId, action) {
 					deductCost(actionPool, data.cost, poolHex, action.type);
 					
 					const newUnit = {
-						id: getUID(),
+						id: newUnitID(),
 						ownerId: playerId,
 						q: q, 
 						r: r,
 						type: unitType,
 						level: data.level,
-						hasMoved: true,
+						hasMoved: 1,
 						ownerIndex: getPlayerIndex(playerId),
 						oldOwner: oldOwner,
 						internalType: data.type,
@@ -7402,8 +7415,8 @@ function executeAction(playerId, action) {
 				if (unit) {
 					unit.q = lastAction.fromQ;
 					unit.r = lastAction.fromR;
-					unit.hasMoved = false;
-					updates.push({ type: 'unit_moved', unitId: unit.id, q: unit.q, r: unit.r, hasMoved: false });
+					unit.hasMoved = 0;
+					updates.push({ type: 'unit_moved', unitId: unit.id, q: unit.q, r: unit.r, hasMoved: 0 });
 					
 					unitActionHex = {q: unit.q, r: unit.r};
 				}
@@ -8031,7 +8044,7 @@ function processEndOfDay(){
 						
 						// add animation info for host:
 						tile.creationTime = Date.now(); 
-						tile.animationFinished = false; // ensure no animation will be visible.
+						tile.animationFinished = 0; // ensure no animation will be visible.
 						tile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 						
 						broadcast({ 
@@ -8078,7 +8091,7 @@ function processEndOfDay(){
 			
 			// add animation info for host:
 			nTile.creationTime = Date.now(); 
-			nTile.animationFinished = false; // ensure no animation will be visible.
+			nTile.animationFinished = 0; // ensure no animation will be visible.
 			nTile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 			
 			broadcast({ 
@@ -8148,7 +8161,7 @@ function processEndOfDay(){
 			
 			// set animation info for host:
 			tile.creationTime = Date.now(); 
-			tile.animationFinished = false; // ensure no animation will be visible.
+			tile.animationFinished = 0; // ensure no animation will be visible.
 			tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 			
 			broadcast({ 
@@ -8214,7 +8227,7 @@ function executeEndTurn(playerId) {
 				
 				// add animation info for host:
 				tile.creationTime = Date.now(); 
-				tile.animationFinished = false; // ensure no animation will be visible.
+				tile.animationFinished = 0; // ensure no animation will be visible.
 				tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 				
 				broadcast({ 
@@ -8240,8 +8253,8 @@ function executeEndTurn(playerId) {
 	gameState.units.forEach(u => {
 		if (u.ownerId === playerId) {
 			if (u.hasMoved) {
-				u.hasMoved = false;
-				broadcast({ type: 'unit_moved', unitId: u.id, q: u.q, r: u.r, hasMoved: false });
+				u.hasMoved = 0;
+				broadcast({ type: 'unit_moved', unitId: u.id, q: u.q, r: u.r, hasMoved: 0 });
 			}
 		}
 	});
@@ -8302,11 +8315,11 @@ function addUnit(unit){
 	// wasSpawned true if spawned at game load.
 	if(unit.internalType === 'castle'){
 		unit.creationTime = Date.now(); 
-		unit.animationFinished = false; // ensure no animation will be visible.
+		unit.animationFinished = 0; // ensure no animation will be visible.
 		unit.animationStyle = 1; // 1 = appear from bottom to up, 0 = no animation.
 	}else if(unit.internalType === 'soldier'){
 		unit.creationTime = Date.now(); 
-		unit.animationFinished = false; // ensure no animation will be visible.
+		unit.animationFinished = 0; // ensure no animation will be visible.
 		unit.animationStyle = 2; // 2 = appear from zero size to normal size, 0 = no animation.
 		if(!unit.name){
 			unit.name = findNextFreeRandomUnitName(unit.ownerId);
@@ -8450,7 +8463,7 @@ function handleHostData(data) {
 				if(data.animationStyle !== undefined){
 					// initialize client side animation info:
 					tile.creationTime = new Date();
-					tile.animationFinished = false;
+					tile.animationFinished = 0;
 					tile.animationStyle = data.animationStyle;
 				}
 			}
@@ -8630,21 +8643,23 @@ function handleHostData(data) {
 			console.warn("XXYY: handleHostData:");
 			console.warn("XXYY: "+JSON.stringify(data));
 			
-			NETWORK_HISTORY.push(data);
+			addNetworkHistory(data);
+			//NETWORK_HISTORY.push({...data, _TS: new Date()});
 		}
 		break;
 		case 'turn_changed':
 			console.warn("XXYY: handleHostData:");
 			console.warn("XXYY: "+JSON.stringify(data));
 			
-			NETWORK_HISTORY.push(data);
+			addNetworkHistory(data);
+			//NETWORK_HISTORY.push({...data, _TS: new Date()});
 			
-			// Save this game state (host and client)
+			// Save this game state (for host and client)
 			// note: clients doesnt have tile.savings etc defined, 
 			//       but it shouldnt affect replaying the game.
 			//       IT WILL make it unplayable though, so loading the game wont work.
 			// maybe catch 'savings_update' as well, so it will keep track of pools savings?
-			gameState.networkHistory = NETWORK_HISTORY;
+			//gameState.networkHistory = NETWORK_HISTORY;
 			saveGameToDB(gameState);
 			
 			console.warn("XXYY: game saved, network history saved.");
@@ -8750,7 +8765,7 @@ function addPlayer(player){
 	// used to get playerIndex from peerId:
 	gameState.playersInfo[player.id] = {
 		playerIndex: player.playerIndex,
-		player: player,
+		//player: player,
 	};
 }
 
@@ -8770,7 +8785,7 @@ function rebuildPlayersInfo(){
 		let player = gameState.players[i];
 		gameState.playersInfo[player.id] = {
 			playerIndex: i,
-			player: player,
+			//player: player,
 		};
 	}
 }
@@ -9443,18 +9458,59 @@ function formatDateForSave() {
 
 let currentFormattedDate = formatDateForSave(); // updated at startGame() to get precise date of start time.
 
+async function compressString(str) {
+	const encoder = new TextEncoder();
+	const data = encoder.encode(str);
 
-function saveGameToDB(gameState) {
+	const cs = new CompressionStream("gzip");
+	const writer = cs.writable.getWriter();
+	writer.write(data);
+	writer.close();
+
+	const compressed = await new Response(cs.readable).arrayBuffer();
+	
+	return new Uint8Array(compressed);   // store this in IndexedDB
+}
+
+async function decompressToString(uint8) {
+	const ds = new DecompressionStream("gzip");
+	const writer = ds.writable.getWriter();
+	writer.write(uint8);
+	writer.close();
+
+	const decompressed = await new Response(ds.readable).arrayBuffer();
+	return new TextDecoder().decode(decompressed);
+}
+
+
+async function saveGameToDB(gameState) {
 	if (!db) return;
-
+	
 	
 	let stateToSave = {
-		gameState: JSON.parse(JSON.stringify(gameState)), // Create a deep clone to store
-		saveDate: new Date().toISOString(),
+		// initial state is never modified, so its safe to leave json parse out.
+		initialState: INITIAL_STATE, 
+		
+		// Create a deep clones to store, in case the objects gets modified while transaction:
+		gameState: JSON.parse(JSON.stringify(gameState)),
+		networkHistory: JSON.parse(JSON.stringify(NETWORK_HISTORY)),
+		
 		// roomName key is used for db key:
 		roomName: currentFormattedDate, // "20251112_170804", initialized at app launch only.
+		saveDate: new Date().toISOString(),
 	};
-
+	
+	/*
+	let compre = await compressString(JSON.stringify(stateToSave));
+	console.log(compre.length);
+	
+	console.warn("saveGameToDB length = "+JSON.stringify(stateToSave).length);
+	console.warn("saveGameToDB initialState len = "+JSON.stringify(stateToSave.initialState).length);
+	console.warn("saveGameToDB gameState len = "+JSON.stringify(stateToSave.gameState).length);
+	console.warn("saveGameToDB networkHistory len = "+JSON.stringify(stateToSave.networkHistory).length);
+	
+	console.log(JSON.stringify(stateToSave.gameState));
+	*/
 	
 	const transaction = db.transaction([DB_STORE_NAME], 'readwrite');
 	const objectStore = transaction.objectStore(DB_STORE_NAME);
@@ -9462,7 +9518,7 @@ function saveGameToDB(gameState) {
 	
 	request.onsuccess = () => {
 		console.log('Game saved:', stateToSave.roomName);
-		// remove old saved games, keep only 6:
+		// remove old saved games, keep only 8:
 		pruneOldSaves(8);
 		//console.log("stateToSave:");
 		//console.log(stateToSave);
@@ -9923,9 +9979,11 @@ function loadParsedMap(parsedMap, compact = false){
 				let n = neigh[i];
 				const nTile = getTileAt(n.q, n.r);
 				if(nTile){
-					availableNeighbours.push({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r});
+					//availableNeighbours.push({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r});
+					availableNeighbours.push(nTile.tileIndex);
 				}else{
-					availableNeighbours.push({tileIndex: -1, neighbourIndex: i, q: n.q, r: n.r});
+					//availableNeighbours.push({tileIndex: -1, neighbourIndex: i, q: n.q, r: n.r});
+					availableNeighbours.push(-1);
 				}
 			}
 			tile.neighbours = availableNeighbours;
@@ -10310,20 +10368,30 @@ function spawnPlayersRandom() {
 	console.warn(gameState.units);
 }
 
+////////////////////
+// create unique ID for units without making messy hashes for them.
+let UNIT_ID_COUNTER = 1; // start from 1, as 0 could be used to check if it was set at all.
+function newUnitID(){
+	let id = UNIT_ID_COUNTER;
+	UNIT_ID_COUNTER++;
+	return id;
+}
+
+
 // type = Peasant, Knight, Horse, Dragon
 function spawnSoldier(q, r, playerId, type){
 	const soldier = {
 		// rearranged keys for easier debugging
-		id: getUID(),
+		id: newUnitID(),
 		ownerId: playerId,
 		q: q,
 		r: r,
-		hasMoved: false,
+		hasMoved: 0,
 		type: type,
 		level: getSoldierLevel(type),
 		internalType: SOLDIER_DATA[type].type,
 		ownerIndex: getPlayerIndex(playerId),
-		wasSpawned: true, // ensure no animation triggered.
+		wasSpawned: 1, // ensure no animation triggered.
 	};
 	
 	//gameState.units.push(soldier);
@@ -10333,16 +10401,16 @@ function spawnSoldier(q, r, playerId, type){
 function spawnCastle(q, r, playerId, type){
 	const castle = {
 		// rearranged keys for easier debugging
-		id: getUID(),
+		id: newUnitID(),
 		ownerId: playerId,
 		q: q,
 		r: r,
-		hasMoved: false,
+		hasMoved: 0,
 		type: type,
 		level: getCastleLevel(type),
 		internalType: CASTLE_DATA[type].type,
 		ownerIndex: getPlayerIndex(playerId),
-		wasSpawned: true, // ensure no animation triggered.
+		wasSpawned: 1, // ensure no animation triggered.
 	};
 
 	//gameState.units.push(castle);
@@ -10377,6 +10445,9 @@ function startGame() {
 		if (localPlayer.isSpectator){
 			newPlayerList.push(localPlayer);
 		}
+		
+		// continue at: set player as taken from loaded players list.
+		// loadedGameState.players[i].takenBy = null; 
 		
 		// Match players
 		for (const loadedP of loadedPlayers) {
@@ -10462,13 +10533,14 @@ function startGame() {
 		//advanceToNextPlayer(); // not sure why this was here, probably because of bugged currentPlayerIndex calculations
 	}
 	
-	
-	
+
 	setProtectedTiles();
 	
 	// Clear undo stack
 	currentTurnActions = [];
 	
+	// save initial gameState for replaying the games later.
+	INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
 
 	
 	// Broadcast start
@@ -10498,10 +10570,10 @@ function setProtectedTiles(){
 		if(tile.type === 'land'){
 			if(getUnitAt(q,r)){
 				// if unit on tile, set protected
-				tile.isProtected = true;
+				tile.isProtected = 1; // use short value to make json smaller when saving.
 			}else{
 				// check if this tile is protected
-				tile.isProtected = getShieldLevel(q, r, -1) ? true : false;
+				tile.isProtected = getShieldLevel(q, r, -1) ? 1 : 0;
 			}
 		}
 	}
@@ -10623,6 +10695,12 @@ function loadSavedGame(roomName){
 		loadGameFromDB(roomName, (state) => {
 			if (state) {
 				loadedGameState = state.gameState;
+				
+				// mark all loaded players as "not taken yet":
+				// later the players will take a spot themselves.
+				for(let i = 0; i < loadedGameState.players.length; i++){
+					loadedGameState.players[i].takenBy = null; // peerId/playerId who took this player.
+				}
 				console.warn("loadedGameState:");
 				console.warn(loadedGameState);
 				
@@ -10631,6 +10709,7 @@ function loadSavedGame(roomName){
 				gameState.settings = loadedGameState.settings;
 				//gameState.players = loadedGameState.players;
 				gameState.map = loadedGameState.map;
+				
 				// update minimap for host:
 				loadedMapImg.src = loadedGameState.map.imageData;
 				updateHostLobbyUI();
@@ -10638,28 +10717,33 @@ function loadSavedGame(roomName){
 				//console.log(lobbyLoadedMapImg);
 
 				// update state to all players so they see the map loaded etc.
-				broadcastLobbyState(loadedGameState.settings, loadedGameState.players, loadedGameState.map);
-				
+				//broadcastLobbyState(loadedGameState.settings, loadedGameState.players, loadedGameState.map);
+				broadcastLobbyState(gameState.settings, gameState.players, gameState.map);
 				
 				
 				loadGameBtn.textContent = 'Unload Game';
-				
 				loadGameDate.textContent = new Date(state.saveDate).toLocaleString();
 				loadGamePlayersList.innerHTML = '';
-				state.gameState.players.filter(p => !p.isSpectator).forEach(p => {
+				
+				//state.gameState.players.filter(p => !p.isSpectator).forEach(p => {
+				loadedGameState.players.filter(p => !p.isSpectator).forEach(p => {
 					const li = document.createElement('li');
 					li.textContent = `${p.name}`;
 					li.style.color = p.textColor;
 					li.className = 'loaded-player';
 					li.onclick = () => {
-						if (li.classList.contains('taken')) return;
+						if (li.classList.contains('taken')){
+							return;
+						}
 						
 						// Mark others as not taken
 						loadGamePlayersList.querySelectorAll('li').forEach(item => {
 							if (item.textContent.endsWith(' (taken)')) {
 								const originalName = item.dataset.name;
 								const pData = loadedGameState.players.find(lp => lp.name === originalName);
-								if (pData) pData.isTaken = false;
+								if (pData){
+									pData.isTaken = false;
+								}
 								item.textContent = originalName;
 								item.classList.remove('taken');
 							}
