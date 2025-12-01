@@ -419,6 +419,7 @@ label {
 	position: absolute;
 	top: 20px;
 	right: 20px;
+	text-align: right;
 }
 
 #ui-left {
@@ -961,10 +962,15 @@ input.disabled {
 #undo-btn {
 	background-image: url('images/ui/undo.png');
 }
+#undo-btn.disabled {
+	background-color:var(--btn-bg);
+	filter: brightness(0.5);
+}
 #undo-btn[disabled] {
 	background-color:var(--btn-bg);
 	filter: brightness(0.5);
 }
+
 
 
 #toggle-ui-btn {
@@ -1178,6 +1184,7 @@ input.disabled {
 		</div>
 		
 		<button id="start-game-btn" class="primary">Start Game</button>
+		<button id="start-replay-btn" class="primary" style="display:none">Start Replay</button>
 		
 		<div id="loaded-game-info-container" class="loaded-game-info" style="display: none;">
 			<p><strong>Saved Game:</strong> <span id="load-game-date"></span></p>
@@ -1270,6 +1277,9 @@ input.disabled {
 			<div id="debug-ui">
 				<div id="turn-info"></div>
 				<div id="fps-info"></div>
+				<div id="tiles-drawn-info"></div>
+				<div id="objects-drawn-info"></div>
+				<div id="particles-drawn-info"></div>
 			</div>
 		</div>
 		
@@ -1778,7 +1788,7 @@ function renderSavedGamesList(savedGames) {
 
 	for(let i = 0; i < savedGames.length; i++){
 		let map = savedGames[i].gameState.map;
-		let roomName = savedGames[i].roomName;
+		let roomKey = getSaveRoomKey(savedGames[i].roomName);
 		let date = formatReadableDate(savedGames[i].saveDate);
 		
 		let style = "";
@@ -1793,8 +1803,8 @@ function renderSavedGamesList(savedGames) {
 			<div style="${style}">${date}</div>
 		`;
 		div.addEventListener('click', () => {
-			loadSavedGame(roomName);
-			console.log("game loaded: "+roomName);
+			loadSavedGame(roomKey);
+			console.log("game loaded: "+roomKey);
 
 			closeSavedGamesPopup();
 		});
@@ -2225,7 +2235,8 @@ function getRandomSeed(){
 const RANDOM_SEED = getRandomSeed();
 
 console.log("seed = "+RANDOM_SEED);
-const randomFunc = Math.random;//mulberry32(RANDOM_SEED);
+//const randomFunc = Math.random;
+let randomFunc = mulberry32(RANDOM_SEED);
 
 //const points = poissonDiskSampler(32, 32, 2, randomFunc);
 //console.log(points);
@@ -2249,8 +2260,11 @@ let PULSE_SPEED = 0.005; // used for pulsating effects.
 let NETWORK_HISTORY = []; // stores all network action messages and sounds. {updates, sounds}
 let INITIAL_STATE = {}; // gameState during game start. used for replays.
 let GAME_START_TIME = 0;
+let REPLAY_ENABLED = 0;
 
 function addNetworkHistory(data){
+	if(REPLAY_ENABLED) return;
+	
 	// add timestamp for when the action was received, will make replays more realistic feeling.
 	NETWORK_HISTORY.push({
 		...data, // {type: 'tile_changed', ...} etc.
@@ -2356,7 +2370,7 @@ let localPlayerPools = []; // economy pools for local player.
 
 let db = null;
 let loadedGameState = null;
-
+let loadedGameStateInitial = null;
 
 // --- GAME STATE (synced by host) ---
 let gameState = {
@@ -2848,7 +2862,7 @@ async function loadImages() {
 				img.onload = async () => {
 					try {
 						await img.decode(); // ensure fully decoded before use
-						console.log(`Image loaded: ${key}`);
+						//console.log(`Image loaded: ${key}`);
 
 						obj.image = img;
 
@@ -3101,6 +3115,7 @@ const loadedGameInfoContainer = document.getElementById('loaded-game-info-contai
 const loadGameDate = document.getElementById('load-game-date');
 const loadGamePlayersList = document.getElementById('load-game-players');
 const startGameBtn = document.getElementById('start-game-btn');
+const startReplayBtn = document.getElementById('start-replay-btn');
 const hostPlayerList = document.getElementById('host-player-list');
 
 // Lobby Page
@@ -3187,7 +3202,7 @@ function createPossibleUnitNames(){
 		}
 	}
 	possibleUnitNames = shuffle(possibleUnitNames);
-	console.log(possibleUnitNames);
+	//console.log(possibleUnitNames);
 }
 
 function randomUnitName(){
@@ -4112,22 +4127,34 @@ function blendHexColor(color1, color2 = "#000000", percentage = 0.5) {
 
 
 
-const debugUi = document.getElementById("fps-info");
+const fpsInfo = document.getElementById("fps-info");
+const tilesDrawnInfo = document.getElementById("tiles-drawn-info");
+const objectsDrawnInfo = document.getElementById("objects-drawn-info");
+const particlesDrawnInfo = document.getElementById("particles-drawn-info");
+
 
 let lastTime = 0;
 let frameCount = 0;
 
+let TILES_DRAWN = 0;
+let OBJECTS_DRAWN = 0;
+
+let prev_particles = -1;
 
 function trackFPS(){
-	let timestamp = Date.now();
+	//let timestamp = Date.now();
+	let timestamp = performance.now();
 	if (!lastTime) lastTime = timestamp;
 
 	const delta = timestamp - lastTime;
   
-	if (delta >= 2000) {
+	if (delta >= 500) {
 		let fps = frameCount/(delta/1000);
 		//console.log("FPS: "+fps.toFixed(2));
-		debugUi.textContent = "FPS: "+fps.toFixed(0);
+		fpsInfo.textContent = "FPS: "+fps.toFixed(0);
+		tilesDrawnInfo.textContent = "Tiles drawn: "+TILES_DRAWN;
+		objectsDrawnInfo.textContent = "Objects drawn: "+OBJECTS_DRAWN;
+		
 		
 		
 		frameCount = 0;
@@ -4135,6 +4162,14 @@ function trackFPS(){
 	}else{
 		frameCount++;
 	}
+	
+	// update particles in real time when value changes:
+	if(particles.length != prev_particles){
+		particlesDrawnInfo.textContent = "Particles drawn: "+particles.length;
+		
+		prev_particles = particles.length;
+	}
+	
 
 }
 
@@ -4401,8 +4436,8 @@ function createColoredPattern(ctx, pattern, color, width, height) {
 
 
 
-let drawnTiles = 0;
-let previous_drawnTiles = 0;
+//let drawnTiles = 0;
+//let previous_drawnTiles = 0;
 let drawDebugText = 0;
 
 
@@ -4447,6 +4482,8 @@ let matrixInfiniteWater = new DOMMatrix();
 
 // rendertiles drawtiles rendermaptiles render tiles render map tiles
 function drawMapTiles(){
+	
+	TILES_DRAWN = 0;
 
 	let tileZoomMipLevel = getZoomMipLevel(0.5); // use normal. smaller = earlier switch to smaller image
 	
@@ -4527,7 +4564,7 @@ function drawMapTiles(){
 		}
 
 
-		drawnTiles++;
+		//drawnTiles++;
 		
 		// --- Start Drawing Hex ---
 
@@ -4624,6 +4661,8 @@ function drawMapTiles(){
 					}
 				
 				}
+				
+				TILES_DRAWN++;
 
 			}
 			
@@ -4634,10 +4673,10 @@ function drawMapTiles(){
 	
 
 	// log how many tiles were drawn to test culling working:
-	if(previous_drawnTiles != drawnTiles){
+	//if(previous_drawnTiles != drawnTiles){
 		//console.log("drawnTiles = "+drawnTiles);
-		previous_drawnTiles = drawnTiles;
-	}
+		//previous_drawnTiles = drawnTiles;
+	//}
 	
 }
 
@@ -4835,6 +4874,7 @@ let draw_objects = 1;
 
 // renderobjects
 function drawObjects(){
+	OBJECTS_DRAWN = 0;
 
 	if(!draw_objects){
 		return;
@@ -4857,6 +4897,7 @@ function drawObjects(){
 		
 		if (tile.object) {
 			drawObject(ctx, x, y, tile.object, tile);
+			OBJECTS_DRAWN++;
 		}
 		
 	}
@@ -6079,43 +6120,57 @@ function updateGameUI() {
 	// Update turn info
 	turnInfo.textContent = `Day ${gameState.turn.turnNumber}`;
 	
-	// Update buttons
-	const canPlay = isMyTurn() && !myPlayer.isSpectator;
-	buildSoldierBtn.disabled = !canPlay;
-	buildCastleBtn.disabled = !canPlay;
-	sellUnitBtn.disabled = true;
-	endTurnBtn.disabled = !canPlay;
-	
-	nextUnitBtn.disabled = !hasUnmovedUnits();
-	previousUnitBtn.disabled = !hasUnmovedUnits();
-	
-	
-	///////////////////////////////
-	// THIS WONT WORK SINCE CLIENTS DOESNT HAVE currentTurnActions array, its empty! only host keeps track of it...
-	let undoDisabled = !canPlay;
-	if(canPlay){
-		//console.log("currentTurnActions len = "+currentTurnActions.length);
-		//console.log(currentTurnActions);
-		if(currentTurnActions && currentTurnActions.length > 0){
-			undoDisabled = false;
+	if(!REPLAY_ENABLED){
+		// Update buttons
+		const canPlay = isMyTurn() && !myPlayer.isSpectator;
+		buildSoldierBtn.disabled = !canPlay;
+		buildCastleBtn.disabled = !canPlay;
+		sellUnitBtn.disabled = true;
+		endTurnBtn.disabled = !canPlay;
+		
+		nextUnitBtn.disabled = !hasUnmovedUnits();
+		previousUnitBtn.disabled = !hasUnmovedUnits();
+		
+		
+		///////////////////////////////
+		// THIS WONT WORK SINCE CLIENTS DOESNT HAVE currentTurnActions array, its empty! only host keeps track of it...
+		let undoDisabled = !canPlay;
+		if(canPlay){
+			//console.log("currentTurnActions len = "+currentTurnActions.length);
+			//console.log(currentTurnActions);
+			if(currentTurnActions && currentTurnActions.length > 0){
+				undoDisabled = false;
+			}else{
+				undoDisabled = true;
+			}
+			//console.log("undoDisabled: "+undoDisabled);
 		}else{
-			undoDisabled = true;
+			//console.log("cant play: undoDisabled: "+undoDisabled);
 		}
-		//console.log("undoDisabled: "+undoDisabled);
-	}else{
-		//console.log("cant play: undoDisabled: "+undoDisabled);
-	}
-	
-	undoBtn.disabled = !canPlay; // need to fix this so all clients will also know if they have undo remaining.
-	chatInput.disabled = false;
+		
+		//undoBtn.disabled = !canPlay; // need to fix this so all clients will also know if they have undo remaining.
+		
+		// update undo button state:
+		undoBtn.classList.remove("disabled");
+		if(!localPlayer.undoCounter){
+			undoBtn.classList.add("disabled");
+		}
+		
 
+		
+		// Update savings
+		if (myPlayer && !myPlayer.isSpectator) {
+			//playerSavings.textContent = myCurrentSavings;
+		} else {
+			//playerSavings.textContent = "Spectating";
+		}
 	
-	// Update savings
-	if (myPlayer && !myPlayer.isSpectator) {
-		//playerSavings.textContent = myCurrentSavings;
-	} else {
-		//playerSavings.textContent = "Spectating";
+	}else{
+		spectatorUiMode();
 	}
+	
+	
+	chatInput.disabled = false; // no idea why it is disabled by default...
 }
 
 
@@ -6271,6 +6326,8 @@ function getSelectedPoolHex(){
 
 
 function handleHexClick(hex) {
+	if(REPLAY_ENABLED) return;
+	
 	shieldingUnits = null;
 	
 	sellUnitBtn.disabled = true;
@@ -6285,8 +6342,8 @@ function handleHexClick(hex) {
 	console.warn("handleHexClick: clickedHexTile:");
 	console.warn(clickedHexTile);
 	if(clickedHexTile){
-		//makeExplosion({name:'kill', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
-		//makeExplosion({name:'kill2', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
+		//makeExplosionBySoundMessage({name:'kill', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
+		//makeExplosionBySoundMessage({name:'kill2', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
 	}
 	
 	let isLandTile = !isTileWater(clickedHexTile);
@@ -7774,10 +7831,19 @@ function executeAction(playerId, action) {
 			
 			executeEndTurn(playerId);
 			
+			//console.warn("clearing all undo counters");
+			// clear undo counter for all players:
+			broadcast({ 
+				type: 'undo_counter', 
+				// no value needed, will be reset for all players.
+			});
 
 			if(!isAiPlayer(playerId)){
 				broadcast({ type: 'sound', name: "move", q:0, r:0, playerId: 0, action: action.type});
 			}
+			
+			/////////////////////////////////////////////////
+			// STOP HERE
 			return; // end turn handles its own broadcasts
 		}
 	}
@@ -7788,6 +7854,19 @@ function executeAction(playerId, action) {
 		currentTurnActions.push(actionForUndo);
 	}
 	
+	// update undo counter to player who made an action, for all actions except action_end_turn
+	// not actually needed to check this since action_end_turn has return, so code wont reach here...
+	if(action.type !== 'action_end_turn'){
+		//console.warn("player '"+playerId+"' undo stack:");
+		//console.warn(currentTurnActions);
+		sendToPlayer(playerId, { 
+			type: 'undo_counter', 
+			playerId: playerId,
+			undoCounter: currentTurnActions.length,
+		});
+	}
+	
+	// send all updates to all players:
 	for (const update of updates) {
 		broadcast(update);
 	}
@@ -8519,6 +8598,8 @@ function spectatorUiMode(){
 	uiRightButtonRow1.style.display = "none";
 	undoBtn.style.display = "none";
 	endTurnBtn.style.display = "none";
+	nextUnitBtn.style.display = "none";
+	previousUnitBtn.style.display = "none";
 }
 
 
@@ -8541,7 +8622,8 @@ function addUnit(unit){
 }
 
 
-function makeExplosion(data){
+// {name: 'kill', q: 33, r: 44, level: 1, playerId: "peerid"}
+function makeExplosionBySoundMessage(data){
 
 	//const { x, y } = axialToPixel(data.q, data.r);
 	const x = axialToPixelX(data.q, data.r);
@@ -8566,6 +8648,9 @@ function makeExplosion(data){
 	};
 
 	let doExplosion = 0;
+	
+	// NOTE: "diedByStarving" sound is sent only once, so its explosion
+	//       is created in 'object_changed' message.
 	if(data.name === 'kill'){
 		doExplosion = 0; // explosions are created here, dont call it again.
 		
@@ -8677,9 +8762,12 @@ function makeExplosion(data){
 	}else if(data.name === 'build'){
 		doExplosion = 1;
 		
-		let player = getPlayer(data.playerId);
-		// create darker and grayer hex color from player.color:
-		let newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
+		let newcolor = "#FFFFFF";
+		if(data.playerId !== undefined){
+			let player = getPlayer(data.playerId);
+			// create darker and grayer hex color from player.color:
+			newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
+		}
 		ep.color = newcolor;
 		ep.shapeMode = 0; // triangles+squares
 		ep.initialSpeed = 2;
@@ -8710,10 +8798,16 @@ function handleHostData(data) {
 	
 	switch (data.type) {
 		case 'game_start': {
+			REPLAY_ENABLED = 0;
+			
 			GAME_START_TIME = performance.now();
 			
 			markDirty();
 			gameState = data.state;
+			
+			// save initial gameState for replaying the games later.
+			INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
+	
 			showPage('game');
 			updateGameUI();
 			if(isMyTurn()){
@@ -8726,6 +8820,30 @@ function handleHostData(data) {
 				centerFirstUnit(); // dont select unit, just center to it.
 			}
 			addCurrentTurnChatMessage();
+		}
+		break;
+		case 'replay_start': {
+			REPLAY_ENABLED = 1;
+			
+			GAME_START_TIME = performance.now();
+			
+			markDirty();
+			gameState = data.state;
+			showPage('game');
+			updateGameUI();
+
+			centerFirstUnit();
+			
+			// set all players as spectators:
+			for(let i = 0; i < gameState.players.length; i++){
+				gameState.players[i].isSpectator = true;
+			}
+			
+			if(localPlayer.isHost){
+				replayHistory(NETWORK_HISTORY);
+			}
+			
+			console.warn("replay_start");
 		}
 		break;
 		case 'full_state': {
@@ -8766,20 +8884,30 @@ function handleHostData(data) {
 			addChatMessage(data.from, data.message, data.isSpectator, data.textColor);
 		}
 		break;
-		/*
 		case 'undo_counter': {
 			let playerId = data.playerId;
-			if(localPlayer.id === playerId){
+			
+			//console.warn("undo_counter");
+			//console.warn(data);
+			
+			if(playerId === undefined){
+				localPlayer.undoCounter = 0;
+				undoBtn.classList.add("disabled");
+				
+				//console.warn("undo counter resetted");
+			}else if(localPlayer.id === playerId){
 				// update my undo counter:
-				localPlayer.undoCounter = data.count;
+				localPlayer.undoCounter = data.undoCounter;
+				
+				// enable/disable undo button:
+				undoBtn.classList.remove("disabled");
+				if(!localPlayer.undoCounter){
+					undoBtn.classList.add("disabled");
+				}
+				//console.warn("undo counter updated: "+data.undoCounter);
 			}
-			
-			// send message to tell how much undo history is left for the player who undoed:
-			updates.push({ type: 'undo_counter', playerId: playerId, count: currentTurnActions.length });
-			
 		}
 		break;
-		*/
 		case 'tile_changed': {
 			const tile = getTileAt(data.q, data.r);
 			if (tile) {
@@ -8809,6 +8937,8 @@ function handleHostData(data) {
 					
 					////////////////
 					// create explosion if unit died:
+					// associated sound is "diedByStarving" which is sent only once
+					// so we have to create explosion here to get the coordinates.
 					if(data.object === 'dead'){
 						const { x, y } = axialToPixel(data.q, data.r);
 						
@@ -8890,8 +9020,9 @@ function handleHostData(data) {
 		case 'sound': {
 			playSound(data.name);
 			
+			// create explosion based on which sound was received on which coordinate.
 			if(data.action !== 'action_undo'){
-				makeExplosion(data);
+				makeExplosionBySoundMessage(data);
 			}
 		}
 		break;
@@ -8944,16 +9075,16 @@ function handleHostData(data) {
 		case 'unit_moved': 
 		//case 'turn_changed': 
 		case 'sound': {
-			console.warn("XXYY: handleHostData:");
-			console.warn("XXYY: "+JSON.stringify(data));
+			//console.warn("XXYY: handleHostData:");
+			//console.warn("XXYY: "+JSON.stringify(data));
 			
 			addNetworkHistory(data);
 			//NETWORK_HISTORY.push({...data, _TS: new Date()});
 		}
 		break;
 		case 'turn_changed':
-			console.warn("XXYY: handleHostData:");
-			console.warn("XXYY: "+JSON.stringify(data));
+			//console.warn("XXYY: handleHostData:");
+			//console.warn("XXYY: "+JSON.stringify(data));
 			
 			addNetworkHistory(data);
 			//NETWORK_HISTORY.push({...data, _TS: new Date()});
@@ -8966,7 +9097,7 @@ function handleHostData(data) {
 			//gameState.networkHistory = NETWORK_HISTORY;
 			saveGameToDB(gameState);
 			
-			console.warn("XXYY: game saved, network history saved.");
+			//console.warn("XXYY: game saved, network history saved.");
 		break;
 	}
 
@@ -9026,9 +9157,18 @@ function handleClientData(peerId, data) {
 			}
 			break;
 		case 'player_update':
-			player.name = data.name;
-			player.color = data.color;
-			player.textColor = data.textColor;
+			if(data.name !== undefined){
+				player.name = data.name;
+			}
+			if(data.color !== undefined){
+				player.color = data.color;
+			}
+			if(data.textColor !== undefined){
+				player.textColor = data.textColor;
+			}
+			//console.warn("player_update");
+			//console.warn(data);
+			//console.log(player);
 			broadcastLobbyState();
 			break;
 		case 'chat':
@@ -9057,6 +9197,7 @@ function handleClientData(peerId, data) {
 			}
 			break;
 	}
+	
 	
 }
 
@@ -9204,24 +9345,30 @@ function setupConnection(conn) {
 			const player = getPlayer(conn.peer);
 			if (player) {
 				let specflag = player.isSpectator ? " (spectator)" : "";
-				addSystemChatMessage(`&gt; ${player.name}${specflag} has left.`, "#FFFF00");
+				//addSystemChatMessage(`&gt; ${player.name}${specflag} has left.`, "#FFFF00");
 				//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
 				
-				// set quitted player as spec and quitted:
-				gameState.players = gameState.players.map(p =>
-					p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
-				);
-				
 				if (gameState.settings.gameStarted) {
+					addSystemChatMessage(`&gt; ${player.name}${specflag} has left.`, "#FFFF00");
+					// set quitted player as AI:
+					gameState.players = gameState.players.map(p =>
+						//p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
+						p.id === conn.peer ? { ...p, isSpectator: false, quitted: false, isAI: true } : p
+					);
 					// let others play if quitter was in turn:
 					if(conn.peer == gameState.players[gameState.turn.currentPlayerIndex].id){
-						advanceToNextPlayer();
+						addSystemChatMessage(`&gt; ${player.name}${specflag} has been set as AI player.`, "#FFFF00");
+						//advanceToNextPlayer();
 						checkForAITurn(); // start AI turn if it is his turn.
 					}else{
-						
 						updateGameUI();
 					}
 				} else {
+					
+					// set quitted player as spectator:
+					gameState.players = gameState.players.map(p =>
+						p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
+					);
 					broadcastLobbyState();
 				}
 			}
@@ -9516,7 +9663,7 @@ function updatePlayerColor(color, textColor){
 
 	sendToHost({
 		type: 'player_update',
-		name: localPlayer.name,
+		//name: localPlayer.name,
 		color: localPlayer.color,
 		textColor: localPlayer.textColor,
 	});
@@ -9636,7 +9783,7 @@ function initDB() {
 	};
 }
 
-
+/*
 async function getMostRecentSave() {
 	return new Promise((resolve, reject) => {
 		if (!db) {
@@ -9651,6 +9798,7 @@ async function getMostRecentSave() {
 
 		getAllRequest.onsuccess = (event) => {
 			const allSaves = event.target.result;
+			
 			if (allSaves.length > 0) {
 				allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
 				resolve(allSaves[0].roomName);
@@ -9666,6 +9814,7 @@ async function getMostRecentSave() {
 		};
 	});
 }
+*/
 
 
 
@@ -9682,10 +9831,14 @@ async function getAllSavedGames() {
 
 		getAllRequest.onsuccess = (event) => {
 			const allSaves = event.target.result;
+			
+			let allPlaySaves = getPlaySaves(allSaves);
 
 			// Sort saves by saveDate (newest first)
-			allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
-			resolve(allSaves); // return array of saved games.
+			//allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+			allPlaySaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+			
+			resolve(allPlaySaves); // return array of saved games.
 		};
 
 		getAllRequest.onerror = (e) => {
@@ -9695,8 +9848,27 @@ async function getAllSavedGames() {
 	});
 }
 
+function getSaveType(roomName){
+	let parts = roomName.split("-");
+	return parts[0];
+}
+function getSaveRoomKey(roomName){
+	let parts = roomName.split("-");
+	return parts[1];
+}
 
-function pruneOldSaves(maxSaves = 5) {
+function getPlaySaves(allSaves){
+	let allPlaySaves = [];
+	for(let i = 0; i < allSaves.length; i++){
+		let save = allSaves[i];
+		if(getSaveType(save.roomName) === "play"){
+			allPlaySaves.push(save);
+		}
+	}
+	return allPlaySaves;
+}
+
+function pruneOldSaves(maxSaves = 10) {
 	if (!db) return;
 
 	const transaction = db.transaction([DB_STORE_NAME], 'readwrite');
@@ -9707,17 +9879,24 @@ function pruneOldSaves(maxSaves = 5) {
 
 	getAllRequest.onsuccess = (event) => {
 		const allSaves = event.target.result;
+		
+		let allPlaySaves = getPlaySaves(allSaves);
 
 		// Sort saves by saveDate (newest first)
-		allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+		//allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+		allPlaySaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
 
 		// If there are more than maxSaves, delete the oldest ones
-		if (allSaves.length > maxSaves) {
-			const savesToDelete = allSaves.slice(maxSaves);
+		if (allPlaySaves.length > maxSaves) {
+			const savesToDelete = allPlaySaves.slice(maxSaves);
 
 			savesToDelete.forEach((save) => {
-				const deleteRequest = objectStore.delete(save.roomName);
-				deleteRequest.onsuccess = () => {
+				const deleteRequest1 = objectStore.delete("init-"+getSaveRoomKey(save.roomName));
+				deleteRequest1.onsuccess = () => {
+					console.warn('Deleted old save:', save.roomName);
+				};
+				const deleteRequest2 = objectStore.delete("play-"+getSaveRoomKey(save.roomName));
+				deleteRequest2.onsuccess = () => {
 					console.warn('Deleted old save:', save.roomName);
 				};
 			});
@@ -9760,7 +9939,12 @@ function formatDateForSave() {
 
 
 
-let currentFormattedDate = formatDateForSave(); // updated at startGame() to get precise date of start time.
+//let currentFormattedDate = formatDateForSave(); // updated at startGame() to get precise date of start time.
+
+// used to identify which window/user saved the game first. if duplicate entry, this is checked.
+let SESSION_ID = getUID();
+
+
 
 async function compressString(str) {
 	const encoder = new TextEncoder();
@@ -9776,6 +9960,7 @@ async function compressString(str) {
 	return new Uint8Array(compressed);   // store this in IndexedDB
 }
 
+
 async function decompressToString(uint8) {
 	const ds = new DecompressionStream("gzip");
 	const writer = ds.writable.getWriter();
@@ -9788,20 +9973,73 @@ async function decompressToString(uint8) {
 
 
 async function saveGameToDB(gameState) {
-	if (!db) return;
+	if(!db) return;
+	if(REPLAY_ENABLED) return;
 	
-	
-	let stateToSave = {
+	let saveDate = new Date().toISOString();
+
+	let initialStateToSave = {
 		// initial state is never modified, so its safe to leave json parse out.
 		initialState: INITIAL_STATE, 
-		
+		roomName: "init-"+gameState.settings.currentFormattedDate, 
+		saveDate: saveDate,
+		SESSION_ID: SESSION_ID,
+	};
+
+	let stateToSave = {
 		// Create a deep clones to store, in case the objects gets modified while transaction:
 		gameState: JSON.parse(JSON.stringify(gameState)),
 		networkHistory: JSON.parse(JSON.stringify(NETWORK_HISTORY)),
 		
 		// roomName key is used for db key:
-		roomName: currentFormattedDate, // "20251112_170804", initialized at app launch only.
-		saveDate: new Date().toISOString(),
+		roomName: "play-"+gameState.settings.currentFormattedDate, // "20251112_170804", initialized at app launch only.
+		saveDate: saveDate,
+		RANDOM_SEED: RANDOM_SEED,
+		SESSION_ID: SESSION_ID,
+	};
+	
+	const transaction = db.transaction([DB_STORE_NAME], 'readwrite');
+	const objectStore = transaction.objectStore(DB_STORE_NAME);
+	//const request = objectStore.put(stateToSave);
+	
+	//const getReq = objectStore.get(stateToSave.roomName);
+	const getReqInitial = objectStore.get(initialStateToSave.roomName);
+	const getReqPlay = objectStore.get(stateToSave.roomName);
+
+	// 1. Handle initial record save (only once)
+	getReqInitial.onsuccess = () => {
+		if (!getReqInitial.result) {
+			objectStore.put(initialStateToSave);
+			console.warn("Initial state saved: "+initialStateToSave.roomName);
+		}
+	};
+
+	getReqPlay.onsuccess = () => {
+		const existing = getReqPlay.result;
+
+		if (existing) {
+			// Entry exists. Compare SESSION_ID.
+			if (existing.SESSION_ID !== stateToSave.SESSION_ID) {
+				console.warn(
+					`Refusing to save: entry with roomName=${stateToSave.roomName} already exists with a different SESSION_ID`
+				);
+				// Abort the transaction to avoid overwrite
+				transaction.abort();
+				return;
+			}
+			// Same SESSION_ID → safe to overwrite
+		}
+
+		// No entry exists or SESSION_ID matches → save
+		objectStore.put(stateToSave);
+		
+		console.warn('Game saved: '+stateToSave.roomName);
+		
+		// remove old saved games:
+		pruneOldSaves();
+	};
+	getReqPlay.onerror = (e) => {
+		console.warn('Failed to read existing entry before saving.');
 	};
 	
 	/*
@@ -9815,28 +10053,58 @@ async function saveGameToDB(gameState) {
 	
 	console.log(JSON.stringify(stateToSave.gameState));
 	*/
-	
-	const transaction = db.transaction([DB_STORE_NAME], 'readwrite');
-	const objectStore = transaction.objectStore(DB_STORE_NAME);
-	const request = objectStore.put(stateToSave);
-	
-	request.onsuccess = () => {
-		console.log('Game saved:', stateToSave.roomName);
-		// remove old saved games, keep only 8:
-		pruneOldSaves(8);
-		//console.log("stateToSave:");
-		//console.log(stateToSave);
+}
+
+// roomKey = roomName without "play-" or "init-"
+function loadGameFromDB(roomKey, callback) {
+	if (!db) return;
+	if (!roomKey) {
+		callback(null);
+		return;
+	}
+
+	const tx = db.transaction([DB_STORE_NAME], 'readonly');
+	const store = tx.objectStore(DB_STORE_NAME);
+
+	let initialData = null;
+	let playData = null;
+
+	const tryReturn = () => {
+		if (initialData !== null && playData !== null) {
+			callback({ initialData: initialData, playData: playData });
+		}
 	};
-	request.onerror = (e) => {
-		console.error('Error saving game:', e.target.error);
-		//console.log("stateToSave:");
-		//console.log(stateToSave);
+
+	const getReqInitial = store.get("init-" + roomKey);
+	const getReqPlay = store.get("play-" + roomKey);
+
+	getReqInitial.onsuccess = (e) => {
+		initialData = e.target.result;
+		tryReturn();
+	};
+
+	getReqInitial.onerror = () => {
+		console.error("Error loading initial data:", e.target.error);
+		initialData = null;
+		tryReturn();
+	};
+
+	getReqPlay.onsuccess = (e) => {
+		playData = e.target.result;
+		tryReturn();
+	};
+
+	getReqPlay.onerror = (e) => {
+		console.error("Error loading play data:", e.target.error);
+		playData = null;
+		tryReturn();
 	};
 }
 
 
 
-function loadGameFromDB(roomName, callback) {
+
+function loadGameFromDB1(roomName, callback) {
 	if (!db) return;
 	// if no saved games found: (roomName set to null in that case)
 	if(!roomName){
@@ -9848,10 +10116,19 @@ function loadGameFromDB(roomName, callback) {
 	const objectStore = transaction.objectStore(DB_STORE_NAME);
 	const request = objectStore.get(roomName);
 	
-	request.onsuccess = (e) => {
+	//const getReqInitial = objectStore.get("init"+roomName);
+	//const getReqPlay = objectStore.get("play"+roomName);
+	
+	// 1. Handle initial record get
+	//getReqInitial.onsuccess = (e) => {
+		//let initialState = e.target.result;
+		// fix this so it will be added to callback with getReqPlay e.target.result
+	//};
+	
+	getReqPlay.onsuccess = (e) => {
 		callback(e.target.result);
 	};
-	request.onerror = (e) => {
+	getReqPlay.onerror = (e) => {
 		console.error('Error loading game:', e.target.error);
 		callback(null);
 	};
@@ -10121,6 +10398,20 @@ async function parseMap(mapFilePath, compact = false){
 
 
 // {type: land/water, object: null/tree/peasant, owner: 0-6}
+// all game memory values (0-10 for player 1):
+// not tested if the game will add these units if used in map format.
+// -1 = water
+// 0 = cross (dead)
+// 1 = empty
+// 2 = grass
+// 3 = tree
+// 4 = peasant
+// 5 = hut
+// 6 = knight
+// 7 = castle
+// 8 = horse
+// 9 = fortress
+// 10 = dragon
 function getMapValueInfo(valueStr, compact = false){
 	// set default type to land, so we dont need to modify it for player owned tiles.
 	let info = {type: "land", object: null, owner: 0};
@@ -10198,6 +10489,8 @@ function getMapValueInfo(valueStr, compact = false){
 	}
 }
 
+
+
 function compactToExpandedInfo(str){
 	let type = "land"; // L = land, W = water
 	let obj = null; // T = tree, P = peasant, 0 = none
@@ -10215,6 +10508,8 @@ function compactToExpandedInfo(str){
 	return {type: type, object: obj, owner: owner};
 }
 
+
+
 function loadParsedMap(parsedMap, compact = false){
 	
 	// clear previous data:
@@ -10228,8 +10523,8 @@ function loadParsedMap(parsedMap, compact = false){
 	gameState.map.imageData = parsedMap.imageData;
 	gameState.map.name = parsedMap.name;
 	
-	console.log("parsedMap");
-	console.log(parsedMap);
+	//console.log("parsedMap");
+	//console.log(parsedMap);
 	
 	
 	// TODO: check if width/height is used properly in the loops! not sure which is which...
@@ -10721,6 +11016,181 @@ function spawnCastle(q, r, playerId, type){
 	addUnit(castle);
 }
 
+
+let DELAY_MULTI = 1;
+
+async function replayHistory(history) {
+	if (!history || history.length === 0) return;
+
+	// Broadcast the first message immediately
+	broadcast(history[0]);
+
+	for (let i = 1; i < history.length; i++) {
+		const prev = history[i - 1];
+		const curr = history[i];
+
+		let delay = (curr._T - prev._T) * DELAY_MULTI;
+		if (delay < 0) delay = 0;
+		
+		await new Promise(res => setTimeout(res, delay));
+
+		broadcast(curr);
+	}
+}
+
+
+
+async function startReplay(){
+	
+	if (!localPlayer.isHost) return;
+	
+	
+	console.log("Starting replay...");
+	
+	if (loadedGameStateInitial) {
+		
+		console.warn("Starting from loaded state.");
+		let lobbyPlayers = [];//JSON.parse(JSON.stringify(gameState.players));
+		gameState = loadedGameStateInitial;
+		console.warn("gameState.settings");
+		console.warn(gameState);
+		gameState.settings.gameStarted = true;
+		
+		// NETWORK_HISTORY is set on load game.
+		
+		// assign new ids to players and remember the old one:
+		let oldToNewId = {};
+		for(let i = 0; i < gameState.players.length; i++){
+			let player = gameState.players[i];
+			let newID = getUID();
+			let oldID = player.id;
+			player.id = newID;
+			player.oldID = oldID;
+			oldToNewId[oldID] = newID;
+		}
+		// replace old unit ownerids with new ownerids:
+		for(let i = 0; i < gameState.units.length; i++){
+			let unit = gameState.units[i];
+			if(unit.ownerId !== undefined && unit.ownerId){
+				unit.ownerId = oldToNewId[unit.ownerId];
+			}
+		}
+		// replace old NETWORK_HISTORY messages ids with new ids:
+		for(let i = 0; i < NETWORK_HISTORY.length; i++){
+			let action = NETWORK_HISTORY[i];
+			if(action.ownerId !== undefined && action.ownerId){
+				action.ownerId = oldToNewId[action.ownerId];
+			}
+			if(action.playerId !== undefined && action.playerId){
+				action.playerId = oldToNewId[action.playerId];
+			}
+		}
+		// replace old ownerIds from tiles:
+		for(let i = 0; i < gameState.map.tilesData.length; i++){
+			let tile = gameState.map.tilesData[i];
+			if(tile.ownerId !== undefined && tile.ownerId){
+				tile.ownerId = oldToNewId[tile.ownerId];
+			}
+		}
+		
+		//gameState.players = [...gameState.players, ...lobbyPlayers];
+		
+		/*
+		// Match current players to loaded players
+		const newPlayerList = [];
+		const loadedPlayers = gameState.players.filter(p => !p.isSpectator);
+		
+		// Add all current spectators
+		for (const p of connections.keys()) {
+			const player = getPlayer(p);
+			if (player && player.isSpectator){
+				newPlayerList.push(player);
+			}
+		}
+		if (localPlayer.isSpectator){
+			newPlayerList.push(localPlayer);
+		}
+		
+		// continue at: set player as taken from loaded players list.
+		// loadedGameState.players[i].takenBy = null; 
+		
+		// Match players
+		for (const loadedP of loadedPlayers) {
+			// Find a current player who 'took' this name
+			const matchingCurrentPlayer = [...gameState.players, localPlayer].find(
+				p => p.name === loadedP.name && p.color === loadedP.color && !p.isSpectator
+			);
+			
+			if (matchingCurrentPlayer) {
+				// This player takes the slot
+				loadedP.id = matchingCurrentPlayer.id; // Assign new PeerID
+				// TODO: should not change the id since its the peerId...
+				// just rewrite the units ownerId's with the actual playing player id.
+				newPlayerList.push(loadedP);
+			} else {
+				// No one took this slot. Mark as AI or disconnected?
+				// For now, let's just keep them.
+				loadedP.isAI = true; // Mark as AI for now
+				newPlayerList.push(loadedP);
+			}
+		}
+		gameState.players = newPlayerList;
+		rebuildPlayersInfo();
+		*/
+
+
+
+
+		setProtectedTiles();
+		
+		// Clear undo stack
+		currentTurnActions = [];
+		
+		// save initial gameState for replaying the games later.
+		//INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
+
+		//////////////////////////
+		// find max id for units so new units will get correct new ID:
+		let maxid = -1;
+		for(let i = 0; i < gameState.units.length; i++){
+			if(gameState.units[i].id > maxid){
+				maxid = gameState.units[i].id;
+			}
+		}
+		UNIT_ID_COUNTER = maxid+1;
+		
+		// Broadcast start
+		// At the very end of the function, AFTER broadcast('game_start'):
+		broadcast({ type: 'replay_start', state: gameState });
+		//checkForAITurn(); // start AI turn if it is his turn.
+		
+		/*
+		GAME_START_TIME = performance.now();
+		
+		markDirty();
+		showPage('game');
+		updateGameUI();
+
+		centerFirstUnit(); 
+		
+		*/
+
+	
+		
+		//replayHistory(NETWORK_HISTORY);
+		
+		// Send initial savings to all players
+		/*
+		gameState.players.forEach(p => {
+			if (!p.isSpectator) {
+				updatePlayerSavings(p.id);
+			}
+		});
+		*/
+	}
+}
+
+
 function startGame() {
 	
 
@@ -10780,13 +11250,14 @@ function startGame() {
 	} else {
 		
 		// update gameRoom key for the db, so the game room name will match the start time.
-		currentFormattedDate = formatDateForSave();
+		//currentFormattedDate = formatDateForSave();
 	
 		console.log("Starting new game.");
 		// Set settings from inputs
 		gameState.settings.mapWidth = parseInt(mapWidthInput.value, 10);
 		gameState.settings.mapHeight = parseInt(mapHeightInput.value, 10);
 		gameState.settings.startingMoney = parseInt(startMoneyInput.value, 10);
+		gameState.settings.currentFormattedDate = formatDateForSave();
 		
 		// Filter out players without connection from play (unless they are host or ai):
 		gameState.players = gameState.players.filter(p => p.id === localPlayer.id || connections.has(p.id) || p.isAI);
@@ -10845,8 +11316,17 @@ function startGame() {
 	currentTurnActions = [];
 	
 	// save initial gameState for replaying the games later.
-	INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
+	//INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
 
+	//////////////////////////
+	// find max id for units so new units will get correct new ID:
+	let maxid = -1;
+	for(let i = 0; i < gameState.units.length; i++){
+		if(gameState.units[i].id > maxid){
+			maxid = gameState.units[i].id;
+		}
+	}
+	UNIT_ID_COUNTER = maxid+1;
 	
 	// Broadcast start
 	// At the very end of the function, AFTER broadcast('game_start'):
@@ -10983,23 +11463,37 @@ preventBackNavigation();
 function unloadGame(){
 	// Unload
 	loadedGameState = null;
+	loadedGameStateInitial = null;
+	NETWORK_HISTORY = [];
 	loadGameBtn.textContent = 'Load Game';
 	loadedGameInfoContainer.style.display = 'none';
+	startReplayBtn.style.display = "none";
 }
 
 
-function loadSavedGame(roomName){
+function loadSavedGame(roomKey){
 	if (loadedGameState) {
 		unloadGame();
 	} else {
 		// Load
 		
 		// update so it will not create new savegame for this game. uses same date key for db.
-		currentFormattedDate = roomName;
+		//currentFormattedDate = roomName;
 		
-		loadGameFromDB(roomName, (state) => {
+		loadGameFromDB(roomKey, (state) => {
 			if (state) {
-				loadedGameState = state.gameState;
+				// state = { initialData: initialData, playData: playData }
+				
+				loadedGameState = JSON.parse(JSON.stringify(state.playData.gameState));
+				loadedGameStateInitial = JSON.parse(JSON.stringify(state.initialData.initialState));
+				NETWORK_HISTORY = JSON.parse(JSON.stringify(state.playData.networkHistory));
+				console.warn("old sessionid = "+SESSION_ID+", new sessionid = "+state.playData.SESSION_ID);
+				SESSION_ID = state.playData.SESSION_ID; // copy the id so you can overwrite the save.
+				
+				startReplayBtn.style.display = "block";
+				
+				console.log("loaded random seed = "+state.playData.RANDOM_SEED);
+				randomFunc = mulberry32(state.playData.RANDOM_SEED);
 				
 				// mark all loaded players as "not taken yet":
 				// later the players will take a spot themselves.
@@ -11012,6 +11506,7 @@ function loadSavedGame(roomName){
 				
 				//console.log(lobbyLoadedMapImg);
 				gameState.settings = loadedGameState.settings;
+
 				//gameState.players = loadedGameState.players;
 				gameState.map = loadedGameState.map;
 				
@@ -11027,7 +11522,7 @@ function loadSavedGame(roomName){
 				
 				
 				loadGameBtn.textContent = 'Unload Game';
-				loadGameDate.textContent = new Date(state.saveDate).toLocaleString();
+				loadGameDate.textContent = new Date(state.playData.saveDate).toLocaleString();
 				loadGamePlayersList.innerHTML = '';
 				
 				//state.gameState.players.filter(p => !p.isSpectator).forEach(p => {
@@ -11074,7 +11569,7 @@ function loadSavedGame(roomName){
 				});
 				loadedGameInfoContainer.style.display = 'block';
 			} else {
-				alert('No saved game found for this room name: '+roomName);
+				alert('No saved game found for this room name: '+roomKey);
 			}
 		});
 	}
@@ -11196,6 +11691,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	
 	startGameBtn.onclick = startGame;
+	startReplayBtn.onclick = startReplay;
 	
 	// --- Lobby Page ---
 	lobbyPlayerNameInput.onchange = (e) => {
@@ -11203,8 +11699,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 		sendToHost({
 			type: 'player_update',
 			name: localPlayer.name,
-			color: localPlayer.color,
-			textColor: localPlayer.textColor,
+			//color: localPlayer.color,
+			//textColor: localPlayer.textColor,
 		});
 	};
 	
@@ -11263,19 +11759,23 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	
 	buildSoldierBtn.onclick = () => {
-		if (buildSoldierBtn.classList.contains("cancel")) {
-			buildSoldierBtn.classList.remove("cancel");
-			cancelBuildPopup();
-		}else{
-			openBuildPopup('soldier');
+		if(!REPLAY_ENABLED){
+			if (buildSoldierBtn.classList.contains("cancel")) {
+				buildSoldierBtn.classList.remove("cancel");
+				cancelBuildPopup();
+			}else{
+				openBuildPopup('soldier');
+			}
 		}
 	};
 	buildCastleBtn.onclick = () => {
-		if (buildCastleBtn.classList.contains("cancel")) {
-			buildCastleBtn.classList.remove("cancel");
-			cancelBuildPopup();
-		}else{
-			openBuildPopup('castle');
+		if(!REPLAY_ENABLED){
+			if (buildCastleBtn.classList.contains("cancel")) {
+				buildCastleBtn.classList.remove("cancel");
+				cancelBuildPopup();
+			}else{
+				openBuildPopup('castle');
+			}
 		}
 	};
 	buildPopupClose.onclick = () => {
@@ -11285,7 +11785,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	nextUnitBtn.onclick = () => {
 		let player = getMyPlayer();
 		
-		if(player && isMyTurn()){
+		if(!REPLAY_ENABLED && player && isMyTurn()){
 			let startIndex = 0;
 			
 			if(selectedUnit){
@@ -11322,7 +11822,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	previousUnitBtn.onclick = () => {
 		let player = getMyPlayer();
 		
-		if(player && isMyTurn()){
+		if(!REPLAY_ENABLED && player && isMyTurn()){
 			let startIndex = 0;
 			
 			if(selectedUnit){
@@ -11359,7 +11859,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	
 	endTurnBtn.onclick = () => {
-		if (!endTurnBtn.disabled && isMyTurn()) {
+		if (!REPLAY_ENABLED && !endTurnBtn.disabled && isMyTurn()) {
 			// end turn, and clear shielding units tips ("stop" image display)
 			clearShieldingUnitsTips();
 			sendToHost({ type: 'action_end_turn' });
@@ -11367,14 +11867,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	};
 	
 	undoBtn.onclick = () => {
-		if (isMyTurn()) {
+		if (!REPLAY_ENABLED && isMyTurn()) {
 			sendToHost({ type: 'action_undo' });
 			updateGameUI();
 		}
 	};
 	
 	sellUnitBtn.onclick = () => {
-		if (isMyTurn()) {
+		if (!REPLAY_ENABLED && isMyTurn()) {
 			console.log("action_sell");
 			console.log(selectedUnit);
 			if(selectedUnit){
