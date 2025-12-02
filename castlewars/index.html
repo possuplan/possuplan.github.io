@@ -4595,6 +4595,10 @@ function drawMapTiles(){
 					img = getImage(imageName);
 				}
 			}
+			if(previewdraw){
+				imageName = 'dirt';
+				img = getImage(imageName);
+			}
 
 			// 4. If image is loaded, draw it clipped and scaled
 			if (img && img.complete && img.width > 0) {
@@ -4613,7 +4617,7 @@ function drawMapTiles(){
 				const dx = x - dWidth / 2;
 				const dy = y - dHeight / 2;
 				
-				if(tile.ownerId){
+				if(tile.ownerId && !previewdraw){
 					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 	
@@ -5721,7 +5725,7 @@ function drawMoveDirectionsOverlay() {
 
 let drawRanges = 0;
 
-
+let previewdraw = 0;
 
 function render() {
 	if (!gameState.settings.gameStarted) return;
@@ -5752,10 +5756,14 @@ function render() {
 	drawMapTiles();
 
 	// HIGHLIGHTS DRAWING:
-	drawHighlights();
+	if(!previewdraw){
+		drawHighlights();
+	}
 	
 	// OBJECTS DRAWING:
-	drawObjects();
+	if(!previewdraw){
+		drawObjects();
+	}
 	
 	// only for debugging:
 	if(drawRanges){
@@ -5766,14 +5774,17 @@ function render() {
 	}
 	
 	// UNIT SELECTION DRAWING:
-	drawUnitSelection();
-	
+	if(!previewdraw){
+		drawUnitSelection();
+	}
 	
 	// explosion particles
 	updateParticles();
 	
 	// UNITS DRAWING:
-	drawUnits();
+	if(!previewdraw){
+		drawUnits();
+	}
 	
 
 	// draw "stop!" messages on protecting units
@@ -10525,7 +10536,10 @@ function loadParsedMap(parsedMap, compact = false){
 	
 	//console.log("parsedMap");
 	//console.log(parsedMap);
+	console.warn("width, height");
+	console.warn(width, height);
 	
+	let qoff = Math.floor(height/2);
 	
 	// TODO: check if width/height is used properly in the loops! not sure which is which...
 	for (let q = 0, y = 0; q < width; q++, y++) {
@@ -10537,7 +10551,7 @@ function loadParsedMap(parsedMap, compact = false){
 			}
 			let xx = x;
 			let yy = y;
-			let qq = q-roff;
+			let qq = qoff+q-roff;
 			let rr = r;
 			
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
@@ -10821,6 +10835,11 @@ function spawnPlayers(){
 	console.warn("mapPlayerToPlayerId");
 	console.warn(mapPlayerToPlayerId);
 	
+	console.warn("width, height");
+	console.warn(width, height);
+	
+	let qoff = Math.floor(height/2);
+	
 	// spawn players and claim hexes for them:
 	for (let q = 0, y = 0; q < width; q++, y++) {
 		let roff = 0;
@@ -10831,7 +10850,7 @@ function spawnPlayers(){
 			}
 			let xx = x;
 			let yy = y;
-			let qq = q-roff;
+			let qq = qoff+q-roff;
 			let rr = r;
 			
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
