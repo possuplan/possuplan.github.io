@@ -6307,6 +6307,8 @@ function render() {
 
 let lastMousePos = { x: 0, y: 0 };
 
+let lastpos = { x: 0, y: 0 };
+
 function handleCanvasMouseMove(e) {
 	//console.log("handleCanvasMouseMove");
 	
@@ -6314,8 +6316,8 @@ function handleCanvasMouseMove(e) {
 	lastMousePos.y = e.clientY;
 	
 	if (dragStart && dragStart.canDrag) {
-		const dx = e.clientX - dragStart.x;
-		const dy = e.clientY - dragStart.y;
+		const dx = e.clientX - lastpos.x;
+		const dy = e.clientY - lastpos.y;
 		
 		if (!isDragging && Math.hypot(dx, dy) > 5) {
 			isDragging = true;
@@ -6324,8 +6326,11 @@ function handleCanvasMouseMove(e) {
 		if (isDragging) {
 			viewport.x += dx;
 			viewport.y += dy;
-			dragStart.x = e.clientX;
-			dragStart.y = e.clientY;
+			//dragStart.x = e.clientX;
+			//dragStart.y = e.clientY;
+					
+			lastpos.x = e.clientX;
+			lastpos.y = e.clientY;
 		}
 	}
 }
@@ -6335,6 +6340,10 @@ function handleCanvasMouseDown(e) {
 	
 	isDragging = false; // Reset dragging flag
 	dragStart = { x: e.clientX, y: e.clientY };
+				lastpos.x = e.clientX;
+			lastpos.y = e.clientY;
+	console.warn("dragStart");
+	console.warn(dragStart);
 	
 	//const clickedHex = pixelToAxial(e.clientX, e.clientY);
 	//const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
@@ -6347,8 +6356,10 @@ function handleCanvasMouseDown(e) {
 	//}
 }
 
+
+// seems to be only for desktop mode.
 function handleCanvasMouseUp(e) {
-	//console.log("handleCanvasMouseUp");
+	console.log("handleCanvasMouseUp");
 	
 	if(dragStart){
 		const dx = e.clientX - dragStart.x;
@@ -6356,6 +6367,11 @@ function handleCanvasMouseUp(e) {
 		const dist = Math.sqrt(dx*dx + dy*dy);
 		
 		if (dist < 5) { // It's a click, not a drag
+			console.warn("handleCanvasMouseUp triggered a click. dist = "+dist);
+			console.log(e.clientX);
+			console.log(e.clientY);
+			console.log(dragStart.x);
+			console.log(dragStart.y);
 			handleHexClick(pixelToAxial(e.clientX, e.clientY));
 		}
 		isDragging = false;
@@ -6528,18 +6544,22 @@ function getTileAt(q, r) {
 
 
 // if tile doesnt exist: new tile created, if not: modifying the tile.
-function setTileAt(q, r, tileData) {
+function setTileAt(q, r, tileData, allowCreation = true) {
 	let tileKey = `${q},${r}`;
 
 	if (Object.hasOwn(gameState.map.tiles, tileKey)) {
+		//console.log("setTileAt Object.hasOwn at ",q,r);
 		// modify already existing tile:
 		let tileIndex = gameState.map.tiles[tileKey];
 		gameState.map.tilesData[tileIndex] = {...gameState.map.tilesData[tileIndex], ...tileData};
 	}else{
+		//console.log("setTileAt add new tile at ",q,r);
 		// add new tile:
-		let tileIndex = gameState.map.tilesData.length;
-		gameState.map.tilesData.push({q, r, tileIndex, ...tileData});
-		gameState.map.tiles[tileKey] = tileIndex;
+		if(allowCreation){
+			let tileIndex = gameState.map.tilesData.length;
+			gameState.map.tilesData.push({q, r, tileIndex, ...tileData});
+			gameState.map.tiles[tileKey] = tileIndex;
+		}
 	}
 }
 
@@ -6563,8 +6583,15 @@ function claimTile(tile, ownerId){
 
 
 // will set water outline to the tile, or if doesnt exist yet, adds new tile with that info.
-function setOutlineAt(q, r, lines) {
-	setTileAt(q, r, {outline: lines});
+function setOutlineAt(q, r, lines, allowCreation = true) {
+	let tile = {outline: lines};
+	
+	if(!getTileAt(q,r)){
+		tile = {...tile, type: "water", ownerId: null, ownerIndex: -1, object: null };
+	}
+	setTileAt(q, r, tile, allowCreation);
+
+	
 }
 
 function getUnitAt(q, r) {
@@ -6836,178 +6863,207 @@ function getSelectedPoolHex(){
 }
 
 
+let EDITOR_ENABLED = 0;
 
 function handleHexClick(hex) {
 	if(REPLAY_ENABLED) return;
 	
-	shieldingUnits = null;
-	
-	sellUnitBtn.disabled = true;
+	if(EDITOR_ENABLED){
 
-	// dont allow selecting while moving on the map.
-	if(isDragging){
-		return;
-	}
-	const myPlayer = getMyPlayer();
-	
-	let clickedHexTile = getTileAt(hex.q, hex.r);
-	console.warn("handleHexClick: clickedHexTile:");
-	console.warn(clickedHexTile);
-	if(clickedHexTile){
-		//makeExplosionBySoundMessage({name:'kill', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
-		//makeExplosionBySoundMessage({name:'kill2', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
-	}
-	
-	let isLandTile = !isTileWater(clickedHexTile);
-	// maybe this should be called first? or not...
-	//updateSelectedPoolInfo(hex);
-	
-	//let poolHex = getSelectedPoolHex();
-	//console.log("handleHexClick: poolHex:");
-	//console.log(poolHex);
-	
-	//let updatePools = false;
-	let updatePools = true; // currently always updates info, so it will set selectedPool to null if not player own pool.
-	// update pools only if clicked own tiles:
-	//if(clickedHexTile && clickedHexTile.ownerId === localPlayer.id){
-	//	updatePools = true;
-	//}
-	
-	// hide pool info initially, show it in updateSelectedPoolInfo if called:
-	//hidePoolInfo();
-	
-	if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
-		if(isLandTile){
-			// Spectator or not my turn, just select hex for highlighting pools:
-			selectedHex = hex;
-			deselectUnit(); // Deselect
-
-			//buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
-			//updateHighlights();
-
+		if(!getTileAt(hex.q, hex.r)){
+			setTileAt(hex.q, hex.r, {type:"land", ownerId: null, ownerIndex: -1, object: null});
 		}else{
-			deselectUnit(); // Deselect
-			deselectHex();
+			let tile = getTileAt(hex.q, hex.r);
+			tile.type = tile.type === "water" ? "land" : "water";
+			tile.ownerId = null;
+			tile.ownerIndex = -1;
+			tile.object = null;
 		}
+		console.log("clicked hex: ");
+		console.log(hex);
+		console.log(getTileAt(hex.q, hex.r));
 
-		hideBuildPopup(); //buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
+		updateTileAndNeighbourOutlines(hex.q, hex.r);
 		
 		
+	}else{
 		
-		updateHighlights();
-			
-		// update here before return or it wont be updated.
-		if(updatePools){
-			updateSelectedPoolInfo(hex);
-			updatePools = false;
+		shieldingUnits = null;
+		
+		sellUnitBtn.disabled = true;
+
+		// dont allow selecting while moving on the map.
+		if(isDragging){
+			return;
 		}
-		return;
-	}
-	
+		const myPlayer = getMyPlayer();
+		
+		let clickedHexTile = getTileAt(hex.q, hex.r);
+		console.warn("handleHexClick: clickedHexTile:");
+		console.warn(clickedHexTile);
+		if(clickedHexTile){
+			//makeExplosionBySoundMessage({name:'kill', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
+			//makeExplosionBySoundMessage({name:'kill2', q: clickedHexTile.q, r: clickedHexTile.r, action: "test", level:1});
+		}
+		
+		let isLandTile = !isTileWater(clickedHexTile);
+		// maybe this should be called first? or not...
+		//updateSelectedPoolInfo(hex);
+		
+		//let poolHex = getSelectedPoolHex();
+		//console.log("handleHexClick: poolHex:");
+		//console.log(poolHex);
+		
+		//let updatePools = false;
+		let updatePools = true; // currently always updates info, so it will set selectedPool to null if not player own pool.
+		// update pools only if clicked own tiles:
+		//if(clickedHexTile && clickedHexTile.ownerId === localPlayer.id){
+		//	updatePools = true;
+		//}
+		
+		// hide pool info initially, show it in updateSelectedPoolInfo if called:
+		//hidePoolInfo();
+		
+		if (!myPlayer || myPlayer.isSpectator || !isMyTurn()) {
+			if(isLandTile){
+				// Spectator or not my turn, just select hex for highlighting pools:
+				selectedHex = hex;
+				deselectUnit(); // Deselect
 
+				//buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
+				//updateHighlights();
 
-	// --- PLACING A UNIT ---
-	if (placingUnit) {
-		let poolHex = getSelectedPoolHex();
-		console.log("handleHexClick: placingUnit poolHex:");
-		console.log(poolHex);
+			}else{
+				deselectUnit(); // Deselect
+				deselectHex();
+			}
 
-		const buildCheck = isPlacementValid(placingUnit.type, hex, myPlayer, poolHex);
-		if (buildCheck.valid) {
-			sendToHost({
-				type: 'action_build',
-				unitType: placingUnit.type,
-				q: hex.q,
-				r: hex.r,
-				poolHex: poolHex, // remember first hex from selected pool.
-			});
+			hideBuildPopup(); //buildPopup.style.display = 'none'; // not sure why this is here, maybe possible if somehow managed to end turn while popup is active?
 			
 			
+			
+			updateHighlights();
+				
 			// update here before return or it wont be updated.
 			if(updatePools){
 				updateSelectedPoolInfo(hex);
 				updatePools = false;
 			}
-		} else {
-			if(buildCheck.reason && buildCheck.reason === "low_level"){
-				shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, getUnitLevel(placingUnit.type));
-				shieldingStartTime = performance.now();
-			}
-			playSound('protect');
+			return;
 		}
-		placingUnit = null; // "deselect", must do that because there is no cancel button (yet?)
-		updateHighlights();
 		
 
-		buildSoldierBtn.classList.remove("cancel");
-		buildCastleBtn.classList.remove("cancel");
-		
-		return;
-	}
-	
-	// --- MOVING A UNIT ---
-	if (selectedUnit) {
-		
-		let poolHex = getSelectedPoolHex();
-		console.log("handleHexClick: selectedUnit poolHex:");
-		console.log(poolHex);
-		
-		let deselected = false;
 
-		if(hex.q === selectedUnit.q && hex.r === selectedUnit.r){
-			// deselect if clicked same unit again:
-			deselectUnit();
-			//deselectHex();
-			deselected = true;
-		}
-		if(!deselected){
-			// Check if clicking a valid move hex
-			// validMoveHexes = highlighted move area.
-			// poolHex guaranteed to be in validMoveHexes.
-			const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
-			
-			//console.log("isValidMove: "+isValidMove);
-		
-			if (isValidMove) {
+		// --- PLACING A UNIT ---
+		if (placingUnit) {
+			let poolHex = getSelectedPoolHex();
+			console.log("handleHexClick: placingUnit poolHex:");
+			console.log(poolHex);
+
+			const buildCheck = isPlacementValid(placingUnit.type, hex, myPlayer, poolHex);
+			if (buildCheck.valid) {
 				sendToHost({
-					type: 'action_move',
-					unitId: selectedUnit.id,
-					toQ: hex.q,
-					toR: hex.r,
-					poolHex: poolHex,
+					type: 'action_build',
+					unitType: placingUnit.type,
+					q: hex.q,
+					r: hex.r,
+					poolHex: poolHex, // remember first hex from selected pool.
 				});
-				// Deselect
+				
+				
+				// update here before return or it wont be updated.
+				if(updatePools){
+					updateSelectedPoolInfo(hex);
+					updatePools = false;
+				}
+			} else {
+				if(buildCheck.reason && buildCheck.reason === "low_level"){
+					shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, getUnitLevel(placingUnit.type));
+					shieldingStartTime = performance.now();
+				}
+				playSound('protect');
+			}
+			placingUnit = null; // "deselect", must do that because there is no cancel button (yet?)
+			updateHighlights();
+			
+
+			buildSoldierBtn.classList.remove("cancel");
+			buildCastleBtn.classList.remove("cancel");
+			
+			return;
+		}
+		
+		// --- MOVING A UNIT ---
+		if (selectedUnit) {
+			
+			let poolHex = getSelectedPoolHex();
+			console.log("handleHexClick: selectedUnit poolHex:");
+			console.log(poolHex);
+			
+			let deselected = false;
+
+			if(hex.q === selectedUnit.q && hex.r === selectedUnit.r){
+				// deselect if clicked same unit again:
 				deselectUnit();
 				//deselectHex();
-			} else {
-				// Clicked somewhere else, check for new selection
-				if(isLandTile){
-					const isInvalidMove = invalidMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
-					if(isInvalidMove){
-						shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, selectedUnit.level);
-						shieldingStartTime = performance.now();
-						sellUnitBtn.disabled = false;
-						console.log("clicked hex:");
-						console.log(hex);
-						console.log("selected unit hex:");
-						console.log({q:selectedUnit.q, r:selectedUnit.r});
-						updateSelectedPoolInfo({q:selectedUnit.q, r:selectedUnit.r});
-						updatePools = false; // ensure it wont update pools with the hex we try to move onto.
+				deselected = true;
+			}
+			if(!deselected){
+				// Check if clicking a valid move hex
+				// validMoveHexes = highlighted move area.
+				// poolHex guaranteed to be in validMoveHexes.
+				const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
+				
+				//console.log("isValidMove: "+isValidMove);
+			
+				if (isValidMove) {
+					sendToHost({
+						type: 'action_move',
+						unitId: selectedUnit.id,
+						toQ: hex.q,
+						toR: hex.r,
+						poolHex: poolHex,
+					});
+					// Deselect
+					deselectUnit();
+					//deselectHex();
+				} else {
+					// Clicked somewhere else, check for new selection
+					if(isLandTile){
+						const isInvalidMove = invalidMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
+						if(isInvalidMove){
+							shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, selectedUnit.level);
+							shieldingStartTime = performance.now();
+							sellUnitBtn.disabled = false;
+							console.log("clicked hex:");
+							console.log(hex);
+							console.log("selected unit hex:");
+							console.log({q:selectedUnit.q, r:selectedUnit.r});
+							updateSelectedPoolInfo({q:selectedUnit.q, r:selectedUnit.r});
+							updatePools = false; // ensure it wont update pools with the hex we try to move onto.
+							
+							playSound('protect');
+						}
 						
-						playSound('protect');
-					}
-					
-					const unitOnHex = getUnitAt(hex.q, hex.r);
-					if(unitOnHex){
-						if (unitOnHex.ownerId === localPlayer.id) {
-							if(unitOnHex.internalType === 'soldier' && !unitOnHex.hasMoved){
-								selectedUnit = unitOnHex; // Select new unit
-								sellUnitBtn.disabled = false;
-								selectedHex = hex;
-								playSound('startmove');
+						const unitOnHex = getUnitAt(hex.q, hex.r);
+						if(unitOnHex){
+							if (unitOnHex.ownerId === localPlayer.id) {
+								if(unitOnHex.internalType === 'soldier' && !unitOnHex.hasMoved){
+									selectedUnit = unitOnHex; // Select new unit
+									sellUnitBtn.disabled = false;
+									selectedHex = hex;
+									playSound('startmove');
+								}
+							}else{
+								// deselect when clicking enemy unit that was not protected:
+								if(!isInvalidMove){
+									deselectUnit(); // Deselect
+									selectedHex = hex;
+									//console.log("deselected");
+								}
 							}
 						}else{
-							// deselect when clicking enemy unit that was not protected:
+							// deselect when clicked just land that was not protected:
 							if(!isInvalidMove){
 								deselectUnit(); // Deselect
 								selectedHex = hex;
@@ -7015,63 +7071,56 @@ function handleHexClick(hex) {
 							}
 						}
 					}else{
-						// deselect when clicked just land that was not protected:
-						if(!isInvalidMove){
-							deselectUnit(); // Deselect
-							selectedHex = hex;
-							//console.log("deselected");
-						}
+						deselectUnit(); // Deselect
+						deselectHex();
 					}
-				}else{
-					deselectUnit(); // Deselect
-					deselectHex();
 				}
 			}
-		}
-	} else {
-		// --- SELECTING AN UNIT ---
-		
-		if(isLandTile){
-			const unitOnHex = getUnitAt(hex.q, hex.r);
+		} else {
+			// --- SELECTING AN UNIT ---
 			
-			if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
-				// allow only selecting soldiers
-				if(unitOnHex.internalType === 'soldier'){
-					if(!unitOnHex.hasMoved){
-						//console.log("selected new unit");
-						selectedUnit = unitOnHex;
-						sellUnitBtn.disabled = false;
-						selectedHex = hex;
-						if(!selectedUnit.hasMoved){
-							playSound('startmove');
+			if(isLandTile){
+				const unitOnHex = getUnitAt(hex.q, hex.r);
+				
+				if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
+					// allow only selecting soldiers
+					if(unitOnHex.internalType === 'soldier'){
+						if(!unitOnHex.hasMoved){
+							//console.log("selected new unit");
+							selectedUnit = unitOnHex;
+							sellUnitBtn.disabled = false;
+							selectedHex = hex;
+							if(!selectedUnit.hasMoved){
+								playSound('startmove');
+							}
+						}else{
+							// select the hex if cannot select unit.
+							deselectUnit();
+							selectedHex = hex;
 						}
 					}else{
-						// select the hex if cannot select unit.
+						// dont allow selecting castles.
 						deselectUnit();
 						selectedHex = hex;
 					}
-				}else{
-					// dont allow selecting castles.
+				} else {
+					// no unit or not my unit
 					deselectUnit();
 					selectedHex = hex;
 				}
-			} else {
-				// no unit or not my unit
-				deselectUnit();
-				selectedHex = hex;
+			}else{
+				// was water tile
+				deselectUnit(); // Deselect
+				deselectHex();
 			}
-		}else{
-			// was water tile
-			deselectUnit(); // Deselect
-			deselectHex();
 		}
+		
+		if(updatePools){
+			updateSelectedPoolInfo(hex);
+		}
+		
+		updateHighlights();
 	}
-	
-	if(updatePools){
-		updateSelectedPoolInfo(hex);
-	}
-	
-	updateHighlights();
 }
 
 
@@ -11022,6 +11071,23 @@ function compactToExpandedInfo(str){
 	return {type: type, object: obj, owner: owner};
 }
 
+function setTileNeighbours(tile){
+	let neigh = getHexNeighbors(tile.q,tile.r);
+	let availableNeighbours = [];
+	for(let i = 0; i < neigh.length; i++){
+		let n = neigh[i];
+		const nTile = getTileAt(n.q, n.r);
+		if(nTile){
+			//availableNeighbours.push({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r});
+			availableNeighbours.push(nTile.tileIndex);
+		}else{
+			//availableNeighbours.push({tileIndex: -1, neighbourIndex: i, q: n.q, r: n.r});
+			availableNeighbours.push(-1);
+		}
+	}
+	tile.neighbours = availableNeighbours;
+}
+
 
 
 // NOTE: make sure map width/height is even.
@@ -11129,20 +11195,7 @@ function loadParsedMap(parsedMap, compact = true){
 		const r = tile.r;
 		
 		if(tile.type === "land"){
-			let neigh = getHexNeighbors(q,r);
-			let availableNeighbours = [];
-			for(let i = 0; i < neigh.length; i++){
-				let n = neigh[i];
-				const nTile = getTileAt(n.q, n.r);
-				if(nTile){
-					//availableNeighbours.push({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r});
-					availableNeighbours.push(nTile.tileIndex);
-				}else{
-					//availableNeighbours.push({tileIndex: -1, neighbourIndex: i, q: n.q, r: n.r});
-					availableNeighbours.push(-1);
-				}
-			}
-			tile.neighbours = availableNeighbours;
+			setTileNeighbours(tile);
 		}
 	}
 	
@@ -11305,6 +11358,72 @@ function scaleMap(){
 	
 }
 
+
+function updateTileAndNeighbourOutlines(q, r){
+	updateTileOutlines(q, r, true);
+	let tile = getTileAt(q,r);
+	setTileNeighbours(tile);
+	
+	let neigh = getHexNeighbors(q, r);
+	for(let i = 0; i < neigh.length; i++){
+		let n = neigh[i];
+		updateTileOutlines(n.q, n.r, false);
+		let tile2 = getTileAt(n.q, n.r);
+		if(tile2){
+			// must update neighbours for neighbour tiles as well, or the pool highlighting wont work correctly.
+			setTileNeighbours(tile2);
+		}
+	}
+
+}
+
+
+function updateTileOutlines(q, r, allowCreation = true){
+	//console.warn("updateTileOutlines"+q+","+r);
+	let lines = [];
+	let neigh = getHexNeighbors(q, r);
+	for(let i = 0; i < neigh.length; i++){
+		let n = neigh[i];
+		const nTile = getTileAt(n.q, n.r);
+		let addline = 0;
+		if (nTile && nTile.type === 'water') {
+			addline = 1;
+		}
+		// if out of bounds, add outlines also:
+		if (!nTile){
+			addline = 1;
+		}
+		if(addline){
+			lines.push(i);
+		}
+	}
+	/*
+	// old code, only works with zero rotation angle;
+	for(let i = 0; i < neigh.length; i++){
+		// skip topleft,top,topright neighbours:
+		if(i > 1 && i < 5){
+			continue;
+		}
+		let n = neigh[i];
+		const nTile = getTileAt(n.q, n.r);
+		let addline = 0;
+		if (nTile && nTile.type === 'water') {
+			addline = 1;
+		}
+		// if out of bounds, add outlines also:
+		if (!nTile){
+			addline = 1;
+		}
+		if(addline){
+			lines.push(i);
+		}
+	}
+	*/
+	setOutlineAt(q, r, lines, allowCreation);
+}
+
+
+
 // generate_map
 function generateMap(width, height) {
 	// NOTE: map is loaded before this generateMaps call, so any changes here for the map wont be visible for playes.
@@ -11325,48 +11444,8 @@ function generateMap(width, height) {
 
 	// generate outlines for all land pieces in the map:
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
-		const tile = gameState.map.tilesData[t];
-		const q = tile.q;
-		const r = tile.r;
-		let lines = [];
-		let neigh = getHexNeighbors(q, r);
-		/*
-		for(let i = 0; i < neigh.length; i++){
-			// skip topleft,top,topright neighbours:
-			if(i > 1 && i < 5){
-				continue;
-			}
-			let n = neigh[i];
-			const nTile = getTileAt(n.q, n.r);
-			let addline = 0;
-			if (nTile && nTile.type === 'water') {
-				addline = 1;
-			}
-			// if out of bounds, add outlines also:
-			if (!nTile){
-				addline = 1;
-			}
-			if(addline){
-				lines.push(i);
-			}
-		}
-		*/
-		for(let i = 0; i < neigh.length; i++){
-			let n = neigh[i];
-			const nTile = getTileAt(n.q, n.r);
-			let addline = 0;
-			if (nTile && nTile.type === 'water') {
-				addline = 1;
-			}
-			// if out of bounds, add outlines also:
-			if (!nTile){
-				addline = 1;
-			}
-			if(addline){
-				lines.push(i);
-			}
-		}
-		setOutlineAt(q, r, lines);
+		let tile = gameState.map.tilesData[t];
+		updateTileOutlines(tile.q, tile.r);
 	}  
 	
 }
