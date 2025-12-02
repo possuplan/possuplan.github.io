@@ -4797,7 +4797,7 @@ function drawMapTiles(){
 					if(drawDebugText){
 						ctx.fillStyle = "#FFFFFF";
 						ctx.font = "11px sans-serif";
-	
+						
 						ctx.fillText(formatNumber(tile.savings, 8), x, y+22);
 					}
 				
@@ -6587,7 +6587,7 @@ function setOutlineAt(q, r, lines, allowCreation = true) {
 	let tile = {outline: lines};
 	
 	if(!getTileAt(q,r)){
-		tile = {...tile, type: "water", ownerId: null, ownerIndex: -1, object: null };
+		tile = {...tile, type: "water", ownerId: null, ownerIndex: -1, object: null, savings: 0};
 	}
 	setTileAt(q, r, tile, allowCreation);
 
@@ -6871,13 +6871,14 @@ function handleHexClick(hex) {
 	if(EDITOR_ENABLED){
 
 		if(!getTileAt(hex.q, hex.r)){
-			setTileAt(hex.q, hex.r, {type:"land", ownerId: null, ownerIndex: -1, object: null});
+			setTileAt(hex.q, hex.r, {type:"land", ownerId: null, ownerIndex: -1, object: null, savings: 0});
 		}else{
 			let tile = getTileAt(hex.q, hex.r);
 			tile.type = tile.type === "water" ? "land" : "water";
 			tile.ownerId = null;
 			tile.ownerIndex = -1;
 			tile.object = null;
+			tile.savings = 0;
 		}
 		console.log("clicked hex: ");
 		console.log(hex);
