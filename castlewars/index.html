@@ -12521,15 +12521,32 @@ window.addEventListener('DOMContentLoaded', async () => {
 				chatInput.value = '';
 				
 				// process local commands:
-				if(message === "/debug"){
-					drawDebugText = !drawDebugText;
-					drawRanges = !drawRanges;
+				switch(message){
+					case "/debug":
+						drawDebugText = !drawDebugText;
+						drawRanges = drawDebugText;
+					break;
+					case "/refresh":
+						addSystemChatMessage(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
+						resizeCanvas();
+					break;
+					case "/editor":
+						EDITOR_ENABLED = !EDITOR_ENABLED;
+					break;
+					case "/givemoney":
+						givemoney(1000);
+					break;
+					case "/givemoneyall":
+						givemoneyall(1000);
+					break;
+					case "/drawranges":
+						drawRanges = !drawRanges;
+					break;
+					case "/previewdraw":
+						previewdraw = !previewdraw;
+					break;
 				}
-				if(message === "/refresh"){
-					addSystemChatMessage(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
 
-					resizeCanvas();
-				}
 				
 				// process "/out gameState" command:
 				let output = parseOutCommand(message);
