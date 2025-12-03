@@ -12546,6 +12546,16 @@ window.addEventListener('DOMContentLoaded', async () => {
 					case "/previewdraw":
 						previewdraw = !previewdraw;
 					break;
+					case "/f":
+						DELAY_MULTI /= 1.5;
+					break;
+					case "/s":
+						DELAY_MULTI *= 1.5;
+					break;
+					case "/restart":
+						DELAY_MULTI = 1;
+						// restart replay
+					break;
 				}
 
 				
