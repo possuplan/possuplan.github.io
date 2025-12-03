@@ -6505,13 +6505,16 @@ function handleTouchStart(e) {
             e.touches[0].clientY - e.touches[1].clientY
         );
 		
-		// rotation:
-		const [t1, t2] = e.touches;
-		initialAngle = Math.atan2(
-			t2.clientY - t1.clientY, 
-			t2.clientX - t1.clientX
-		);
-		isRotating = true;
+		// only rotate if chat box is open:
+		if(showTopLeftUi){
+			// rotation:
+			const [t1, t2] = e.touches;
+			initialAngle = Math.atan2(
+				t2.clientY - t1.clientY, 
+				t2.clientX - t1.clientX
+			);
+			isRotating = true;
+		}
 		
     }
 }
@@ -6559,21 +6562,22 @@ function handleTouchMove(e) {
 		lastDist = newDist;
 	}
 	
-	if (!isRotating || e.touches.length !== 2){
-	   
-	}else{
+	// only rotate if chat box is open:
+	if(showTopLeftUi){
+		if (!isRotating || e.touches.length !== 2){
+			
+		}else{
+			const [t1, t2] = e.touches;
+			const newAngle = Math.atan2(
+				t2.clientY - t1.clientY, 
+				t2.clientX - t1.clientX
+			);
+			const deltaAngle = newAngle - initialAngle;
 
-		const [t1, t2] = e.touches;
-		const newAngle = Math.atan2(
-			t2.clientY - t1.clientY, 
-			t2.clientX - t1.clientX
-		);
-		const deltaAngle = newAngle - initialAngle;
-
-
-		//viewport.rotation += deltaAngle;  // rotate viewport
-		rotateAroundScreenCenter(deltaAngle);
-		initialAngle = newAngle;          // update for next frame
+			//viewport.rotation += deltaAngle;  // rotate viewport
+			rotateAroundScreenCenter(deltaAngle);
+			initialAngle = newAngle;          // update for next frame
+		}
 	}
 }
 
@@ -6589,7 +6593,9 @@ function handleTouchEnd(e) {
 	if (e.touches.length < 2) {
 		lastDist = null; // Stop zooming
 		
-		isRotating = false;
+		if(showTopLeftUi){
+			isRotating = false;
+		}
 	}
 	if (e.touches.length < 1) {
 		isDragging = false; // Stop dragging
