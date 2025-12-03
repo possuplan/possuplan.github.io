@@ -3863,6 +3863,11 @@ function getHexNeighbors(q, r) {
 	];
 }
 
+// i matches getHexNeighbors index
+function getSideAngle(i){
+	return i*60+90; // clockwise rotation angles (the edge's top line to bottom line)
+}
+
 
 function getHexDistance(q1, r1, q2, r2) {
 	const dq = q1 - q2;
@@ -3975,6 +3980,14 @@ function drawFilledLine(x1, y1, x2, y2, offX, offY) {
     ctx.fill();
 }
 
+
+function norm180(a) {
+	const tau = Math.PI * 2;
+	return ((a + Math.PI) % tau + tau) % tau - Math.PI;
+}
+
+
+
 // 2. Update drawWaterShading to calculate the "Screen Down" vector
 // MAKE SURE to pass 'viewport' into this function
 
@@ -3991,21 +4004,30 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 
     if(drawLines.length > 0){
         ctx.fillStyle = color;
-        
-        for(let i = 0; i < drawLines.length; i++){
-            let ival = drawLines[i]; 
+		
 
-            const x1 = px + HEX_SIZE * HEX_CORNERS[ival].x;
-            const y1 = py + HEX_SIZE * HEX_CORNERS[ival].y;
-            const x2 = px + HEX_SIZE * HEX_CORNERS[ival+1].x;
-            const y2 = py + HEX_SIZE * HEX_CORNERS[ival+1].y;
+        for (let i = 0; i < drawLines.length; i++) {
 
-            drawFilledLine(
-                x1, y1, 
-                x2, y2, 
-                offX, offY // Pass the calculated offsets
-            );
-        }
+			let ival = drawLines[i];
+
+			let worldAngle = getSideAngle(ival) * Math.PI/180;
+			let cameraAngle = viewport.rotation;
+
+			// clockwise camera → add
+			let screenAngle = norm180(worldAngle + cameraAngle);
+
+			let dy = Math.sin(screenAngle);
+			let show_shading = dy > 0;     // hide if pointing up
+
+			if (show_shading) {
+				const x1 = px + HEX_SIZE * HEX_CORNERS[ival].x;
+				const y1 = py + HEX_SIZE * HEX_CORNERS[ival].y;
+				const x2 = px + HEX_SIZE * HEX_CORNERS[ival+1].x;
+				const y2 = py + HEX_SIZE * HEX_CORNERS[ival+1].y;
+
+				drawFilledLine(x1, y1, x2, y2, offX, offY);
+			}
+		}
     }
 }
 
@@ -4631,6 +4653,46 @@ let scaleMatrix = new DOMMatrix();
 let matrixInfiniteWater = new DOMMatrix();
 let hex_pad = 0;
 let reversed = 0;
+let drawtextures = 1;
+
+
+
+
+function drawMapShading(){
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		const tile = gameState.map.tilesData[t];
+		const q = tile.q;
+		const r = tile.r;
+
+		//const { x, y } = axialToPixel(q, r);
+		const x = axialToPixelX(q, r);
+		const y = axialToPixelY(q, r);
+
+		// --- Culling Check ---
+		if(checkCulling(x, y, -waterShadingHeight)){
+			continue;
+		}
+		
+		// draw shadows/shading for land tiles next to water:
+		// draw map outlines:
+		// renderoutlines render outlines
+		if(tile.type === 'land') {
+			if(tile.outline){
+				let player = getPlayer(tile.ownerId);
+				let color;
+				if(player){
+					color = hexToRgba(darkenHexColor(player.color, 0.8), 0.8);
+				}else{
+					color = hexToRgba(darkenHexColor("#705F4B", 0.8), 0.8);
+				}
+				
+				drawWaterShading(x, y, tile.outline, color);
+			}
+		}
+	}
+}
+
+
 
 // rendertiles drawtiles rendermaptiles render tiles render map tiles
 function drawMapTiles(){
@@ -4653,9 +4715,7 @@ function drawMapTiles(){
 	
 	// --- DRAW TILES ---
 	// draw only the tiles that exists. (old code had 2 for loops for q and r ranges...)
-	//for(let t = 0; t < gameState.map.tilesData.length; t++){
-	for(let i = 0; i < gameState.map.tilesData.length; i++){
-		let t = reversed ? gameState.map.tilesData.length-i-1 : i;
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
 		const r = tile.r;
@@ -4674,7 +4734,8 @@ function drawMapTiles(){
 		}
 		
 		// --- Culling Check ---
-		if(checkCulling(x, y, -waterShadingHeight)){
+		//if(checkCulling(x, y, -waterShadingHeight)){
+		if(checkCulling(x, y)){
 			continue;
 		}
 		
@@ -4704,6 +4765,7 @@ function drawMapTiles(){
 		// draw shadows/shading for land tiles next to water:
 		// draw map outlines:
 		// renderoutlines render outlines
+		/*
 		if(tile.type === 'land') {
 			if(tile.outline){
 				let player = getPlayer(tile.ownerId);
@@ -4717,6 +4779,7 @@ function drawMapTiles(){
 				drawWaterShading(x, y, tile.outline, color);
 			}
 		}
+		*/
 
 
 		//drawnTiles++;
@@ -4777,20 +4840,22 @@ function drawMapTiles(){
 					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
 	
+					if(drawtextures){
+						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+					
 
-					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
-
-					let color = player.color;
-					if(!tile.isProtected){
-						// showing unprotected lands might make game boring, also confusing when it shows different color.
-						//color = lightenHexColor(player.color, 0.2);
+						let color = player.color;
+						if(!tile.isProtected){
+							// showing unprotected lands might make game boring, also confusing when it shows different color.
+							//color = lightenHexColor(player.color, 0.2);
+						}
+						// todo: make own images for each player texture?
+						// Multiply by player color
+						ctx.globalCompositeOperation = "multiply";
+						ctx.fillStyle = color; // e.g. "#ff0000"
+						ctx.fillRect(dx, dy, dWidth, dHeight);
+						ctx.globalCompositeOperation = "source-over";
 					}
-					// todo: make own images for each player texture?
-					// Multiply by player color
-					ctx.globalCompositeOperation = "multiply";
-					ctx.fillStyle = color; // e.g. "#ff0000"
-					ctx.fillRect(dx, dy, dWidth, dHeight);
-					ctx.globalCompositeOperation = "source-over";
 					
 					// draw tile savings debug info:
 					//drawText(x, y, tile.savings);
@@ -4805,13 +4870,15 @@ function drawMapTiles(){
 				}else{
 					// draw dirt image:
 					
-					if(use_fill){
-						// slower... todo: think how to speed up.
-						fillPattern(ctx, imageName);
-					}else{
-						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
-					}
+					if(drawtextures){
+						if(use_fill){
+							// slower... todo: think how to speed up.
+							fillPattern(ctx, imageName);
+						}else{
+							drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+						}
 
+					}
 					
 					
 					if(drawDebugText){
@@ -6252,6 +6319,8 @@ function render() {
 	ctx.textBaseline = 'middle';
 	ctx.font = `11px sans-serif`;
 	
+	// MAP WATER SHADING (3d effect):
+	drawMapShading();
 	
 	// MAP TILE DRAWING:
 	drawMapTiles();
@@ -10899,6 +10968,7 @@ function setLoadedMapAndApplyScale(){
 	cropMap();
 	
 	scaleMap();
+	
 	loadParsedMap(loadedmap);
 	
 	
@@ -11111,25 +11181,27 @@ function loadParsedMap(parsedMap, compact = true){
 	console.warn(width, height);
 	
 
-
+	//let qoff = Math.ceil(height/2); // prevents negative coordinates to be used.
+	//let off = 0;//height % 2; // fixes odd heights making different shape for map.
+	
+	
 	// calculate max for q and r, to make faster array search by q*w+r index:
+	/*
 	let max_q = 0;
 	let max_r = 0;
 	
-	let qoff = Math.ceil(height/2); // prevents negative coordinates to be used.
-	let off = 0;//height % 2; // fixes odd heights making different shape for map.
-	
+
 	
 	for (let q = 0, y = 0; q < width; q++, y++) {
 		let roff = 0;
 	
 		for (let r = 0, x = 0; r < height; r++, x++) {
-			if(((x+off) % 2) == 1){
+			if((x % 2) == 1){
 				roff++;
 			}
 			let xx = x;
 			let yy = y;
-			let qq = qoff+q-roff;
+			let qq = q-roff;
 			let rr = r;
 			
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
@@ -11149,19 +11221,21 @@ function loadParsedMap(parsedMap, compact = true){
 	}
 	console.warn("max_q, max_r");
 	console.warn(max_q, max_r);
+	*/
 	
 	
 	// TODO: check if width/height is used properly in the loops! not sure which is which...
-	for (let q = 0, y = 0; q < width; q++, y++) {
+	for (let q = 0, y = 0; q < height; q++, y++) {
 		let roff = 0;
 	
-		for (let r = 0, x = 0; r < height; r++, x++) {
-			if(((x+off) % 2) == 1){
+		for (let r = 0, x = 0; r < width; r++, x++) {
+			if((x % 2) == 1){
 				roff++;
 			}
 			let xx = x;
 			let yy = y;
-			let qq = qoff+q-roff;
+			//let qq = qoff+q-roff;
+			let qq = q-roff;
 			let rr = r;
 			
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
@@ -11182,7 +11256,7 @@ function loadParsedMap(parsedMap, compact = true){
 				//}
 				// dont add water tiles into the tilesData, they are useless.
 				if(info.type !== 'water'){
-					setTileAt(qq, rr, { type: info.type, ownerId: null, object: object, savings: 0 });
+					setTileAt(qq, rr, { x: x, y:y, type: info.type, ownerId: null, object: object, savings: 0 });
 				}
 			}
 		}
@@ -11230,7 +11304,7 @@ function cropMap(){
 	let width = loadedmap.data[0].length;
 	let height = loadedmap.data.length;
 	
-	let croppedmap = [];
+
 	
 	// find crop for left, right, top, bottom:
 	let crop = {left: -1, right: -1, top: -1, bottom: -1};
@@ -11274,17 +11348,26 @@ function cropMap(){
 		}
 	}
 	
+	// keep cropping in even values, so the roff logic works as expected:
+	if((crop.left % 2)   != 0 && crop.left-1   >= 0) crop.left--;
+	if((crop.right % 2)  != 0 && crop.right-1  >= 0) crop.right--;
+	if((crop.top % 2)    != 0 && crop.top-1    >= 0) crop.top--;
+	if((crop.bottom % 2) != 0 && crop.bottom-1 >= 0) crop.bottom--;
+
+	
 	let cropRect = {
 		x1: crop.left, 
 		x2: width-crop.right, 
 		y1: crop.top, 
 		y2: height-crop.bottom,
 	};
-	console.warn("crop");
-	console.warn(crop);
-	console.warn("cropRect");
-	console.log(cropRect);
+
+	//console.warn("crop");
+	//console.warn(crop);
+	//console.warn("cropRect");
+	//console.log(cropRect);
 	
+	/*
 	// add padding if odd height: (keeps consistent with original game logic)
 	if(((cropRect.y2-cropRect.y1) % 2) != 0){
 		let maprow = [];
@@ -11297,13 +11380,19 @@ function cropMap(){
 		}
 		croppedmap.push(maprow);
 	}
+	*/
+	
+	let croppedmap = [];
+		
 	for(let y = cropRect.y1; y < cropRect.y2; y++){
 		let maprow = [];
 		
+		/*
 		if(((cropRect.x2-cropRect.x1) % 2) != 0){
 			// add padding if odd width: (keeps consistent with original game logic)
 			maprow.push("W00");
 		}
+		*/
 		for(let x = cropRect.x1; x < cropRect.x2; x++){
 			maprow.push(loadedmap.data[y][x]);
 		}
@@ -11312,19 +11401,24 @@ function cropMap(){
 	}
 
 	
-	console.log("before crop:");
-	console.log(loadedmap.data);
+	//console.warn("before crop:");
+	//console.warn(loadedmap.data);
 	
-	console.log("cropped map:");
-	console.log(croppedmap);
-	return;
+	//console.warn("cropped map:");
+	//console.warn(croppedmap);
+	//return;
 
 	
 	
 	loadedmap.width = croppedmap[0].length;
 	loadedmap.height = croppedmap.length;
 	loadedmap.data = croppedmap;
+	
+	//console.warn("loadedmap:");
+	//console.warn(loadedmap);
 }
+
+
 
 function scaleMap(){
 	let scale = getMapScale();
@@ -11528,8 +11622,8 @@ function spawnPlayers(){
 	let mapOwnerNumbers = {};
 	
 	// find all possible owners from tiles:
-	for (let q = 0, y = 0; q < width; q++, y++) {
-		for (let r = 0, x = 0; r < height; r++, x++) {
+	for (let q = 0, y = 0; q < height; q++, y++) {
+		for (let r = 0, x = 0; r < width; r++, x++) {
 			let xx = x;
 			let yy = y;
 			
@@ -11580,20 +11674,21 @@ function spawnPlayers(){
 	console.warn("width, height");
 	console.warn(width, height);
 	
-	let qoff = Math.ceil(height/2);
-	let off = 0;//height % 2; // fixes odd heights making different shape for map.
+	//let qoff = Math.ceil(height/2);
+	//let off = 0;//height % 2; // fixes odd heights making different shape for map.
 	
 	// spawn players and claim hexes for them:
-	for (let q = 0, y = 0; q < width; q++, y++) {
+	for (let q = 0, y = 0; q < height; q++, y++) {
 		let roff = 0;
 	
-		for (let r = 0, x = 0; r < height; r++, x++) {
-			if(((x+off) % 2) == 1){
+		for (let r = 0, x = 0; r < width; r++, x++) {
+			if((x % 2) == 1){
 				roff++;
 			}
 			let xx = x;
 			let yy = y;
-			let qq = qoff+q-roff;
+			//let qq = qoff+q-roff;
+			let qq = q-roff;
 			let rr = r;
 			
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
@@ -12142,15 +12237,19 @@ function getUint(str) {
 document.addEventListener('keydown', (event) => {
 	// dont handle enter if it came from chat input.
 	if(event.target.id !== 'chat-input'){
-	  if (event.key === 'Enter') {
-		if(gameState.settings.gameStarted){
-			toggleUiTopLeft();
+		if (event.key === 'Enter') {
+			if(gameState.settings.gameStarted){
+				toggleUiTopLeft();
+			}
+		}else if(event.key === 'q') {
+			rotateAroundScreenCenter(-0.02);
+		}else if(event.key === 'e') {
+			rotateAroundScreenCenter(0.02);
 		}
-	  }
 	}
 });
 
-	//if (canvas.contains(e.target)) return; // let the canvas handle it
+//if (canvas.contains(e.target)) return; // let the canvas handle it
 	
 	
 function handleOutside(e) {
@@ -12396,6 +12495,26 @@ function rad2deg(radians){
 	return radians * 180 / Math.PI;
 }
 
+
+function rotateAroundScreenCenter(theta) {
+	const cx = canvas.width / 2;
+	const cy = canvas.height / 2;
+	
+	// camera vector relative to center
+	let dx = viewport.x - cx;
+	let dy = viewport.y - cy;
+
+	// rotate
+	let cos = Math.cos(theta);
+	let sin = Math.sin(theta);
+	viewport.x = cx + dx * cos - dy * sin;
+	viewport.y = cy + dx * sin + dy * cos;
+
+	// update rotation
+	viewport.rotation += theta;
+}
+
+
 // =================================================================
 // --- EVENT LISTENERS
 // =================================================================
@@ -12492,11 +12611,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 	//	resizeCanvas();
 	//};
 	
+
+
 	rotateLeftBtn.onclick = () => {
-		viewport.rotation -= deg2rad(30/4);
+		rotateAroundScreenCenter(-deg2rad(30/4));
 	};
 	rotateRightBtn.onclick = () => {
-		viewport.rotation += deg2rad(30/4);
+		rotateAroundScreenCenter(deg2rad(30/4));
 	};
 
 	quitGameBtn.onclick = () => {
@@ -12555,6 +12676,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 					case "/restart":
 						DELAY_MULTI = 1;
 						// restart replay
+					break;
+					case "/reverse":
+						reverse = !reverse;
 					break;
 				}
 
