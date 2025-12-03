@@ -12293,9 +12293,9 @@ document.addEventListener('keydown', (event) => {
 				toggleUiTopLeft();
 			}
 		}else if(event.key === 'q') {
-			rotateAroundScreenCenter(-0.02);
+			rotateAroundScreenCenter(-0.03);
 		}else if(event.key === 'e') {
-			rotateAroundScreenCenter(0.02);
+			rotateAroundScreenCenter(0.03);
 		}
 	}
 });
@@ -12666,13 +12666,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 
 	rotateLeftBtn.onclick = () => {
-		rotateAroundScreenCenter(-deg2rad(30/4));
+		rotateAroundScreenCenter(-deg2rad(30));
 	};
 	rotateResetBtn.onclick = () => {
 		rotateAroundScreenCenter(-viewport.rotation);
 	};
 	rotateRightBtn.onclick = () => {
-		rotateAroundScreenCenter(deg2rad(30/4));
+		rotateAroundScreenCenter(deg2rad(30));
 	};
 	
 	
@@ -12680,10 +12680,16 @@ window.addEventListener('DOMContentLoaded', async () => {
 	quitGameBtn.onclick = () => {
 		restartGame();
 	};
-
+	quitGameBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	quitGameBtn.tabIndex = -1; //remove it from the tab order
+	
+	
 	toggleUiBtn.onclick = () => {
 		toggleUiTopLeft();
 	};
+	toggleUiBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	toggleUiBtn.tabIndex = -1; //remove it from the tab order
+	
 	
 	chatInput.onkeydown = (e) => {
 		// enter key "enter"
@@ -12765,6 +12771,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 		}
 	};
+	buildSoldierBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	buildSoldierBtn.tabIndex = -1; //remove it from the tab order
+	
 	buildCastleBtn.onclick = () => {
 		if(!REPLAY_ENABLED){
 			if (buildCastleBtn.classList.contains("cancel")) {
@@ -12775,9 +12784,16 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 		}
 	};
+	buildCastleBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	buildCastleBtn.tabIndex = -1; //remove it from the tab order
+	
+	
 	buildPopupClose.onclick = () => {
 		cancelBuildPopup();
 	};
+	buildPopupClose.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	buildPopupClose.tabIndex = -1; //remove it from the tab order
+	
 	
 	nextUnitBtn.onclick = () => {
 		let player = getMyPlayer();
@@ -12815,6 +12831,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 			nextUnitBtn.disabled = !hasUnmovedUnits();
 		}
 	};
+	nextUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	nextUnitBtn.tabIndex = -1; //remove it from the tab order
+	
 	
 	previousUnitBtn.onclick = () => {
 		let player = getMyPlayer();
@@ -12854,6 +12873,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 			nextUnitBtn.disabled = !hasUnmovedUnits();
 		}
 	};
+	previousUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	previousUnitBtn.tabIndex = -1; //remove it from the tab order
+	
 	
 	endTurnBtn.onclick = () => {
 		if (!REPLAY_ENABLED && !endTurnBtn.disabled && isMyTurn()) {
@@ -12862,6 +12884,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			sendToHost({ type: 'action_end_turn' });
 		}
 	};
+	endTurnBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	endTurnBtn.tabIndex = -1; //remove it from the tab order
 	
 	undoBtn.onclick = () => {
 		if (!REPLAY_ENABLED && isMyTurn()) {
@@ -12869,6 +12893,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 			updateGameUI();
 		}
 	};
+	undoBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	undoBtn.tabIndex = -1; //remove it from the tab order
 	
 	sellUnitBtn.onclick = () => {
 		if (!REPLAY_ENABLED && isMyTurn()) {
@@ -12886,6 +12912,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 		}
 	};
+	sellUnitBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	sellUnitBtn.tabIndex = -1; //remove it from the tab order
+	
 	
 	initPeerJS();
 	
