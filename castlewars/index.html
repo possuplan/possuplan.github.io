@@ -8918,7 +8918,7 @@ function ai_find_best_move(player) {
 let AI_DELAY_START = 50;
 let AI_DELAY_MOVE = 50;
 
-
+let batchActionsAI = [];
 
 // *** NEW FUNCTION ***
 // This function recursively calls itself with a delay to execute AI moves sequentially.
@@ -8943,6 +8943,8 @@ function executeAIMoveSequentially(player) {
 		
 		// If a move is found, execute it
 		// handleClientData is correct, as the host is simulating the AI's action
+		
+		//batchActionsAI.push(bestMove); // wont work since the AI modifies the game during moves, so it should update the map etc instantly after making the move. perhaps make a silent move handler that just updates the data...
 		handleClientData(player.id, bestMove);
 		
 		// Schedule the next move check after a delay
@@ -8953,6 +8955,13 @@ function executeAIMoveSequentially(player) {
 	} else {
 		// No more moves found, end the turn
 		console.log(`AI ${player.name} has no more moves. Ending turn.`);
+		
+		//batchActionsAI.push({ type: "action_end_turn" });
+		//handleClientData(player.id, { 
+		//	type: 'multiple_actions', 
+		//	actions: batchActionsAI,
+		//});
+		
 		handleClientData(player.id, { type: "action_end_turn" });
 	}
 }
@@ -8975,6 +8984,7 @@ function checkForAITurn(){
 		// Start the sequential move execution
 		// Add a small initial delay to allow the "turn changed" message to settle
 		setTimeout(() => {
+			batchActionsAI = [];
 			executeAIMoveSequentially(currentPlayer);
 		}, AI_DELAY_START); // Small delay before first move
 	}
@@ -8987,6 +8997,7 @@ function processEndOfDay(){
 	console.warn("Day ended, new day starts. process trees, grasses etc.");
 	
 
+	let batchActions = [];
 	
 	// process:
 	// - crosses turning into grass.
@@ -9020,7 +9031,7 @@ function processEndOfDay(){
 						tile.animationFinished = 0; // ensure no animation will be visible.
 						tile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 						
-						broadcast({ 
+						batchActions.push({ 
 							type: 'object_changed', 
 							q: tile.q, 
 							r: tile.r, 
@@ -9067,7 +9078,7 @@ function processEndOfDay(){
 			nTile.animationFinished = 0; // ensure no animation will be visible.
 			nTile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 			
-			broadcast({ 
+			batchActions.push({ 
 				type: 'object_changed', 
 				q: nTile.q, 
 				r: nTile.r, 
@@ -9137,7 +9148,7 @@ function processEndOfDay(){
 			tile.animationFinished = 0; // ensure no animation will be visible.
 			tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 			
-			broadcast({ 
+			batchActions.push({ 
 				type: 'object_changed', 
 				q: tile.q, 
 				r: tile.r, 
@@ -9154,12 +9165,13 @@ function processEndOfDay(){
 	console.log("processEndOfDay done, save game:");
 	
 	
-	// Save this game state (host only)
-	// the client doesnt have tile.savings etc in their gamestate, 
-	//   so im not sure if it should be saved for clients... 
-	//    although, it doesnt matter for replaying.
-	//gameState.networkHistory = NETWORK_HISTORY;
-	//saveGameToDB(gameState);
+	if(batchActions.length > 0){
+		broadcast({ 
+			type: 'multiple_actions', 
+			actions: batchActions,
+		});
+	}
+	
 }
 
 
@@ -9170,6 +9182,9 @@ function executeEndTurn(playerId) {
 	const pools = findEconomyPools(playerId);
 	
 	console.log("executeEndTurn");
+	
+	// send actions in one array to speed up messages and avoiding clutter.
+	let batchActions = [];
 	
 	let allSoldiersKilled = [];
 	
@@ -9191,6 +9206,8 @@ function executeEndTurn(playerId) {
 	
 	if(allSoldiersKilled.length > 0){
 
+
+		
 		// --- 2. Kill soldiers & turn to crosses ---
 		for (const soldier of allSoldiersKilled) {
 			const tile = getTileAt(soldier.q, soldier.r);
@@ -9203,6 +9220,20 @@ function executeEndTurn(playerId) {
 				tile.animationFinished = 0; // ensure no animation will be visible.
 				tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 				
+				batchActions.push({ 
+					type: 'object_changed', 
+					q: soldier.q, 
+					r: soldier.r, 
+					object: tile.object,
+					animationStyle: tile.animationStyle,
+				});
+				batchActions.push({ 
+					type: 'unit_removed', 
+					unitId: soldier.id,
+				});
+				
+				
+				/*
 				broadcast({ 
 					type: 'object_changed', 
 					q: soldier.q, 
@@ -9210,13 +9241,17 @@ function executeEndTurn(playerId) {
 					object: tile.object,
 					animationStyle: tile.animationStyle,
 				});
+				*/
 			}
+
 			//gameState.units = gameState.units.filter(u => u.id !== soldier.id);
-			broadcast({ type: 'unit_removed', unitId: soldier.id });
+			//broadcast({ type: 'unit_removed', unitId: soldier.id });
 		}
 		
+	
+		
 		// send sound for died soldiers just once:
-		broadcast({ type: 'sound', name: "diedByStarving", q:0, r:0, playerId: 0, action: "executeEndTurn"});
+		batchActions.push({ type: 'sound', name: "diedByStarving", q:0, r:0, playerId: 0, action: "executeEndTurn"});
 	}
 	
 
@@ -9227,11 +9262,12 @@ function executeEndTurn(playerId) {
 		if (u.ownerId === playerId) {
 			if (u.hasMoved) {
 				u.hasMoved = 0;
-				broadcast({ type: 'unit_moved', unitId: u.id, q: u.q, r: u.r, hasMoved: 0 });
+				batchActions.push({ type: 'unit_move_reset', unitId: u.id, hasMoved: 0 });
 			}
 		}
 	});
 	
+
 	// --- 4. Grow Grass / Spawn Trees (random events) ---
 	// TODO: Add grass spreading and tree spawning logic
 	
@@ -9251,11 +9287,18 @@ function executeEndTurn(playerId) {
 	
 	currentTurnActions = []; // Clear undo stack
 	
-	broadcast({ 
+	batchActions.push({ 
 		type: 'turn_changed', 
 		currentPlayerIndex: gameState.turn.currentPlayerIndex, 
 		turnNumber: gameState.turn.turnNumber 
 	});
+	
+	if(batchActions.length > 0){
+		broadcast({ 
+			type: 'multiple_actions', 
+			actions: batchActions,
+		});
+	}
 	
 	
 	
@@ -9479,6 +9522,18 @@ function handleHostData(data) {
 	//console.log("handleHostData: data.type = "+data.type);
 	
 	switch (data.type) {
+		case 'multiple_actions': {
+			console.warn("multiple_actions received: ");
+			console.warn(data.actions);
+			// handle batch of actions in one run, so there is less individual messages sent to clients.
+			if(data.actions !== undefined && data.actions.length > 0){
+				for(let i = 0; i < data.actions.length; i++){
+					handleHostData(data.actions[i]);
+				}
+			}
+			return; // dont process anything after.
+		}
+		break;
 		case 'game_start': {
 			REPLAY_ENABLED = 0;
 			
@@ -9488,7 +9543,7 @@ function handleHostData(data) {
 			gameState = data.state;
 			
 			// save initial gameState for replaying the games later.
-			INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
+			INITIAL_STATE = deepClone(gameState);
 	
 			showPage('game');
 			updateGameUI();
@@ -9668,6 +9723,17 @@ function handleHostData(data) {
 			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
 			needsUIUpdate = true;
 			updateHighlights();
+						
+			//updateLocalPoolsInfo();
+		}
+		break;
+		case 'unit_move_reset': {
+			const unit = gameState.units.find(u => u.id === data.unitId);
+			if (unit) {
+				unit.hasMoved = data.hasMoved;
+			}
+			needsUIUpdate = true;
+			updateHighlights();
 			
 			//updateLocalPoolsInfo();
 		}
@@ -9809,6 +9875,20 @@ function handleClientData(peerId, data) {
 	//console.log("handleClientData 2");
 	
 	switch (data.type) {
+		/*
+		case 'multiple_actions': {
+			console.warn("handleClientData: multiple_actions triggered: ");
+			console.warn(data.actions);
+			// handle batch of actions in one run, so there is less individual messages sent to clients.
+			if(data.actions !== undefined && data.actions.length > 0){
+				for(let i = 0; i < data.actions.length; i++){
+					handleClientData(peerId, data.actions[i]);
+				}
+			}
+			return; // dont process anything after.
+		}
+		break;
+		*/
 		case 'join':
 			player.name = data.name;
 			
@@ -10670,8 +10750,8 @@ async function saveGameToDB(gameState) {
 
 	let stateToSave = {
 		// Create a deep clones to store, in case the objects gets modified while transaction:
-		gameState: JSON.parse(JSON.stringify(gameState)),
-		networkHistory: JSON.parse(JSON.stringify(NETWORK_HISTORY)),
+		gameState: deepClone(gameState),
+		networkHistory: deepClone(NETWORK_HISTORY),
 		
 		// roomName key is used for db key:
 		roomName: "play-"+gameState.settings.currentFormattedDate, // "20251112_170804", initialized at app launch only.
@@ -11012,8 +11092,8 @@ function loadMap(category, index) {
 function setLoadedMapAndApplyScale(){
 	//loadedmap = customMaps[loadedMapCategory][loadedMapIndex];
 	
-	loadedmap = structuredClone(customMaps[loadedMapCategory][loadedMapIndex]);
-	console.warn("loadedmap");
+	loadedmap = deepClone(customMaps[loadedMapCategory][loadedMapIndex]);
+	console.warn("loadedmap:");
 	console.warn(loadedmap);
 	
 	cropMap();
@@ -11473,7 +11553,8 @@ function cropMap(){
 
 function scaleMap(){
 	let scale = getMapScale();
-	console.log(loadedmap);
+	//console.log(loadedmap);
+	
 	if(scale == 1){
 		return; // dont scale if nothing changes.
 	}
@@ -11947,6 +12028,14 @@ async function replayHistory(history) {
 }
 
 
+function deepClone(obj) {
+	if (typeof structuredClone === "function") {
+		return structuredClone(obj);
+	}
+	return JSON.parse(JSON.stringify(obj)); // fallback (with JSON limitations)
+}
+
+
 
 async function startReplay(){
 	
@@ -11958,7 +12047,7 @@ async function startReplay(){
 	if (loadedGameStateInitial) {
 		
 		console.warn("Starting from loaded state.");
-		let lobbyPlayers = [];//JSON.parse(JSON.stringify(gameState.players));
+		let lobbyPlayers = [];//deepClone(gameState.players);
 		gameState = loadedGameStateInitial;
 		console.warn("gameState.settings");
 		console.warn(gameState);
@@ -12055,7 +12144,7 @@ async function startReplay(){
 		currentTurnActions = [];
 		
 		// save initial gameState for replaying the games later.
-		//INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
+		//INITIAL_STATE = deepClone(gameState);
 
 		//////////////////////////
 		// find max id for units so new units will get correct new ID:
@@ -12224,7 +12313,7 @@ function startGame() {
 	currentTurnActions = [];
 	
 	// save initial gameState for replaying the games later.
-	//INITIAL_STATE = JSON.parse(JSON.stringify(gameState));
+	//INITIAL_STATE = deepClone(gameState);
 
 	//////////////////////////
 	// find max id for units so new units will get correct new ID:
@@ -12396,9 +12485,9 @@ function loadSavedGame(roomKey){
 			if (state) {
 				// state = { initialData: initialData, playData: playData }
 				
-				loadedGameState = JSON.parse(JSON.stringify(state.playData.gameState));
-				loadedGameStateInitial = JSON.parse(JSON.stringify(state.initialData.initialState));
-				NETWORK_HISTORY = JSON.parse(JSON.stringify(state.playData.networkHistory));
+				loadedGameState = deepClone(state.playData.gameState);
+				loadedGameStateInitial = deepClone(state.initialData.initialState);
+				NETWORK_HISTORY = deepClone(state.playData.networkHistory);
 				console.warn("old sessionid = "+SESSION_ID+", new sessionid = "+state.playData.SESSION_ID);
 				SESSION_ID = state.playData.SESSION_ID; // copy the id so you can overwrite the save.
 				
