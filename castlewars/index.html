@@ -6466,6 +6466,9 @@ function isBuildPopupOpen(){
 function handleTouchStart(e) {
 	//console.log("handleTouchStart");
 	
+	// unfocus chatinput:
+	chatInput.blur();
+	
     const touch = e.touches[0];
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
 
@@ -6588,10 +6591,6 @@ function handleTouchEnd(e) {
 	
 	if (e.touches.length === 0 && touchStartPos && !isDragging) {
 		// This was a tap
-		
-		// unfocus chatinput:
-		chatInput.blur();
-		// handle click:
 		handleHexClick(pixelToAxial(touchStartPos.x, touchStartPos.y));
 	}
 	
