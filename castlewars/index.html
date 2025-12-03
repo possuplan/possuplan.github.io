@@ -6570,7 +6570,9 @@ function handleTouchMove(e) {
 		);
 		const deltaAngle = newAngle - initialAngle;
 
-		viewport.rotation += deltaAngle;  // rotate viewport
+
+		//viewport.rotation += deltaAngle;  // rotate viewport
+		rotateAroundScreenCenter(deltaAngle);
 		initialAngle = newAngle;          // update for next frame
 	}
 }
