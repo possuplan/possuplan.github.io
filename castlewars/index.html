@@ -210,6 +210,10 @@ button {
 	background-size: contain;
 }
 
+.largefont {
+	font-size:30px;
+}
+
 
 
 
@@ -1263,10 +1267,13 @@ input.disabled {
 			
 				<div class="input-group">
 					<div style="flex: 1;">
-						<button id="rotate-left" class="gamebutton" title="Rotate Anticlockwise">↺</button>
+						<button id="rotate-left" class="gamebutton largefont" title="Rotate Anticlockwise">↺</button>
 					</div>
 					<div style="flex: 1;">
-						<button id="rotate-right" class="gamebutton" title="Rotate Clockwise">↻</button>
+						<button id="rotate-reset" class="gamebutton largefont" title="Reset Rotation">⌖</button>
+					</div>
+					<div style="flex: 1;">
+						<button id="rotate-right" class="gamebutton largefont" title="Rotate Clockwise">↻</button>
 					</div>
 				</div>
 			</div>
@@ -3175,6 +3182,8 @@ const quitGameBtn = document.getElementById('quit-game-btn');
 
 const rotateLeftBtn = document.getElementById('rotate-left');
 const rotateRightBtn = document.getElementById('rotate-right');
+const rotateResetBtn = document.getElementById('rotate-reset');
+
 
 
 const topFloatUi = document.getElementById('top-float-ui');
@@ -12659,9 +12668,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	rotateLeftBtn.onclick = () => {
 		rotateAroundScreenCenter(-deg2rad(30/4));
 	};
+	rotateResetBtn.onclick = () => {
+		rotateAroundScreenCenter(-viewport.rotation);
+	};
 	rotateRightBtn.onclick = () => {
 		rotateAroundScreenCenter(deg2rad(30/4));
 	};
+	
+	
 
 	quitGameBtn.onclick = () => {
 		restartGame();
