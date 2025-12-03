@@ -6453,6 +6453,9 @@ let touchStartPos = null;
 let lastTouch = null;
 let lastDist = null; // for pinch-zoom
 
+let initialAngle = 0;
+let isRotating = false;
+
 
 
 function isBuildPopupOpen(){
@@ -6501,6 +6504,15 @@ function handleTouchStart(e) {
             e.touches[0].clientX - e.touches[1].clientX,
             e.touches[0].clientY - e.touches[1].clientY
         );
+		
+		// rotation:
+		const [t1, t2] = e.touches;
+		initialAngle = Math.atan2(
+			t2.clientY - t1.clientY, 
+			t2.clientX - t1.clientX
+		);
+		isRotating = true;
+		
     }
 }
 
@@ -6546,6 +6558,21 @@ function handleTouchMove(e) {
 
 		lastDist = newDist;
 	}
+	
+	if (!isRotating || e.touches.length !== 2){
+	   
+	}else{
+
+		const [t1, t2] = e.touches;
+		const newAngle = Math.atan2(
+			t2.clientY - t1.clientY, 
+			t2.clientX - t1.clientX
+		);
+		const deltaAngle = newAngle - initialAngle;
+
+		viewport.rotation += deltaAngle;  // rotate viewport
+		initialAngle = newAngle;          // update for next frame
+	}
 }
 
 function handleTouchEnd(e) {
@@ -6559,6 +6586,8 @@ function handleTouchEnd(e) {
 	
 	if (e.touches.length < 2) {
 		lastDist = null; // Stop zooming
+		
+		isRotating = false;
 	}
 	if (e.touches.length < 1) {
 		isDragging = false; // Stop dragging
@@ -12601,6 +12630,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	canvas.addEventListener('mousemove', handleCanvasMouseMove);
 	canvas.addEventListener('mouseup', handleCanvasMouseUp);
 	canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+	
 	canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
 	canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 	
@@ -12680,6 +12710,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 					case "/reverse":
 						reverse = !reverse;
 					break;
+					case "/drawtextures":
+						drawtextures = !drawtextures;
+					break;
+					
+					
 				}
 
 				
