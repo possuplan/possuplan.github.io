@@ -2278,7 +2278,7 @@ function addNetworkHistory(data){
 	// add timestamp for when the action was received, will make replays more realistic feeling.
 	NETWORK_HISTORY.push({
 		...data, // {type: 'tile_changed', ...} etc.
-		_T: Math.floor(performance.now()-GAME_START_TIME), // milliseconds from start of game.
+		_T: msNowFloor()-GAME_START_TIME, // milliseconds from start of game.
 	});
 }
 
@@ -2394,10 +2394,7 @@ let gameState = {
 		roomName: 'default-room'
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
-	// associave array to get playerIndex from peerId, and the player data linking to players array if needed for quick access.
-	playersInfo: {
-		// peerId: {playerIndex: playerIndex, player: player}
-	},
+
 	map: { // Using axial coordinates (q, r)
 		// tiles[`${q},${r}`] = { type: 'land'/'water', ownerId: null, object: 'tree'/'grass'/'dead'/null, savings: 0 }
 		// these are initialized when map is generated:
@@ -4416,7 +4413,7 @@ function drawObject(ctx, x, y, objectName, tile = null){
 				animate = false;
 			}
 			if(tile.creationTime && animate){
-				let timeDiff = Date.now() - tile.creationTime;
+				let timeDiff = msNowFloor() - tile.creationTime;
 				let animationEnded = false;
 				
 				// 1 = appear from bottom to up
@@ -5228,7 +5225,7 @@ function drawUnitsByType(unitType){
 				animate = false;
 			}
 			if(unit.creationTime && animate){
-				let timeDiff = Date.now() - unit.creationTime;
+				let timeDiff = msNowFloor() - unit.creationTime;
 				let animationEnded = false;
 				
 				if(unit.animationStyle == 1){
@@ -6124,7 +6121,7 @@ function clearShieldingUnitsTips(){
 function drawProtectMessages(){
 	// draw "stop" text on top of units that were shielding a move or placement.
 	if(shieldingUnits){
-		if(performance.now()-shieldingStartTime < 1000){
+		if(msNowFloor()-shieldingStartTime < 1000){
 			for(let i = 0; i < shieldingUnits.length; i++){
 				let shieldingUnit = shieldingUnits[i];
 				//const { x, y } = axialToPixel(shieldingUnit.q, shieldingUnit.r);
@@ -7118,7 +7115,7 @@ function handleHexClick(hex) {
 			} else {
 				if(buildCheck.reason && buildCheck.reason === "low_level"){
 					shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, getUnitLevel(placingUnit.type));
-					shieldingStartTime = performance.now();
+					shieldingStartTime = msNowFloor();
 				}
 				playSound('protect');
 			}
@@ -7172,7 +7169,7 @@ function handleHexClick(hex) {
 						const isInvalidMove = invalidMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
 						if(isInvalidMove){
 							shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, selectedUnit.level);
-							shieldingStartTime = performance.now();
+							shieldingStartTime = msNowFloor();
 							sellUnitBtn.disabled = false;
 							console.log("clicked hex:");
 							console.log(hex);
@@ -9066,6 +9063,11 @@ function checkForAITurn(){
 	}
 }
 
+// return only milliseconds from performance timer.
+function msNowFloor(){
+	return Math.floor(performance.now());
+}
+
 
 
 // this is host function.
@@ -9103,7 +9105,7 @@ function processEndOfDay(){
 						tile.actionTurnNumber = gameState.turn.turnNumber;
 						
 						// add animation info for host:
-						tile.creationTime = Date.now(); 
+						tile.creationTime = msNowFloor(); 
 						tile.animationFinished = 0; // ensure no animation will be visible.
 						tile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 						
@@ -9150,7 +9152,7 @@ function processEndOfDay(){
 			nTile.actionTurnNumber = gameState.turn.turnNumber;
 			
 			// add animation info for host:
-			nTile.creationTime = Date.now(); 
+			nTile.creationTime = msNowFloor(); 
 			nTile.animationFinished = 0; // ensure no animation will be visible.
 			nTile.animationStyle = 2; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 			
@@ -9220,7 +9222,7 @@ function processEndOfDay(){
 			tile.actionTurnNumber = gameState.turn.turnNumber;
 			
 			// set animation info for host:
-			tile.creationTime = Date.now(); 
+			tile.creationTime = msNowFloor(); 
 			tile.animationFinished = 0; // ensure no animation will be visible.
 			tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 			
@@ -9292,7 +9294,7 @@ function executeEndTurn(playerId) {
 				tile.actionTurnNumber = gameState.turn.turnNumber;
 				
 				// add animation info for host:
-				tile.creationTime = Date.now(); 
+				tile.creationTime = msNowFloor(); 
 				tile.animationFinished = 0; // ensure no animation will be visible.
 				tile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
 				
@@ -9407,12 +9409,14 @@ function spectatorUiMode(){
 
 function addUnit(unit){
 	// wasSpawned true if spawned at game load.
+	
+	// set times for host:
 	if(unit.internalType === 'castle'){
-		unit.creationTime = Date.now(); 
+		unit.creationTime = msNowFloor(); 
 		unit.animationFinished = 0; // ensure no animation will be visible.
 		unit.animationStyle = 1; // 1 = appear from bottom to up, 0 = no animation.
 	}else if(unit.internalType === 'soldier'){
-		unit.creationTime = Date.now(); 
+		unit.creationTime = msNowFloor(); 
 		unit.animationFinished = 0; // ensure no animation will be visible.
 		unit.animationStyle = 2; // 2 = appear from zero size to normal size, 0 = no animation.
 		if(!unit.name){
@@ -9613,7 +9617,7 @@ function handleHostData(data) {
 		case 'game_start': {
 			REPLAY_ENABLED = 0;
 			
-			GAME_START_TIME = performance.now();
+			GAME_START_TIME = msNowFloor();
 			
 			markDirty();
 			gameState = data.state;
@@ -9638,7 +9642,7 @@ function handleHostData(data) {
 		case 'replay_start': {
 			REPLAY_ENABLED = 1;
 			
-			GAME_START_TIME = performance.now();
+			GAME_START_TIME = msNowFloor();
 			
 			markDirty();
 			gameState = data.state;
@@ -9680,8 +9684,7 @@ function handleHostData(data) {
 		case 'lobby_update': {
 			gameState.settings = data.settings;
 			gameState.players = data.players;
-			rebuildPlayersInfo();
-			//gameState.playersInfo = data.playersInfo;
+
 			gameState.map = data.map;
 			lobbyLoadedMapImg.src = data.map.imageData;
 			updateLobbyUI();
@@ -9775,7 +9778,7 @@ function handleHostData(data) {
 				
 				if(data.animationStyle !== undefined){
 					// initialize client side animation info:
-					tile.creationTime = new Date();
+					tile.creationTime = msNowFloor();
 					tile.animationFinished = 0;
 					tile.animationStyle = data.animationStyle;
 				}
@@ -10045,12 +10048,6 @@ function addPlayer(player){
 	player.playerIndex = gameState.players.length;
 	player.isDead = false; // reset dead state.
 	gameState.players.push(player);
-
-	// used to get playerIndex from peerId:
-	gameState.playersInfo[player.id] = {
-		playerIndex: player.playerIndex,
-		//player: player,
-	};
 }
 
 
@@ -10058,21 +10055,9 @@ function addPlayer(player){
 // if a player needs to be kicked during game, then he should be set as spectator.
 function removePlayer(peerId){
 	gameState.players = gameState.players.filter(player => player.id !== peerId);
-	rebuildPlayersInfo();
 }
 
 
-// make sure the indexes match the players array if players were removed from the array.
-function rebuildPlayersInfo(){
-	gameState.playersInfo = {};
-	for(let i = 0; i < gameState.players.length; i++){
-		let player = gameState.players[i];
-		gameState.playersInfo[player.id] = {
-			playerIndex: i,
-			//player: player,
-		};
-	}
-}
 
 
 function newPeer(myPeerId = null){
@@ -10162,7 +10147,6 @@ function setupConnection(conn) {
 					type: 'lobby_update', 
 					settings: gameState.settings, 
 					players: gameState.players,
-					playersInfo: gameState.playersInfo,
 					map: gameState.map,
 				});
 			}
@@ -10328,8 +10312,7 @@ function hostGame() {
 			
 			// Reset player list and add host
 			gameState.players = []; 
-			gameState.playersInfo = {}; // reset links by peerId->playerIndex
-			//gameState.players.push(localPlayer);
+
 			addPlayer(localPlayer);
 			
 			
@@ -10582,7 +10565,6 @@ function broadcastLobbyState(settings = gameState.settings, players = gameState.
 		type: 'lobby_update',
 		settings: gameState.settings,
 		players: gameState.players,
-		playersInfo: gameState.playersInfo,
 		map: gameState.map,
 	});
 }
@@ -12223,7 +12205,6 @@ async function startReplay(){
 			}
 		}
 		gameState.players = newPlayerList;
-		rebuildPlayersInfo();
 		*/
 
 
@@ -12333,7 +12314,6 @@ function startGame() {
 			}
 		}
 		gameState.players = newPlayerList;
-		rebuildPlayersInfo();
 		
 	} else {
 		
@@ -12349,7 +12329,6 @@ function startGame() {
 		
 		// Filter out players without connection from play (unless they are host or ai):
 		gameState.players = gameState.players.filter(p => p.id === localPlayer.id || connections.has(p.id) || p.isAI);
-		rebuildPlayersInfo();
 		
 
 		// list playing players for colors: (not sure what is this for)
