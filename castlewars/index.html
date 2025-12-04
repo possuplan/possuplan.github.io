@@ -82,28 +82,6 @@ debugMode(DEBUGMODE);
 
 
 
-
-/*
-// NOTE: this will forget the original line number... sigh.
-
-const originalConsoleLog = console.log;
-const originalConsoleWarn = console.warn;
-
-// Override console.log
-console.log = function (...args) {
-	if(DEBUGMODE){
-		originalConsoleLog.apply(console, args); // preserves call site
-	}
-};
-// Override console.warn
-console.warn = function (...args) {
-	if(DEBUGMODE){
-		originalConsoleWarn.apply(console, args); // preserves call site
-	}
-};*/
-
-
-
 </script>
 
 
@@ -310,8 +288,8 @@ label {
 	cursor: pointer;
 }
 .ai-player-item:hover::after {
-    content: " (kick)";
-    color: white;
+	content: " (kick)";
+	color: white;
 }
 
 
@@ -454,7 +432,7 @@ label {
 	min-width: 0;
 	height:100%;
 	min-height:0;
-    line-height: 24px;
+	line-height: 24px;
 }
 
 
@@ -581,7 +559,7 @@ label {
 
 	border-bottom-right-radius: 8px;
 
-    padding: 0 0 0 4px;
+	padding: 0 0 0 4px;
 }
 
 #chat-messages {
@@ -1633,12 +1611,12 @@ function updateLobbyPreviewTile(color){
 
 
 hostCustomColorPicker.addEventListener('input', (e) => {
-    console.log("Live color:", e.target.value);
-    updateHostPreviewTile(e.target.value);
+	console.log("Live color:", e.target.value);
+	updateHostPreviewTile(e.target.value);
 });
 lobbyCustomColorPicker.addEventListener('input', (e) => {
-    console.log("Live color:", e.target.value);
-    updateLobbyPreviewTile(e.target.value);
+	console.log("Live color:", e.target.value);
+	updateLobbyPreviewTile(e.target.value);
 });
 
 
@@ -1833,7 +1811,7 @@ let zoomMipLevel = 0;
 
 
 function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function hexToHSL(hex) {
@@ -2087,40 +2065,40 @@ function poissonDiskSampler(width, height, radii, rand) {
 	if (!Array.isArray(radii)) {
 		radii = [radii];
 	}
-    const k = 30; // attempts per active point
-    const minRadius = Math.min(...radii);
-    const cellSize = minRadius / Math.SQRT2;
-    const gridWidth = Math.ceil(width / cellSize);
-    const gridHeight = Math.ceil(height / cellSize);
+	const k = 30; // attempts per active point
+	const minRadius = Math.min(...radii);
+	const cellSize = minRadius / Math.SQRT2;
+	const gridWidth = Math.ceil(width / cellSize);
+	const gridHeight = Math.ceil(height / cellSize);
 
-    const grid = Array(gridWidth * gridHeight).fill(null);
-    const active = [];
-    const samples = [];
+	const grid = Array(gridWidth * gridHeight).fill(null);
+	const active = [];
+	const samples = [];
 
-    function insert(p) {
-        samples.push(p);
-        const gx = Math.floor(p.x / cellSize);
-        const gy = Math.floor(p.y / cellSize);
-        grid[gy * gridWidth + gx] = p;
-        active.push(p);
-    }
+	function insert(p) {
+		samples.push(p);
+		const gx = Math.floor(p.x / cellSize);
+		const gy = Math.floor(p.y / cellSize);
+		grid[gy * gridWidth + gx] = p;
+		active.push(p);
+	}
 
-    function distanceOk(p, radius) {
-        const gx = Math.floor(p.x / cellSize);
-        const gy = Math.floor(p.y / cellSize);
-        for (let i = -2; i <= 2; i++) {
-            for (let j = -2; j <= 2; j++) {
-                const nx = gx + i, ny = gy + j;
-                if (nx < 0 || ny < 0 || nx >= gridWidth || ny >= gridHeight) continue;
-                const neighbor = grid[ny * gridWidth + nx];
-                if (!neighbor) continue;
-                const dx = neighbor.x - p.x;
-                const dy = neighbor.y - p.y;
-                if (dx*dx + dy*dy < radius*radius) return false;
-            }
-        }
-        return true;
-    }
+	function distanceOk(p, radius) {
+		const gx = Math.floor(p.x / cellSize);
+		const gy = Math.floor(p.y / cellSize);
+		for (let i = -2; i <= 2; i++) {
+			for (let j = -2; j <= 2; j++) {
+				const nx = gx + i, ny = gy + j;
+				if (nx < 0 || ny < 0 || nx >= gridWidth || ny >= gridHeight) continue;
+				const neighbor = grid[ny * gridWidth + nx];
+				if (!neighbor) continue;
+				const dx = neighbor.x - p.x;
+				const dy = neighbor.y - p.y;
+				if (dx*dx + dy*dy < radius*radius) return false;
+			}
+		}
+		return true;
+	}
 	function pickRadius(radii, rand) {
 		// simple example: weight smaller radius higher
 		const weights = radii.map(r => 1/r); 
@@ -2133,32 +2111,32 @@ function poissonDiskSampler(width, height, radii, rand) {
 		return radii[radii.length-1];
 	}
 
-    // first point
-    insert({x: rand() * width, y: rand() * height, radius: radii[Math.floor(rand() * radii.length)]});
+	// first point
+	insert({x: rand() * width, y: rand() * height, radius: radii[Math.floor(rand() * radii.length)]});
 
-    while (active.length) {
-        const idx = Math.floor(rand() * active.length);
-        const point = active[idx];
-        let found = false;
+	while (active.length) {
+		const idx = Math.floor(rand() * active.length);
+		const point = active[idx];
+		let found = false;
 
-        for (let i = 0; i < k; i++) {
-            const radius = pickRadius(radii, rand)*0.8;//radii[Math.floor(rand() * radii.length)];
-            const a = 2 * Math.PI * rand();
-            const r = radius * (1 + rand());
-            const p = {x: point.x + r * Math.cos(a), y: point.y + r * Math.sin(a), radius};
+		for (let i = 0; i < k; i++) {
+			const radius = pickRadius(radii, rand)*0.8;//radii[Math.floor(rand() * radii.length)];
+			const a = 2 * Math.PI * rand();
+			const r = radius * (1 + rand());
+			const p = {x: point.x + r * Math.cos(a), y: point.y + r * Math.sin(a), radius};
 
-            if (p.x < 0 || p.y < 0 || p.x >= width || p.y >= height) continue;
-            if (distanceOk(p, radius)) {
-                insert(p);
-                found = true;
-                break;
-            }
-        }
+			if (p.x < 0 || p.y < 0 || p.x >= width || p.y >= height) continue;
+			if (distanceOk(p, radius)) {
+				insert(p);
+				found = true;
+				break;
+			}
+		}
 
-        if (!found) active.splice(idx, 1);
-    }
+		if (!found) active.splice(idx, 1);
+	}
 
-    return samples;
+	return samples;
 }
 
 
@@ -2167,68 +2145,68 @@ function poissonDiskSampler1(width, height, radii, rand) {
 	if (!Array.isArray(radii)) {
 		radii = [radii];
 	}
-	
-    const k = 30; // max attempts per active point
-    //const cellSize = radius / Math.SQRT2;
-	
+
+	const k = 30; // max attempts per active point
+	//const cellSize = radius / Math.SQRT2;
+
 	const cellSize = Math.min(...radii)/Math.SQRT2;
 	const radius = radii[Math.floor(rand() * radii.length)];
-	
-    const gridWidth = Math.ceil(width / cellSize);
-    const gridHeight = Math.ceil(height / cellSize);
 
-    const grid = Array(gridWidth * gridHeight).fill(null);
-    const active = [];
-    const samples = [];
+	const gridWidth = Math.ceil(width / cellSize);
+	const gridHeight = Math.ceil(height / cellSize);
 
-    function insert(p) {
-        samples.push(p);
-        const gx = Math.floor(p.x / cellSize);
-        const gy = Math.floor(p.y / cellSize);
-        grid[gy * gridWidth + gx] = p;
-        active.push(p);
-    }
+	const grid = Array(gridWidth * gridHeight).fill(null);
+	const active = [];
+	const samples = [];
 
-    function distanceOk(p) {
-        const gx = Math.floor(p.x / cellSize);
-        const gy = Math.floor(p.y / cellSize);
-        for (let i = -2; i <= 2; i++) {
-            for (let j = -2; j <= 2; j++) {
-                const nx = gx + i, ny = gy + j;
-                if (nx < 0 || ny < 0 || nx >= gridWidth || ny >= gridHeight) continue;
-                const neighbor = grid[ny * gridWidth + nx];
-                if (!neighbor) continue;
-                const dx = neighbor.x - p.x;
-                const dy = neighbor.y - p.y;
-                if (dx*dx + dy*dy < radius*radius) return false;
-            }
-        }
-        return true;
-    }
+	function insert(p) {
+		samples.push(p);
+		const gx = Math.floor(p.x / cellSize);
+		const gy = Math.floor(p.y / cellSize);
+		grid[gy * gridWidth + gx] = p;
+		active.push(p);
+	}
 
-    insert({x: rand()*width, y: rand()*height});
+	function distanceOk(p) {
+		const gx = Math.floor(p.x / cellSize);
+		const gy = Math.floor(p.y / cellSize);
+		for (let i = -2; i <= 2; i++) {
+			for (let j = -2; j <= 2; j++) {
+				const nx = gx + i, ny = gy + j;
+				if (nx < 0 || ny < 0 || nx >= gridWidth || ny >= gridHeight) continue;
+				const neighbor = grid[ny * gridWidth + nx];
+				if (!neighbor) continue;
+				const dx = neighbor.x - p.x;
+				const dy = neighbor.y - p.y;
+				if (dx*dx + dy*dy < radius*radius) return false;
+			}
+		}
+		return true;
+	}
 
-    while (active.length) {
-        const idx = Math.floor(rand() * active.length);
-        const point = active[idx];
-        let found = false;
+	insert({x: rand()*width, y: rand()*height});
 
-        for (let i = 0; i < k; i++) {
-            const a = 2 * Math.PI * rand();
-            const r = radius * (1 + rand());
-            const p = {x: point.x + r * Math.cos(a), y: point.y + r * Math.sin(a)};
-            if (p.x < 0 || p.y < 0 || p.x >= width || p.y >= height) continue;
-            if (distanceOk(p)) {
-                insert(p);
-                found = true;
-                break;
-            }
-        }
+	while (active.length) {
+		const idx = Math.floor(rand() * active.length);
+		const point = active[idx];
+		let found = false;
 
-        if (!found) active.splice(idx, 1);
-    }
+		for (let i = 0; i < k; i++) {
+			const a = 2 * Math.PI * rand();
+			const r = radius * (1 + rand());
+			const p = {x: point.x + r * Math.cos(a), y: point.y + r * Math.sin(a)};
+			if (p.x < 0 || p.y < 0 || p.x >= width || p.y >= height) continue;
+			if (distanceOk(p)) {
+				insert(p);
+				found = true;
+				break;
+			}
+		}
 
-    return samples;
+		if (!found) active.splice(idx, 1);
+	}
+
+	return samples;
 }
 
 
@@ -2702,59 +2680,59 @@ function drawTriangle(ctx, x, y, angle = 0){
 
 
 function drawEdgeTriangle(ctx, x, y, angleDeg) {
-    let scale = 0.45;
-    let h = 76;
-    let w = h / 2;
+	let scale = 0.45;
+	let h = 76;
+	let w = h / 2;
 
-    // Pulse distance along the pointing direction
+	// Pulse distance along the pointing direction
 	// 2 = line width, so it will hit the edge without going outside of it and be cut.
 	// 20 = unit triangle pulse distance.
-    //let pulse = pulseScale(2, 20, PULSE_SPEED);
+	//let pulse = pulseScale(2, 20, PULSE_SPEED);
 	let pulse = 2; // disable for now. 2px distance from edge so the line wont be cut.
 
-    // Convert angle to radians
-    let angleRad = angleDeg * (Math.PI / 180);
+	// Convert angle to radians
+	let angleRad = angleDeg * (Math.PI / 180);
 
-    // Offset x and y by pulse along the angle
-    let offsetX = Math.cos(angleRad) * pulse;
-    let offsetY = Math.sin(angleRad) * pulse;
+	// Offset x and y by pulse along the angle
+	let offsetX = Math.cos(angleRad) * pulse;
+	let offsetY = Math.sin(angleRad) * pulse;
 
-    // Draw the triangle shifted by the pulse
-    drawTriangleAtAngle(ctx, x - offsetX, y - offsetY, h * scale, w * scale, angleDeg);
+	// Draw the triangle shifted by the pulse
+	drawTriangleAtAngle(ctx, x - offsetX, y - offsetY, h * scale, w * scale, angleDeg);
 }
 
 
 
 function drawTriangleAtAngle(ctx, x, y, height, width, angleDeg = 0) {
-    const h2 = height / 2;
-    const angle = angleDeg * (Math.PI / 180);
+	const h2 = height / 2;
+	const angle = angleDeg * (Math.PI / 180);
 
-    // Base triangle pointing RIGHT
-    const points = [
-        { x: 0,       y: 0 },       // tip
-        { x: -width,  y: -h2 },     // top base corner
-        { x: -width,  y:  h2 }      // bottom base corner
-    ];
+	// Base triangle pointing RIGHT
+	const points = [
+		{ x: 0,       y: 0 },       // tip
+		{ x: -width,  y: -h2 },     // top base corner
+		{ x: -width,  y:  h2 }      // bottom base corner
+	];
 
-    const cosA = Math.cos(angle);
-    const sinA = Math.sin(angle);
+	const cosA = Math.cos(angle);
+	const sinA = Math.sin(angle);
 
-    // Rotate & translate points
-    const rotated = points.map(p => ({
-        x: x + (p.x * cosA - p.y * sinA),
-        y: y + (p.x * sinA + p.y * cosA)
-    }));
+	// Rotate & translate points
+	const rotated = points.map(p => ({
+		x: x + (p.x * cosA - p.y * sinA),
+		y: y + (p.x * sinA + p.y * cosA)
+	}));
 
-    ctx.beginPath();
-    ctx.moveTo(rotated[0].x, rotated[0].y);
-    ctx.lineTo(rotated[1].x, rotated[1].y);
-    ctx.lineTo(rotated[2].x, rotated[2].y);
-    ctx.closePath();
+	ctx.beginPath();
+	ctx.moveTo(rotated[0].x, rotated[0].y);
+	ctx.lineTo(rotated[1].x, rotated[1].y);
+	ctx.lineTo(rotated[2].x, rotated[2].y);
+	ctx.closePath();
 
-    ctx.strokeStyle = 'yellow';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.stroke();
+	ctx.strokeStyle = 'yellow';
+	ctx.lineWidth = 2.5;
+	ctx.lineCap = 'round';
+	ctx.stroke();
 }
 
 
@@ -2857,12 +2835,12 @@ function drawPaletteImage(ctx2, bmp, dx = 0, dy = 0) {
 
 
 async function loadImages() {
-    const loadPromises = [];
+	const loadPromises = [];
 
-    for (const [key, obj] of Object.entries(imageAssets)) {
-        const img = new Image();
-        img.src = obj.path;
-        imageCache[key] = img;
+	for (const [key, obj] of Object.entries(imageAssets)) {
+		const img = new Image();
+		img.src = obj.path;
+		imageCache[key] = img;
 
 		if (!obj.isUi) {
 			const promise = new Promise((resolve, reject) => {
@@ -3021,44 +2999,44 @@ async function loadImages() {
 
 			loadPromises.push(promise);
 		}
-    }
+	}
 
-    await Promise.all(loadPromises);
-    console.log("All images, mipmaps, and pattern mipmaps generated");
+	await Promise.all(loadPromises);
+	console.log("All images, mipmaps, and pattern mipmaps generated");
 }
 
 
 async function generateMipmaps(img, levels = 6) {
-    const mipmaps = [];
+	const mipmaps = [];
 
-    // Level 0 = original image as ImageBitmap
-    const baseBitmap = await createImageBitmap(img);
-    mipmaps.push(baseBitmap);
+	// Level 0 = original image as ImageBitmap
+	const baseBitmap = await createImageBitmap(img);
+	mipmaps.push(baseBitmap);
 
-    let width = img.width;
-    let height = img.height;
-    let prev = baseBitmap;
+	let width = img.width;
+	let height = img.height;
+	let prev = baseBitmap;
 
-    // Generate smaller levels using OffscreenCanvas
-    for (let i = 1; i < levels; i++) {
-        width = Math.max(1, Math.floor(width / 2));
-        height = Math.max(1, Math.floor(height / 2));
+	// Generate smaller levels using OffscreenCanvas
+	for (let i = 1; i < levels; i++) {
+		width = Math.max(1, Math.floor(width / 2));
+		height = Math.max(1, Math.floor(height / 2));
 
-        const off = new OffscreenCanvas(width, height);
-        const ctx = off.getContext('2d');
+		const off = new OffscreenCanvas(width, height);
+		const ctx = off.getContext('2d');
 
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(prev, 0, 0, width, height);
+		ctx.imageSmoothingEnabled = true;
+		ctx.imageSmoothingQuality = 'high';
+		ctx.drawImage(prev, 0, 0, width, height);
 
-        // Convert the offscreen result into an ImageBitmap (GPU-friendly)
-        const bitmap = await createImageBitmap(off);
-        mipmaps.push(bitmap);
+		// Convert the offscreen result into an ImageBitmap (GPU-friendly)
+		const bitmap = await createImageBitmap(off);
+		mipmaps.push(bitmap);
 
-        prev = bitmap;
-    }
+		prev = bitmap;
+	}
 
-    return mipmaps;
+	return mipmaps;
 }
 
 
@@ -3069,9 +3047,9 @@ async function generateMipmaps(img, levels = 6) {
 
 
 function getMipmapForZoom(imgObj, miplevel = -1) {
-    if (!imgObj.mipmaps) return imgObj.image;
+	if (!imgObj.mipmaps) return imgObj.image;
 	if(miplevel == -1) miplevel = zoomMipLevel;
-    return imgObj.mipmaps[miplevel];
+	return imgObj.mipmaps[miplevel];
 }
 
 
@@ -3294,13 +3272,13 @@ function randomPlayerName() {
 }
 
 function getRandomString(length) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        const randomIndex = Math.floor(randomFunc() * chars.length);
-        result += chars[randomIndex];
-    }
-    return result;
+	const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	let result = '';
+	for (let i = 0; i < length; i++) {
+		const randomIndex = Math.floor(randomFunc() * chars.length);
+		result += chars[randomIndex];
+	}
+	return result;
 }
 
 
@@ -3311,24 +3289,24 @@ const addAiBtn = document.getElementById('add-ai-btn');
 let ai_counter = 1;
 
 addAiBtn.addEventListener('click', () => {
-    if (!localPlayer.isHost) return;
+	if (!localPlayer.isHost) return;
 
 	let randomStr = getUID(5); // add short random id so the total length is 10 at minimum.
-    const aiPlayer = {
-        id: `AI-${ai_counter}-${randomStr}`,
-        name: `AI-${ai_counter}`,
+	const aiPlayer = {
+		id: `AI-${ai_counter}-${randomStr}`,
+		name: `AI-${ai_counter}`,
 		color: getNextFreeColor(),
 		textColor: getNextFreeTextColor(),
 		isSpectator: false,
 		isAI: true,
 		isDead: false,
-    };
-	
-    //gameState.players.push(aiPlayer);
-	addPlayer(aiPlayer);
-    ai_counter++;
+	};
 
-    // Update the UI for the host and broadcast the new state to all clients
+	//gameState.players.push(aiPlayer);
+	addPlayer(aiPlayer);
+	ai_counter++;
+
+	// Update the UI for the host and broadcast the new state to all clients
 	broadcastLobbyState();
 });
 
@@ -3339,37 +3317,29 @@ addAiBtn.addEventListener('click', () => {
 // =================================================================
 
 function centerTo(q, r) {
-    const centerX = axialToPixelX(q, r);
-    const centerY = axialToPixelY(q, r);
+	const centerX = axialToPixelX(q, r);
+	const centerY = axialToPixelY(q, r);
 
-    const zoom = viewport.zoom;
-    const rot  = viewport.rotation;
+	const zoom = viewport.zoom;
+	const rot  = viewport.rotation;
 
-    const cos = Math.cos(rot);
-    const sin = Math.sin(rot);
+	const cos = Math.cos(rot);
+	const sin = Math.sin(rot);
 
-    // rotate world position around (0,0)
-    const rx = centerX * cos - centerY * sin;
-    const ry = centerX * sin + centerY * cos;
+	// rotate world position around (0,0)
+	const rx = centerX * cos - centerY * sin;
+	const ry = centerX * sin + centerY * cos;
 
-    // now compute the translation that places this at canvas center
-    viewport.x = canvas.width  / 2 - rx * zoom;
-    viewport.y = canvas.height / 2 - ry * zoom;
+	// now compute the translation that places this at canvas center
+	viewport.x = canvas.width  / 2 - rx * zoom;
+	viewport.y = canvas.height / 2 - ry * zoom;
 }
 
 
-// centers screen on q,r position.
-function centerTo1(q, r) {
-    const centerX = axialToPixelX(q, r);
-    const centerY = axialToPixelY(q, r);
-
-    viewport.x = canvas.width  / 2 - centerX * viewport.zoom;
-    viewport.y = canvas.height / 2 - centerY * viewport.zoom;
-}
 
 function centerToPixelPos(centerX, centerY) {
-    viewport.x = canvas.width  / 2 - centerX * viewport.zoom;
-    viewport.y = canvas.height / 2 - centerY * viewport.zoom;
+	viewport.x = canvas.width  / 2 - centerX * viewport.zoom;
+	viewport.y = canvas.height / 2 - centerY * viewport.zoom;
 }
 
 function centerToUnit(unit){
@@ -3560,15 +3530,6 @@ function broadcast(data) {
 	}
 }
 
-function broadcast1(data) {
-	if (!localPlayer.isHost) return;
-	// Send to all connected clients
-	for (const [peerId, conn] of connections.entries()) {
-		conn.send(data);
-	}
-	// Host handles its own data
-	handleHostData(data);
-}
 
 
 
@@ -3829,26 +3790,26 @@ function axialToPixelY(q, r) {
 
 
 function pixelToAxial(x, y) {
-    // 1. undo translation
-    let vx = x - viewport.x;
-    let vy = y - viewport.y;
+	// 1. undo translation
+	let vx = x - viewport.x;
+	let vy = y - viewport.y;
 
-    // 2. undo rotation
-    const sin = Math.sin(-viewport.rotation);
-    const cos = Math.cos(-viewport.rotation);
+	// 2. undo rotation
+	const sin = Math.sin(-viewport.rotation);
+	const cos = Math.cos(-viewport.rotation);
 
-    const rx = vx * cos - vy * sin;
-    const ry = vx * sin + vy * cos;
+	const rx = vx * cos - vy * sin;
+	const ry = vx * sin + vy * cos;
 
-    // 3. undo zoom
-    const viewX = rx / viewport.zoom;
-    const viewY = ry / viewport.zoom;
+	// 3. undo zoom
+	const viewX = rx / viewport.zoom;
+	const viewY = ry / viewport.zoom;
 
-    // 4. convert world coords → axial hex
-    const q = (2/3 * viewX) / HEX_SIZE;
-    const r = (-1/3 * viewX + SQRT3/3 * viewY) / HEX_SIZE;
+	// 4. convert world coords → axial hex
+	const q = (2/3 * viewX) / HEX_SIZE;
+	const r = (-1/3 * viewX + SQRT3/3 * viewY) / HEX_SIZE;
 
-    return hexRound(q, r);
+	return hexRound(q, r);
 }
 
 
@@ -3939,11 +3900,11 @@ function initCanvas() {
 
 
 function getHexAnglePosX(i, px, py, multi = 1){
-    return px + HEX_SIZE * multi * HEX_CORNERS[i].x;
+	return px + HEX_SIZE * multi * HEX_CORNERS[i].x;
 }
 
 function getHexAnglePosY(i, px, py, multi = 1){
-    return py + HEX_SIZE * multi * HEX_CORNERS[i].y;
+	return py + HEX_SIZE * multi * HEX_CORNERS[i].y;
 }
 
 function getHexAnglePos(i, px, py, multi = 1){
@@ -4008,15 +3969,18 @@ let waterShadingHeight = 20;
 
 // 1. Update drawFilledLine to accept separate X and Y offsets
 function drawFilledLine(x1, y1, x2, y2, offX, offY) {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    // Add the offset vector to create the "depth"
-    ctx.lineTo(x2 + offX, y2 + offY);
-    ctx.lineTo(x1 + offX, y1 + offY);
-    ctx.closePath();
-    ctx.fill();
+	ctx.beginPath();
+	ctx.moveTo(x1, y1);
+	ctx.lineTo(x2, y2);
+	// Add the offset vector to create the "depth"
+	ctx.lineTo(x2 + offX, y2 + offY);
+	ctx.lineTo(x1 + offX, y1 + offY);
+	ctx.closePath();
+	ctx.fill();
 }
+
+
+
 
 
 function norm180(a) {
@@ -4027,35 +3991,33 @@ function norm180(a) {
 
 
 // 2. Update drawWaterShading to calculate the "Screen Down" vector
-// MAKE SURE to pass 'viewport' into this function
-
 function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
-    // Calculate the "Down" vector relative to current rotation.
-    // This ensures the shadow always falls towards the bottom of the monitor.
-    // 'waterShadingHeight' is your global depth constant.
-    const r = viewport.rotation;
-    
-    // We want the vector (0, height) in Screen Space.
-    // To get that in our Rotated World Space, we rotate it by -r.
-    const offX = waterShadingHeight * Math.sin(r);
-    const offY = waterShadingHeight * Math.cos(r);
+	// Calculate the "Down" vector relative to current rotation.
+	// This ensures the shadow always falls towards the bottom of the monitor.
+	// 'waterShadingHeight' is your global depth constant.
+	const r = viewport.rotation;
 
-    if(drawLines.length > 0){
-        ctx.fillStyle = color;
+	// We want the vector (0, height) in Screen Space.
+	// To get that in our Rotated World Space, we rotate it by -r.
+	const offX = waterShadingHeight * Math.sin(r);
+	const offY = waterShadingHeight * Math.cos(r);
+
+	if(drawLines.length > 0){
+		ctx.fillStyle = color;
 		
 
-        for (let i = 0; i < drawLines.length; i++) {
+		for (let i = 0; i < drawLines.length; i++) {
 
 			let ival = drawLines[i];
 
 			let worldAngle = getSideAngle(ival) * Math.PI/180;
 			let cameraAngle = viewport.rotation;
 
-			// clockwise camera → add
+			// clockwise camera -> add
 			let screenAngle = norm180(worldAngle + cameraAngle);
 
 			let dy = Math.sin(screenAngle);
-			let show_shading = dy > 0;     // hide if pointing up
+			let show_shading = dy > 0; // hide if pointing up
 
 			if (show_shading) {
 				const x1 = px + HEX_SIZE * HEX_CORNERS[ival].x;
@@ -4066,53 +4028,11 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 				drawFilledLine(x1, y1, x2, y2, offX, offY);
 			}
 		}
-    }
-}
-
-
-
-// used for water shading
-function drawFilledLine111(x1, y1, x2, y2, height) {
-	ctx.beginPath();
-	ctx.moveTo(x1, y1);
-	ctx.lineTo(x2, y2);
-	ctx.lineTo(x2, y2 + height);
-	ctx.lineTo(x1, y1 + height);
-	ctx.closePath();
-	ctx.fill();
-}
-
-
-// water shading
-function drawWaterShading111(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
-	if(drawLines.length > 0){
-		for(let i = 0; i < drawLines.length; i++){
-			let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
-			//let p1 = getHexAnglePos(ival, px, py);
-			//let p2 = getHexAnglePos(ival+1, px, py);
-			
-			// faster:
-			const x1 = px + HEX_SIZE * HEX_CORNERS[ival].x;
-			const y1 = py + HEX_SIZE * HEX_CORNERS[ival].y;
-			const x2 = px + HEX_SIZE * HEX_CORNERS[ival+1].x;
-			const y2 = py + HEX_SIZE * HEX_CORNERS[ival+1].y;
-
-			ctx.fillStyle = color;
-			
-			drawFilledLine(
-				x1, y1, 
-				x2, y2, 
-				waterShadingHeight
-			);
-			
-			//drawFilledLine(
-			//	p1.x, p1.y, 
-			//	p2.x, p2.y, 
-			//	waterShadingHeight
-			//);
-		}
 	}
 }
+
+
+
 
 
 
@@ -4147,16 +4067,16 @@ function drawHexagonPathLines(px, py, drawLines = null, multi = 1) {
 // 4 = bottom right
 // 5 = bottom
 function drawHexagonPath(px, py, padding = 0) {
-    const r = HEX_SIZE + padding;
-    ctx.beginPath();
-    // Unrolled loop for speed and no Math.cos/sin calls
-    ctx.moveTo(px + r * HEX_CORNERS[0].x, py + r * HEX_CORNERS[0].y);
-    ctx.lineTo(px + r * HEX_CORNERS[1].x, py + r * HEX_CORNERS[1].y);
-    ctx.lineTo(px + r * HEX_CORNERS[2].x, py + r * HEX_CORNERS[2].y);
-    ctx.lineTo(px + r * HEX_CORNERS[3].x, py + r * HEX_CORNERS[3].y);
-    ctx.lineTo(px + r * HEX_CORNERS[4].x, py + r * HEX_CORNERS[4].y);
-    ctx.lineTo(px + r * HEX_CORNERS[5].x, py + r * HEX_CORNERS[5].y);
-    ctx.closePath();
+	const r = HEX_SIZE + padding;
+	ctx.beginPath();
+	// Unrolled loop for speed and no Math.cos/sin calls
+	ctx.moveTo(px + r * HEX_CORNERS[0].x, py + r * HEX_CORNERS[0].y);
+	ctx.lineTo(px + r * HEX_CORNERS[1].x, py + r * HEX_CORNERS[1].y);
+	ctx.lineTo(px + r * HEX_CORNERS[2].x, py + r * HEX_CORNERS[2].y);
+	ctx.lineTo(px + r * HEX_CORNERS[3].x, py + r * HEX_CORNERS[3].y);
+	ctx.lineTo(px + r * HEX_CORNERS[4].x, py + r * HEX_CORNERS[4].y);
+	ctx.lineTo(px + r * HEX_CORNERS[5].x, py + r * HEX_CORNERS[5].y);
+	ctx.closePath();
 }
 
 
@@ -4222,58 +4142,43 @@ function drawImageMippedCropped(ctx, imageName, dx, dy, dWidth, dHeight, mipleve
 
 
 function checkCulling(x, y, topEdgeOffset = 0) {
-    // 1. Calculate rotation components
-    // (If you call this thousands of times per frame, consider pre-calculating these 
-    // outside the loop and passing them in)
-    const cos = Math.cos(viewport.rotation);
-    const sin = Math.sin(viewport.rotation);
+	// 1. Calculate rotation components
+	// (If you call this thousands of times per frame, consider pre-calculating these 
+	// outside the loop and passing them in)
+	const cos = Math.cos(viewport.rotation);
+	const sin = Math.sin(viewport.rotation);
 
-    // 2. Rotate the World Point
-    // This matches how ctx.rotate() transforms the coordinate system
-    const rx = x * cos - y * sin;
-    const ry = x * sin + y * cos;
+	// 2. Rotate the World Point
+	// This matches how ctx.rotate() transforms the coordinate system
+	const rx = x * cos - y * sin;
+	const ry = x * sin + y * cos;
 
-    // 3. Convert to Screen Space
-    // Now we apply the zoom and viewport translation to the rotated coordinates
-    const screenX = rx * viewport.zoom + viewport.x;
-    const screenY = ry * viewport.zoom + viewport.y;
+	// 3. Convert to Screen Space
+	// Now we apply the zoom and viewport translation to the rotated coordinates
+	const screenX = rx * viewport.zoom + viewport.x;
+	const screenY = ry * viewport.zoom + viewport.y;
 
-    // 4. Check Screen Boundaries
-    // We use HEX_SIZE * zoom as a safety margin so we don't pop objects 
-    // out of existence when they are half-off screen.
-    const margin = HEX_SIZE * viewport.zoom;
+	// 4. Check Screen Boundaries
+	// We use HEX_SIZE * zoom as a safety margin so we don't pop objects 
+	// out of existence when they are half-off screen.
+	const margin = HEX_SIZE * viewport.zoom;
 
-    // Left & Right
-    if (screenX < -margin || 
-        screenX > canvas.width + margin) {
-        return true;
-    }
-
-    // Top & Bottom
-    // We preserve your topEdgeOffset logic here
-    if (screenY < (-HEX_SIZE + topEdgeOffset) * viewport.zoom || 
-        screenY > canvas.height + margin) {
-        return true;
-    }
-
-    return false;
-}
-
-// check if object/tile should be skipped from drawing:
-// returns true if out of screen.
-// topEdgeOffset: top edge offset.
-function checkCulling_1(x, y, topEdgeOffset = 0){
-	return false;
-	const screenX = x * viewport.zoom + viewport.x;
-	const screenY = y * viewport.zoom + viewport.y;
-	if (screenX < -HEX_SIZE * viewport.zoom || 
-		screenX > canvas.width + HEX_SIZE * viewport.zoom ||
-		screenY < (-HEX_SIZE+topEdgeOffset) * viewport.zoom || 
-		screenY > canvas.height + HEX_SIZE * viewport.zoom) {
+	// Left & Right
+	if (screenX < -margin || 
+		screenX > canvas.width + margin) {
 		return true;
 	}
+
+	// Top & Bottom
+	// We preserve your topEdgeOffset logic here
+	if (screenY < (-HEX_SIZE + topEdgeOffset) * viewport.zoom || 
+		screenY > canvas.height + margin) {
+		return true;
+	}
+
 	return false;
 }
+
 
 
 function darkenHexColor(color, percentage = 0.8){
@@ -4620,26 +4525,26 @@ function drawInfiniteWater(){
 // * @param {number} height - Height of the pattern tile.
 // * @returns {CanvasPattern} - A new CanvasPattern with the color applied.
 function createColoredPattern(ctx, pattern, color, width, height) {
-    // Offscreen canvas to render the colored pattern
-    const off = document.createElement("canvas");
-    off.width = width;
-    off.height = height;
-    const offCtx = off.getContext("2d");
+	// Offscreen canvas to render the colored pattern
+	const off = document.createElement("canvas");
+	off.width = width;
+	off.height = height;
+	const offCtx = off.getContext("2d");
 
-    // Draw the original pattern onto the offscreen canvas
-    offCtx.fillStyle = pattern;
-    offCtx.fillRect(0, 0, width, height);
+	// Draw the original pattern onto the offscreen canvas
+	offCtx.fillStyle = pattern;
+	offCtx.fillRect(0, 0, width, height);
 
-    // Apply the color using multiply
-    offCtx.globalCompositeOperation = "multiply";
-    offCtx.fillStyle = color;
-    offCtx.fillRect(0, 0, width, height);
+	// Apply the color using multiply
+	offCtx.globalCompositeOperation = "multiply";
+	offCtx.fillStyle = color;
+	offCtx.fillRect(0, 0, width, height);
 
-    // Reset composite operation
-    offCtx.globalCompositeOperation = "source-over";
+	// Reset composite operation
+	offCtx.globalCompositeOperation = "source-over";
 
-    // Create a new pattern from the offscreen canvas
-    return ctx.createPattern(off, "repeat");
+	// Create a new pattern from the offscreen canvas
+	return ctx.createPattern(off, "repeat");
 }
 
 
@@ -4681,8 +4586,8 @@ function fillPattern(ctx, imageName){
 	//const pattern = patternObj.patterns[miplevel];
 	//pattern.setTransform(scaleMatrix); // scaleMatrix set in render function each frame.
 	//transformPattern(imageName);
-    ctx.fillStyle = imageAssets[imageName].patterns[getTexMipLevel()];
-    ctx.fill();
+	ctx.fillStyle = imageAssets[imageName].patterns[getTexMipLevel()];
+	ctx.fill();
 }
 
 
@@ -5539,24 +5444,24 @@ const randomRange = (min, max) => randomFunc() * (max - min) + min;
 
 // Creates an explosion with bouncing physics.
 function createExplosion(ep) {
-    let x = ep.x;
-    let y = ep.y;
-    let color = ep.color;
-    let shapeMode = ep.shapeMode;
-    let fadeMode = ep.fadeMode;
-    let amount = ep.amount;
-    let initialSpeed = ep.initialSpeed;
-    let life = ep.life ?? 1.3;
-    let decay = ep.decay ?? { min: 0.01, max: 0.03 };
-    let rotationSpeed = ep.rotationSpeed ?? { min: -0.1, max: 0.1 };
-    let fadeAtGround = ep.fadeAtGround ?? 0;
+	let x = ep.x;
+	let y = ep.y;
+	let color = ep.color;
+	let shapeMode = ep.shapeMode;
+	let fadeMode = ep.fadeMode;
+	let amount = ep.amount;
+	let initialSpeed = ep.initialSpeed;
+	let life = ep.life ?? 1.3;
+	let decay = ep.decay ?? { min: 0.01, max: 0.03 };
+	let rotationSpeed = ep.rotationSpeed ?? { min: -0.1, max: 0.1 };
+	let fadeAtGround = ep.fadeAtGround ?? 0;
 	let toFloor = ep.toFloor ?? 0;
 	let upSpeedMulti = ep.upSpeedMulti ?? 1;
 
-    for (let i = 0; i < amount; i++) {
-        let speedVariation = initialSpeed * 0.5;
-        let speed = randomRange(initialSpeed - speedVariation, initialSpeed + speedVariation);
-        let angle = randomFunc() * Math.PI * 2;
+	for (let i = 0; i < amount; i++) {
+		let speedVariation = initialSpeed * 0.5;
+		let speed = randomRange(initialSpeed - speedVariation, initialSpeed + speedVariation);
+		let angle = randomFunc() * Math.PI * 2;
 		let gravity = 0.25;
 		let vz = randomRange(2, 6)*upSpeedMulti;
 		let size = randomRange(4, 8);
@@ -5566,548 +5471,164 @@ function createExplosion(ep) {
 			//speed *= 1.5;
 		}
 
-        let specificShape = 'circle';
-        if (shapeMode == 0) {
-            specificShape = randomFunc() > 0.5 ? 'square' : 'triangle';
-        }
+		let specificShape = 'circle';
+		if (shapeMode == 0) {
+			specificShape = randomFunc() > 0.5 ? 'square' : 'triangle';
+		}
 
-        particles.push({
-            // GROUND COORDINATES (The floor position)
-            x: x,
-            y: y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
+		particles.push({
+			// GROUND COORDINATES (The floor position)
+			x: x,
+			y: y,
+			vx: Math.cos(angle) * speed,
+			vy: Math.sin(angle) * speed,
 
-            // HEIGHT COORDINATES (The "Fake Z" axis)
-            z: 0,                    // Start on the ground
-            vz: vz,   // Initial upward "pop" velocity
-            gravity: gravity,           // How heavy the particle is
-            bounceFactor: 0.6,       // Bounciness
+			// HEIGHT COORDINATES (The "Fake Z" axis)
+			z: 0,                    // Start on the ground
+			vz: vz,   // Initial upward "pop" velocity
+			gravity: gravity,           // How heavy the particle is
+			bounceFactor: 0.6,       // Bounciness
 
-            // BLOOD/STREAK LOGIC
-            hitGround: false,        // Has it touched the floor yet?
-            groundHitX: 0,           // Where did it land?
-            groundHitY: 0,           // Where did it land?
+			// BLOOD/STREAK LOGIC
+			hitGround: false,        // Has it touched the floor yet?
+			groundHitX: 0,           // Where did it land?
+			groundHitY: 0,           // Where did it land?
 
-            color: color,
-            shape: specificShape,
-            fadeMode: fadeMode,
-            life: life,
-            decay: randomRange(decay.min, decay.max),
-            size: size,
-            rotation: randomRange(0, 360),
-            rotationSpeed: randomRange(rotationSpeed.min, rotationSpeed.max),
-            fadeAtGround: fadeAtGround,
+			color: color,
+			shape: specificShape,
+			fadeMode: fadeMode,
+			life: life,
+			decay: randomRange(decay.min, decay.max),
+			size: size,
+			rotation: randomRange(0, 360),
+			rotationSpeed: randomRange(rotationSpeed.min, rotationSpeed.max),
+			fadeAtGround: fadeAtGround,
 			toFloor: toFloor,
-        });
-    }
+		});
+	}
 }
 
 
 
-
-
-function renderParticles1212() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-
-        // --- 1. PHYSICS UPDATE ---
-        // Move particle in world space
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // Apply friction
-        p.vx *= 0.95;
-        p.vy *= 0.95;
-
-        // Height physics
-        p.vz -= p.gravity;
-        p.z += p.vz;
-
-        // Floor collision
-        if (p.z <= 0) {
-            if (p.fadeAtGround) {
-                if (!p.hitGround) {
-                    p.hitGround = true;
-                    p.groundHitX = p.x;
-                    p.groundHitY = p.y;
-                }
-                p.z = 0;
-                p.vz = 0;
-                p.vx *= 0.8;
-                p.vy *= 0.8;
-            } else {
-                p.z = 0;
-                p.vz *= -p.bounceFactor;
-                p.vx *= 0.8;
-                p.vy *= 0.8;
-                if (Math.abs(p.vz) < 1) p.vz = 0;
-            }
-        }
-
-        // Rotation and lifecycle
-        p.rotation += p.rotationSpeed;
-        p.life -= p.decay;
-        const opacity = p.fadeMode === 'slow' ? Math.max(0, p.life) : (p.life > 0 ? 1 : 0);
-
-        if (p.life < 0.01) {
-            particles.splice(i, 1);
-            continue;
-        }
-
-        // --- 2. DRAWING ---
-
-        // A. Shadow
-        if (!p.hitGround || !p.fadeAtGround) {
-            ctx.save();
-            ctx.translate(p.x, p.y);
-
-            // counter viewport rotation so shadow is aligned with ground
-            ctx.rotate(-viewport.rotation);
-
-            ctx.scale(1, 0.5);
-            ctx.beginPath();
-            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(0,0,0,0.5)";
-            ctx.fill();
-            ctx.restore();
-        }
-
-        // B. Blood smear / splat
-        if (p.fadeAtGround && p.hitGround) {
-            ctx.save();
-            ctx.globalAlpha = opacity;
-            ctx.strokeStyle = p.color;
-            ctx.lineWidth = p.size;
-            ctx.lineCap = "round";
-
-            // translate to first hit position
-            ctx.translate(p.groundHitX, p.groundHitY);
-            ctx.rotate(-viewport.rotation); // counter viewport rotation
-
-            // draw line relative to first hit
-            const dx = p.x - p.groundHitX;
-            const dy = p.y - p.groundHitY;
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(dx, dy);
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        // C. Particle body
-        ctx.save();
-        ctx.translate(p.x, p.y - p.z); // world position minus height
-        ctx.rotate(-viewport.rotation); // counter viewport
-        ctx.rotate(p.rotation);         // apply particle's own rotation
-        ctx.globalAlpha = opacity;
-        ctx.fillStyle = p.color;
-
-        ctx.beginPath();
-        if (p.shape === "circle") {
-            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (p.shape === "square") {
-            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-        } else if (p.shape === "triangle") {
-            const r = p.size / 1.5;
-            ctx.moveTo(0, -r);
-            ctx.lineTo(r, r);
-            ctx.lineTo(-r, r);
-            ctx.closePath();
-            ctx.fill();
-        }
-        ctx.restore();
-    }
-}
 
 
 function renderParticles() {
-    // 1. Pre-calculate rotation math to save performance
-    // We want the Z-offset to always point "Up" on the monitor.
-    // Since the context is rotated by viewport.rotation, we counter it.
-    const sinR = Math.sin(viewport.rotation);
-    const cosR = Math.cos(viewport.rotation);
+	// 1. Pre-calculate rotation math to save performance
+	// We want the Z-offset to always point "Up" on the monitor.
+	// Since the context is rotated by viewport.rotation, we counter it.
+	const sinR = Math.sin(viewport.rotation);
+	const cosR = Math.cos(viewport.rotation);
 
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
+	for (let i = particles.length - 1; i >= 0; i--) {
+		let p = particles[i];
 
-        // --- 1. PHYSICS UPDATE (Unchanged) ---
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vx *= 0.95;
-        p.vy *= 0.95;
-        p.vz -= p.gravity;
-        p.z += p.vz;
+		// --- 1. PHYSICS UPDATE (Unchanged) ---
+		p.x += p.vx;
+		p.y += p.vy;
+		p.vx *= 0.95;
+		p.vy *= 0.95;
+		p.vz -= p.gravity;
+		p.z += p.vz;
 
-        if (p.z <= 0) {
-            if (p.fadeAtGround) {
-                if (!p.hitGround) {
-                    p.hitGround = true;
-                    p.groundHitX = p.x;
-                    p.groundHitY = p.y;
-                }
-                p.z = 0;
-                p.vz = 0; 
-                p.vx *= 0.8; 
-                p.vy *= 0.8;
-            } else {
-                p.z = 0;
-                p.vz *= -p.bounceFactor;
-                p.vx *= 0.8;
-                p.vy *= 0.8;
-                if (Math.abs(p.vz) < 1) p.vz = 0;
-            }
-        }
-
-        p.rotation += p.rotationSpeed;
-        p.life -= p.decay;
-
-        let opacity = 1;
-        if (p.fadeMode === 'slow') {
-            opacity = Math.max(0, p.life);
-        } else {
-            opacity = p.life > 0 ? 1 : 0;
-        }
-
-        if (p.life < 0.01) {
-            particles.splice(i, 1);
-            continue;
-        }
-
-        // --- 2. DRAWING ---
-
-        // A. Draw Shadow (Keeps World Rotation - Correct)
-        if (!p.hitGround || !p.fadeAtGround) {
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.scale(1, 0.5);
-            ctx.beginPath();
-            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fill();
-            ctx.restore();
-        }
-
-        // B. Draw Blood Stripe (Keeps World Rotation - Correct)
-        if (p.fadeAtGround && p.hitGround) {
-            ctx.save();
-            ctx.globalAlpha = opacity;
-            ctx.strokeStyle = p.color;
-            ctx.lineWidth = p.size;      
-            ctx.lineCap = "round";       
-            
-            ctx.beginPath();
-            ctx.moveTo(p.groundHitX, p.groundHitY); 
-            ctx.lineTo(p.x, p.y);                   
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        // C. Draw Particle Body (FIXED: Counter-rotate the Z-offset)
-        ctx.save();
-
-        // LOGIC EXPLANATION:
-        // We start at the ground position (p.x, p.y).
-        // Instead of subtracting Z from Y (which moves it World-North),
-        // we calculate where "Screen-Up" is within this rotated context.
-        // Screen-Up requires subtracting from Y (cos) and X (sin) based on rotation.
-        
-        const visualX = p.x - (p.z * sinR);
-        const visualY = p.y - (p.z * cosR);
-
-        ctx.translate(visualX, visualY);
-        
-        ctx.rotate(p.rotation);
-        ctx.globalAlpha = opacity;
-        ctx.fillStyle = p.color;
-
-        ctx.beginPath();
-        if (p.shape === 'circle') {
-            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (p.shape === 'square') {
-            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-        } else if (p.shape === 'triangle') {
-            const r = p.size / 1.5;
-            ctx.moveTo(0, -r);
-            ctx.lineTo(r, r);
-            ctx.lineTo(-r, r);
-            ctx.closePath();
-            ctx.fill();
-        }
-        ctx.restore();
-    }
-}
-
-// Updates and draws particles with shadow and height offset.
-// render particles
-function renderParticles_1() {
-	//ctx.save();
-	//ctx.translate();
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-
-        // --- 1. PHYSICS UPDATE ---
-
-        // Move across the ground
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // General Air Friction
-        p.vx *= 0.95;
-        p.vy *= 0.95;
-
-        // Height Physics (Gravity)
-        p.vz -= p.gravity;
-        p.z += p.vz;
-
-        // Floor Collision
-        if (p.z <= 0) {
-            if (p.fadeAtGround) {
-                // If this is the FIRST time hitting the ground, save coordinates
-                if (!p.hitGround) {
-                    p.hitGround = true;
-                    p.groundHitX = p.x;
-                    p.groundHitY = p.y;
-                }
-
-                p.z = 0;
-                p.vz = 0; 
-                
-                // Increase friction greatly to make the blood "slide" to a stop
-                p.vx *= 0.8; 
-                p.vy *= 0.8;
-            } else {
-                // Standard bouncing logic
-                p.z = 0;
-                p.vz *= -p.bounceFactor;
-                p.vx *= 0.8;
-                p.vy *= 0.8;
-                if (Math.abs(p.vz) < 1) p.vz = 0;
-            }
-        }
-
-        // Rotation & Lifecycle
-        p.rotation += p.rotationSpeed;
-        p.life -= p.decay;
-
-        let opacity = 1;
-        if (p.fadeMode === 'slow') {
-            opacity = Math.max(0, p.life);
-        } else {
-            opacity = p.life > 0 ? 1 : 0;
-        }
-
-        if (p.life < 0.01) {
-            particles.splice(i, 1);
-            continue;
-        }
-
-        // --- 2. DRAWING ---
-
-        // A. Draw Shadow (Only if not already on the ground as a splat)
-        if (!p.hitGround || !p.fadeAtGround) {
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.scale(1, 0.5);
-            ctx.beginPath();
-            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fill();
-            ctx.restore();
-        }
-
-        // B. Draw Blood Stripe (The smear on the floor)
-        if (p.fadeAtGround && p.hitGround) {
-            ctx.save();
-            ctx.globalAlpha = opacity;
-            ctx.strokeStyle = p.color;
-            ctx.lineWidth = p.size;      // Stripe width matches particle size
-            ctx.lineCap = "round";       // Makes the ends of the smear round
-            
-            ctx.beginPath();
-            ctx.moveTo(p.groundHitX, p.groundHitY); // Start where it first hit
-            ctx.lineTo(p.x, p.y);                   // Draw to current position
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        // C. Draw Particle Body
-        // We subtract Z from Y to move it "up" the screen visually
-        ctx.save();
-        ctx.translate(p.x, p.y - p.z);
-        ctx.rotate(p.rotation);
-        ctx.globalAlpha = opacity;
-        ctx.fillStyle = p.color;
-
-        ctx.beginPath();
-        if (p.shape === 'circle') {
-            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (p.shape === 'square') {
-            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-        } else if (p.shape === 'triangle') {
-            const r = p.size / 1.5;
-            ctx.moveTo(0, -r);
-            ctx.lineTo(r, r);
-            ctx.lineTo(-r, r);
-            ctx.closePath();
-            ctx.fill();
-        }
-        ctx.restore();
-    }
-}
-
-
-
-// Creates an explosion with bouncing physics.
-function createExplosion1(ep) {
-	let x = ep.x;
-	let y = ep.y;
-	let color = ep.color;
-	let shapeMode = ep.shapeMode;
-	let fadeMode = ep.fadeMode;
-	let amount = ep.amount;
-	let initialSpeed = ep.initialSpeed;
-	let life = ep.life ?? 1.3;
-	let decay = ep.decay ?? {min:0.01, max:0.03};
-	let rotationSpeed = ep.rotationSpeed ?? {min:-0.1, max:0.1};
-	let fadeAtGround = ep.fadeAtGround ?? 0;
-	
-    for (let i = 0; i < amount; i++) {
-        const speedVariation = initialSpeed * 0.5; 
-        const speed = randomRange(initialSpeed - speedVariation, initialSpeed + speedVariation);
-        const angle = randomFunc() * Math.PI * 2;
-
-        let specificShape = 'circle';
-        if (shapeMode == 0) {
-            specificShape = randomFunc() > 0.5 ? 'square' : 'triangle';
-        }
-
-        particles.push({
-            // GROUND COORDINATES (The floor position)
-            x: x,
-            y: y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            
-            // HEIGHT COORDINATES (The "Fake Z" axis)
-            z: 0,                    // Start on the ground
-            vz: randomRange(2, 6),   // Initial upward "pop" velocity
-            gravity: 0.25,           // How heavy the particle is
-            bounceFactor: 0.6,       // Bounciness (0.6 = loses 40% energy on bounce)
-
-            color: color,
-            shape: specificShape,
-            fadeMode: fadeMode,
-            life: life,
-            decay: randomRange(decay.min, decay.max), 
-            size: randomRange(4, 8),
-            rotation: randomRange(0, 360),
-            rotationSpeed: randomRange(rotationSpeed.min, rotationSpeed.max),
-			fadeAtGround: fadeAtGround,
-        });
-    }
-}
-
-
-// Updates and draws particles with shadow and height offset.
-function renderParticles1() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-
-        // --- 1. PHYSICS UPDATE ---
-
-        // Move across the ground
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // Ground Friction (slows down x/y movement)
-        p.vx *= 0.95; 
-        p.vy *= 0.95;
-
-        // Height Physics (Gravity)
-        p.vz -= p.gravity; // Apply gravity to vertical velocity
-        p.z += p.vz;       // Apply vertical velocity to height
-
-        // Floor Collision (The Bounce)
-        if (p.z <= 0) {
-			if(p.fadeAtGround){
-				
-				p.z = 0; // Snap to floor
-				p.vz = 0; // Stop bouncing (for blood)
-			}else{
-				p.z = 0; // Snap to floor
-				p.vz *= -p.bounceFactor; // Reverse velocity & lose energy
-				
-				// Friction applied specifically when hitting the ground
+		if (p.z <= 0) {
+			if (p.fadeAtGround) {
+				if (!p.hitGround) {
+					p.hitGround = true;
+					p.groundHitX = p.x;
+					p.groundHitY = p.y;
+				}
+				p.z = 0;
+				p.vz = 0; 
 				p.vx *= 0.8; 
 				p.vy *= 0.8;
-
-				// Stop bouncing if velocity is tiny (prevents micro-vibrating)
+			} else {
+				p.z = 0;
+				p.vz *= -p.bounceFactor;
+				p.vx *= 0.8;
+				p.vy *= 0.8;
 				if (Math.abs(p.vz) < 1) p.vz = 0;
 			}
-        }
+		}
 
-        // Rotation
-        p.rotation += p.rotationSpeed;
-        
-        // Lifecycle
-        p.life -= p.decay;
-        
-        // Opacity Logic
-        let opacity = 1;
-        if (p.fadeMode === 'slow') {
-            opacity = Math.max(0, p.life);
-        } else {
-            opacity = p.life > 0 ? 1 : 0;
-        }
+		p.rotation += p.rotationSpeed;
+		p.life -= p.decay;
 
-        if (p.life < 0.01) {
-            particles.splice(i, 1);
-            continue;
-        }
+		let opacity = 1;
+		if (p.fadeMode === 'slow') {
+			opacity = Math.max(0, p.life);
+		} else {
+			opacity = p.life > 0 ? 1 : 0;
+		}
 
-        // --- 2. DRAWING ---
+		if (p.life < 0.01) {
+			particles.splice(i, 1);
+			continue;
+		}
 
-        // A. Draw Shadow (Keeps the viewer oriented to the ground)
-        // The shadow is always at (p.x, p.y) regardless of height
-        ctx.save();
-        ctx.translate(p.x, p.y); 
-        ctx.scale(1, 0.5); // Flatten circle to make an oval shadow
-        ctx.beginPath();
-        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // Black, semi-transparent
-        ctx.fill();
-        ctx.restore();
+		// --- 2. DRAWING ---
 
-        // B. Draw Particle Body
-        // We subtract Z from Y to move it "up" the screen visually
-        ctx.save();
-        ctx.translate(p.x, p.y - p.z); 
-        ctx.rotate(p.rotation);
-        ctx.globalAlpha = opacity;
-        ctx.fillStyle = p.color;
+		// A. Draw Shadow (Keeps World Rotation - Correct)
+		if (!p.hitGround || !p.fadeAtGround) {
+			ctx.save();
+			ctx.translate(p.x, p.y);
+			ctx.scale(1, 0.5);
+			ctx.beginPath();
+			ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+			ctx.fill();
+			ctx.restore();
+		}
 
-        ctx.beginPath();
-        if (p.shape === 'circle') {
-            ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (p.shape === 'square') {
-            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-        } else if (p.shape === 'triangle') {
-            const r = p.size / 1.5;
-            ctx.moveTo(0, -r);
-            ctx.lineTo(r, r);
-            ctx.lineTo(-r, r);
-            ctx.closePath();
-            ctx.fill();
-        }
-        ctx.restore();
-    }
+		// B. Draw Blood Stripe (Keeps World Rotation - Correct)
+		if (p.fadeAtGround && p.hitGround) {
+			ctx.save();
+			ctx.globalAlpha = opacity;
+			ctx.strokeStyle = p.color;
+			ctx.lineWidth = p.size;      
+			ctx.lineCap = "round";       
+			
+			ctx.beginPath();
+			ctx.moveTo(p.groundHitX, p.groundHitY); 
+			ctx.lineTo(p.x, p.y);                   
+			ctx.stroke();
+			ctx.restore();
+		}
+
+		// C. Draw Particle Body (FIXED: Counter-rotate the Z-offset)
+		ctx.save();
+
+		// LOGIC EXPLANATION:
+		// We start at the ground position (p.x, p.y).
+		// Instead of subtracting Z from Y (which moves it World-North),
+		// we calculate where "Screen-Up" is within this rotated context.
+		// Screen-Up requires subtracting from Y (cos) and X (sin) based on rotation.
+		
+		const visualX = p.x - (p.z * sinR);
+		const visualY = p.y - (p.z * cosR);
+
+		ctx.translate(visualX, visualY);
+		
+		ctx.rotate(p.rotation);
+		ctx.globalAlpha = opacity;
+		ctx.fillStyle = p.color;
+
+		ctx.beginPath();
+		if (p.shape === 'circle') {
+			ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+			ctx.fill();
+		} else if (p.shape === 'square') {
+			ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+		} else if (p.shape === 'triangle') {
+			const r = p.size / 1.5;
+			ctx.moveTo(0, -r);
+			ctx.lineTo(r, r);
+			ctx.lineTo(-r, r);
+			ctx.closePath();
+			ctx.fill();
+		}
+		ctx.restore();
+	}
 }
-
 
 
 
@@ -6164,17 +5685,17 @@ function insideRect(rect, x, y){
 
 
 function drawMoveDirectionsOverlay() {
-	
+
 	if(!isMyTurn()){
 		return;
 	}
 
 	// Pre-calculate rotation components for efficiency
-    const cosR = Math.cos(viewport.rotation);
-    const sinR = Math.sin(viewport.rotation);
-	
+	const cosR = Math.cos(viewport.rotation);
+	const sinR = Math.sin(viewport.rotation);
+
 	let pulse = 0.6 * pulseScale(1, 1.5, PULSE_SPEED);
-	
+
 	let canvasRect = {
 		x1: 0,
 		y1: 0,
@@ -6196,10 +5717,10 @@ function drawMoveDirectionsOverlay() {
 		const worldPosX = axialToPixelX(unit.q, unit.r);
 		const worldPosY = axialToPixelY(unit.q, unit.r);
 		
-        // 2. ROTATE THE WORLD POINT by the viewport's rotation
-        // This gives us the position relative to the rotated viewport axes.
-        const rotatedX = worldPosX * cosR - worldPosY * sinR;
-        const rotatedY = worldPosX * sinR + worldPosY * cosR;
+		// 2. ROTATE THE WORLD POINT by the viewport's rotation
+		// This gives us the position relative to the rotated viewport axes.
+		const rotatedX = worldPosX * cosR - worldPosY * sinR;
+		const rotatedY = worldPosX * sinR + worldPosY * cosR;
 
 		// 3. Scale and Translate to get the final screen coordinates (x, y)
 		let x = rotatedX * viewport.zoom + viewport.x;
@@ -6230,70 +5751,7 @@ function drawMoveDirectionsOverlay() {
 		
 		drawEdgeTriangle(ctx, edgeX, edgeY, angle);
 	}
-	
-	ctx.restore();
-}
 
-// draw circles pointers suuntimat drawoverlay dots
-// edge arrows edge pointers
-function drawMoveDirectionsOverlay_1() {
-	
-	if(!isMyTurn()){
-		return;
-	}
-	
-	let pulse = 0.6*pulseScale(1, 1.5, PULSE_SPEED);
-	
-	let canvasRect = {
-		x1: 0,
-		y1: 0,
-		x2: canvas.width,
-		y2: canvas.height
-	};
-
-	ctx.save();
-
-	for (const unit of gameState.units) {
-		// only show my player soldiers that havent moved yet:
-		if(unit.internalType !== 'soldier' ||
-			indexToId(unit.ownerIndex) !== localPlayer.id ||
-			unit.hasMoved){
-			continue;
-		}
-		
-		// get unit world coordinates:
-		//let worldPos = axialToPixel(unit.q, unit.r);
-		const worldPosX = axialToPixelX(unit.q, unit.r);
-		const worldPosY = axialToPixelY(unit.q, unit.r);
-		
-		// get screen coordinates for unit:
-		let x = worldPosX*viewport.zoom + viewport.x;
-		let y = worldPosY*viewport.zoom + viewport.y;
-
-		if(insideRect(canvasRect, x, y)){
-			continue; // it's visible, no need to draw edge indicator
-		}
-
-		// Find intersection point on canvas edge
-		let edgeX = x;
-		let edgeY = y;
-		
-		let angle = 0;
-		
-		// Clamp to screen bounds
-		if (x > canvas.width){ edgeX = canvas.width; angle = 0; }
-		if (y > canvas.height){ edgeY = canvas.height; angle = 90; }
-		if (x < 0){ edgeX = 0; angle = 180; }
-		if (y < 0){ edgeY = 0; angle = 270; }
-		
-		if (x > canvas.width && y > canvas.height){ angle = 45; }
-		if (x < 0 && y > canvas.height){ angle = 90+45; }
-		if (x < 0 && y < 0){ angle = 180+45; }
-		if (x > canvas.width && y < 0){ angle = 270+45; }
-		
-		drawEdgeTriangle(ctx, edgeX, edgeY, angle);
-	}
-	
 	ctx.restore();
 }
 
@@ -6485,12 +5943,12 @@ function isBuildPopupOpen(){
 
 function handleTouchStart(e) {
 	//console.log("handleTouchStart");
-	
+
 	// unfocus chatinput:
 	chatInput.blur();
-	
-    const touch = e.touches[0];
-    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+
+	const touch = e.touches[0];
+	const target = document.elementFromPoint(touch.clientX, touch.clientY);
 
 	if(!placingUnit){
 		// close build popup if clicked outside while not building an unit:
@@ -6504,29 +5962,29 @@ function handleTouchStart(e) {
 		}
 	}
 
-    if (e.touches.length === 1) {
+	if (e.touches.length === 1) {
 		//console.log("e.touches.length === 1");
-        isDragging = false;
-        touchStartPos = { x: touch.clientX, y: touch.clientY };
+		isDragging = false;
+		touchStartPos = { x: touch.clientX, y: touch.clientY };
 
-        const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
-        const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
+		const clickedHex = pixelToAxial(touch.clientX, touch.clientY);
+		const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
 
 		touchStartPos.canDrag = true; // always allow dragging while doing things
-        //touchStartPos.canDrag = !unitOnHex;
+		//touchStartPos.canDrag = !unitOnHex;
 		//touchStartPos.canDrag = !placingUnit;
-        lastTouch = { x: touch.clientX, y: touch.clientY };
-        lastDist = null;
+		lastTouch = { x: touch.clientX, y: touch.clientY };
+		lastDist = null;
 
-    } else if (e.touches.length === 2) {
+	} else if (e.touches.length === 2) {
 		//console.log("e.touches.length === 2");
 		// cancel drag, start zooming by pinching.
-        isDragging = false;
-        touchStartPos = null;
-        lastDist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-        );
+		isDragging = false;
+		touchStartPos = null;
+		lastDist = Math.hypot(
+			e.touches[0].clientX - e.touches[1].clientX,
+			e.touches[0].clientY - e.touches[1].clientY
+		);
 		
 		// only rotate if chat box is open:
 		if(showTopLeftUi){
@@ -6539,7 +5997,7 @@ function handleTouchStart(e) {
 			isRotating = true;
 		}
 		
-    }
+	}
 }
 
 
@@ -6693,19 +6151,7 @@ function setTileAt(q, r, tileData, allowCreation = true) {
 		}
 	}
 }
-/*
-function setTileOwner(tile, ownerId){
-	tile.ownerId = ownerId;
-	if(ownerId){
-		tile.ownerIndex = getPlayerIndex(ownerId);
-		if(tile.ownerIndex === -1){
-			tile.ownerId = null; // make sure to set ownerId null if playerIndex was -1 (not found).
-		}
-	}else{
-		tile.ownerIndex = -1; // no owner, ownerId is null.
-	}
-}
-*/
+
 
 function setTileOwnerByIndex(tile, ownerIndex){
 	if(ownerIndex !== undefined && ownerIndex !== null){
@@ -6851,19 +6297,14 @@ function updateGameUI() {
 }
 
 
-// used to change ui-number color for now.
-function setColor(el, colorClass) {
-    const colors = ["red", "gray", "yellow", "white"]; // all possible color classes
 
-    el.classList.remove(...colors); // remove any that might be present
-    el.classList.add(colorClass); // add the one you want
-}
 
 
 function getMyTotalSavings() {
 	// This is now just a client-side getter
 	return myCurrentSavings;
 }
+
 function getSelectedPoolSavings() {
 	// This is now just a client-side getter
 	if(selectedPool){
@@ -6923,25 +6364,25 @@ function findSelectedPool(findHex, pools = localPlayerPools, ownerId = localPlay
 
 
 function formatDecimal(num) {
-    const fixed = num.toFixed(2); // "12.30"
-    //if (fixed.endsWith("00")) return String(num|0); // integer case
-    //if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
-    return fixed; // both decimals meaningful
+	const fixed = num.toFixed(2); // "12.30"
+	//if (fixed.endsWith("00")) return String(num|0); // integer case
+	//if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
+	return fixed; // both decimals meaningful
 }
 
 function formatNumber(num, decimals = 2) {
-    // clamp decimals to 1–5
-    decimals = Math.min(5, Math.max(1, decimals));
+	// clamp decimals to 1–5
+	decimals = Math.min(5, Math.max(1, decimals));
 
-    const fixed = num.toFixed(decimals);
+	const fixed = num.toFixed(decimals);
 
-    // strip trailing zeros
-    let stripped = fixed.replace(/0+$/, '');
+	// strip trailing zeros
+	let stripped = fixed.replace(/0+$/, '');
 
-    // if everything after the decimal was zeros, remove the decimal entirely
-    if (stripped.endsWith('.')) stripped = stripped.slice(0, -1);
+	// if everything after the decimal was zeros, remove the decimal entirely
+	if (stripped.endsWith('.')) stripped = stripped.slice(0, -1);
 
-    return stripped;
+	return stripped;
 }
 
 function hidePoolInfo(){
@@ -8798,27 +8239,26 @@ function getNextPlayerIndex(currentIndex){
 	let nextIndex = currentIndex;
 	// get next player index:
 	let counter = 0;
-    do {
-        nextIndex = (nextIndex + 1) % gameState.players.length;
+	do {
+		nextIndex = (nextIndex + 1) % gameState.players.length;
 		counter++;
-    } while ((gameState.players[nextIndex].isSpectator || gameState.players[nextIndex].isDead) && counter < 1000);
-	
+	} while ((gameState.players[nextIndex].isSpectator || gameState.players[nextIndex].isDead) && counter < 1000);
+
 	return nextIndex;
 }
 
 
 // this is host function.
 function advanceToNextPlayer(){
-
 	// advance to next player:
-    gameState.turn.currentPlayerIndex = getNextPlayerIndex(gameState.turn.currentPlayerIndex);
+	gameState.turn.currentPlayerIndex = getNextPlayerIndex(gameState.turn.currentPlayerIndex);
 	//console.log("gameState.turn.currentPlayerIndex = "+gameState.turn.currentPlayerIndex);
 	// end of day check:
 	if (gameState.turn.currentPlayerIndex === gameState.turn.startPlayerIndex) {
 		gameState.turn.turnNumber++;
 		processEndOfDay();
 	}
-	
+
 	updateGameUI();
 }
 
@@ -8833,9 +8273,119 @@ function randomItem(arr){
 }
 
 
+function ai_find_best_move(player) {
+	//console.log("ai_find_best_move (improved)");
+
+	let bestMove = null;
+	let bestScore = -Infinity;
+
+	for (let i = 0; i < gameState.units.length; i++) {
+		const unit = gameState.units[i];
+		if (unit.hasMoved || indexToId(unit.ownerIndex) !== player.id) continue;
+
+		const possibleMovesTemp = findUnitPossibleMoves(unit, player);
+		const possibleMoves = [];
+
+		for (const move of possibleMovesTemp) {
+			const tile = getTileAt(move.q, move.r);
+			const check = isMoveValid(unit, move, player);
+			if (check.valid) possibleMoves.push({move:move, poolHex:{q:unit.q, r:unit.r}});
+		}
+
+		for (const moveInfo of possibleMoves) {
+			const tile = getTileAt(moveInfo.move.q, moveInfo.move.r);
+			let score = 0;
+			const tileOwnerId = indexToId(tile.ownerIndex);
+
+			// === Base scoring ===
+			// Prefer new land
+			if (!tileOwnerId) score += 5;
+
+			// Prefer enemy tiles
+			if (tileOwnerId && tileOwnerId !== player.id) score += 10;
+
+			// ----------------------------------------------------------------------------------
+			// 💰 === Terrain & Economy Restoration Scoring (NEW FOCUS) === 💰
+			// ----------------------------------------------------------------------------------
+			
+			if (tile.object === "grass") {
+				if (tileOwnerId === player.id) {
+					// CRITICAL: Clear grass from our tile to restore income.
+					score += 5; 
+				} else {
+					// High value: Claim and clear grass on neutral/enemy tile for better future income/expansion.
+					score += 3; 
+				}
+			}
+			
+			if (tile.object === "tree") {
+				if (tileOwnerId === player.id) {
+					// CRITICAL: Clear tree from our tile to restore income (highest priority).
+					score += 5; 
+					
+				} else {
+					// Clearing a tree on neutral/enemy land is slightly useful for future income.
+					score += 1; 
+					
+					// Small bonus for the micro +1 money on capture, but keep it low.
+					// This prevents the AI from prioritizing trees over better tactical moves.
+					//score += 2; 
+				}
+			}
+			// ----------------------------------------------------------------------------------
+
+			// === Attack scoring ===
+			const enemyUnit = gameState.units.find(u => u.q === moveInfo.move.q && u.r === moveInfo.move.r);
+			if (enemyUnit) {
+				if (unit.level > enemyUnit.level) {
+					score += 25; // easy kill
+				} else {
+					score -= 20; // risky
+				}
+			}
+
+			// === Territorial influence ===
+			const neighbors = getHexNeighbors(moveInfo.move.q, moveInfo.move.r);
+			let enemyAdj = 0;
+			for (const n of neighbors) {
+				const nt = getTileAt(n.q, n.r);
+				if (nt && indexToId(nt.ownerIndex) && indexToId(nt.ownerIndex) !== player.id) enemyAdj++;
+			}
+			score += enemyAdj * 2;
+
+			// === Economy safety ===
+			const friendlyAdj = neighbors.filter(n => {
+				const nt = getTileAt(n.q, n.r);
+				return nt && indexToId(nt.ownerIndex) === player.id;
+			}).length;
+			score += friendlyAdj;
+
+			if (score > bestScore) {
+				bestScore = score;
+				bestMove = {
+					type: "action_move",
+					unitId: unit.id,
+					toQ: moveInfo.move.q,
+					toR: moveInfo.move.r,
+					poolHex: moveInfo.poolHex,
+				};
+			}
+		}
+	}
+
+	if (bestMove) {
+		console.log("AI selected best move:", bestMove, "score:", bestScore);
+		return bestMove;
+	}
+
+	// fallback
+	return null;
+}
+
+
 
 // find_ai_best_move findaibestmove aifindbestmove aimove ai_move
-function ai_find_best_move(player) {
+function ai_find_best_move1(player) {
 	//console.log("ai_find_best_move (improved)");
 
 	let bestMove = null;
@@ -8925,8 +8475,83 @@ let batchActionsAI = [];
 
 let useBatchMoves = 1;
 
+// 1. Create a helper to let the browser "breathe" (render one frame)
+const yieldToMainThread = () => new Promise(resolve => setTimeout(resolve, 0));
 
-function executeAIMoveSequentially(player) {
+
+// 2. Mark function as ASYNC
+async function executeAIMoveSequentially(player) {
+    if (!localPlayer.isHost || gameState.settings.gameOver) return;
+
+    const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
+    if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
+        return;
+    }
+
+    // --- START BATCH MODE ---
+    isAiBatching = true;
+    aiBatchBuffer = [];
+    console.log(`AI ${player.name} starting batch calculation...`);
+
+    let keepPlaying = true;
+    let movesCount = 0;
+    const MAX_MOVES = 200;
+
+    // Start a timer to track how long we've been calculating
+    let startTime = performance.now();
+
+    while (keepPlaying && movesCount < MAX_MOVES) {
+        const bestMove = ai_find_best_move(player);
+
+        if (bestMove) {
+            handleClientData(player.id, bestMove);
+            movesCount++;
+            
+            // --- THE MAGIC FIX ---
+            // Every 5 moves (or if 16ms has passed), pause for 0ms to let the UI update.
+            // This prevents the "Freezing" / "Page Unresponsive" warning.
+            if (movesCount % 5 === 0 || (performance.now() - startTime) > 15) {
+                await yieldToMainThread(); 
+                startTime = performance.now(); // Reset timer
+                
+                // CRITICAL: Re-check game state after resuming!
+                // Since we paused, the game state *might* have changed (e.g. game over).
+                if (gameState.settings.gameOver) {
+                    keepPlaying = false; 
+                    break;
+                }
+            }
+        } else {
+            keepPlaying = false;
+        }
+    }
+	
+	
+
+    handleClientData(player.id, { type: "action_end_turn" });
+
+    // --- END BATCH MODE ---
+    isAiBatching = false;
+	
+
+    if (aiBatchBuffer.length > 0) {
+        const bigMessage = {
+            type: 'multiple_actions',
+            actions: aiBatchBuffer
+        };
+
+        for (const [peerId, conn] of connections.entries()) {
+            conn.send(bigMessage);
+        }
+        
+        console.log(`AI Batch sent: ${aiBatchBuffer.length} sub-actions.`);
+    }
+
+    aiBatchBuffer = []; 
+}
+
+
+function executeAIMoveSequentially1(player) {
 	if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
 	// Double-check if it's still this AI's turn
@@ -8984,60 +8609,8 @@ function executeAIMoveSequentially(player) {
 	aiBatchBuffer = []; // Cleanup
 }
 
-// *** NEW FUNCTION ***
-// This function recursively calls itself with a delay to execute AI moves sequentially.
-// moveai handleaimove aiturn handleai
-function executeAIMoveSequentially1(player) {
-	if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
-	// Double-check if it's still this AI's turn
-	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
-	if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
-		console.log("AI turn interrupted or changed.");
-		return;
-	}
 
-	//console.log(`AI ${player.name} is thinking...`);
-
-	const bestMove = ai_find_best_move(player);
-	//console.warn("AI bestMove:", bestMove);
-
-	if (bestMove) {
-		//console.log("executeAIMoveSequentially bestMove");
-		
-		// If a move is found, execute it
-		// handleClientData is correct, as the host is simulating the AI's action
-		
-		//batchActionsAI.push(bestMove); // wont work since the AI modifies the game during moves, so it should update the map etc instantly after making the move. perhaps make a silent move handler that just updates the data...
-		if(useBatchMoves){
-			batchActionsAI.push(bestMove);
-			// should modify the gameState here so the AI can continue playing....
-		}else{
-			handleClientData(player.id, bestMove);
-		}
-		
-		// Schedule the next move check after a delay
-		setTimeout(() => {
-			//console.log("setTimeout executeAIMoveSequentially");
-			executeAIMoveSequentially(player); // Recursive call for the next move
-		}, AI_DELAY_MOVE); // delay between moves
-	} else {
-		// No more moves found, end the turn
-		console.log(`AI ${player.name} has no more moves. Ending turn.`);
-		
-		if(useBatchMoves){
-			batchActionsAI.push({ type: "action_end_turn" });
-			handleClientData(player.id, { 
-				type: 'multiple_actions', 
-				actions: batchActionsAI,
-			});
-		}else{
-			handleClientData(player.id, { type: "action_end_turn" });
-		}
-		
-		
-	}
-}
 
 
 // checkaiturn
@@ -9055,13 +8628,15 @@ function checkForAITurn(){
 		console.log(`Starting AI turn for: ${currentPlayer.name}`);
 		
 		// Start the sequential move execution
-		// Add a small initial delay to allow the "turn changed" message to settle
+		// Add a small initial delay to allow the "turn changed" message to settle, so you can see the AI player changing
 		setTimeout(() => {
 			batchActionsAI = [];
 			executeAIMoveSequentially(currentPlayer);
-		}, AI_DELAY_START); // Small delay before first move
+		}, AI_DELAY_START); // Small delay before first move, so you can see the AI player changing
 	}
 }
+
+
 
 // return only milliseconds from performance timer.
 function msNowFloor(){
@@ -9955,20 +9530,6 @@ function handleClientData(peerId, data) {
 	//console.log("handleClientData 2");
 	
 	switch (data.type) {
-		/*
-		case 'multiple_actions': {
-			console.warn("handleClientData: multiple_actions triggered: ");
-			console.warn(data.actions);
-			// handle batch of actions in one run, so there is less individual messages sent to clients.
-			if(data.actions !== undefined && data.actions.length > 0){
-				for(let i = 0; i < data.actions.length; i++){
-					handleClientData(peerId, data.actions[i]);
-				}
-			}
-			return; // dont process anything after.
-		}
-		break;
-		*/
 		case 'join':
 			player.name = data.name;
 			
@@ -10211,6 +9772,8 @@ function setupConnection(conn) {
 function restartGame(){
 	location.reload();
 }
+
+
 
 // Helper function for joinGame
 function executeJoin(hostPeerId) {
@@ -10605,38 +10168,6 @@ function initDB() {
 	};
 }
 
-/*
-async function getMostRecentSave() {
-	return new Promise((resolve, reject) => {
-		if (!db) {
-			resolve(null); // no saves to be found
-			//reject('Database not initialized');
-			return;
-		}
-
-		const transaction = db.transaction([DB_STORE_NAME], 'readonly');
-		const objectStore = transaction.objectStore(DB_STORE_NAME);
-		const getAllRequest = objectStore.getAll();
-
-		getAllRequest.onsuccess = (event) => {
-			const allSaves = event.target.result;
-			
-			if (allSaves.length > 0) {
-				allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
-				resolve(allSaves[0].roomName);
-			} else {
-				resolve(null); // no saves found
-			}
-		};
-
-		getAllRequest.onerror = (e) => {
-			console.error('Error loading game:', e.target.error);
-			//reject(e.target.error);
-			resolve(null); // no saves to be found
-		};
-	});
-}
-*/
 
 
 
@@ -10926,35 +10457,6 @@ function loadGameFromDB(roomKey, callback) {
 
 
 
-function loadGameFromDB1(roomName, callback) {
-	if (!db) return;
-	// if no saved games found: (roomName set to null in that case)
-	if(!roomName){
-		callback(null);
-		return;
-	}
-	
-	const transaction = db.transaction([DB_STORE_NAME], 'readonly');
-	const objectStore = transaction.objectStore(DB_STORE_NAME);
-	const request = objectStore.get(roomName);
-	
-	//const getReqInitial = objectStore.get("init"+roomName);
-	//const getReqPlay = objectStore.get("play"+roomName);
-	
-	// 1. Handle initial record get
-	//getReqInitial.onsuccess = (e) => {
-		//let initialState = e.target.result;
-		// fix this so it will be added to callback with getReqPlay e.target.result
-	//};
-	
-	getReqPlay.onsuccess = (e) => {
-		callback(e.target.result);
-	};
-	getReqPlay.onerror = (e) => {
-		console.error('Error loading game:', e.target.error);
-		callback(null);
-	};
-}
 
 // =================================================================
 // --- GAME INIT (HOST-SIDE)
