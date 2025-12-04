@@ -3234,7 +3234,7 @@ function findNextFreeRandomUnitName(playerId){
 	let unitNamesList = [];
 	for(let i = 0; i < gameState.units.length; i++){
 		let unit = gameState.units[i];
-		if(unit.name && unit.ownerId === playerId && unit.internalType === 'soldier'){
+		if(unit.name && indexToId(unit.ownerIndex) === playerId && unit.internalType === 'soldier'){
 			unitNamesList.push(unit.name);
 		}
 	}
@@ -3316,7 +3316,7 @@ let ai_counter = 1;
 addAiBtn.addEventListener('click', () => {
     if (!localPlayer.isHost) return;
 
-	let randomStr = getUID(8);
+	let randomStr = getUID(5); // add short random id so the total length is 10 at minimum.
     const aiPlayer = {
         id: `AI-${ai_counter}-${randomStr}`,
         name: `AI-${ai_counter}`,
@@ -3408,6 +3408,14 @@ function centerFirstUnit(){
 	centerAndSelectFirstUnit(false);
 }
 
+function indexToId(index){
+	if(index === undefined || index === null || index === -1){
+		return null;
+	}else{
+		return gameState.players[index].id;
+	}
+}
+
 function centerAndSelectFirstUnit(selectUnit = true){
 	let player = getMyPlayer();
 	
@@ -3416,7 +3424,7 @@ function centerAndSelectFirstUnit(selectUnit = true){
 		
 		// find first soldier unit to center to:
 		for (const unit of gameState.units) {
-			if(unit.internalType === 'soldier' && unit.ownerId === player.id){
+			if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id){
 				if(selectUnit){
 					centerAndSelectUnit(unit);
 				}else{
@@ -3430,7 +3438,7 @@ function centerAndSelectFirstUnit(selectUnit = true){
 		// this might be possible when loading a game, or if loaded map has castles set.
 		if(!found){
 			for (const unit of gameState.units) {
-				if(unit.internalType === 'castle' && unit.ownerId === player.id){
+				if(unit.internalType === 'castle' && indexToId(unit.ownerIndex) === player.id){
 					if(selectUnit){
 						centerAndSelectUnit(unit);
 					}else{
@@ -3445,7 +3453,7 @@ function centerAndSelectFirstUnit(selectUnit = true){
 		if(!found){
 			for(let i = 0; i < gameState.map.tilesData.length; i++){
 				let tile = gameState.map.tilesData[i];
-				if(tile.ownerId === player.id){
+				if(indexToId(tile.ownerIndex) === player.id){
 					centerToTile(tile);
 					found = 1;
 					break;
@@ -3531,7 +3539,31 @@ function sendToHost(data) {
 	}
 }
 
+// --- AI BATCHING GLOBALS ---
+let isAiBatching = false;
+let aiBatchBuffer = [];
+
 function broadcast(data) {
+	if (!localPlayer.isHost) return;
+
+	// 1. ALWAYS process locally immediately.
+	// This updates the Host's gameState, allowing the AI to 'see' the result 
+	// of its move before calculating the next one.
+	handleHostData(data);
+
+	// 2. Handle Network Sending
+	if (isAiBatching) {
+		// In AI Batch mode: Collect message to buffer
+		aiBatchBuffer.push(data);
+	} else {
+		// Standard mode: Send to all connected clients immediately
+		for (const [peerId, conn] of connections.entries()) {
+			conn.send(data);
+		}
+	}
+}
+
+function broadcast1(data) {
 	if (!localPlayer.isHost) return;
 	// Send to all connected clients
 	for (const [peerId, conn] of connections.entries()) {
@@ -3749,7 +3781,7 @@ function shortUIDBase36(maxLength = 16) {
 	return num.toString(36).toUpperCase().slice(0, maxLength);
 }
 
-function getUID(maxLength = 16) {
+function getUID(maxLength = 10) {
 	// seems to be working right, no way two identical IDS generated.
 	//return Date.now().toString(36) + randomFunc().toString(36).substr(2);
 	//return Date.now().toString(36).toUpperCase() + randomFunc().toString(36).substr(2).toUpperCase();
@@ -4144,7 +4176,7 @@ function drawHexagonOutlines(q, r, myId = -1){
 	for(let i = 0; i < hexNeigh.length; i++){
 		let hexCoord = hexNeigh[i];
 		let nTile = getTileAt(hexCoord.q, hexCoord.r);
-		if(nTile && nTile.ownerId != myId){
+		if(nTile && indexToId(nTile.ownerIndex) != myId){
 			highlightedLines.push(i);
 		}
 		// if neighbour tile is out of bounds:
@@ -4687,7 +4719,7 @@ function drawMapShading(){
 		// renderoutlines render outlines
 		if(tile.type === 'land') {
 			if(tile.outline){
-				let player = getPlayer(tile.ownerId);
+				let player = getPlayerByIndex(tile.ownerIndex);
 				let color;
 				if(player){
 					color = hexToRgba(darkenHexColor(player.color, 0.8), 0.8);
@@ -4760,8 +4792,8 @@ function drawMapTiles(){
 			if(!drawWaterTiles){
 				drawTile = false;
 			}
-		} else if (tile.ownerId) {
-			const owner = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+		} else if (indexToId(tile.ownerIndex)) {
+			const owner = getPlayerByIndex(tile.ownerIndex);
 			fallbackColor = owner ? owner.color : LAND_COLOR;
 		} else if (tile.type === 'land') {
 			fallbackColor = LAND_COLOR;
@@ -4771,24 +4803,6 @@ function drawMapTiles(){
 			continue;
 		}
 		
-		// draw shadows/shading for land tiles next to water:
-		// draw map outlines:
-		// renderoutlines render outlines
-		/*
-		if(tile.type === 'land') {
-			if(tile.outline){
-				let player = getPlayer(tile.ownerId);
-				let color;
-				if(player){
-					color = hexToRgba(darkenHexColor(player.color, 0.8), 0.8);
-				}else{
-					color = hexToRgba(darkenHexColor("#705F4B", 0.8), 0.8);
-				}
-				
-				drawWaterShading(x, y, tile.outline, color);
-			}
-		}
-		*/
 
 
 		//drawnTiles++;
@@ -4810,7 +4824,7 @@ function drawMapTiles(){
 			// (We assume the image key is the same as tile.type)
 			let img = null;
 			let imageName = "";
-			if(tile.ownerId){
+			if(indexToId(tile.ownerIndex)){
 				imageName = 'land'; // tile.type
 				img = getImage(imageName);
 			}else{
@@ -4845,9 +4859,9 @@ function drawMapTiles(){
 				const dx = x - dWidth / 2;
 				const dy = y - dHeight / 2;
 				
-				if(tile.ownerId && !previewdraw){
+				if(indexToId(tile.ownerIndex) && !previewdraw){
 					// Draw the gray texture (owned land) with multiply operation:
-					const player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+					const player = getPlayerByIndex(tile.ownerIndex);
 	
 					if(drawtextures){
 						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
@@ -4928,13 +4942,13 @@ function drawHighlights(){
 	// draw pools edges for all pools:
 	if(enemyHighlightedPool.length > 0){
 		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
-		highlightedEnemy = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+		highlightedEnemy = getPlayerByIndex(tile.ownerIndex);
 	}
 	
 	if(highlightedPool.length > 0){
 		// pool length is zero if no pool selected.
 		let tile = getTileAt(highlightedPool[0].q, highlightedPool[0].r);
-		highlightedPlayer = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+		highlightedPlayer = getPlayerByIndex(tile.ownerIndex);
 	}
 	// use selectedPool for highlighting:
 	//if(selectedPool && selectedPool.hexes && selectedPool.hexes.length > 0){
@@ -4967,7 +4981,7 @@ function drawHighlights(){
 
 		
 		
-		if(tile.ownerId){
+		if(indexToId(tile.ownerIndex)){
 			let neighbours = tile.neighbours;
 			if(neighbours && neighbours.length > 0){
 				let highlightedLines = [];
@@ -4980,7 +4994,7 @@ function drawHighlights(){
 					// -1 = water tile:
 					if(neighTileIndex != -1){
 						let nTile = gameState.map.tilesData[neighTileIndex];
-						if(nTile.ownerId !== tile.ownerId){
+						if(indexToId(nTile.ownerIndex) !== indexToId(tile.ownerIndex)){
 							highlightedLines.push(neighbourIndex);
 						}
 					}else{
@@ -4998,7 +5012,7 @@ function drawHighlights(){
 					drawHexagonPathLines(x, y, highlightedLines, HEX_LINE_MULTI);
 					//drawHexagonPathLines(x, y, [0,1,2,3,4,5]);
 					
-					let player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+					let player = getPlayerByIndex(tile.ownerIndex);
 					let color = lightenHexColor(player.color, 0.1);
 					let opacity = 0.5;
 					let dashedMode = 0;
@@ -5006,7 +5020,7 @@ function drawHighlights(){
 					let poolSelected = 0;
 					
 					if(highlightedEnemy){
-						if(highlightedEnemy.id == tile.ownerId){
+						if(highlightedEnemy.id == indexToId(tile.ownerIndex)){
 							opacity = 1;
 							color = lightenHexColor(player.color, 0.6);
 							poolSelected = 1;
@@ -5014,7 +5028,7 @@ function drawHighlights(){
 					}
 					
 					if(highlightedPlayer){
-						if(highlightedPlayer.id == tile.ownerId){
+						if(highlightedPlayer.id == indexToId(tile.ownerIndex)){
 							dashedMode = 1;
 						}
 					}
@@ -5088,12 +5102,12 @@ function drawHighlights(){
 		// use selected pool player id for each tile:
 		
 		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
-		let player = getPlayerByIndex(tile.ownerIndex);//getPlayer(tile.ownerId);
+		let player = getPlayerByIndex(tile.ownerIndex);
 		
 		let color = lightenHexColor(player.color);
 		
 		for (const hex of enemyHighlightedPool) {
-			drawHexagonOutlines(hex.q, hex.r, tile.ownerId);
+			drawHexagonOutlines(hex.q, hex.r, indexToId(tile.ownerIndex));
 			ctx.strokeStyle = color;
 			ctx.lineWidth = 4;
 			ctx.lineCap = 'round';
@@ -5330,7 +5344,7 @@ function drawUnits(){
 			//const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
 			
 			if(unit.internalType == 'soldier'){
-				if(currentTurnPlayer.id === unit.ownerId){
+				if(currentTurnPlayer.id === indexToId(unit.ownerIndex)){
 					// draw yellow arrow sign:
 					if (!unit.hasMoved) {
 						ctx.save();
@@ -5505,7 +5519,7 @@ function givemoney(amount){
 function givemoneyall(amount){
 	for(let i = 0; i < gameState.map.tilesData.length; i++){
 		let tile = gameState.map.tilesData[i];
-		if(tile.ownerId){
+		if(indexToId(tile.ownerIndex)){
 			tile.savings += amount;
 		}
 	}
@@ -6176,7 +6190,7 @@ function drawMoveDirectionsOverlay() {
 	for (const unit of gameState.units) {
 		// only show my player soldiers that havent moved yet:
 		if(unit.internalType !== 'soldier' ||
-			unit.ownerId !== localPlayer.id ||
+			indexToId(unit.ownerIndex) !== localPlayer.id ||
 			unit.hasMoved){
 			continue;
 		}
@@ -6245,7 +6259,7 @@ function drawMoveDirectionsOverlay_1() {
 	for (const unit of gameState.units) {
 		// only show my player soldiers that havent moved yet:
 		if(unit.internalType !== 'soldier' ||
-			unit.ownerId !== localPlayer.id ||
+			indexToId(unit.ownerIndex) !== localPlayer.id ||
 			unit.hasMoved){
 			continue;
 		}
@@ -6682,7 +6696,7 @@ function setTileAt(q, r, tileData, allowCreation = true) {
 		}
 	}
 }
-
+/*
 function setTileOwner(tile, ownerId){
 	tile.ownerId = ownerId;
 	if(ownerId){
@@ -6694,11 +6708,18 @@ function setTileOwner(tile, ownerId){
 		tile.ownerIndex = -1; // no owner, ownerId is null.
 	}
 }
+*/
 
-function claimTile(tile, ownerId){
-	setTileOwner(tile, ownerId);
-	tile.savings = 0; // clear savings.
+function setTileOwnerByIndex(tile, ownerIndex){
+	if(ownerIndex !== undefined && ownerIndex !== null){
+		tile.ownerIndex = ownerIndex;
+	}else{
+		tile.ownerIndex = -1; // no owner, ownerIndex is not set.
+	}
 }
+
+
+
 
 
 
@@ -6736,7 +6757,7 @@ function hasUnmovedUnits(){
 	for(let i = 0; i < gameState.units.length; i++){
 		let unit = gameState.units[i];
 
-		if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
+		if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id && !unit.hasMoved){
 			return true;
 		}
 	}
@@ -6888,7 +6909,7 @@ function findSelectedPool(findHex, pools = localPlayerPools, ownerId = localPlay
 	if(pools && findHex){
 		let clickedHexTile = getTileAt(findHex.q, findHex.r);
 		
-		if(clickedHexTile && clickedHexTile.ownerId === ownerId){
+		if(clickedHexTile && indexToId(clickedHexTile.ownerIndex) === ownerId){
 			for(let p = 0; p < pools.length; p++){
 				let pool = pools[p];
 				for(let h = 0; h < pool.hexes.length; h++){
@@ -6995,7 +7016,7 @@ function handleHexClick(hex) {
 		}else{
 			let tile = getTileAt(hex.q, hex.r);
 			tile.type = tile.type === "water" ? "land" : "water";
-			tile.ownerId = null;
+			//tile.ownerId = null;
 			tile.ownerIndex = -1;
 			tile.object = null;
 			tile.savings = 0;
@@ -7037,10 +7058,7 @@ function handleHexClick(hex) {
 		
 		//let updatePools = false;
 		let updatePools = true; // currently always updates info, so it will set selectedPool to null if not player own pool.
-		// update pools only if clicked own tiles:
-		//if(clickedHexTile && clickedHexTile.ownerId === localPlayer.id){
-		//	updatePools = true;
-		//}
+
 		
 		// hide pool info initially, show it in updateSelectedPoolInfo if called:
 		//hidePoolInfo();
@@ -7168,7 +7186,7 @@ function handleHexClick(hex) {
 						
 						const unitOnHex = getUnitAt(hex.q, hex.r);
 						if(unitOnHex){
-							if (unitOnHex.ownerId === localPlayer.id) {
+							if (indexToId(unitOnHex.ownerIndex) === localPlayer.id) {
 								if(unitOnHex.internalType === 'soldier' && !unitOnHex.hasMoved){
 									selectedUnit = unitOnHex; // Select new unit
 									sellUnitBtn.disabled = false;
@@ -7203,7 +7221,7 @@ function handleHexClick(hex) {
 			if(isLandTile){
 				const unitOnHex = getUnitAt(hex.q, hex.r);
 				
-				if (unitOnHex && unitOnHex.ownerId === localPlayer.id) {
+				if (unitOnHex && indexToId(unitOnHex.ownerIndex) === localPlayer.id) {
 					// allow only selecting soldiers
 					if(unitOnHex.internalType === 'soldier'){
 						if(!unitOnHex.hasMoved){
@@ -7254,7 +7272,7 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 	let this_invalidMoveHexes = [];
 	
 	const tile = getTileAt(this_poolStartHex.q, this_poolStartHex.r);
-	if (tile && tile.ownerId === player.id) {
+	if (tile && indexToId(tile.ownerIndex) === player.id) {
 		// Run BFS to find all connected friendly hexes
 		const queue = [{q: this_poolStartHex.q, r: this_poolStartHex.r}];
 		const visited = new Set([`${this_poolStartHex.q},${this_poolStartHex.r}`]);
@@ -7266,7 +7284,7 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 			for (const n of getHexNeighbors(current.q, current.r)) {
 				const nKey = `${n.q},${n.r}`;
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id && !visited.has(nKey)) {
+				if (nTile && indexToId(nTile.ownerIndex) === player.id && !visited.has(nKey)) {
 					visited.add(nKey);
 					queue.push(n);
 				}
@@ -7302,14 +7320,14 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 		const shieldLevel = getShieldLevel(hex.q, hex.r, player.id);
 
 		if (targetUnit) {
-			if (targetUnit.ownerId === player.id) continue; // Should be impossible
+			if (indexToId(targetUnit.ownerIndex) === player.id) continue; // Should be impossible
 			if (this_selectedUnit.level > shieldLevel && this_selectedUnit.level > targetUnit.level) {
 				this_validMoveHexes.push(hex);
 			} else {
 				this_invalidMoveHexes.push(hex);
 			}
 		} else { // No target unit
-			if (toTile.ownerId !== null) { // Enemy land
+			if (indexToId(toTile.ownerIndex) !== null) { // Enemy land
 				if (this_selectedUnit.level > shieldLevel) {
 					this_validMoveHexes.push(hex);
 				} else {
@@ -7362,7 +7380,7 @@ function updateHighlights() {
 	if (poolStartHex) {
 		const tile = getTileAt(poolStartHex.q, poolStartHex.r);
 		if (tile) {
-			if(tile.ownerId === myPlayer.id){
+			if(indexToId(tile.ownerIndex) === myPlayer.id){
 				// Run BFS to find all connected friendly hexes
 				const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
 				const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
@@ -7374,13 +7392,13 @@ function updateHighlights() {
 					for (const n of getHexNeighbors(current.q, current.r)) {
 						const nKey = `${n.q},${n.r}`;
 						const nTile = getTileAt(n.q, n.r);
-						if (nTile && nTile.ownerId === myPlayer.id && !visited.has(nKey)) {
+						if (nTile && indexToId(nTile.ownerIndex) === myPlayer.id && !visited.has(nKey)) {
 							visited.add(nKey);
 							queue.push(n);
 						}
 					}
 				}
-			}else if(tile.ownerId){
+			}else if(indexToId(tile.ownerIndex)){
 				// create highlight for enemy pools:
 				
 				// Run BFS to find all connected friendly hexes
@@ -7394,7 +7412,7 @@ function updateHighlights() {
 					for (const n of getHexNeighbors(current.q, current.r)) {
 						const nKey = `${n.q},${n.r}`;
 						const nTile = getTileAt(n.q, n.r);
-						if (nTile && nTile.ownerId === tile.ownerId && !visited.has(nKey)) {
+						if (nTile && indexToId(nTile.ownerIndex) === indexToId(tile.ownerIndex) && !visited.has(nKey)) {
 							visited.add(nKey);
 							queue.push(n);
 						}
@@ -7437,7 +7455,7 @@ function updateHighlights() {
 
 
 			if (targetUnit) {
-				if (targetUnit.ownerId === myPlayer.id){
+				if (indexToId(targetUnit.ownerIndex) === myPlayer.id){
 					continue; // Should be impossible
 				}
 				if (selectedUnit.level > shieldLevel && selectedUnit.level > targetUnit.level) {
@@ -7446,7 +7464,7 @@ function updateHighlights() {
 					invalidMoveHexes.push(hex);
 				}
 			} else { // No target unit
-				if (toTile.ownerId !== null) { // Enemy land
+				if (indexToId(toTile.ownerIndex) !== null) { // Enemy land
 					if (selectedUnit.level > shieldLevel) {
 						validMoveHexes.push(hex);
 					} else {
@@ -7587,8 +7605,8 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 	if(tile){
 		for (const n of getHexNeighbors(q, r)) {
 			const unit = getUnitAt(n.q, n.r);
-			if (unit && tile.ownerId === unit.ownerId){
-				if (unit.ownerId !== perspectiveOwnerId) {
+			if (unit && indexToId(tile.ownerIndex) === indexToId(unit.ownerIndex)){
+				if (indexToId(unit.ownerIndex) !== perspectiveOwnerId) {
 					// It's an enemy unit
 					maxShield = Math.max(maxShield, unit.level);
 				}
@@ -7605,8 +7623,8 @@ function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
 	
 	if(tile){
 		const unit = getUnitAt(q, r);
-		if (unit && tile.ownerId === unit.ownerId){
-			if (unit.ownerId !== perspectiveOwnerId) {
+		if (unit && indexToId(tile.ownerIndex) === indexToId(unit.ownerIndex)){
+			if (indexToId(unit.ownerIndex) !== perspectiveOwnerId) {
 				// It's an enemy unit
 				if(compareUnitLevel <= unit.level){
 					unitsShielding.push(unit);
@@ -7615,8 +7633,8 @@ function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
 		}
 		for (const n of getHexNeighbors(q, r)) {
 			const unit = getUnitAt(n.q, n.r);
-			if (unit && tile.ownerId === unit.ownerId){
-				if (unit.ownerId !== perspectiveOwnerId) {
+			if (unit && indexToId(tile.ownerIndex) === indexToId(unit.ownerIndex)){
+				if (indexToId(unit.ownerIndex) !== perspectiveOwnerId) {
 					// It's an enemy unit
 					if(compareUnitLevel <= unit.level){
 						unitsShielding.push(unit);
@@ -7674,7 +7692,7 @@ function isMoveValid(unit, toHex, player) {
 		for (const n of getHexNeighbors(current.q, current.r)) {
 			const nKey = `${n.q},${n.r}`;
 			const nTile = getTileAt(n.q, n.r);
-			if (nTile && nTile.ownerId === player.id && !visited.has(nKey)) {
+			if (nTile && indexToId(nTile.ownerIndex) === player.id && !visited.has(nKey)) {
 				visited.add(nKey);
 				queue.push(n);
 			}
@@ -7708,7 +7726,7 @@ function isMoveValid(unit, toHex, player) {
 	const shieldLevel = getShieldLevel(toHex.q, toHex.r, player.id);
 
 	if (targetUnit) {
-		if (targetUnit.ownerId === player.id) {
+		if (indexToId(targetUnit.ownerIndex) === player.id) {
 			return badMove('Cannot move onto own unit.'); // Should be caught by pool check, but safe
 		}
 		if (unit.level > shieldLevel && unit.level > targetUnit.level) {
@@ -7719,12 +7737,12 @@ function isMoveValid(unit, toHex, player) {
 	}
 	
 	// No target unit
-	if (toTile.ownerId !== null) { // It's enemy land
+	if (indexToId(toTile.ownerIndex) !== null) { // It's enemy land
 		if (unit.level > shieldLevel) {
 			return goodMove('move');
 		} else {
 			// todo: think again....
-			if(toTile.ownerId !== unit.ownerId){
+			if(indexToId(toTile.ownerIndex) !== indexToId(unit.ownerIndex)){
 				return badMove('low_level');
 			}else{
 				return goodMove('move');
@@ -7788,21 +7806,20 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 		//console.log(hexUnit);
 		
 		// checks for castles and soldiers placement too.
-		if(hexUnit.ownerId === player.id){
+		if(indexToId(hexUnit.ownerIndex) === player.id){
 			return badMove("not_empty"); // Must be empty
 		}else{
 			// if trying to kill enemy player:
 			// todo: probably need to check if trying to place castle, 
 			//       so it wont allow placing castle on top of enemy soldier.
 			
-			//console.log("hexUnit.ownerId !== player.id");
-			
+
 			// Check if any neighbour is my land:
 			// and the neighbour hex is in actionPool
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id && isHexInPool(actionPool, nTile)) {
+				if (nTile && indexToId(nTile.ownerIndex) === player.id && isHexInPool(actionPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -7828,11 +7845,9 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 	// if new unit is a castle:
 	if (isTypeCastle(unitType)) {
 		// if not your tile or not in your selected pool:
-		if (tile.ownerId !== player.id || !isHexInPool(actionPool, hex)){
+		if (indexToId(tile.ownerIndex) !== player.id || !isHexInPool(actionPool, hex)){
 			if(logallowed){
 				//console.log("trying to place castle");
-				//console.log("tile.ownerId !== player.id");
-				//console.log(tile.ownerId+" != "+player.id);
 			}
 			return badMove("not_my_hex"); // Must own hex
 		}
@@ -7846,11 +7861,9 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 		// Rules are "neighbouring land I own, or in the land I own"
 		
 		// if new place is not your land:
-		if (tile.ownerId !== player.id) {
+		if (indexToId(tile.ownerIndex) !== player.id) {
 			if(logallowed){
 				//console.log("trying to place soldier");
-				//console.log("tile.ownerId !== player.id");
-				//console.log(tile.ownerId+" != "+player.id);
 			}
 			
 			// Check if any neighbour is my land:
@@ -7858,7 +7871,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && nTile.ownerId === player.id && isHexInPool(actionPool, nTile)) {
+				if (nTile && indexToId(nTile.ownerIndex) === player.id && isHexInPool(actionPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -7908,19 +7921,19 @@ function getUnitSellPrice(unit){
 
 // Example usage:
 //const tileChangedUpdates = [
-//   { type: 'tile_changed', q: 1, r: 2, ownerId: 5 },
-//   { type: 'tile_changed', q: 1, r: 2, object: null }
+//   { type: 'tile_ changed', q: 1, r: 2, ownerId: 5 },
+//   { type: 'tile_ changed', q: 1, r: 2, object: null }
 //];
 // Output:
-// [{ type: 'tile_changed', q: 1, r: 2, ownerId: 5, object: null }]
+// [{ type: 'tile_ changed', q: 1, r: 2, ownerId: 5, object: null }]
 //
 //const tileChangedUpdates = [
-//   { type: 'tile_changed', q: 1, r: 2, ownerId: 5 },
-//   { type: 'tile_changed', q: 1, r: 3, object: null }
+//   { type: 'tile_ changed', q: 1, r: 2, ownerId: 5 },
+//   { type: 'tile_ changed', q: 1, r: 3, object: null }
 //];
 // Output:
-// [{ type: 'tile_changed', q: 1, r: 2, ownerId: 5 }]
-// [{ type: 'tile_changed', q: 1, r: 3, object: null }]
+// [{ type: 'tile_ changed', q: 1, r: 2, ownerId: 5 }]
+// [{ type: 'tile_ changed', q: 1, r: 3, object: null }]
 function mergeUpdates(updates) {
 	const merged = [];
 
@@ -7957,6 +7970,8 @@ function executeAction(playerId, action) {
 	//console.log("executeAction 2");
 	
 	const player = getPlayer(playerId);
+	const playerIndex = getPlayerIndex(playerId);
+	
 	if (!player || player.id !== getCurrentTurnPlayer()?.id) {
 		console.warn(`Action from wrong player: ${playerId}`);
 		return;
@@ -7967,7 +7982,7 @@ function executeAction(playerId, action) {
 	let updates = []; // Array of update messages to broadcast
 	let sounds = []; // Array of sounds to broadcast
 	let actionForUndo = null;
-	let affectedPlayers = new Set([playerId]); // Track who needs savings update
+	//let affectedPlayers = new Set([playerId]); // Track who needs savings update
 
 	switch (action.type) {
 		case 'action_sell': {
@@ -7980,7 +7995,7 @@ function executeAction(playerId, action) {
 			console.log(poolHex);
 			
 			const unit = gameState.units.find(u => u.id === unitId);
-			if (!unit || unit.ownerId !== playerId) return;
+			if (!unit || unit.ownerIndex !== playerIndex) return;
 			
 			let sellPrice = getUnitSellPrice(unit);
 			
@@ -8020,7 +8035,7 @@ function executeAction(playerId, action) {
 			console.log(poolHex);
 			
 			const unit = gameState.units.find(u => u.id === unitId);
-			if (!unit || unit.ownerId !== playerId) return;
+			if (!unit || unit.ownerIndex !== playerIndex) return;
 			
 			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
 
@@ -8030,7 +8045,7 @@ function executeAction(playerId, action) {
 				const fromQ = unit.q;
 				const fromR = unit.r;
 				const toTile = getTileAt(toQ, toR);
-				const oldOwner = toTile.ownerId;
+				const oldOwnerIndex = toTile.ownerIndex;
 				const oldObject = toTile.object;
 				const oldSavings = toTile.savings;
 				
@@ -8039,9 +8054,9 @@ function executeAction(playerId, action) {
 					unitId: unit.id,
 					fromQ, fromR,
 					toQ, toR,
-					didClaim: oldOwner !== playerId,
+					didClaim: oldOwnerIndex !== playerIndex,
 					oldSavings: oldSavings,
-					oldOwner: oldOwner,
+					oldOwnerIndex: oldOwnerIndex,
 					clearedObject: oldObject,
 					poolHex: poolHex,
 				};
@@ -8078,12 +8093,11 @@ function executeAction(playerId, action) {
 
 				
 				// Claim hex
-				if (toTile.ownerId !== playerId) {
-					setTileOwner(toTile, playerId);
+				if (toTile.ownerIndex !== playerIndex) {
+					setTileOwnerByIndex(toTile, playerIndex);
 					toTile.savings = 0; // update host data.
-					//toTile.ownerId = playerId;
-					//updates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
-					tileChangedUpdates.push({ type: 'tile_changed', q: toQ, r: toR, ownerId: playerId });
+
+					tileChangedUpdates.push({ type: 'tile_changed', q: toQ, r: toR, ownerIndex: playerIndex });
 					
 					if(!isAiPlayer(playerId)){
 						if (!toTile.object) {
@@ -8122,7 +8136,7 @@ function executeAction(playerId, action) {
 					}
 					
 					toTile.object = null;
-					//updates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
+
 					tileChangedUpdates.push({ type: 'tile_changed', q: toQ, r: toR, object: null });
 				}
 				
@@ -8130,10 +8144,10 @@ function executeAction(playerId, action) {
 				pushMergedUpdates(updates, tileChangedUpdates);
 				
 				//distributePoolSavings(findEconomyPools(playerId));
-				if (oldOwner) {
-					affectedPlayers.add(oldOwner);
+				//if (oldOwner) {
+					//affectedPlayers.add(oldOwner);
 					//distributePoolSavings(findEconomyPools(oldOwner));
-				}
+				//}
 				
 				//console.warn(actionForUndo);
 				
@@ -8176,7 +8190,7 @@ function executeAction(playerId, action) {
 				
 					
 				const tile = getTileAt(q, r);
-				const oldOwner = tile.ownerId;
+				const oldOwnerIndex = tile.ownerIndex;
 				const oldObject = tile.object;
 				const oldSavings = tile.savings;
 				
@@ -8186,14 +8200,14 @@ function executeAction(playerId, action) {
 					
 					const newUnit = {
 						id: newUnitID(),
-						ownerId: playerId,
+						//ownerId: playerId,
+						ownerIndex: playerIndex,
+						oldOwnerIndex: oldOwnerIndex,
 						q: q, 
 						r: r,
 						type: unitType,
 						level: data.level,
 						hasMoved: 1,
-						ownerIndex: getPlayerIndex(playerId),
-						oldOwner: oldOwner,
 						internalType: data.type,
 					};
 					//console.log("action_build: gameState.units.push(newUnit);");
@@ -8212,13 +8226,12 @@ function executeAction(playerId, action) {
 						moveUnitType = 1;
 					}
 					
-					if (isSoldier(newUnit) && tile.ownerId !== playerId) {
-						//tile.ownerId = playerId;
-						setTileOwner(tile, playerId);
+					if (isSoldier(newUnit) && tile.ownerIndex !== playerIndex) {
+						setTileOwnerByIndex(tile, playerIndex);
 						tile.savings = 0; // update to host data.
 						didClaim = true;
-						//updates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
-						tileChangedUpdates.push({ type: 'tile_changed', q: q, r: r, ownerId: playerId });
+
+						tileChangedUpdates.push({ type: 'tile_changed', q: q, r: r, ownerIndex: playerIndex });
 						
 						if(!isAiPlayer(playerId)){
 							if (!tile.object) {
@@ -8259,7 +8272,7 @@ function executeAction(playerId, action) {
 						
 						clearedObject = tile.object;
 						tile.object = null;
-						//updates.push({ type: 'tile_changed', q: q, r: r, object: null });
+
 						tileChangedUpdates.push({ type: 'tile_changed', q: q, r: r, object: null });
 					}
 					
@@ -8269,7 +8282,7 @@ function executeAction(playerId, action) {
 						cost: data.cost, 
 						didClaim: didClaim, 
 						oldSavings: oldSavings,
-						oldOwner: oldOwner,
+						oldOwnerIndex: oldOwnerIndex,
 						clearedObject: clearedObject,
 						poolHex: poolHex,
 					};
@@ -8309,14 +8322,11 @@ function executeAction(playerId, action) {
 					pushMergedUpdates(updates, tileChangedUpdates);
 					
 					//distributePoolSavings(findEconomyPools(playerId));
-					//if (tile.ownerId) {
-						//affectedPlayers.add(tile.ownerId);
-						//distributePoolSavings(findEconomyPools(tile.ownerId));
-					//}
-					if (oldOwner) {
-						affectedPlayers.add(oldOwner);
+
+					//if (oldOwner) {
+						//affectedPlayers.add(oldOwner);
 						//distributePoolSavings(findEconomyPools(oldOwner));
-					}
+					//}
 					
 					//console.warn(actionForUndo);
 					
@@ -8374,11 +8384,9 @@ function executeAction(playerId, action) {
 				if (lastAction.didClaim) {
 					const tile = getTileAt(lastAction.toQ, lastAction.toR);
 					if (tile) {
-						//tile.ownerId = lastAction.oldOwner;
-						setTileOwner(tile, lastAction.oldOwner);
+						setTileOwnerByIndex(tile, lastAction.oldOwnerIndex);
 						tile.savings = lastAction.oldSavings; // update host data.
-						//updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
-						tileChangedUpdates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerId: tile.ownerId });
+						tileChangedUpdates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, ownerIndex: tile.ownerIndex });
 						
 					}
 				}
@@ -8395,7 +8403,7 @@ function executeAction(playerId, action) {
 							deductCost(actionPool, 1, poolHex, action.type);
 						}
 						tile.object = lastAction.clearedObject;
-						//updates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, object: tile.object });
+
 						tileChangedUpdates.push({ type: 'tile_changed', q: lastAction.toQ, r: lastAction.toR, object: tile.object });
 						
 					}
@@ -8408,10 +8416,10 @@ function executeAction(playerId, action) {
 				}
 				
 				//distributePoolSavings(findEconomyPools(playerId));
-				if(lastAction.oldOwner) {
-					affectedPlayers.add(lastAction.oldOwner);
+				//if(lastAction.oldOwner) {
+					//affectedPlayers.add(lastAction.oldOwner);
 					//distributePoolSavings(findEconomyPools(lastAction.oldOwner));
-				}
+				//}
 				
 			} else if (lastAction.type === 'build') {
 				//gameState.units = gameState.units.filter(u => u.id !== lastAction.unit.id);
@@ -8430,11 +8438,9 @@ function executeAction(playerId, action) {
 				if (lastAction.didClaim) {
 					const tile = getTileAt(lastAction.unit.q, lastAction.unit.r);
 					if (tile) {
-						//tile.ownerId = null;
-						setTileOwner(tile, lastAction.oldOwner);
+						setTileOwnerByIndex(tile, lastAction.oldOwnerIndex);
 						tile.savings = lastAction.oldSavings; // update host data.
-						//updates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId});
-						tileChangedUpdates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerId: tile.ownerId});
+						tileChangedUpdates.push({type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, ownerIndex: tile.ownerIndex });
 						
 					}
 				}
@@ -8453,16 +8459,16 @@ function executeAction(playerId, action) {
 							deductCost(actionPool, 1, poolHex, action.type);
 						}
 						tile.object = lastAction.clearedObject;
-						//updates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
+
 						tileChangedUpdates.push({ type: 'tile_changed', q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
 						
 					}
 				}
 				//distributePoolSavings(findEconomyPools(playerId));
-				if(lastAction.oldOwner) {
-					affectedPlayers.add(lastAction.oldOwner);
+				//if(lastAction.oldOwner) {
+					//affectedPlayers.add(lastAction.oldOwner);
 					//distributePoolSavings(findEconomyPools(lastAction.oldOwner));
-				}
+				//}
 			} else if (lastAction.type === 'sell') {
 				// handle un-selling the unit.
 				
@@ -8521,7 +8527,7 @@ function executeAction(playerId, action) {
 			});
 
 			if(!isAiPlayer(playerId)){
-				broadcast({ type: 'sound', name: "move", q:0, r:0, playerId: 0, action: action.type});
+				broadcast({ type: 'sound', name: "move", q:0, r:0, playerIndex: -1, action: action.type});
 			}
 			
 			/////////////////////////////////////////////////
@@ -8554,7 +8560,7 @@ function executeAction(playerId, action) {
 	}
 	const uniqueSounds = [...new Set(sounds)];
 	for (const sound of uniqueSounds) {
-		broadcast({ type: 'sound', playerId: playerId, ...sound});
+		broadcast({ type: 'sound', playerIndex: playerIndex, ...sound});
 	}
 	
 	
@@ -8635,7 +8641,7 @@ function findEconomyPools(playerId, log_enabled = true) {
 		const rr = tile.r;
 		let elem = `${qq},${rr},${t}`;
 
-		if (tile.ownerId !== playerId || visited.has(elem)) {
+		if (indexToId(tile.ownerIndex) !== playerId || visited.has(elem)) {
 			continue;
 		}
 		
@@ -8680,7 +8686,7 @@ function findEconomyPools(playerId, log_enabled = true) {
 			for (const n of getHexNeighbors(q, r)) {
 				const nTile = getTileAt(n.q, n.r);
 				
-				if (nTile && nTile.ownerId === playerId){
+				if (nTile && indexToId(nTile.ownerIndex) === playerId){
 					const nKey = `${n.q},${n.r},${nTile.tileIndex}`;
 					if(!visited.has(nKey)) {
 						visited.add(nKey);
@@ -8840,14 +8846,14 @@ function ai_find_best_move(player) {
 
 	for (let i = 0; i < gameState.units.length; i++) {
 		const unit = gameState.units[i];
-		if (unit.hasMoved || unit.ownerId !== player.id) continue;
+		if (unit.hasMoved || indexToId(unit.ownerIndex) !== player.id) continue;
 
 		const possibleMovesTemp = findUnitPossibleMoves(unit, player);
 		const possibleMoves = [];
 
 		for (const move of possibleMovesTemp) {
 			const tile = getTileAt(move.q, move.r);
-			if (!tile || tile.ownerId === player.id) continue;
+			if (!tile || indexToId(tile.ownerIndex) === player.id) continue;
 			const check = isMoveValid(unit, move, player);
 			if (check.valid) possibleMoves.push({move:move, poolHex:{q:unit.q, r:unit.r}});
 		}
@@ -8858,10 +8864,10 @@ function ai_find_best_move(player) {
 
 			// === Base scoring ===
 			// Prefer new land
-			if (!tile.ownerId) score += 5;
+			if (!indexToId(tile.ownerIndex)) score += 5;
 
 			// Prefer enemy tiles
-			if (tile.ownerId && tile.ownerId !== player.id) score += 10;
+			if (indexToId(tile.ownerIndex) && indexToId(tile.ownerIndex) !== player.id) score += 10;
 
 			// === Attack scoring ===
 			const enemyUnit = gameState.units.find(u => u.q === moveInfo.move.q && u.r === moveInfo.move.r);
@@ -8879,7 +8885,7 @@ function ai_find_best_move(player) {
 			let enemyAdj = 0;
 			for (const n of neighbors) {
 				const nt = getTileAt(n.q, n.r);
-				if (nt && nt.ownerId && nt.ownerId !== player.id) enemyAdj++;
+				if (nt && indexToId(nt.ownerIndex) && indexToId(nt.ownerIndex) !== player.id) enemyAdj++;
 			}
 			score += enemyAdj * 2;
 
@@ -8887,7 +8893,7 @@ function ai_find_best_move(player) {
 			// Slightly prefer staying near friendly land (less isolation)
 			const friendlyAdj = neighbors.filter(n => {
 				const nt = getTileAt(n.q, n.r);
-				return nt && nt.ownerId === player.id;
+				return nt && indexToId(nt.ownerIndex) === player.id;
 			}).length;
 			score += friendlyAdj;
 
@@ -8920,10 +8926,71 @@ let AI_DELAY_MOVE = 50;
 
 let batchActionsAI = [];
 
+let useBatchMoves = 1;
+
+
+function executeAIMoveSequentially(player) {
+	if (!localPlayer.isHost || gameState.settings.gameOver) return;
+
+	// Double-check if it's still this AI's turn
+	const currentPlayer = gameState.players[gameState.turn.currentPlayerIndex];
+	if (!currentPlayer || currentPlayer.id !== player.id || !currentPlayer.isAI) {
+		return;
+	}
+
+	// --- START BATCH MODE ---
+	isAiBatching = true;
+	aiBatchBuffer = []; // Clear buffer
+
+	console.log(`AI ${player.name} starting batch calculation...`);
+
+	let keepPlaying = true;
+	let movesCount = 0;
+	const MAX_MOVES = 200; // Safety guard against infinite loops
+
+	// 1. Calculate and Execute all moves locally
+	while (keepPlaying && movesCount < MAX_MOVES) {
+		const bestMove = ai_find_best_move(player);
+
+		if (bestMove) {
+			// executeAction -> broadcast -> handleHostData (Updates State) -> Pushes to aiBatchBuffer
+			handleClientData(player.id, bestMove);
+			movesCount++;
+		} else {
+			// No more valid moves found
+			keepPlaying = false;
+		}
+	}
+
+	// 2. End the Turn
+	// executeEndTurn -> broadcast -> handleHostData (Updates State) -> Pushes to aiBatchBuffer
+	handleClientData(player.id, { type: "action_end_turn" });
+
+	// --- END BATCH MODE ---
+	isAiBatching = false;
+
+	// 3. Send Buffer to Clients
+	if (aiBatchBuffer.length > 0) {
+		const bigMessage = {
+			type: 'multiple_actions',
+			actions: aiBatchBuffer // Contains all unit_moved, tile_changed, sound, etc.
+		};
+
+		// Send one big message to all clients
+		for (const [peerId, conn] of connections.entries()) {
+			conn.send(bigMessage);
+		}
+		
+		console.log(`AI Batch sent: ${aiBatchBuffer.length} sub-actions.`);
+	}
+
+	aiBatchBuffer = []; // Cleanup
+}
+
 // *** NEW FUNCTION ***
 // This function recursively calls itself with a delay to execute AI moves sequentially.
 // moveai handleaimove aiturn handleai
-function executeAIMoveSequentially(player) {
+function executeAIMoveSequentially1(player) {
 	if (!localPlayer.isHost || gameState.settings.gameOver) return;
 
 	// Double-check if it's still this AI's turn
@@ -8945,7 +9012,12 @@ function executeAIMoveSequentially(player) {
 		// handleClientData is correct, as the host is simulating the AI's action
 		
 		//batchActionsAI.push(bestMove); // wont work since the AI modifies the game during moves, so it should update the map etc instantly after making the move. perhaps make a silent move handler that just updates the data...
-		handleClientData(player.id, bestMove);
+		if(useBatchMoves){
+			batchActionsAI.push(bestMove);
+			// should modify the gameState here so the AI can continue playing....
+		}else{
+			handleClientData(player.id, bestMove);
+		}
 		
 		// Schedule the next move check after a delay
 		setTimeout(() => {
@@ -8956,13 +9028,17 @@ function executeAIMoveSequentially(player) {
 		// No more moves found, end the turn
 		console.log(`AI ${player.name} has no more moves. Ending turn.`);
 		
-		//batchActionsAI.push({ type: "action_end_turn" });
-		//handleClientData(player.id, { 
-		//	type: 'multiple_actions', 
-		//	actions: batchActionsAI,
-		//});
+		if(useBatchMoves){
+			batchActionsAI.push({ type: "action_end_turn" });
+			handleClientData(player.id, { 
+				type: 'multiple_actions', 
+				actions: batchActionsAI,
+			});
+		}else{
+			handleClientData(player.id, { type: "action_end_turn" });
+		}
 		
-		handleClientData(player.id, { type: "action_end_turn" });
+		
 	}
 }
 
@@ -9251,7 +9327,7 @@ function executeEndTurn(playerId) {
 	
 		
 		// send sound for died soldiers just once:
-		batchActions.push({ type: 'sound', name: "diedByStarving", q:0, r:0, playerId: 0, action: "executeEndTurn"});
+		batchActions.push({ type: 'sound', name: "diedByStarving", q:0, r:0, playerIndex: -1, action: "executeEndTurn"});
 	}
 	
 
@@ -9259,7 +9335,7 @@ function executeEndTurn(playerId) {
 	
 	// --- 3. Reset "hasMoved" for all *this player's* units ---
 	gameState.units.forEach(u => {
-		if (u.ownerId === playerId) {
+		if (indexToId(u.ownerIndex) === playerId) {
 			if (u.hasMoved) {
 				u.hasMoved = 0;
 				batchActions.push({ type: 'unit_move_reset', unitId: u.id, hasMoved: 0 });
@@ -9340,7 +9416,7 @@ function addUnit(unit){
 		unit.animationFinished = 0; // ensure no animation will be visible.
 		unit.animationStyle = 2; // 2 = appear from zero size to normal size, 0 = no animation.
 		if(!unit.name){
-			unit.name = findNextFreeRandomUnitName(unit.ownerId);
+			unit.name = findNextFreeRandomUnitName(indexToId(unit.ownerIndex));
 		}
 	}
 	gameState.units.push(unit);
@@ -9488,8 +9564,8 @@ function makeExplosionBySoundMessage(data){
 		doExplosion = 1;
 		
 		let newcolor = "#FFFFFF";
-		if(data.playerId !== undefined){
-			let player = getPlayer(data.playerId);
+		if(data.playerIndex !== -1){
+			let player = getPlayerByIndex(data.playerIndex);
 			// create darker and grayer hex color from player.color:
 			newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
 		}
@@ -9627,11 +9703,12 @@ function handleHostData(data) {
 			//console.warn("undo_counter");
 			//console.warn(data);
 			
+			// if no playerId defined, it means reset.
 			if(playerId === undefined){
+				//console.warn("undo counter resetted");
 				localPlayer.undoCounter = 0;
 				undoBtn.classList.add("disabled");
 				
-				//console.warn("undo counter resetted");
 			}else if(localPlayer.id === playerId){
 				// update my undo counter:
 				localPlayer.undoCounter = data.undoCounter;
@@ -9648,8 +9725,8 @@ function handleHostData(data) {
 		case 'tile_changed': {
 			const tile = getTileAt(data.q, data.r);
 			if (tile) {
-				if (data.ownerId !== undefined){
-					setTileOwner(tile, data.ownerId); //tile.ownerId = data.ownerId;
+				if (data.ownerIndex !== undefined){
+					setTileOwnerByIndex(tile, data.ownerIndex);
 				}
 				// if savings were changed due to claiming tile; claimed tile will reset savings to zero.
 				// NOT NEEDED FOR CLIENTS! clients doesnt need to know individual tiles savings.
@@ -10003,6 +10080,7 @@ function newPeer(myPeerId = null){
 		console.log("newPeer(): myPeerId = "+myPeerId);
 	}else{
 		console.log("newPeer(): myPeerId = null");
+		myPeerId = getUID(); // create new shorter id, so peerjs server wont create its own long id.
 	}
 	selectedServerIndex = parseInt(serverNameInput.value, 10);
 	let selectedServer = serversList[selectedServerIndex];
@@ -11096,9 +11174,11 @@ function setLoadedMapAndApplyScale(){
 	console.warn("loadedmap:");
 	console.warn(loadedmap);
 	
+
+	scaleMap();
+	
 	cropMap();
 	
-	scaleMap();
 	
 	loadParsedMap(loadedmap);
 	
@@ -11700,7 +11780,7 @@ function spawnTrees(test1 = 1){
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		let tile = gameState.map.tilesData[t];
 		//tile.object = null; // clear previous objects.
-		if(tile.type === 'land' && !tile.object && !tile.ownerId && randomFunc() < 0.15 ){
+		if(tile.type === 'land' && !tile.object && !indexToId(tile.ownerIndex) && randomFunc() < 0.15 ){
 			tile.object = "tree";
 		}
 	}
@@ -11733,7 +11813,7 @@ function spawnTrees(test1 = 1){
 		let r = y + bounds.r.min;
 		
 		let tile = getTileAt(q, r);
-		if(tile && tile.type === 'land' && !tile.ownerId){
+		if(tile && tile.type === 'land' && !indexToId(tile.ownerIndex)){
 			tile.object = "tree";
 		}
 	}
@@ -11836,7 +11916,7 @@ function spawnPlayers(){
 					if(playerId){
 						let tile = getTileAt(qq, rr);
 
-						setTileOwner(tile, playerId);
+						setTileOwnerByIndex(tile, getPlayerIndex(playerId));
 						
 						if(info.object == "peasant"){
 							// unit found
@@ -11862,14 +11942,14 @@ function spawnPlayers(){
 			do {
 				randomTileIndex = random(0, tiles.length-1);
 				counter++;
-			} while ((tiles[randomTileIndex].ownerId || tiles[randomTileIndex].type === "water") && counter < 1000);
+			} while ((indexToId(tiles[randomTileIndex].ownerIndex) || tiles[randomTileIndex].type === "water") && counter < 1000);
 			
 			let tile = gameState.map.tilesData[randomTileIndex];
 			let qq = tile.q;
 			let rr = tile.r;
 			
 			let playerId = extraPlayers[i].id;
-			setTileOwner(tile, playerId);
+			setTileOwnerByIndex(tile, getPlayerIndex(playerId));
 			setTileAt(qq, rr, {object:null}); // remove object if any.
 			spawnSoldier(qq, rr, playerId, 'peasant');
 			// TODO: try to claim hex neighbour:
@@ -11924,8 +12004,8 @@ function spawnPlayersRandom() {
 		
 		// Claim center hex
 		const centerTile = getTileAt(spawnHex.q, spawnHex.r);
-		//centerTile.ownerId = player.id;
-		setTileOwner(centerTile, player.id);
+
+		setTileOwnerByIndex(centerTile, getPlayerIndex(player.id));
 		centerTile.object = null;
 		centerTile.savings = gameState.settings.startingMoney / 5; // Split money
 		
@@ -11933,8 +12013,8 @@ function spawnPlayersRandom() {
 		let claimedHexes = [];
 		for (let i = 0; i < 4; i++) {
 			const n = neighbors[i];
-			//n.tile.ownerId = player.id;
-			setTileOwner(n.tile, player.id);
+
+			setTileOwnerByIndex(n.tile, getPlayerIndex(player.id));
 			n.tile.object = null;
 			n.tile.savings = gameState.settings.startingMoney / 5;
 			claimedHexes.push(n);
@@ -11971,14 +12051,14 @@ function spawnSoldier(q, r, playerId, type){
 	const soldier = {
 		// rearranged keys for easier debugging
 		id: newUnitID(),
-		ownerId: playerId,
+		ownerIndex: getPlayerIndex(playerId),
+		//ownerId: playerId,
 		q: q,
 		r: r,
 		hasMoved: 0,
 		type: type,
 		level: getSoldierLevel(type),
 		internalType: SOLDIER_DATA[type].type,
-		ownerIndex: getPlayerIndex(playerId),
 		wasSpawned: 1, // ensure no animation triggered.
 	};
 	
@@ -11990,14 +12070,14 @@ function spawnCastle(q, r, playerId, type){
 	const castle = {
 		// rearranged keys for easier debugging
 		id: newUnitID(),
-		ownerId: playerId,
+		ownerIndex: getPlayerIndex(playerId),
+		//ownerId: playerId,
 		q: q,
 		r: r,
 		hasMoved: 0,
 		type: type,
 		level: getCastleLevel(type),
 		internalType: CASTLE_DATA[type].type,
-		ownerIndex: getPlayerIndex(playerId),
 		wasSpawned: 1, // ensure no animation triggered.
 	};
 
@@ -12055,40 +12135,51 @@ async function startReplay(){
 		
 		// NETWORK_HISTORY is set on load game.
 		
+		// todo: remove ownerId completely from use, rely on indexes instead.
+		
 		// assign new ids to players and remember the old one:
-		let oldToNewId = {};
+		// so they wont conflict with players watching the replay (especially "default-room" id).
+		//let oldToNewId = {};
 		for(let i = 0; i < gameState.players.length; i++){
 			let player = gameState.players[i];
 			let newID = getUID();
 			let oldID = player.id;
 			player.id = newID;
 			player.oldID = oldID;
-			oldToNewId[oldID] = newID;
+			//oldToNewId[oldID] = {id: newID, index: i};
 		}
+		
+		// no need to replace any IDs since indexes already point to correct players, now using indexes instead.
+		/*
 		// replace old unit ownerids with new ownerids:
 		for(let i = 0; i < gameState.units.length; i++){
 			let unit = gameState.units[i];
 			if(unit.ownerId !== undefined && unit.ownerId){
-				unit.ownerId = oldToNewId[unit.ownerId];
+				unit.ownerId = oldToNewId[unit.ownerId].id;
+				unit.ownerIndex = oldToNewId[unit.ownerId].index;
 			}
 		}
 		// replace old NETWORK_HISTORY messages ids with new ids:
 		for(let i = 0; i < NETWORK_HISTORY.length; i++){
 			let action = NETWORK_HISTORY[i];
 			if(action.ownerId !== undefined && action.ownerId){
-				action.ownerId = oldToNewId[action.ownerId];
+				action.ownerId = oldToNewId[action.ownerId].id;
+				action.ownerIndex = oldToNewId[action.ownerId].index;
 			}
 			if(action.playerId !== undefined && action.playerId){
-				action.playerId = oldToNewId[action.playerId];
+				action.playerId = oldToNewId[action.playerId].id;
+				action.playerIndex = oldToNewId[action.playerId].index;
 			}
 		}
 		// replace old ownerIds from tiles:
 		for(let i = 0; i < gameState.map.tilesData.length; i++){
 			let tile = gameState.map.tilesData[i];
 			if(tile.ownerId !== undefined && tile.ownerId){
-				tile.ownerId = oldToNewId[tile.ownerId];
+				tile.ownerId = oldToNewId[tile.ownerId].id;
+				tile.ownerIndex = oldToNewId[tile.ownerId].index;
 			}
 		}
+		*/
 		
 		//gameState.players = [...gameState.players, ...lobbyPlayers];
 		
@@ -12908,7 +12999,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 				const i = (startIndex + offset) % gameState.units.length;
 				let unit = gameState.units[i];
 
-				if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
+				if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id && !unit.hasMoved){
 					centerAndSelectUnit(unit);
 					playSound('startmove');
 					break;
@@ -12950,7 +13041,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 				const i = (startIndex - offset + gameState.units.length) % gameState.units.length;
 				let unit = gameState.units[i];
 
-				if(unit.internalType === 'soldier' && unit.ownerId === player.id && !unit.hasMoved){
+				if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id && !unit.hasMoved){
 					centerAndSelectUnit(unit);
 					playSound('startmove');
 					break;
