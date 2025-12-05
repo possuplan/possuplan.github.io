@@ -181,7 +181,7 @@ button {
 	padding-top: 2px;
 
 	font-size: 15px;
-	height: 47px;
+	height: 44px;
 
 	background-position: center;
 	background-repeat: no-repeat;
@@ -189,7 +189,7 @@ button {
 }
 
 .largefont {
-	font-size:30px;
+	font-size:27px;
 }
 
 
@@ -526,7 +526,7 @@ label {
 
 
 #player-ui-list {
-	max-height: 133px;
+	max-height: 68px;
 
 	border-top: 1px solid #3e3e3e;
 	border-bottom: 1px solid #3e3e3e;
@@ -571,8 +571,8 @@ label {
 	border-radius: 4px;
 	margin-bottom: 5px;
 	margin-top: 3px;
-
 	user-select: text !important;
+	overflow-wrap: anywhere;
 }
 
 .msgfromtext, .msgtext {
@@ -871,6 +871,7 @@ button.redbutton:hover {
 	line-height: 20px;      /* your chosen line height */
 	height: calc(3 * 20px);   /* 3 lines tall */
 	pointer-events: none;
+	overflow-wrap: anywhere;
 }
 
 #top-float-ui-messages {
@@ -3203,13 +3204,13 @@ function randomUnitName(){
 }
 
 
-function findNextFreeRandomUnitName(playerId){
+function findNextFreeRandomUnitName(playerIndex){
 	let unitName = "";
 	
 	let unitNamesList = [];
 	for(let i = 0; i < gameState.units.length; i++){
 		let unit = gameState.units[i];
-		if(unit.name && indexToId(unit.ownerIndex) === playerId && unit.internalType === 'soldier'){
+		if(unit.name && unit.ownerIndex === playerIndex && unit.internalType === 'soldier'){
 			unitNamesList.push(unit.name);
 		}
 	}
@@ -3375,13 +3376,7 @@ function centerFirstUnit(){
 	centerAndSelectFirstUnit(false);
 }
 
-function indexToId(index){
-	if(index === undefined || index === null || index === -1){
-		return null;
-	}else{
-		return gameState.players[index].id;
-	}
-}
+
 
 function centerAndSelectFirstUnit(selectUnit = true){
 	let player = getMyPlayer();
@@ -3391,7 +3386,7 @@ function centerAndSelectFirstUnit(selectUnit = true){
 		
 		// find first soldier unit to center to:
 		for (const unit of gameState.units) {
-			if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id){
+			if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex){
 				if(selectUnit){
 					centerAndSelectUnit(unit);
 				}else{
@@ -3405,7 +3400,7 @@ function centerAndSelectFirstUnit(selectUnit = true){
 		// this might be possible when loading a game, or if loaded map has castles set.
 		if(!found){
 			for (const unit of gameState.units) {
-				if(unit.internalType === 'castle' && indexToId(unit.ownerIndex) === player.id){
+				if(unit.internalType === 'castle' && unit.ownerIndex === player.playerIndex){
 					if(selectUnit){
 						centerAndSelectUnit(unit);
 					}else{
@@ -3420,7 +3415,7 @@ function centerAndSelectFirstUnit(selectUnit = true){
 		if(!found){
 			for(let i = 0; i < gameState.map.tilesData.length; i++){
 				let tile = gameState.map.tilesData[i];
-				if(indexToId(tile.ownerIndex) === player.id){
+				if(tile.ownerIndex === player.playerIndex){
 					centerToTile(tile);
 					found = 1;
 					break;
@@ -3477,25 +3472,18 @@ function showPage(pageId) {
 
 
 
-
+// MUST use playerId here 
 function sendToPlayer(playerId, data) {
-	//console.log("sendToPlayer");
-	
 	if (!localPlayer.isHost) return;
-	
-	//console.log("sendToPlayer 2");
 	
 	if (playerId === localPlayer.id) {
 		// It's the host, handle directly
-		//console.log("sendToPlayer playerId === localPlayer.id");
-		
 		handleHostData(data);
 	} else if (connections.has(playerId)) {
-		//console.log("else if (connections.has(playerId)");
-		
 		connections.get(playerId).send(data);
 	}
 }
+
 
 function sendToHost(data) {
 	if (localPlayer.isHost) {
@@ -3764,6 +3752,15 @@ function getPlayerIndex(playerId) {
 	return gameState.players.findIndex(p => p.id === playerId);
 }
 
+function getPlayerId(playerIndex){
+	if(playerIndex !== undefined && playerIndex !== -1){
+		return gameState.players[playerIndex].id;
+	}
+	console.error("getPlayerId returned null: playerIndex '"+playerIndex+"' is invalid.");
+	return null;
+}
+
+
 function getMyPlayer() {
 	return getPlayer(localPlayer.id);
 }
@@ -3882,12 +3879,15 @@ function getHexDistance(q1, r1, q2, r2) {
 // --- CANVAS RENDERING
 // =================================================================
 function resizeCanvas(){
-	console.warn(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
+	//console.warn(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 }
 
-
+function refreshCanvas(){
+	addSystemChatMessage(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
+	resizeCanvas();
+}
 
 
 function initCanvas() {
@@ -4082,27 +4082,6 @@ function drawHexagonPath(px, py, padding = 0) {
 
 
 
-function drawHexagonOutlines(q, r, myId = -1){
-	let highlightedLines = [];
-	//const { x, y } = axialToPixel(q, r);
-	const x = axialToPixelX(q, r);
-	const y = axialToPixelY(q, r);
-	
-	let hexNeigh = getHexNeighbors(q, r);
-
-	for(let i = 0; i < hexNeigh.length; i++){
-		let hexCoord = hexNeigh[i];
-		let nTile = getTileAt(hexCoord.q, hexCoord.r);
-		if(nTile && indexToId(nTile.ownerIndex) != myId){
-			highlightedLines.push(i);
-		}
-		// if neighbour tile is out of bounds:
-		if(!nTile){
-			highlightedLines.push(i);
-		}
-	}
-	drawHexagonPathLines(x, y, highlightedLines);
-}
 
 
 
@@ -4694,7 +4673,7 @@ function drawMapTiles(){
 			if(!drawWaterTiles){
 				drawTile = false;
 			}
-		} else if (indexToId(tile.ownerIndex)) {
+		} else if (tile.ownerIndex !== -1) {
 			const owner = getPlayerByIndex(tile.ownerIndex);
 			fallbackColor = owner ? owner.color : LAND_COLOR;
 		} else if (tile.type === 'land') {
@@ -4726,7 +4705,7 @@ function drawMapTiles(){
 			// (We assume the image key is the same as tile.type)
 			let img = null;
 			let imageName = "";
-			if(indexToId(tile.ownerIndex)){
+			if(tile.ownerIndex !== -1){
 				imageName = 'land'; // tile.type
 				img = getImage(imageName);
 			}else{
@@ -4761,7 +4740,7 @@ function drawMapTiles(){
 				const dx = x - dWidth / 2;
 				const dy = y - dHeight / 2;
 				
-				if(indexToId(tile.ownerIndex) && !previewdraw){
+				if(tile.ownerIndex !== -1 && !previewdraw){
 					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayerByIndex(tile.ownerIndex);
 	
@@ -4838,13 +4817,13 @@ function drawMapTiles(){
 // renderhighlights
 function drawHighlights(){
 
-	let highlightedEnemy = null;
+	let highlightedEnemyPlayer = null;
 	let highlightedPlayer = null;
 	
 	// draw pools edges for all pools:
 	if(enemyHighlightedPool.length > 0){
 		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
-		highlightedEnemy = getPlayerByIndex(tile.ownerIndex);
+		highlightedEnemyPlayer = getPlayerByIndex(tile.ownerIndex);
 	}
 	
 	if(highlightedPool.length > 0){
@@ -4883,7 +4862,7 @@ function drawHighlights(){
 
 		
 		
-		if(indexToId(tile.ownerIndex)){
+		if(tile.ownerIndex !== -1){
 			let neighbours = tile.neighbours;
 			if(neighbours && neighbours.length > 0){
 				let highlightedLines = [];
@@ -4896,7 +4875,7 @@ function drawHighlights(){
 					// -1 = water tile:
 					if(neighTileIndex != -1){
 						let nTile = gameState.map.tilesData[neighTileIndex];
-						if(indexToId(nTile.ownerIndex) !== indexToId(tile.ownerIndex)){
+						if(nTile.ownerIndex !== tile.ownerIndex){
 							highlightedLines.push(neighbourIndex);
 						}
 					}else{
@@ -4921,8 +4900,8 @@ function drawHighlights(){
 					
 					let poolSelected = 0;
 					
-					if(highlightedEnemy){
-						if(highlightedEnemy.id == indexToId(tile.ownerIndex)){
+					if(highlightedEnemyPlayer){
+						if(highlightedEnemyPlayer.playerIndex === tile.ownerIndex){
 							opacity = 1;
 							color = lightenHexColor(player.color, 0.6);
 							poolSelected = 1;
@@ -4930,7 +4909,7 @@ function drawHighlights(){
 					}
 					
 					if(highlightedPlayer){
-						if(highlightedPlayer.id == indexToId(tile.ownerIndex)){
+						if(highlightedPlayer.playerIndex === tile.ownerIndex){
 							dashedMode = 1;
 						}
 					}
@@ -4981,44 +4960,6 @@ function drawHighlights(){
 	}
 	
 
-/*
-	// note: moved above that loops all tiles to draw edges.
-	if(highlightedPool.length > 0){
-		ctx.setLineDash([12.5, 15]);
-		// Draw selected pool
-		for (const hex of highlightedPool) {
-			drawHexagonOutlines(hex.q, hex.r, localPlayer.id);
-			ctx.strokeStyle = 'rgba(255,0,255, 1)';
-			ctx.lineWidth = 1;
-			ctx.lineCap = 'round';
-			ctx.stroke();
-			ctx.lineCap = 'butt'; // reset to default
-		}
-		ctx.setLineDash([]);
-	}
-	*/
-	/*
-	if(enemyHighlightedPool.length > 0){
-		//ctx.setLineDash([12.5, 15]);
-		// Draw selected enemy pool
-		// use selected pool player id for each tile:
-		
-		let tile = getTileAt(enemyHighlightedPool[0].q, enemyHighlightedPool[0].r);
-		let player = getPlayerByIndex(tile.ownerIndex);
-		
-		let color = lightenHexColor(player.color);
-		
-		for (const hex of enemyHighlightedPool) {
-			drawHexagonOutlines(hex.q, hex.r, indexToId(tile.ownerIndex));
-			ctx.strokeStyle = color;
-			ctx.lineWidth = 4;
-			ctx.lineCap = 'round';
-			ctx.stroke();
-			ctx.lineCap = 'butt'; // reset to default
-		}
-		//ctx.setLineDash([]);
-	}
-	*/
 }
 
 
@@ -5246,7 +5187,7 @@ function drawUnits(){
 			//const data = SOLDIER_DATA[unit.type] || CASTLE_DATA[unit.type];
 			
 			if(unit.internalType == 'soldier'){
-				if(currentTurnPlayer.id === indexToId(unit.ownerIndex)){
+				if(currentTurnPlayer.playerIndex === unit.ownerIndex){
 					// draw yellow arrow sign:
 					if (!unit.hasMoved) {
 						ctx.save();
@@ -5412,7 +5353,7 @@ function drawUnitSelection(){
 function givemoney(amount){
 	if(selectedPool && selectedPool.hexes.length > 0){
 		selectedPool.hexes[0].tile.savings += amount;
-		updatePlayerSavings(getMyPlayer().id);
+		updatePlayerSavings(getMyPlayer().playerIndex);
 		updateSelectedPoolInfo();
 		console.log("givemoney = "+amount);
 	}
@@ -5421,11 +5362,11 @@ function givemoney(amount){
 function givemoneyall(amount){
 	for(let i = 0; i < gameState.map.tilesData.length; i++){
 		let tile = gameState.map.tilesData[i];
-		if(indexToId(tile.ownerIndex)){
+		if(tile.ownerIndex !== -1){
 			tile.savings += amount;
 		}
 	}
-	updatePlayerSavings(getMyPlayer().id);
+	updatePlayerSavings(getMyPlayer().playerIndex);
 	updateSelectedPoolInfo();
 	console.log("givemoneyall = "+amount);
 }
@@ -5708,7 +5649,7 @@ function drawMoveDirectionsOverlay() {
 	for (const unit of gameState.units) {
 		// only show my player soldiers that havent moved yet:
 		if(unit.internalType !== 'soldier' ||
-			indexToId(unit.ownerIndex) !== localPlayer.id ||
+			unit.ownerIndex !== localPlayer.playerIndex ||
 			unit.hasMoved){
 			continue;
 		}
@@ -5887,10 +5828,9 @@ function handleCanvasMouseDown(e) {
 	
 	isDragging = false; // Reset dragging flag
 	dragStart = { x: e.clientX, y: e.clientY };
-				lastpos.x = e.clientX;
-			lastpos.y = e.clientY;
-	console.warn("dragStart");
-	console.warn(dragStart);
+	lastpos.x = e.clientX;
+	lastpos.y = e.clientY;
+
 	
 	//const clickedHex = pixelToAxial(e.clientX, e.clientY);
 	//const unitOnHex = getUnitAt(clickedHex.q, clickedHex.r);
@@ -5906,19 +5846,12 @@ function handleCanvasMouseDown(e) {
 
 // seems to be only for desktop mode.
 function handleCanvasMouseUp(e) {
-	console.log("handleCanvasMouseUp");
-	
 	if(dragStart){
 		const dx = e.clientX - dragStart.x;
 		const dy = e.clientY - dragStart.y;
 		const dist = Math.sqrt(dx*dx + dy*dy);
 		
 		if (dist < 5) { // It's a click, not a drag
-			console.warn("handleCanvasMouseUp triggered a click. dist = "+dist);
-			console.log(e.clientX);
-			console.log(e.clientY);
-			console.log(dragStart.x);
-			console.log(dragStart.y);
 			handleHexClick(pixelToAxial(e.clientX, e.clientY));
 		}
 		isDragging = false;
@@ -6171,7 +6104,7 @@ function setOutlineAt(q, r, lines, allowCreation = true) {
 	let tile = {outline: lines};
 	
 	if(!getTileAt(q,r)){
-		tile = {...tile, type: "water", ownerId: null, ownerIndex: -1, object: null, savings: 0};
+		tile = {...tile, type: "water", ownerIndex: -1, object: null, savings: 0};
 	}
 	setTileAt(q, r, tile, allowCreation);
 
@@ -6200,7 +6133,7 @@ function hasUnmovedUnits(){
 	for(let i = 0; i < gameState.units.length; i++){
 		let unit = gameState.units[i];
 
-		if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id && !unit.hasMoved){
+		if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 			return true;
 		}
 	}
@@ -6343,11 +6276,11 @@ function isTileWater(tile){
 let shieldingUnits = null;
 let shieldingStartTime = 0;
 
-function findSelectedPool(findHex, pools = localPlayerPools, ownerId = localPlayer.id){
+function findSelectedPool(findHex, pools = localPlayerPools, ownerIndex = localPlayer.playerIndex){
 	if(pools && findHex){
 		let clickedHexTile = getTileAt(findHex.q, findHex.r);
 		
-		if(clickedHexTile && indexToId(clickedHexTile.ownerIndex) === ownerId){
+		if(clickedHexTile && clickedHexTile.ownerIndex === ownerIndex){
 			for(let p = 0; p < pools.length; p++){
 				let pool = pools[p];
 				for(let h = 0; h < pool.hexes.length; h++){
@@ -6450,11 +6383,10 @@ function handleHexClick(hex) {
 	if(EDITOR_ENABLED){
 
 		if(!getTileAt(hex.q, hex.r)){
-			setTileAt(hex.q, hex.r, {type:"land", ownerId: null, ownerIndex: -1, object: null, savings: 0});
+			setTileAt(hex.q, hex.r, {type:"land", ownerIndex: -1, object: null, savings: 0});
 		}else{
 			let tile = getTileAt(hex.q, hex.r);
 			tile.type = tile.type === "water" ? "land" : "water";
-			//tile.ownerId = null;
 			tile.ownerIndex = -1;
 			tile.object = null;
 			tile.savings = 0;
@@ -6555,7 +6487,7 @@ function handleHexClick(hex) {
 				}
 			} else {
 				if(buildCheck.reason && buildCheck.reason === "low_level"){
-					shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, getUnitLevel(placingUnit.type));
+					shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.playerIndex, getUnitLevel(placingUnit.type));
 					shieldingStartTime = msNowFloor();
 				}
 				playSound('protect');
@@ -6609,7 +6541,7 @@ function handleHexClick(hex) {
 					if(isLandTile){
 						const isInvalidMove = invalidMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
 						if(isInvalidMove){
-							shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.id, selectedUnit.level);
+							shieldingUnits = getShieldingUnits(hex.q, hex.r, myPlayer.playerIndex, selectedUnit.level);
 							shieldingStartTime = msNowFloor();
 							sellUnitBtn.disabled = false;
 							console.log("clicked hex:");
@@ -6624,7 +6556,7 @@ function handleHexClick(hex) {
 						
 						const unitOnHex = getUnitAt(hex.q, hex.r);
 						if(unitOnHex){
-							if (indexToId(unitOnHex.ownerIndex) === localPlayer.id) {
+							if (unitOnHex.ownerIndex === localPlayer.playerIndex) {
 								if(unitOnHex.internalType === 'soldier' && !unitOnHex.hasMoved){
 									selectedUnit = unitOnHex; // Select new unit
 									sellUnitBtn.disabled = false;
@@ -6659,7 +6591,7 @@ function handleHexClick(hex) {
 			if(isLandTile){
 				const unitOnHex = getUnitAt(hex.q, hex.r);
 				
-				if (unitOnHex && indexToId(unitOnHex.ownerIndex) === localPlayer.id) {
+				if (unitOnHex && unitOnHex.ownerIndex === localPlayer.playerIndex) {
 					// allow only selecting soldiers
 					if(unitOnHex.internalType === 'soldier'){
 						if(!unitOnHex.hasMoved){
@@ -6710,21 +6642,28 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 	let this_invalidMoveHexes = [];
 	
 	const tile = getTileAt(this_poolStartHex.q, this_poolStartHex.r);
-	if (tile && indexToId(tile.ownerIndex) === player.id) {
+	
+	if (tile && tile.ownerIndex === player.playerIndex) {
 		// Run BFS to find all connected friendly hexes
-		const queue = [{q: this_poolStartHex.q, r: this_poolStartHex.r}];
-		const visited = new Set([`${this_poolStartHex.q},${this_poolStartHex.r}`]);
+		const queue = [tile];
+		const visited = new Set([`${tile.q},${tile.r}`]);
 		
 		while (queue.length > 0) {
 			const current = queue.shift();
 			this_highlightedPool.push(current);
 			
-			for (const n of getHexNeighbors(current.q, current.r)) {
-				const nKey = `${n.q},${n.r}`;
-				const nTile = getTileAt(n.q, n.r);
-				if (nTile && indexToId(nTile.ownerIndex) === player.id && !visited.has(nKey)) {
-					visited.add(nKey);
-					queue.push(n);
+			//for (const n of getHexNeighbors(current.q, current.r)) {
+			const neighbours = current.neighbours;
+			for(let i = 0; i < neighbours.length; i++){
+				const neigh = neighbours[i];
+				if(neigh !== -1){
+					const nTile = gameState.map.tilesData[neigh];
+					const nKey = `${nTile.q},${nTile.r}`;
+					//const nTile = getTileAt(n.q, n.r);
+					if (nTile.ownerIndex === player.playerIndex && !visited.has(nKey)) {
+						visited.add(nKey);
+						queue.push(nTile);
+					}
 				}
 			}
 		}
@@ -6733,47 +6672,54 @@ function findUnitPossibleMoves(this_selectedUnit, player){
 	const borderHexes = new Map(); // Use Map to avoid duplicates, key 'q,r'
 	
 	// Add all empty hexes *in* the pool as valid moves
-	for (const hex of this_highlightedPool) {
+	for (const tile of this_highlightedPool) {
 		// removing this fixes bug not allowing moving around selected unit:
 		//if (hex.q === selectedUnit.q && hex.r === selectedUnit.r) continue;
-		if (!getUnitAt(hex.q, hex.r)) {
-			this_validMoveHexes.push(hex);
+		if (!getUnitAt(tile.q, tile.r)) {
+			//this_validMoveHexes.push(hex);
+			this_validMoveHexes.push(tile);
 		}
 		
 		// While we're here, find all neighbors to build the border set
-		for (const n of getHexNeighbors(hex.q, hex.r)) {
-			const nKey = `${n.q},${n.r}`;
-			const nTile = getTileAt(n.q, n.r);
-			// If neighbor exists, is not water, and is not in our pool
-			if (nTile && nTile.type !== 'water' && !this_highlightedPool.some(p => p.q === n.q && p.r === n.r)) {
-				borderHexes.set(nKey, n);
+		//for (const n of getHexNeighbors(hex.q, hex.r)) {
+		const neighbours = tile.neighbours;
+		for(let i = 0; i < neighbours.length; i++){
+			const neigh = neighbours[i];
+			if(neigh !== -1){
+				const nTile = gameState.map.tilesData[neigh];
+				const nKey = `${nTile.q},${nTile.r}`;
+				//const nTile = getTileAt(n.q, n.r);
+				// If neighbor exists, is not water, and is not in our pool
+				if (nTile.type !== 'water' && !this_highlightedPool.some(p => p.q === nTile.q && p.r === nTile.r)) {
+					borderHexes.set(nKey, nTile);
+				}
 			}
 		}
 	}
 	
 	// Now check all border hexes for validity
-	for (const [key, hex] of borderHexes.entries()) {
-		const toTile = getTileAt(hex.q, hex.r); // We know this tile exists and isn't water
-		const targetUnit = getUnitAt(hex.q, hex.r);
-		const shieldLevel = getShieldLevel(hex.q, hex.r, player.id);
+	for (const [key, tile] of borderHexes.entries()) {
+		//const toTile = getTileAt(hex.q, hex.r); // We know this tile exists and isn't water
+		const targetUnit = getUnitAt(tile.q, tile.r);
+		const shieldLevel = getShieldLevelFromTile(tile, player.playerIndex);
 
 		if (targetUnit) {
-			if (indexToId(targetUnit.ownerIndex) === player.id) continue; // Should be impossible
+			if (targetUnit.ownerIndex === player.playerIndex) continue; // Should be impossible
 			if (this_selectedUnit.level > shieldLevel && this_selectedUnit.level > targetUnit.level) {
-				this_validMoveHexes.push(hex);
+				this_validMoveHexes.push(tile);
 			} else {
-				this_invalidMoveHexes.push(hex);
+				this_invalidMoveHexes.push(tile);
 			}
 		} else { // No target unit
-			if (indexToId(toTile.ownerIndex) !== null) { // Enemy land
+			if (tile.ownerIndex !== undefined && tile.ownerIndex !== -1) { // Enemy land
 				if (this_selectedUnit.level > shieldLevel) {
-					this_validMoveHexes.push(hex);
+					this_validMoveHexes.push(tile);
 				} else {
-					this_invalidMoveHexes.push(hex);
+					this_invalidMoveHexes.push(tile);
 				}
 			} else { // Unowned land
 				// Shields don't apply to unowned land
-				this_validMoveHexes.push(hex);
+				this_validMoveHexes.push(tile);
 			}
 		}
 	}
@@ -6818,7 +6764,7 @@ function updateHighlights() {
 	if (poolStartHex) {
 		const tile = getTileAt(poolStartHex.q, poolStartHex.r);
 		if (tile) {
-			if(indexToId(tile.ownerIndex) === myPlayer.id){
+			if(tile.ownerIndex === myPlayer.playerIndex){
 				// Run BFS to find all connected friendly hexes
 				const queue = [{q: poolStartHex.q, r: poolStartHex.r}];
 				const visited = new Set([`${poolStartHex.q},${poolStartHex.r}`]);
@@ -6830,13 +6776,13 @@ function updateHighlights() {
 					for (const n of getHexNeighbors(current.q, current.r)) {
 						const nKey = `${n.q},${n.r}`;
 						const nTile = getTileAt(n.q, n.r);
-						if (nTile && indexToId(nTile.ownerIndex) === myPlayer.id && !visited.has(nKey)) {
+						if (nTile && nTile.ownerIndex === myPlayer.playerIndex && !visited.has(nKey)) {
 							visited.add(nKey);
 							queue.push(n);
 						}
 					}
 				}
-			}else if(indexToId(tile.ownerIndex)){
+			}else if(tile.ownerIndex !== -1){
 				// create highlight for enemy pools:
 				
 				// Run BFS to find all connected friendly hexes
@@ -6850,7 +6796,7 @@ function updateHighlights() {
 					for (const n of getHexNeighbors(current.q, current.r)) {
 						const nKey = `${n.q},${n.r}`;
 						const nTile = getTileAt(n.q, n.r);
-						if (nTile && indexToId(nTile.ownerIndex) === indexToId(tile.ownerIndex) && !visited.has(nKey)) {
+						if (nTile && nTile.ownerIndex === tile.ownerIndex && !visited.has(nKey)) {
 							visited.add(nKey);
 							queue.push(n);
 						}
@@ -6889,11 +6835,11 @@ function updateHighlights() {
 		for (const [key, hex] of borderHexes.entries()) {
 			const toTile = getTileAt(hex.q, hex.r); // We know this tile exists and isn't water
 			const targetUnit = getUnitAt(hex.q, hex.r);
-			const shieldLevel = getShieldLevel(hex.q, hex.r, myPlayer.id);
+			const shieldLevel = getShieldLevelFromTile(toTile, myPlayer.playerIndex);
 
 
 			if (targetUnit) {
-				if (indexToId(targetUnit.ownerIndex) === myPlayer.id){
+				if (targetUnit.ownerIndex === myPlayer.playerIndex){
 					continue; // Should be impossible
 				}
 				if (selectedUnit.level > shieldLevel && selectedUnit.level > targetUnit.level) {
@@ -6902,7 +6848,7 @@ function updateHighlights() {
 					invalidMoveHexes.push(hex);
 				}
 			} else { // No target unit
-				if (indexToId(toTile.ownerIndex) !== null) { // Enemy land
+				if (toTile.ownerIndex !== -1) { // Enemy land
 					if (selectedUnit.level > shieldLevel) {
 						validMoveHexes.push(hex);
 					} else {
@@ -7033,18 +6979,17 @@ function isSoldier(unit){
 
 
 
-
-
-
-function getShieldLevel(q, r, perspectiveOwnerId) {
+function getShieldLevelFromTile(tile, perspectiveOwnerIndex){
 	let maxShield = 0;
-	const tile = getTileAt(q, r);
-	
-	if(tile){
-		for (const n of getHexNeighbors(q, r)) {
-			const unit = getUnitAt(n.q, n.r);
-			if (unit && indexToId(tile.ownerIndex) === indexToId(unit.ownerIndex)){
-				if (indexToId(unit.ownerIndex) !== perspectiveOwnerId) {
+	const neighbours = tile.neighbours;
+	for(let i = 0; i < neighbours.length; i++){
+	//for (const n of getHexNeighbors(q, r)) {
+		const neigh = neighbours[i];
+		if(neigh !== -1){
+			const nTile = gameState.map.tilesData[neigh];
+			const unit = getUnitAt(nTile.q, nTile.r);
+			if (unit && tile.ownerIndex === unit.ownerIndex){
+				if (unit.ownerIndex !== perspectiveOwnerIndex) {
 					// It's an enemy unit
 					maxShield = Math.max(maxShield, unit.level);
 				}
@@ -7055,14 +7000,24 @@ function getShieldLevel(q, r, perspectiveOwnerId) {
 }
 
 
-function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
+function getShieldLevel(q, r, perspectiveOwnerIndex) {
+	const tile = getTileAt(q, r);
+	if(tile){
+		return getShieldLevelFromTile(tile, perspectiveOwnerIndex);
+	}else{
+		return 0; // fallback if tile doesnt exist.
+	}
+}
+
+
+function getShieldingUnits(q, r, perspectiveOwnerIndex, compareUnitLevel) {
 	const tile = getTileAt(q, r);
 	let unitsShielding = [];
 	
 	if(tile){
 		const unit = getUnitAt(q, r);
-		if (unit && indexToId(tile.ownerIndex) === indexToId(unit.ownerIndex)){
-			if (indexToId(unit.ownerIndex) !== perspectiveOwnerId) {
+		if (unit && tile.ownerIndex === unit.ownerIndex){
+			if (unit.ownerIndex !== perspectiveOwnerIndex) {
 				// It's an enemy unit
 				if(compareUnitLevel <= unit.level){
 					unitsShielding.push(unit);
@@ -7071,8 +7026,8 @@ function getShieldingUnits(q, r, perspectiveOwnerId, compareUnitLevel) {
 		}
 		for (const n of getHexNeighbors(q, r)) {
 			const unit = getUnitAt(n.q, n.r);
-			if (unit && indexToId(tile.ownerIndex) === indexToId(unit.ownerIndex)){
-				if (indexToId(unit.ownerIndex) !== perspectiveOwnerId) {
+			if (unit && tile.ownerIndex === unit.ownerIndex){
+				if (unit.ownerIndex !== perspectiveOwnerIndex) {
 					// It's an enemy unit
 					if(compareUnitLevel <= unit.level){
 						unitsShielding.push(unit);
@@ -7130,7 +7085,7 @@ function isMoveValid(unit, toHex, player) {
 		for (const n of getHexNeighbors(current.q, current.r)) {
 			const nKey = `${n.q},${n.r}`;
 			const nTile = getTileAt(n.q, n.r);
-			if (nTile && indexToId(nTile.ownerIndex) === player.id && !visited.has(nKey)) {
+			if (nTile && nTile.ownerIndex === player.playerIndex && !visited.has(nKey)) {
 				visited.add(nKey);
 				queue.push(n);
 			}
@@ -7161,10 +7116,10 @@ function isMoveValid(unit, toHex, player) {
 	}
 	
 	// It's a valid border hex, now check shields and targets
-	const shieldLevel = getShieldLevel(toHex.q, toHex.r, player.id);
+	const shieldLevel = getShieldLevelFromTile(toTile, player.playerIndex);
 
 	if (targetUnit) {
-		if (indexToId(targetUnit.ownerIndex) === player.id) {
+		if (targetUnit.ownerIndex === player.playerIndex) {
 			return badMove('Cannot move onto own unit.'); // Should be caught by pool check, but safe
 		}
 		if (unit.level > shieldLevel && unit.level > targetUnit.level) {
@@ -7175,12 +7130,12 @@ function isMoveValid(unit, toHex, player) {
 	}
 	
 	// No target unit
-	if (indexToId(toTile.ownerIndex) !== null) { // It's enemy land
+	if (toTile.ownerIndex !== -1) { // It's enemy land
 		if (unit.level > shieldLevel) {
 			return goodMove('move');
 		} else {
 			// todo: think again....
-			if(indexToId(toTile.ownerIndex) !== indexToId(unit.ownerIndex)){
+			if(toTile.ownerIndex !== unit.ownerIndex){
 				return badMove('low_level');
 			}else{
 				return goodMove('move');
@@ -7220,7 +7175,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 	let unitCost = getUnitCost(unitType);
 	// todo: add check if can afford? also checked in action_build though.
 
-	let actionPool = findSelectedPool(poolHex, findEconomyPools(player.id, log_enabled), player.id);
+	let actionPool = findSelectedPool(poolHex, findEconomyPools(player.playerIndex, log_enabled), player.playerIndex);
 
 	
 	let logallowed = prevhex !== (hex.q+","+hex.r);
@@ -7244,7 +7199,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 		//console.log(hexUnit);
 		
 		// checks for castles and soldiers placement too.
-		if(indexToId(hexUnit.ownerIndex) === player.id){
+		if(hexUnit.ownerIndex === player.playerIndex){
 			return badMove("not_empty"); // Must be empty
 		}else{
 			// if trying to kill enemy player:
@@ -7257,7 +7212,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && indexToId(nTile.ownerIndex) === player.id && isHexInPool(actionPool, nTile)) {
+				if (nTile && nTile.ownerIndex === player.playerIndex && isHexInPool(actionPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -7268,7 +7223,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 			}else{
 				if(isTypeSoldier(unitType)){
 					// if it was in build radius:
-					let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
+					let shieldLevel = getShieldLevelFromTile(tile, player.playerIndex);
 					// if the enemy unit level was higher than placed unit level:
 					if(shieldLevel >= unitLevel || hexUnit.level >= unitLevel){
 						return badMove("low_level");
@@ -7283,7 +7238,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 	// if new unit is a castle:
 	if (isTypeCastle(unitType)) {
 		// if not your tile or not in your selected pool:
-		if (indexToId(tile.ownerIndex) !== player.id || !isHexInPool(actionPool, hex)){
+		if (tile.ownerIndex !== player.playerIndex || !isHexInPool(actionPool, hex)){
 			if(logallowed){
 				//console.log("trying to place castle");
 			}
@@ -7299,7 +7254,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 		// Rules are "neighbouring land I own, or in the land I own"
 		
 		// if new place is not your land:
-		if (indexToId(tile.ownerIndex) !== player.id) {
+		if (tile.ownerIndex !== player.playerIndex) {
 			if(logallowed){
 				//console.log("trying to place soldier");
 			}
@@ -7309,7 +7264,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 			let isNeighborOwned = false;
 			for (const n of getHexNeighbors(hex.q, hex.r)) {
 				const nTile = getTileAt(n.q, n.r);
-				if (nTile && indexToId(nTile.ownerIndex) === player.id && isHexInPool(actionPool, nTile)) {
+				if (nTile && nTile.ownerIndex === player.playerIndex && isHexInPool(actionPool, nTile)) {
 					isNeighborOwned = true;
 					break;
 				}
@@ -7320,7 +7275,7 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 				return badMove("out_of_range");
 			}else{
 				// if it was in build radius:
-				let shieldLevel = getShieldLevel(tile.q, tile.r, player.id);
+				let shieldLevel = getShieldLevelFromTile(tile, player.playerIndex);
 				// if the enemy unit level was higher than placed unit level:
 				if(shieldLevel >= unitLevel){
 					return badMove("low_level");
@@ -7341,8 +7296,8 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 
 
 
-function isAiPlayer(playerId){
-	let player = getPlayer(playerId);
+function isAiPlayer(playerIndex){
+	let player = getPlayerByIndex(playerIndex);
 	return player && player.isAI;
 }
 
@@ -7401,6 +7356,7 @@ function pushMergedUpdates(updates, updatesList){
 
 
 // HOST-ONLY function
+// NOTE: MUST use playerId here.
 function executeAction(playerId, action) {
 	console.log("executeAction");
 
@@ -7420,7 +7376,6 @@ function executeAction(playerId, action) {
 	let updates = []; // Array of update messages to broadcast
 	let sounds = []; // Array of sounds to broadcast
 	let actionForUndo = null;
-	//let affectedPlayers = new Set([playerId]); // Track who needs savings update
 
 	switch (action.type) {
 		case 'action_sell': {
@@ -7444,10 +7399,7 @@ function executeAction(playerId, action) {
 				poolHex: poolHex,
 			};
 			
-			//const pools = findEconomyPools(playerId);
-			//addCost(pools, sellPrice);
-			
-			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
 
 			console.log("actionPool:");
 			console.log(actionPool);
@@ -7455,10 +7407,9 @@ function executeAction(playerId, action) {
 			addCost(actionPool, sellPrice, poolHex, action.type);
 			
 			// remove unit:
-			//gameState.units = gameState.units.filter(u => u.id !== unit.id);
 			updates.push({ type: 'unit_removed', unitId: unit.id });
 			
-			if(!isAiPlayer(playerId)){
+			if(!isAiPlayer(playerIndex)){
 				sounds.push({name:'sell', q: unit.q, r: unit.r, action: action.type, level: unit.level});
 			}
 			break;
@@ -7475,7 +7426,7 @@ function executeAction(playerId, action) {
 			const unit = gameState.units.find(u => u.id === unitId);
 			if (!unit || unit.ownerIndex !== playerIndex) return;
 			
-			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
 
 
 			const moveCheck = isMoveValid(unit, { q: toQ, r: toR }, player);
@@ -7508,7 +7459,7 @@ function executeAction(playerId, action) {
 					actionForUndo.killedUnit = { ...targetUnit }; // Store copy
 					//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 					updates.push({ type: 'unit_removed', unitId: targetUnit.id });
-					if(!isAiPlayer(playerId)){
+					if(!isAiPlayer(playerIndex)){
 						if(CASTLE_DATA[targetUnit.type]){
 							sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
 						}else{
@@ -7537,7 +7488,7 @@ function executeAction(playerId, action) {
 
 					tileChangedUpdates.push({ type: 'tile_changed', q: toQ, r: toR, ownerIndex: playerIndex });
 					
-					if(!isAiPlayer(playerId)){
+					if(!isAiPlayer(playerIndex)){
 						if (!toTile.object) {
 							if(!actionForUndo.killedUnit){
 								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
@@ -7546,7 +7497,7 @@ function executeAction(playerId, action) {
 					}
 				}else{
 					// if moved inside own pool, play also sound.
-					if(!isAiPlayer(playerId)){
+					if(!isAiPlayer(playerIndex)){
 						if (!toTile.object) {
 							if(!actionForUndo.killedUnit){
 								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
@@ -7556,7 +7507,7 @@ function executeAction(playerId, action) {
 				}
 				
 				if (toTile.object) {
-					if(!isAiPlayer(playerId)){
+					if(!isAiPlayer(playerIndex)){
 						if(toTile.object === 'tree'){
 							sounds.push({name:'claimTree', q: toQ, r: toR, action: action.type});
 						}else if(toTile.object === 'grass'){
@@ -7581,15 +7532,6 @@ function executeAction(playerId, action) {
 				// push to updates all tile_changed updates that were merged into one:
 				pushMergedUpdates(updates, tileChangedUpdates);
 				
-				//distributePoolSavings(findEconomyPools(playerId));
-				//if (oldOwner) {
-					//affectedPlayers.add(oldOwner);
-					//distributePoolSavings(findEconomyPools(oldOwner));
-				//}
-				
-				//console.warn(actionForUndo);
-				
-				//updateHighlights();
 			}
 			break;
 		}
@@ -7607,26 +7549,15 @@ function executeAction(playerId, action) {
 			const data = SOLDIER_DATA[unitType] || CASTLE_DATA[unitType];
 			if (!data) return;
 			
-			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
 
 
 			const buildCheck = isPlacementValid(unitType, {q, r}, player, poolHex);
 
 			if (buildCheck.valid) {
-				//const pools = findEconomyPools(playerId);
-				//let totalSavings = 0;
-				// calculate total savings from all pools:
-				//pools.forEach(pool => totalSavings += pool.totalSavings);
-				
-				// get selected pool
-				//let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
-
-				//console.log("actionPool:");
-				//console.log(actionPool);
 
 				let totalSavings = actionPool.totalSavings;
 				
-					
 				const tile = getTileAt(q, r);
 				const oldOwnerIndex = tile.ownerIndex;
 				const oldObject = tile.object;
@@ -7638,7 +7569,6 @@ function executeAction(playerId, action) {
 					
 					const newUnit = {
 						id: newUnitID(),
-						//ownerId: playerId,
 						ownerIndex: playerIndex,
 						oldOwnerIndex: oldOwnerIndex,
 						q: q, 
@@ -7671,14 +7601,14 @@ function executeAction(playerId, action) {
 
 						tileChangedUpdates.push({ type: 'tile_changed', q: q, r: r, ownerIndex: playerIndex });
 						
-						if(!isAiPlayer(playerId)){
+						if(!isAiPlayer(playerIndex)){
 							if (!tile.object) {
 								playMoveUnit = true;
 								//sounds.push({name:'moveunit', q: q, r: r, action: action.type});
 							}
 						}
 					}else{
-						if(!isAiPlayer(playerId)){
+						if(!isAiPlayer(playerIndex)){
 							if (!tile.object) {
 								playMoveUnit = true;
 								//sounds.push({name:'moveunit', q: q, r: r, action: action.type});
@@ -7688,7 +7618,7 @@ function executeAction(playerId, action) {
 					
 					let clearedObject = null;
 					if (tile.object) {
-						if(!isAiPlayer(playerId)){
+						if(!isAiPlayer(playerIndex)){
 							if(moveUnitType == 0){
 								if(tile.object === 'tree'){
 									sounds.push({name:'claimTree', q: q, r: r, action: action.type});
@@ -7732,7 +7662,7 @@ function executeAction(playerId, action) {
 						//gameState.units = gameState.units.filter(u => u.id !== targetUnit.id);
 						updates.push({ type: 'unit_removed', unitId: targetUnit.id });
 						
-						if(!isAiPlayer(playerId)){
+						if(!isAiPlayer(playerIndex)){
 							if(CASTLE_DATA[targetUnit.type]){
 								sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
 							}else{
@@ -7759,16 +7689,6 @@ function executeAction(playerId, action) {
 					// push to updates all tile_changed updates that were merged into one:
 					pushMergedUpdates(updates, tileChangedUpdates);
 					
-					//distributePoolSavings(findEconomyPools(playerId));
-
-					//if (oldOwner) {
-						//affectedPlayers.add(oldOwner);
-						//distributePoolSavings(findEconomyPools(oldOwner));
-					//}
-					
-					//console.warn(actionForUndo);
-					
-					//updateHighlights();
 				}
 			}else{
 				console.error("buildCheck failed:");
@@ -7802,7 +7722,7 @@ function executeAction(playerId, action) {
 			console.log("playerId:");
 			console.log(playerId);
 			
-			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
+			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
 
 
 			let tileChangedUpdates = [];
@@ -7853,18 +7773,10 @@ function executeAction(playerId, action) {
 					unitActionHex = {q: lastAction.killedUnit.q, r: lastAction.killedUnit.r};
 				}
 				
-				//distributePoolSavings(findEconomyPools(playerId));
-				//if(lastAction.oldOwner) {
-					//affectedPlayers.add(lastAction.oldOwner);
-					//distributePoolSavings(findEconomyPools(lastAction.oldOwner));
-				//}
 				
 			} else if (lastAction.type === 'build') {
-				//gameState.units = gameState.units.filter(u => u.id !== lastAction.unit.id);
 				updates.push({ type: 'unit_removed', unitId: lastAction.unit.id });
 				
-				//const pools = findEconomyPools(playerId);
-				//addCost(pools, lastAction.cost);
 	
 				console.log("addCost to actionPool, cost = "+lastAction.cost);
 				console.log(actionPool);
@@ -7902,19 +7814,9 @@ function executeAction(playerId, action) {
 						
 					}
 				}
-				//distributePoolSavings(findEconomyPools(playerId));
-				//if(lastAction.oldOwner) {
-					//affectedPlayers.add(lastAction.oldOwner);
-					//distributePoolSavings(findEconomyPools(lastAction.oldOwner));
-				//}
+
 			} else if (lastAction.type === 'sell') {
 				// handle un-selling the unit.
-				
-				//const pools = findEconomyPools(playerId);
-				//deductCost(pools, lastAction.sellPrice);
-				
-				// get selected pool
-				//let actionPool = findSelectedPool(poolHex, findEconomyPools(playerId), playerId);
 
 				console.log("actionPool:");
 				console.log(actionPool);
@@ -7929,16 +7831,13 @@ function executeAction(playerId, action) {
 				
 				unitActionHex = {q: lastAction.soldUnit.q, r: lastAction.soldUnit.r};
 				
-				// not sure if this is needed...
-				//distributePoolSavings(findEconomyPools(playerId));
 			}
 			
-			//updateHighlights();
 			
 			// push to updates all tile_changed updates that were merged into one:
 			pushMergedUpdates(updates, tileChangedUpdates);
 			
-			if(!isAiPlayer(playerId)){
+			if(!isAiPlayer(playerIndex)){
 				let qq = 0;
 				let rr = 0;
 				if(unitActionHex){
@@ -7955,7 +7854,7 @@ function executeAction(playerId, action) {
 			
 			//console.log("executeAction action_end_turn");
 			
-			executeEndTurn(playerId);
+			executeEndTurn(playerIndex);
 			
 			//console.warn("clearing all undo counters");
 			// clear undo counter for all players:
@@ -7964,7 +7863,7 @@ function executeAction(playerId, action) {
 				// no value needed, will be reset for all players.
 			});
 
-			if(!isAiPlayer(playerId)){
+			if(!isAiPlayer(playerIndex)){
 				broadcast({ type: 'sound', name: "move", q:0, r:0, playerIndex: -1, action: action.type});
 			}
 			
@@ -7987,7 +7886,7 @@ function executeAction(playerId, action) {
 		//console.warn(currentTurnActions);
 		sendToPlayer(playerId, { 
 			type: 'undo_counter', 
-			playerId: playerId,
+			playerIndex: playerIndex,
 			undoCounter: currentTurnActions.length,
 		});
 	}
@@ -8009,8 +7908,7 @@ function executeAction(playerId, action) {
 	
 	// send savings update to ALL players: (was bugged before, so host didnt get update).
 	for(let p = 0; p < gameState.players.length; p++){
-		let pid = gameState.players[p].id;
-		updatePlayerSavings(pid);
+		updatePlayerSavings(gameState.players[p].playerIndex);
 	}
 	
 	//console.log("executeAction endswitch 3");
@@ -8023,14 +7921,14 @@ function executeAction(playerId, action) {
 
 
 
+
 // =================================================================
 // --- ECONOMY & TURN LOGIC (HOST-SIDE)
 // =================================================================
-function updatePlayerSavings(playerId) {
+function updatePlayerSavings(playerIndex) {
 	console.log("updatePlayerSavings");
 	
-	if (!playerId) return;
-	const newPools = findEconomyPools(playerId);
+	const newPools = findEconomyPools(playerIndex);
 	//let newTotalSavings = 0;
 	
 	// create pools info array:
@@ -8051,7 +7949,7 @@ function updatePlayerSavings(playerId) {
 	console.log("poolsInfo:");
 	console.log(poolsInfo);
 	
-	sendToPlayer(playerId, { 
+	sendToPlayer(getPlayerId(playerIndex), { 
 		type: 'savings_update', 
 		//total: Math.floor(newTotalSavings),
 		//total: newTotalSavings,
@@ -8068,7 +7966,7 @@ function drawText(x, y, text, color = "#FFFFFF"){
 
 
 
-function findEconomyPools(playerId, log_enabled = true) {
+function findEconomyPools(playerIndex, log_enabled = false) {
 	// Finds all contiguous land areas for a given player
 	const pools = [];
 	const visited = new Set(); // 'q,r,t'
@@ -8079,7 +7977,7 @@ function findEconomyPools(playerId, log_enabled = true) {
 		const rr = tile.r;
 		let elem = `${qq},${rr},${t}`;
 
-		if (indexToId(tile.ownerIndex) !== playerId || visited.has(elem)) {
+		if (tile.ownerIndex !== playerIndex || visited.has(elem)) {
 			continue;
 		}
 		
@@ -8124,7 +8022,7 @@ function findEconomyPools(playerId, log_enabled = true) {
 			for (const n of getHexNeighbors(q, r)) {
 				const nTile = getTileAt(n.q, n.r);
 				
-				if (nTile && indexToId(nTile.ownerIndex) === playerId){
+				if (nTile && nTile.ownerIndex === playerIndex){
 					const nKey = `${n.q},${n.r},${nTile.tileIndex}`;
 					if(!visited.has(nKey)) {
 						visited.add(nKey);
@@ -8136,7 +8034,7 @@ function findEconomyPools(playerId, log_enabled = true) {
 		pools.push(pool);
 	}
 	if(log_enabled){
-		console.warn("findEconomyPools for "+playerId);
+		console.warn("findEconomyPools for playerIndex "+playerIndex);
 		console.warn(pools);
 	}
 	return pools;
@@ -8272,7 +8170,7 @@ function randomItem(arr){
 	return arr[random(0, arr.length-1)];
 }
 
-
+// find_ai_best_move findaibestmove aifindbestmove aimove ai_move ai_turn
 function ai_find_best_move(player) {
 	//console.log("ai_find_best_move (improved)");
 
@@ -8281,61 +8179,67 @@ function ai_find_best_move(player) {
 
 	for (let i = 0; i < gameState.units.length; i++) {
 		const unit = gameState.units[i];
-		if (unit.hasMoved || indexToId(unit.ownerIndex) !== player.id) continue;
+		if (unit.hasMoved || unit.ownerIndex !== player.playerIndex){
+			continue;
+		}
 
 		const possibleMovesTemp = findUnitPossibleMoves(unit, player);
 		const possibleMoves = [];
 
-		for (const move of possibleMovesTemp) {
-			const tile = getTileAt(move.q, move.r);
-			const check = isMoveValid(unit, move, player);
-			if (check.valid) possibleMoves.push({move:move, poolHex:{q:unit.q, r:unit.r}});
+		for (const tile of possibleMovesTemp) {
+			//const tile = getTileAt(tile.q, tile.r);
+			const check = isMoveValid(unit, tile, player);
+			if (check.valid){
+				possibleMoves.push({tile:tile, poolHex:{q:unit.q, r:unit.r}});
+			}
 		}
 
 		for (const moveInfo of possibleMoves) {
-			const tile = getTileAt(moveInfo.move.q, moveInfo.move.r);
+			//const tile = getTileAt(moveInfo.move.q, moveInfo.move.r);
+			const tile = moveInfo.tile;
 			let score = 0;
-			const tileOwnerId = indexToId(tile.ownerIndex);
 
+			
 			// === Base scoring ===
 			// Prefer new land
-			if (!tileOwnerId) score += 5;
-
-			// Prefer enemy tiles
-			if (tileOwnerId && tileOwnerId !== player.id) score += 10;
-
-			// ----------------------------------------------------------------------------------
-			// 💰 === Terrain & Economy Restoration Scoring (NEW FOCUS) === 💰
-			// ----------------------------------------------------------------------------------
-			
-			if (tile.object === "grass") {
-				if (tileOwnerId === player.id) {
-					// CRITICAL: Clear grass from our tile to restore income.
-					score += 5; 
-				} else {
-					// High value: Claim and clear grass on neutral/enemy tile for better future income/expansion.
-					score += 3; 
-				}
+			if (tile.ownerIndex === undefined || tile.ownerIndex === -1){
+				score += 5;
 			}
-			
-			if (tile.object === "tree") {
-				if (tileOwnerId === player.id) {
-					// CRITICAL: Clear tree from our tile to restore income (highest priority).
-					score += 5; 
-					
-				} else {
-					// Clearing a tree on neutral/enemy land is slightly useful for future income.
-					score += 1; 
-					
-					// Small bonus for the micro +1 money on capture, but keep it low.
-					// This prevents the AI from prioritizing trees over better tactical moves.
-					//score += 2; 
+
+			if (tile.ownerIndex !== undefined){
+				// Prefer enemy tiles
+				if (tile.ownerIndex !== player.playerIndex) score += 10;
+
+				// ----------------------------------------------------------------------------------
+				//  === Terrain & Economy Restoration Scoring (NEW FOCUS) === 
+				// ----------------------------------------------------------------------------------
+				
+				if (tile.object === "grass") {
+					if (tile.ownerIndex === player.playerIndex) {
+						// Clear grass from our tile to restore income.
+						score += 5; 
+					} else {
+						// Claim and clear grass on neutral/enemy tile for better future income/expansion.
+						score += 3; 
+					}
+				}
+				
+				if (tile.object === "tree") {
+					if (tile.ownerIndex === player.playerIndex) {
+						// Clear tree from our tile to restore income (highest priority).
+						score += 5;
+					} else {
+						// Clearing a tree on neutral/enemy land is slightly useful for future income.
+						
+						// dont try to seek for trees...
+						//score += 1; 
+					}
 				}
 			}
 			// ----------------------------------------------------------------------------------
 
 			// === Attack scoring ===
-			const enemyUnit = gameState.units.find(u => u.q === moveInfo.move.q && u.r === moveInfo.move.r);
+			const enemyUnit = gameState.units.find(u => u.q === tile.q && u.r === tile.r);
 			if (enemyUnit) {
 				if (unit.level > enemyUnit.level) {
 					score += 25; // easy kill
@@ -8345,19 +8249,25 @@ function ai_find_best_move(player) {
 			}
 
 			// === Territorial influence ===
-			const neighbors = getHexNeighbors(moveInfo.move.q, moveInfo.move.r);
+			//const neighbors = getHexNeighbors(tile.q, tile.r);
+			const neighbours = tile.neighbours;
 			let enemyAdj = 0;
-			for (const n of neighbors) {
-				const nt = getTileAt(n.q, n.r);
-				if (nt && indexToId(nt.ownerIndex) && indexToId(nt.ownerIndex) !== player.id) enemyAdj++;
+			let friendlyAdj = 0;
+			for (const neigh of neighbours) {
+				if(neigh !== -1){
+					//const nt = getTileAt(n.q, n.r);
+					const nTile = gameState.map.tilesData[neigh];
+					if (nTile.ownerIndex !== undefined){
+						if (nTile.ownerIndex !== player.playerIndex){
+							enemyAdj++;
+						}else{
+							friendlyAdj++;
+						}
+					}
+					
+				}
 			}
 			score += enemyAdj * 2;
-
-			// === Economy safety ===
-			const friendlyAdj = neighbors.filter(n => {
-				const nt = getTileAt(n.q, n.r);
-				return nt && indexToId(nt.ownerIndex) === player.id;
-			}).length;
 			score += friendlyAdj;
 
 			if (score > bestScore) {
@@ -8365,8 +8275,8 @@ function ai_find_best_move(player) {
 				bestMove = {
 					type: "action_move",
 					unitId: unit.id,
-					toQ: moveInfo.move.q,
-					toR: moveInfo.move.r,
+					toQ: tile.q,
+					toR: tile.r,
 					poolHex: moveInfo.poolHex,
 				};
 			}
@@ -8383,8 +8293,8 @@ function ai_find_best_move(player) {
 }
 
 
+/*
 
-// find_ai_best_move findaibestmove aifindbestmove aimove ai_move
 function ai_find_best_move1(player) {
 	//console.log("ai_find_best_move (improved)");
 
@@ -8393,14 +8303,14 @@ function ai_find_best_move1(player) {
 
 	for (let i = 0; i < gameState.units.length; i++) {
 		const unit = gameState.units[i];
-		if (unit.hasMoved || indexToId(unit.ownerIndex) !== player.id) continue;
+		if (unit.hasMoved || unit.ownerIndex !== player.playerIndex) continue;
 
 		const possibleMovesTemp = findUnitPossibleMoves(unit, player);
 		const possibleMoves = [];
 
 		for (const move of possibleMovesTemp) {
 			const tile = getTileAt(move.q, move.r);
-			if (!tile || indexToId(tile.ownerIndex) === player.id) continue;
+			if (!tile || tile.ownerIndex === player.playerIndex) continue;
 			const check = isMoveValid(unit, move, player);
 			if (check.valid) possibleMoves.push({move:move, poolHex:{q:unit.q, r:unit.r}});
 		}
@@ -8411,10 +8321,10 @@ function ai_find_best_move1(player) {
 
 			// === Base scoring ===
 			// Prefer new land
-			if (!indexToId(tile.ownerIndex)) score += 5;
+			if (tile.ownerIndex === -1) score += 5;
 
 			// Prefer enemy tiles
-			if (indexToId(tile.ownerIndex) && indexToId(tile.ownerIndex) !== player.id) score += 10;
+			if (tile.ownerIndex !== -1 && tile.ownerIndex !== player.playerIndex) score += 10;
 
 			// === Attack scoring ===
 			const enemyUnit = gameState.units.find(u => u.q === moveInfo.move.q && u.r === moveInfo.move.r);
@@ -8432,7 +8342,7 @@ function ai_find_best_move1(player) {
 			let enemyAdj = 0;
 			for (const n of neighbors) {
 				const nt = getTileAt(n.q, n.r);
-				if (nt && indexToId(nt.ownerIndex) && indexToId(nt.ownerIndex) !== player.id) enemyAdj++;
+				if (nt && nt.ownerIndex !== -1 && nt.ownerIndex !== player.playerIndex) enemyAdj++;
 			}
 			score += enemyAdj * 2;
 
@@ -8440,7 +8350,7 @@ function ai_find_best_move1(player) {
 			// Slightly prefer staying near friendly land (less isolation)
 			const friendlyAdj = neighbors.filter(n => {
 				const nt = getTileAt(n.q, n.r);
-				return nt && indexToId(nt.ownerIndex) === player.id;
+				return nt && nt.ownerIndex === player.playerIndex;
 			}).length;
 			score += friendlyAdj;
 
@@ -8465,6 +8375,8 @@ function ai_find_best_move1(player) {
 	// fallback
 	return null;
 }
+
+*/
 
 
 // ai turn delay ai aidelay aiturn
@@ -8829,10 +8741,10 @@ function processEndOfDay(){
 
 
 
-function executeEndTurn(playerId) {
+function executeEndTurn(playerIndex) {
 	// --- 1. Apply income and wages for current player ---
-	const player = getPlayer(playerId);
-	const pools = findEconomyPools(playerId);
+	const player = getPlayerByIndex(playerIndex);
+	const pools = findEconomyPools(playerIndex);
 	
 	console.log("executeEndTurn");
 	
@@ -8912,7 +8824,7 @@ function executeEndTurn(playerId) {
 	
 	// --- 3. Reset "hasMoved" for all *this player's* units ---
 	gameState.units.forEach(u => {
-		if (indexToId(u.ownerIndex) === playerId) {
+		if (u.ownerIndex === playerIndex) {
 			if (u.hasMoved) {
 				u.hasMoved = 0;
 				batchActions.push({ type: 'unit_move_reset', unitId: u.id, hasMoved: 0 });
@@ -8931,7 +8843,7 @@ function executeEndTurn(playerId) {
 	//////////////////////////////////
 	// Distribute final savings
 	distributePoolSavings(pools);
-	updatePlayerSavings(playerId); // Update savings *after* calcs
+	updatePlayerSavings(playerIndex); // Update savings *after* calcs
 	
 	
 	//console.log("gameState.turn.currentPlayerIndex");
@@ -8982,6 +8894,7 @@ function spectatorUiMode(){
 
 
 
+
 function addUnit(unit){
 	// wasSpawned true if spawned at game load.
 	
@@ -8995,14 +8908,14 @@ function addUnit(unit){
 		unit.animationFinished = 0; // ensure no animation will be visible.
 		unit.animationStyle = 2; // 2 = appear from zero size to normal size, 0 = no animation.
 		if(!unit.name){
-			unit.name = findNextFreeRandomUnitName(indexToId(unit.ownerIndex));
+			unit.name = findNextFreeRandomUnitName(unit.ownerIndex);
 		}
 	}
 	gameState.units.push(unit);
 }
 
 
-// {name: 'kill', q: 33, r: 44, level: 1, playerId: "peerid"}
+// {name: 'kill', q: 33, r: 44, level: 1, playerIndex: 1}
 function makeExplosionBySoundMessage(data){
 
 	//const { x, y } = axialToPixel(data.q, data.r);
@@ -9197,6 +9110,9 @@ function handleHostData(data) {
 			markDirty();
 			gameState = data.state;
 			
+			// update localPlayer index (only valid after game starts, since players could be kicked before start):
+			localPlayer.playerIndex = getPlayerIndex(localPlayer.id);
+			
 			// save initial gameState for replaying the games later.
 			INITIAL_STATE = deepClone(gameState);
 	
@@ -9226,10 +9142,7 @@ function handleHostData(data) {
 
 			centerFirstUnit();
 			
-			// set all players as spectators:
-			for(let i = 0; i < gameState.players.length; i++){
-				gameState.players[i].isSpectator = true;
-			}
+
 			
 			if(localPlayer.isHost){
 				replayHistory(NETWORK_HISTORY);
@@ -9276,18 +9189,18 @@ function handleHostData(data) {
 		}
 		break;
 		case 'undo_counter': {
-			let playerId = data.playerId;
+			let playerIndex = data.playerIndex;
 			
 			//console.warn("undo_counter");
 			//console.warn(data);
 			
-			// if no playerId defined, it means reset.
-			if(playerId === undefined){
+			// if no playerIndex defined, it means reset.
+			if(playerIndex === undefined){
 				//console.warn("undo counter resetted");
 				localPlayer.undoCounter = 0;
 				undoBtn.classList.add("disabled");
 				
-			}else if(localPlayer.id === playerId){
+			}else if(localPlayer.playerIndex === playerIndex){
 				// update my undo counter:
 				localPlayer.undoCounter = data.undoCounter;
 				
@@ -9444,7 +9357,7 @@ function handleHostData(data) {
 		
 			// update local player pools for being able to select a pool and display its pool info:
 			// todo: make sure the poolsInfo array matches with localPlayerPools array... could get glitchy if it was updated between send/receice commands??
-			localPlayerPools = findEconomyPools(localPlayer.id);
+			localPlayerPools = findEconomyPools(localPlayer.playerIndex);
 			for(let p = 0; p < poolsInfo.length; p++){
 				let poolInfo = poolsInfo[p];
 				let pool = localPlayerPools[p];
@@ -9513,7 +9426,7 @@ function handleHostData(data) {
 // removed updateLocalPoolsInfo() since it broke the savings update. updateLocalPoolsInfo was originally fixing savings update when soldiers died, but i moved distributePoolSavings/updatePlayerSavings AFTER the units deaths/grass convert had been processed (after advanceToNextPlayer).
 function updateLocalPoolsInfo(){
 	// try to fix pools not updating wages when soldiers died etc...
-	localPlayerPools = findEconomyPools(localPlayer.id);
+	localPlayerPools = findEconomyPools(localPlayer.playerIndex);
 	selectedPool = findSelectedPool(selectedHex);
 	updateSelectedPoolUi();
 }
@@ -9521,6 +9434,7 @@ function updateLocalPoolsInfo(){
 //
 // HOST-SIDE: Received data from a client
 //
+// NOTE: MUST use playerId (peerId) here, players array is not built yet when using this.
 function handleClientData(peerId, data) {
 	console.log("handleClientData");
 
@@ -9543,6 +9457,7 @@ function handleClientData(peerId, data) {
 				player.textColor = "#FFFFFF";
 				player.isSpectator = true; // Always spectator if game in progress
 			}
+			// playerIndex updated at 'game_start' message.
 			
 			console.warn("player joined: "+player.id);
 			
@@ -9651,7 +9566,10 @@ function initPeerJS() {
 
 		peer.on('open', (id) => {
 			myPeerId = id;
+			
+			// initializing when connection is opened. players list is not yet created.
 			localPlayer.id = id;
+			
 			connectionStatus.textContent = 'Connected to Peer server.';
 			console.log('My peer ID is: ' + id);
 			// Enable buttons
@@ -9684,6 +9602,8 @@ function setupConnection(conn) {
 
 		// If we are host, add new player and send lobby state
 		if (localPlayer.isHost) {
+			// HOST only, handle incoming joinings
+			
 			const newPlayer = {
 				id: conn.peer,
 				name: 'Joining...', // Will be updated by 'join' message
@@ -9695,6 +9615,7 @@ function setupConnection(conn) {
 			};
 			//gameState.players.push(newPlayer);
 			addPlayer(newPlayer);
+			
 			
 			if (gameState.settings.gameStarted) {
 				// Send full game state to new player (who will join as spec)
@@ -9856,6 +9777,7 @@ function hostGame() {
 		newPeer(gameName);
 
 		peer.on('open', (id) => {
+			// HOST only
 			myPeerId = id;
 			localPlayer.id = id;
 			localPlayer.isHost = true;
@@ -10951,7 +10873,7 @@ function loadParsedMap(parsedMap, compact = true){
 				//}
 				// dont add water tiles into the tilesData, they are useless.
 				if(info.type !== 'water'){
-					setTileAt(qq, rr, { x: x, y:y, type: info.type, ownerId: null, object: object, savings: 0 });
+					setTileAt(qq, rr, { type: info.type, ownerIndex: -1, object: object, savings: 0 });
 				}
 			}
 		}
@@ -11260,11 +11182,11 @@ function spawnTrees(test1 = 1){
 	let width = gameState.map.width;//bounds.q.max + bounds.q.min;
 	let height = gameState.map.height;//bounds.r.max + bounds.r.min;
 
-	// clear previous trees:
+	// spawn random trees:
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		let tile = gameState.map.tilesData[t];
-		//tile.object = null; // clear previous objects.
-		if(tile.type === 'land' && !tile.object && !indexToId(tile.ownerIndex) && randomFunc() < 0.15 ){
+		// if land, no object yet, no owner:
+		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < 0.15 ){
 			tile.object = "tree";
 		}
 	}
@@ -11297,7 +11219,7 @@ function spawnTrees(test1 = 1){
 		let r = y + bounds.r.min;
 		
 		let tile = getTileAt(q, r);
-		if(tile && tile.type === 'land' && !indexToId(tile.ownerIndex)){
+		if(tile && tile.type === 'land' && tile.ownerIndex === -1){
 			tile.object = "tree";
 		}
 	}
@@ -11350,13 +11272,12 @@ function spawnPlayers(){
 
 
 	// set player id's to map owner numbers:
-	let mapPlayerToPlayerId = {};
+	let mapPlayerToPlayerIndex = {};
 	let extraPlayers = [];
 	for(let p = 0, i = 0; p < playingPlayers.length; p++, i++){
 		let player = playingPlayers[p];
-		//let mapOwner = null; 
 		if(i < mapOwners.length){
-			mapPlayerToPlayerId[mapOwners[i]] = player.id;
+			mapPlayerToPlayerIndex[mapOwners[i]] = player.playerIndex;
 		}else{
 			extraPlayers.push(player);
 		}
@@ -11364,8 +11285,8 @@ function spawnPlayers(){
 	
 	console.warn("mapOwners");
 	console.warn(mapOwners);
-	console.warn("mapPlayerToPlayerId");
-	console.warn(mapPlayerToPlayerId);
+	console.warn("mapPlayerToPlayerIndex");
+	console.warn(mapPlayerToPlayerIndex);
 	
 	console.warn("width, height");
 	console.warn(width, height);
@@ -11396,16 +11317,16 @@ function spawnPlayers(){
 				}
 				
 				if(info.owner){
-					let playerId = mapPlayerToPlayerId[info.owner];
-					if(playerId){
+					let playerIndex = mapPlayerToPlayerIndex[info.owner];
+					if(playerIndex !== undefined){
 						let tile = getTileAt(qq, rr);
 
-						setTileOwnerByIndex(tile, getPlayerIndex(playerId));
+						setTileOwnerByIndex(tile, playerIndex);
 						
 						if(info.object == "peasant"){
 							// unit found
 							// no need to remove object, since map format doesnt have object here.
-							spawnSoldier(qq, rr, playerId, 'peasant');
+							spawnSoldier(qq, rr, playerIndex, 'peasant');
 							
 						}
 					}
@@ -11426,16 +11347,16 @@ function spawnPlayers(){
 			do {
 				randomTileIndex = random(0, tiles.length-1);
 				counter++;
-			} while ((indexToId(tiles[randomTileIndex].ownerIndex) || tiles[randomTileIndex].type === "water") && counter < 1000);
+			} while ((tiles[randomTileIndex].ownerIndex !== -1 || tiles[randomTileIndex].type === "water") && counter < 1000);
 			
 			let tile = gameState.map.tilesData[randomTileIndex];
 			let qq = tile.q;
 			let rr = tile.r;
 			
-			let playerId = extraPlayers[i].id;
-			setTileOwnerByIndex(tile, getPlayerIndex(playerId));
+			let playerIndex = extraPlayers[i].playerIndex;
+			setTileOwnerByIndex(tile, playerIndex);
 			setTileAt(qq, rr, {object:null}); // remove object if any.
-			spawnSoldier(qq, rr, playerId, 'peasant');
+			spawnSoldier(qq, rr, playerIndex, 'peasant');
 			// TODO: try to claim hex neighbour:
 			
 		}
@@ -11531,12 +11452,11 @@ function newUnitID(){
 
 
 // type = Peasant, Knight, Horse, Dragon
-function spawnSoldier(q, r, playerId, type){
+function spawnSoldier(q, r, playerIndex, type){
 	const soldier = {
 		// rearranged keys for easier debugging
 		id: newUnitID(),
-		ownerIndex: getPlayerIndex(playerId),
-		//ownerId: playerId,
+		ownerIndex: playerIndex,
 		q: q,
 		r: r,
 		hasMoved: 0,
@@ -11550,12 +11470,11 @@ function spawnSoldier(q, r, playerId, type){
 	addUnit(soldier);
 }
 
-function spawnCastle(q, r, playerId, type){
+function spawnCastle(q, r, playerIndex, type){
 	const castle = {
 		// rearranged keys for easier debugging
 		id: newUnitID(),
-		ownerIndex: getPlayerIndex(playerId),
-		//ownerId: playerId,
+		ownerIndex: playerIndex,
 		q: q,
 		r: r,
 		hasMoved: 0,
@@ -11571,6 +11490,22 @@ function spawnCastle(q, r, playerId, type){
 
 
 let DELAY_MULTI = 1;
+let DELAY_MULTI_STEP = 1.5;
+
+
+function replaySpeedUp(){
+	if(REPLAY_ENABLED){
+		DELAY_MULTI /= DELAY_MULTI_STEP;
+		addSystemChatMessage(`Replay delay multiplier: ${DELAY_MULTI.toFixed(4)}`);
+	}
+}
+function replaySpeedDown(){
+	if(REPLAY_ENABLED){
+		DELAY_MULTI *= DELAY_MULTI_STEP;
+		addSystemChatMessage(`Replay delay multiplier: ${DELAY_MULTI.toFixed(4)}`);
+	}
+}
+
 
 async function replayHistory(history) {
 	if (!history || history.length === 0) return;
@@ -11611,104 +11546,40 @@ async function startReplay(){
 	if (loadedGameStateInitial) {
 		
 		console.warn("Starting from loaded state.");
-		let lobbyPlayers = [];//deepClone(gameState.players);
+		
+		// remember players before loading replay:
+		let lobbyPlayers = deepClone(gameState.players);
+		
 		gameState = loadedGameStateInitial;
 		console.warn("gameState.settings");
 		console.warn(gameState);
 		gameState.settings.gameStarted = true;
 		
-		// NETWORK_HISTORY is set on load game.
+		// NETWORK_HISTORY is set on replay_start.
 		
 		// todo: remove ownerId completely from use, rely on indexes instead.
 		
 		// assign new ids to players and remember the old one:
 		// so they wont conflict with players watching the replay (especially "default-room" id).
-		//let oldToNewId = {};
+	
 		for(let i = 0; i < gameState.players.length; i++){
 			let player = gameState.players[i];
 			let newID = getUID();
 			let oldID = player.id;
 			player.id = newID;
 			player.oldID = oldID;
-			//oldToNewId[oldID] = {id: newID, index: i};
 		}
+		let loadedPlayersTotal = gameState.players.length;
 		
-		// no need to replace any IDs since indexes already point to correct players, now using indexes instead.
-		/*
-		// replace old unit ownerids with new ownerids:
-		for(let i = 0; i < gameState.units.length; i++){
-			let unit = gameState.units[i];
-			if(unit.ownerId !== undefined && unit.ownerId){
-				unit.ownerId = oldToNewId[unit.ownerId].id;
-				unit.ownerIndex = oldToNewId[unit.ownerId].index;
-			}
-		}
-		// replace old NETWORK_HISTORY messages ids with new ids:
-		for(let i = 0; i < NETWORK_HISTORY.length; i++){
-			let action = NETWORK_HISTORY[i];
-			if(action.ownerId !== undefined && action.ownerId){
-				action.ownerId = oldToNewId[action.ownerId].id;
-				action.ownerIndex = oldToNewId[action.ownerId].index;
-			}
-			if(action.playerId !== undefined && action.playerId){
-				action.playerId = oldToNewId[action.playerId].id;
-				action.playerIndex = oldToNewId[action.playerId].index;
-			}
-		}
-		// replace old ownerIds from tiles:
-		for(let i = 0; i < gameState.map.tilesData.length; i++){
-			let tile = gameState.map.tilesData[i];
-			if(tile.ownerId !== undefined && tile.ownerId){
-				tile.ownerId = oldToNewId[tile.ownerId].id;
-				tile.ownerIndex = oldToNewId[tile.ownerId].index;
-			}
-		}
-		*/
-		
-		//gameState.players = [...gameState.players, ...lobbyPlayers];
-		
-		/*
-		// Match current players to loaded players
-		const newPlayerList = [];
-		const loadedPlayers = gameState.players.filter(p => !p.isSpectator);
-		
-		// Add all current spectators
-		for (const p of connections.keys()) {
-			const player = getPlayer(p);
-			if (player && player.isSpectator){
-				newPlayerList.push(player);
-			}
-		}
-		if (localPlayer.isSpectator){
-			newPlayerList.push(localPlayer);
-		}
-		
-		// continue at: set player as taken from loaded players list.
-		// loadedGameState.players[i].takenBy = null; 
-		
-		// Match players
-		for (const loadedP of loadedPlayers) {
-			// Find a current player who 'took' this name
-			const matchingCurrentPlayer = [...gameState.players, localPlayer].find(
-				p => p.name === loadedP.name && p.color === loadedP.color && !p.isSpectator
-			);
+		// add lobby players so they can chat:
+		// set as spectators so they cant play.
+		for(let i = 0; i < lobbyPlayers.length; i++){
+			lobbyPlayers[i].isSpectator = true;
+			// update playerindex in case needed:
+			lobbyPlayers[i].playerIndex += loadedPlayersTotal;
 			
-			if (matchingCurrentPlayer) {
-				// This player takes the slot
-				loadedP.id = matchingCurrentPlayer.id; // Assign new PeerID
-				// TODO: should not change the id since its the peerId...
-				// just rewrite the units ownerId's with the actual playing player id.
-				newPlayerList.push(loadedP);
-			} else {
-				// No one took this slot. Mark as AI or disconnected?
-				// For now, let's just keep them.
-				loadedP.isAI = true; // Mark as AI for now
-				newPlayerList.push(loadedP);
-			}
+			gameState.players.push(lobbyPlayers[i]);
 		}
-		gameState.players = newPlayerList;
-		*/
-
 
 
 
@@ -11717,8 +11588,6 @@ async function startReplay(){
 		// Clear undo stack
 		currentTurnActions = [];
 		
-		// save initial gameState for replaying the games later.
-		//INITIAL_STATE = deepClone(gameState);
 
 		//////////////////////////
 		// find max id for units so new units will get correct new ID:
@@ -11733,31 +11602,7 @@ async function startReplay(){
 		// Broadcast start
 		// At the very end of the function, AFTER broadcast('game_start'):
 		broadcast({ type: 'replay_start', state: gameState });
-		//checkForAITurn(); // start AI turn if it is his turn.
-		
-		/*
-		GAME_START_TIME = performance.now();
-		
-		markDirty();
-		showPage('game');
-		updateGameUI();
-
-		centerFirstUnit(); 
-		
-		*/
-
 	
-		
-		//replayHistory(NETWORK_HISTORY);
-		
-		// Send initial savings to all players
-		/*
-		gameState.players.forEach(p => {
-			if (!p.isSpectator) {
-				updatePlayerSavings(p.id);
-			}
-		});
-		*/
 	}
 }
 
@@ -11770,16 +11615,43 @@ function startGame() {
 	// clear network history.
 	NETWORK_HISTORY = [];
 
-	console.log("Starting game...");
+	console.warn("Starting game...");
 	
 	if (loadedGameState) {
-		console.log("Starting from loaded state.");
+		console.warn("Starting from loaded state.");
+		
+		// remember players before loading game and replaceing gameState.players with loaded game players:
+		let oldPlayers = deepClone(gameState.players);
+		//console.warn(oldPlayers);
+		
 		gameState = loadedGameState;
 		gameState.settings.gameStarted = true;
 		
+		// set loaded game players to current players in the same order:
+		for(let i = 0; i < gameState.players.length; i++){
+			if(i < oldPlayers.length){
+				gameState.players[i].id = oldPlayers[i].id;
+			}else{
+				// set the remaining players as AIs:
+				gameState.players[i].isAI = true;
+			}
+		}
+		
+		// clear all animations to be finished:
+		// NOTE: the timers are based on the client performance.now(), so they wont match anymore,
+		//       and will make weirdly big sprites appear for negative time differences...
+		for(let i = 0; i < gameState.units.length; i++){
+			gameState.units[i].animationFinished = 1;
+		}
+		for(let i = 0; i < gameState.map.tilesData.length; i++){
+			gameState.map.tilesData[i].animationFinished = 1;
+		}
+		
+		/*
 		// Match current players to loaded players
 		const newPlayerList = [];
 		const loadedPlayers = gameState.players.filter(p => !p.isSpectator);
+		
 		
 		// Add all current spectators
 		for (const p of connections.keys()) {
@@ -11816,6 +11688,7 @@ function startGame() {
 			}
 		}
 		gameState.players = newPlayerList;
+		*/
 		
 	} else {
 		
@@ -11828,6 +11701,8 @@ function startGame() {
 		gameState.settings.mapHeight = parseInt(mapHeightInput.value, 10);
 		gameState.settings.startingMoney = parseInt(startMoneyInput.value, 10);
 		gameState.settings.currentFormattedDate = formatDateForSave();
+		
+		
 		
 		// Filter out players without connection from play (unless they are host or ai):
 		gameState.players = gameState.players.filter(p => p.id === localPlayer.id || connections.has(p.id) || p.isAI);
@@ -11905,7 +11780,7 @@ function startGame() {
 	// Send initial savings to all players
 	gameState.players.forEach(p => {
 		if (!p.isSpectator) {
-			updatePlayerSavings(p.id);
+			updatePlayerSavings(p.playerIndex);
 		}
 	});
 	
@@ -11927,7 +11802,7 @@ function setProtectedTiles(){
 				tile.isProtected = 1; // use short value to make json smaller when saving.
 			}else{
 				// check if this tile is protected
-				tile.isProtected = getShieldLevel(q, r, -1) ? 1 : 0;
+				tile.isProtected = getShieldLevelFromTile(tile, -1) ? 1 : 0;
 			}
 		}
 	}
@@ -11949,14 +11824,33 @@ function getUint(str) {
 document.addEventListener('keydown', (event) => {
 	// dont handle enter if it came from chat input.
 	if(event.target.id !== 'chat-input'){
-		if (event.key === 'Enter') {
+		const key = event.key;
+		
+		if (key === 'Enter') {
 			if(gameState.settings.gameStarted){
 				toggleUiTopLeft();
 			}
-		}else if(event.key === 'q') {
+		}else if(key === 'q') {
 			rotateAroundScreenCenter(-0.03);
-		}else if(event.key === 'e') {
+		}else if(key === 'e') {
 			rotateAroundScreenCenter(0.03);
+		}
+	
+	}
+});
+
+
+
+document.addEventListener('keyup', (event) => {
+	// dont handle enter if it came from chat input.
+	if(event.target.id !== 'chat-input'){
+		const key = event.key;
+		
+		if (key === '+' || key === 'Add') {
+			replaySpeedUp();
+		}
+		if (key === '-' || key === 'Subtract') {
+			replaySpeedDown();
 		}
 	}
 });
@@ -12070,15 +11964,18 @@ function loadSavedGame(roomKey){
 				
 				// mark all loaded players as "not taken yet":
 				// later the players will take a spot themselves.
-				for(let i = 0; i < loadedGameState.players.length; i++){
-					loadedGameState.players[i].takenBy = null; // peerId/playerId who took this player.
-				}
+				
+				// NOT USED (YET?)
+				//for(let i = 0; i < loadedGameState.players.length; i++){
+				//	loadedGameState.players[i].takenBy = null; // peerId/playerId who took this player.
+				//}
 				console.warn("loadedGameState:");
 				console.warn(loadedGameState);
 				
 				
 				//console.log(lobbyLoadedMapImg);
 				gameState.settings = loadedGameState.settings;
+				gameState.settings.gameStarted = false;
 
 				//gameState.players = loadedGameState.players;
 				gameState.map = loadedGameState.map;
@@ -12104,7 +12001,12 @@ function loadSavedGame(roomKey){
 					li.textContent = `${p.name}`;
 					li.style.color = p.textColor;
 					li.className = 'loaded-player';
+					
+					/*
+					// todo: show this list to clients too, and allow clicking the player from list
+					//       to take that player as your own.
 					li.onclick = () => {
+						
 						if (li.classList.contains('taken')){
 							return;
 						}
@@ -12138,6 +12040,7 @@ function loadSavedGame(roomKey){
 						
 						broadcastLobbyState(); // Update others
 					};
+					*/
 					loadGamePlayersList.appendChild(li);
 				});
 				loadedGameInfoContainer.style.display = 'block';
@@ -12327,13 +12230,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 
 	rotateLeftBtn.onclick = () => {
-		rotateAroundScreenCenter(-deg2rad(30));
+		// snap at 30 degree rotations even when current rotation was not 30 degree step:
+		let snappedDeg = Math.round(rad2deg(viewport.rotation-deg2rad(30)) / 30) * 30;
+		rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
 	};
 	rotateResetBtn.onclick = () => {
 		rotateAroundScreenCenter(-viewport.rotation);
 	};
 	rotateRightBtn.onclick = () => {
-		rotateAroundScreenCenter(deg2rad(30));
+		// snap at 30 degree rotations even when current rotation was not 30 degree step:
+		let snappedDeg = Math.round(rad2deg(viewport.rotation+deg2rad(30)) / 30) * 30;
+		rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
 	};
 	
 	
@@ -12373,8 +12280,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 						drawRanges = drawDebugText;
 					break;
 					case "/refresh":
-						addSystemChatMessage(`resizeCanvas(): old = ${canvas.width}x${canvas.height}, new = ${window.innerWidth}x${window.innerHeight}`);
-						resizeCanvas();
+						refreshCanvas();
 					break;
 					case "/editor":
 						EDITOR_ENABLED = !EDITOR_ENABLED;
@@ -12392,10 +12298,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 						previewdraw = !previewdraw;
 					break;
 					case "/f":
-						DELAY_MULTI /= 1.5;
+						replaySpeedUp();
 					break;
 					case "/s":
-						DELAY_MULTI *= 1.5;
+						replaySpeedDown();
 					break;
 					case "/restart":
 						DELAY_MULTI = 1;
@@ -12480,7 +12386,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 				const i = (startIndex + offset) % gameState.units.length;
 				let unit = gameState.units[i];
 
-				if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id && !unit.hasMoved){
+				if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 					centerAndSelectUnit(unit);
 					playSound('startmove');
 					break;
@@ -12497,6 +12403,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	
 	previousUnitBtn.onclick = () => {
+		refreshCanvas(); // test if this fixes the black bar issue.
+		
 		let player = getMyPlayer();
 		
 		if(!REPLAY_ENABLED && player && isMyTurn()){
@@ -12522,7 +12430,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 				const i = (startIndex - offset + gameState.units.length) % gameState.units.length;
 				let unit = gameState.units[i];
 
-				if(unit.internalType === 'soldier' && indexToId(unit.ownerIndex) === player.id && !unit.hasMoved){
+				if(unit.internalType === 'soldier' && unit.ownerIndex === player.playerIndex && !unit.hasMoved){
 					centerAndSelectUnit(unit);
 					playSound('startmove');
 					break;
