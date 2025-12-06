@@ -162,6 +162,10 @@ input[type="text"], input[type="number"], select {
 	height: 48px;
 }
 
+input[disabled], select[disabled] {
+	filter: brightness(0.5);
+}
+
 
 button {
 	width: 100%;
@@ -174,6 +178,10 @@ button {
 	font-size: 16px;
 	font-weight: 600;
 	cursor: pointer;
+}
+
+button[disabled] {
+	filter: brightness(0.5);
 }
 
 .gamebutton {
@@ -1111,12 +1119,14 @@ input.disabled {
 			<div style="flex:1">
 				<span class="label">Select Color</span>
 				<div id="host-room-color-picker" class="color-picker"></div>
+				<div id="host-room-color-picker-msg" style="display:none"><i>Not available.</i></div>
 			</div>
 			<div style="flex:1">
 				<span class="label">Custom Color</span>
 				
 				<div id="host-preview-tile-wrapper">
-					<canvas id="host-preview-tile" style="width:110px; height:110px">
+					<canvas id="host-preview-tile" style="width:110px; height:110px"></canvas>
+					<div id="host-preview-tile-msg" style="display:none"><i>Not available.</i></div>
 				</div>
 				<input type="color" id="host-custom-color-input" style="visibility:hidden" value="#3498db">
 			</div>
@@ -1202,12 +1212,14 @@ input.disabled {
 			<div style="flex:1">
 				<span class="label">Select Color</span>
 				<div id="lobby-color-picker" class="color-picker"></div>
+				<div id="lobby-color-picker-msg" style="display:none"><i>Not available.</i></div>
 			</div>
 			<div style="flex:1">
 				<span class="label">Custom Color</span>
 				
 				<div id="lobby-preview-tile-wrapper">
-					<canvas id="lobby-preview-tile" style="width:110px; height:110px">
+					<canvas id="lobby-preview-tile" style="width:110px; height:110px"></canvas>
+					<div id="lobby-preview-tile-msg" style="display:none"><i>Not available.</i></div>
 				</div>
 				<input type="color" id="lobby-custom-color-input" style="visibility:hidden" value="#3498db">
 			</div>
@@ -1227,11 +1239,24 @@ input.disabled {
 				<span class="label">Loaded map</span>
 				<img id="lobby-loaded-map" src="" width="100" height="100">
 			</div>
+			
 			<div>
-				<label for="lobby-map-scale">Map scale</label>
-				<input type="number" id="lobby-map-scale" class="disabled" value="1" max="4" disabled>
-				Scaling resizes the map by factor above.
+				<div class="input-group" style="flex-direction: row !important;">
+					<label for="lobby-map-scale">Map scale</label>
+					<input type="number" id="lobby-map-scale" class="disabled" value="1" max="4" disabled>
+				</div>
+				<div class="input-group" style="flex-direction: row !important;">
+					<label for="lobby-start-player-list">Start player</label>
+					<select id="lobby-start-player-list" disabled>
+					</select>
+					<div class="input-group" style="flex-direction: column !important;">
+						<label for="lobby-start-player-random">Random</label>
+						<input type="checkbox" id="lobby-start-player-random" value="1" checked disabled>
+					</div>
+				</div>
 			</div>
+			
+
 		</div>
 		
 		
@@ -1603,6 +1628,9 @@ const lobbyCustomColorPicker = document.getElementById("lobby-custom-color-input
 
 const hostPreviewTile = document.getElementById("host-preview-tile");
 const lobbyPreviewTile = document.getElementById("lobby-preview-tile");
+
+const hostPreviewTileMsg = document.getElementById("host-preview-tile-msg");
+const lobbyPreviewTileMsg = document.getElementById("lobby-preview-tile-msg");
 
 
 hostPreviewTile.addEventListener("click", () => {
@@ -2384,7 +2412,8 @@ let gameState = {
 		mapHeight: 50,
 		mapScale: 1,
 		startingMoney: 1000, // default 0 actually. for testing 1000.
-		roomName: 'default-room'
+		roomName: 'default-room',
+		startPlayerId: -1, // -1 = random starting player.
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
 
@@ -3117,29 +3146,50 @@ const loadGamePlayersList = document.getElementById('load-game-players');
 const startGameBtn = document.getElementById('start-game-btn');
 const startReplayBtn = document.getElementById('start-replay-btn');
 const hostPlayerList = document.getElementById('host-player-list');
+
 const startPlayerList = document.getElementById('start-player-list');
 const startPlayerRandom = document.getElementById('start-player-random');
 
-let START_PLAYER = -1;
+const lobbyStartPlayerList = document.getElementById('lobby-start-player-list');
+const lobbyStartPlayerRandom = document.getElementById('lobby-start-player-random');
+
+
+function loadedMapMode(disableButtons){
+	startPlayerList.disabled = disableButtons;
+	startPlayerRandom.disabled = disableButtons;
+	mapScale.disabled = disableButtons;
+	loadMapBtn.disabled = disableButtons;
+	loadRandomBtn.disabled = disableButtons;
+	
+	addAiBtn.disabled = disableButtons;
+	
+	// todo: make clients disable these too by listening to message of loaded map.
+}
+
+
 
 startPlayerList.addEventListener("change", function () {
-	START_PLAYER = startPlayerList.value;
-
-	console.log("START_PLAYER:", START_PLAYER);
+	gameState.settings.startPlayerId = startPlayerList.value;
+	
+	broadcastLobbyState();
+	
+	console.log("gameState.settings.startPlayerId:", gameState.settings.startPlayerId);
 });
 
 startPlayerRandom.addEventListener("change", function () {
 	const isChecked = startPlayerRandom.checked;
-	const value = startPlayerRandom.value;
+
 	if(isChecked){
-		START_PLAYER = -1; // -1 = random player.
+		gameState.settings.startPlayerId = -1; // -1 = random player.
 		startPlayerList.disabled = true;
 	}else{
-		START_PLAYER = startPlayerList.value; // use selected player from list.
+		gameState.settings.startPlayerId = startPlayerList.value; // use selected player from list.
 		startPlayerList.disabled = false;
 	}
-
-	console.log("START_PLAYER:", START_PLAYER);
+	
+	broadcastLobbyState();
+	
+	console.log("gameState.settings.startPlayerId:", gameState.settings.startPlayerId);
 });
 
 // Lobby Page
@@ -3151,6 +3201,10 @@ const lobbyMapScale = document.getElementById('lobby-map-scale');
 
 const lobbyColorPicker = document.getElementById('lobby-color-picker');
 const hostRoomColorPicker = document.getElementById('host-room-color-picker');
+
+const lobbyColorPickerMsg = document.getElementById('lobby-color-picker-msg');
+const hostRoomColorPickerMsg = document.getElementById('host-room-color-picker-msg');
+
 
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const lobbyStatus = document.getElementById('lobby-status');
@@ -9979,33 +10033,40 @@ function updateHostLobbyUI() {
 		}
 	});
 
-	// Clear existing options
-	startPlayerList.innerHTML = '';
 
-	// Add header option
-	//const defaultOption = document.createElement("option");
-	//defaultOption.value = "";
-	//defaultOption.textContent = `-- Select game (${totalGames}) --`;
-	//startPlayerList.appendChild(defaultOption);
 
-	// Add each player
-	gameState.players.forEach(player => {
-		if(!player.quitted && !player.isSpectator){
-
-			const option = document.createElement("option");
-			option.value = player.id; // must use ID since playerIndex changes when kicking players.
-			option.textContent = player.name;
-			startPlayerList.appendChild(option);
-		}
-	});
+	
+	if(gameState.settings.startPlayerId === -1){
+		startPlayerList.innerHTML = '';
+	}else{
+		startPlayerList.innerHTML = '';
+		// Add each player
+		gameState.players.forEach(player => {
+			if(!player.quitted && !player.isSpectator){
+				const option = document.createElement("option");
+				option.value = player.id; // must use ID since playerIndex changes when kicking players.
+				option.textContent = player.name;
+				if(player.id === gameState.settings.startPlayerId){
+					option.selected = true;
+				}
+				startPlayerList.appendChild(option);
+			}
+		});
+	}
 	
 	// Update color picker
 	hostRoomColorPicker.innerHTML = '';
-	if (localPlayer.isSpectator) {
-		hostRoomColorPicker.innerHTML = '<i>Spectators cannot change color.</i>';
-		lobbyPlayerNameInput.disabled = true;
+	if (localPlayer.isSpectator || loadedGameState) {
+		hostRoomColorPicker.style.display = "none";
+		hostRoomColorPickerMsg.style.display = "block";
+		hostPreviewTile.style.display = "none";
+		hostPreviewTileMsg.style.display = "block";
 	} else {
-		lobbyPlayerNameInput.disabled = false;
+		hostRoomColorPicker.style.display = "flex";
+		hostRoomColorPickerMsg.style.display = "none";
+		hostPreviewTile.style.display = "block";
+		hostPreviewTileMsg.style.display = "none";
+		
 		//console.log("usedColors");
 		//console.log(usedColors);
 		PLAYER_COLORS.forEach(colorInfo => {
@@ -10074,15 +10135,43 @@ function updateLobbyUI() {
 		}
 	});
 	
+	// update startplayer list/checkbox:
+	if(gameState.settings.startPlayerId === -1){
+		lobbyStartPlayerRandom.checked = true;
+		lobbyStartPlayerList.innerHTML = '';
+	}else{
+		lobbyStartPlayerRandom.checked = false;
+
+		lobbyStartPlayerList.innerHTML = '';
+		// Add each player
+		gameState.players.forEach(player => {
+			if(!player.quitted && !player.isSpectator){
+				const option = document.createElement("option");
+				option.value = player.id; // must use ID since playerIndex changes when kicking players.
+				option.textContent = player.name;
+				if(player.id === gameState.settings.startPlayerId){
+					option.selected = true;
+				}
+				lobbyStartPlayerList.appendChild(option);
+			}
+		});
+			
+	}
 
 
 	// Update color picker
 	lobbyColorPicker.innerHTML = '';
 	if (localPlayer.isSpectator) {
-		lobbyColorPicker.innerHTML = '<i>Spectators cannot change color.</i>';
-		lobbyPlayerNameInput.disabled = true;
+		lobbyColorPicker.style.display = "none";
+		lobbyColorPickerMsg.style.display = "block";
+		lobbyPreviewTile.style.display = "none";
+		lobbyPreviewTileMsg.style.display = "block";
 	} else {
-		lobbyPlayerNameInput.disabled = false;
+		lobbyColorPicker.style.display = "flex";
+		lobbyColorPickerMsg.style.display = "none";
+		lobbyPreviewTile.style.display = "block";
+		lobbyPreviewTileMsg.style.display = "none";
+		
 		//console.log("usedColors");
 		//console.log(usedColors);
 		PLAYER_COLORS.forEach(colorInfo => {
@@ -11814,12 +11903,12 @@ function startGame() {
 		}
 		
 		// Set initial turn (skips spectators)
-		if(START_PLAYER === -1){
+		if(gameState.settings.startPlayerId === -1){
 			gameState.turn.currentPlayerIndex = getNextPlayerIndex(random(0, gameState.players.length-1));
 			console.warn("set random starting player index = "+gameState.turn.currentPlayerIndex);
 		}else{
-			gameState.turn.currentPlayerIndex = getPlayerIndex(START_PLAYER);
-			console.warn("set custom starting player: "+START_PLAYER+", index = "+gameState.turn.currentPlayerIndex);
+			gameState.turn.currentPlayerIndex = getPlayerIndex(gameState.settings.startPlayerId);
+			console.warn("set custom starting player: "+gameState.settings.startPlayerId+", index = "+gameState.turn.currentPlayerIndex);
 		}
 		gameState.turn.startPlayerIndex = gameState.turn.currentPlayerIndex;
 		gameState.turn.turnNumber = 1;
@@ -12004,12 +12093,18 @@ preventBackNavigation();
 
 function unloadGame(){
 	// Unload
-	loadedGameState = null;
-	loadedGameStateInitial = null;
-	NETWORK_HISTORY = [];
-	loadGameBtn.textContent = 'Load Game';
-	loadedGameInfoContainer.style.display = 'none';
-	startReplayBtn.style.display = "none";
+	if(loadedGameState){
+		loadedGameState = null;
+		loadedGameStateInitial = null;
+		NETWORK_HISTORY = [];
+		loadGameBtn.textContent = "Load Game";
+		loadedGameInfoContainer.style.display = "none";
+		startReplayBtn.style.display = "none";
+		
+		loadedMapMode(false);
+		
+		updateHostLobbyUI();
+	}
 }
 
 
@@ -12024,6 +12119,9 @@ function loadSavedGame(roomKey){
 		
 		loadGameFromDB(roomKey, (state) => {
 			if (state) {
+				
+				loadedMapMode(true);
+				
 				// state = { initialData: initialData, playData: playData }
 				
 				loadedGameState = deepClone(state.playData.gameState);
