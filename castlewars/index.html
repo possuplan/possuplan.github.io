@@ -159,6 +159,7 @@ input[type="text"], input[type="number"], select {
 	color: var(--text-color);
 	border-radius: 6px;
 	font-size: 16px;
+	height: 48px;
 }
 
 
@@ -869,7 +870,7 @@ button.redbutton:hover {
 	width: 100%;
 	font-size: 18px;
 	line-height: 20px;      /* your chosen line height */
-	height: calc(3 * 20px);   /* 3 lines tall */
+	----height: calc(3 * 20px);   /* 3 lines tall */
 	pointer-events: none;
 	overflow-wrap: anywhere;
 }
@@ -1159,10 +1160,21 @@ input.disabled {
 				<span class="label">Loaded map</span>
 				<img id="loaded-map" src="" width="100" height="100">
 			</div>
+			
 			<div>
-				<label for="map-scale">Map scale</label>
-				<input type="number" id="map-scale" value="1" min="1" max="4">
-				Scaling resizes the map by factor above.
+				<div class="input-group" style="flex-direction: row !important;">
+					<label for="map-scale">Map scale</label>
+					<input type="number" id="map-scale" value="1" min="1" max="4">
+				</div>
+				<div class="input-group" style="flex-direction: row !important;">
+					<label for="start-player-list">Start player</label>
+					<select id="start-player-list" disabled>
+					</select>
+					<div class="input-group" style="flex-direction: column !important;">
+						<label for="start-player-random">Random</label>
+						<input type="checkbox" id="start-player-random" value="1" checked>
+					</div>
+				</div>
 			</div>
 		</div>
 		
@@ -1260,7 +1272,7 @@ input.disabled {
 			<div id="player-ui-list" class="ui-panel"></div>
 			<div id="chat-ui" class="ui-panel">
 				<div id="chat-messages"></div>
-				<input type="text" id="chat-input" placeholder="Type message..." disabled>
+				<input type="text" id="chat-input" maxlength="200" placeholder="Type message..." disabled>
 			</div>
 			
 			<div id="debug-ui">
@@ -2251,6 +2263,8 @@ let INITIAL_STATE = {}; // gameState during game start. used for replays.
 let GAME_START_TIME = 0;
 let REPLAY_ENABLED = 0;
 
+let MAX_MESSAGE_LEN = 200;
+
 function addNetworkHistory(data){
 	if(REPLAY_ENABLED) return;
 	
@@ -3103,6 +3117,30 @@ const loadGamePlayersList = document.getElementById('load-game-players');
 const startGameBtn = document.getElementById('start-game-btn');
 const startReplayBtn = document.getElementById('start-replay-btn');
 const hostPlayerList = document.getElementById('host-player-list');
+const startPlayerList = document.getElementById('start-player-list');
+const startPlayerRandom = document.getElementById('start-player-random');
+
+let START_PLAYER = -1;
+
+startPlayerList.addEventListener("change", function () {
+	START_PLAYER = startPlayerList.value;
+
+	console.log("START_PLAYER:", START_PLAYER);
+});
+
+startPlayerRandom.addEventListener("change", function () {
+	const isChecked = startPlayerRandom.checked;
+	const value = startPlayerRandom.value;
+	if(isChecked){
+		START_PLAYER = -1; // -1 = random player.
+		startPlayerList.disabled = true;
+	}else{
+		START_PLAYER = startPlayerList.value; // use selected player from list.
+		startPlayerList.disabled = false;
+	}
+
+	console.log("START_PLAYER:", START_PLAYER);
+});
 
 // Lobby Page
 const lobbyRoomNameTitle = document.getElementById('lobby-room-name-title');
@@ -8380,7 +8418,7 @@ function ai_find_best_move1(player) {
 
 
 // ai turn delay ai aidelay aiturn
-let AI_DELAY_START = 50;
+let AI_DELAY_START = 50; // enough delay so animations have time to finish?
 let AI_DELAY_MOVE = 50;
 
 let batchActionsAI = [];
@@ -9112,6 +9150,10 @@ function handleHostData(data) {
 			
 			// update localPlayer index (only valid after game starts, since players could be kicked before start):
 			localPlayer.playerIndex = getPlayerIndex(localPlayer.id);
+			// update all players indexes, might be messed up after kicking players before start:
+			for(let i = 0; i < gameState.players.length; i++){
+				gameState.players[i].playerIndex = i;
+			}
 			
 			// save initial gameState for replaying the games later.
 			INITIAL_STATE = deepClone(gameState);
@@ -9185,6 +9227,7 @@ function handleHostData(data) {
 		}
 		break;
 		case 'chat': {
+			data.message = data.message.slice(0, MAX_MESSAGE_LEN);
 			addChatMessage(data.from, data.message, data.isSpectator, data.textColor);
 		}
 		break;
@@ -9381,40 +9424,45 @@ function handleHostData(data) {
 	setProtectedTiles();
 	
 	
-	// add only these messages to NETWORK_HISTORY:
-	switch (data.type) {
-		case 'chat': 
-		case 'tile_changed': 
-		case 'object_changed': 
-		case 'unit_added': 
-		case 'unit_removed': 
-		case 'unit_moved': 
-		//case 'turn_changed': 
-		case 'sound': {
-			//console.warn("XXYY: handleHostData:");
-			//console.warn("XXYY: "+JSON.stringify(data));
-			
-			addNetworkHistory(data);
-			//NETWORK_HISTORY.push({...data, _TS: new Date()});
+	if(!REPLAY_ENABLED){
+		// add only these messages to NETWORK_HISTORY:
+		switch (data.type) {
+			case 'chat': 
+				data.message = data.message.slice(0, MAX_MESSAGE_LEN);
+				addNetworkHistory(data);
+			break;
+			case 'tile_changed': 
+			case 'object_changed': 
+			case 'unit_added': 
+			case 'unit_removed': 
+			case 'unit_moved': 
+			//case 'turn_changed': 
+			case 'sound': {
+				//console.warn("XXYY: handleHostData:");
+				//console.warn("XXYY: "+JSON.stringify(data));
+				
+				addNetworkHistory(data);
+				//NETWORK_HISTORY.push({...data, _TS: new Date()});
+			}
+			break;
+			case 'turn_changed':
+				//console.warn("XXYY: handleHostData:");
+				//console.warn("XXYY: "+JSON.stringify(data));
+				
+				addNetworkHistory(data);
+				//NETWORK_HISTORY.push({...data, _TS: new Date()});
+				
+				// Save this game state (for host and client)
+				// note: clients doesnt have tile.savings etc defined, 
+				//       but it shouldnt affect replaying the game.
+				//       IT WILL make it unplayable though, so loading the game wont work.
+				// maybe catch 'savings_update' as well, so it will keep track of pools savings?
+				//gameState.networkHistory = NETWORK_HISTORY;
+				saveGameToDB(gameState);
+				
+				//console.warn("XXYY: game saved, network history saved.");
+			break;
 		}
-		break;
-		case 'turn_changed':
-			//console.warn("XXYY: handleHostData:");
-			//console.warn("XXYY: "+JSON.stringify(data));
-			
-			addNetworkHistory(data);
-			//NETWORK_HISTORY.push({...data, _TS: new Date()});
-			
-			// Save this game state (for host and client)
-			// note: clients doesnt have tile.savings etc defined, 
-			//       but it shouldnt affect replaying the game.
-			//       IT WILL make it unplayable though, so loading the game wont work.
-			// maybe catch 'savings_update' as well, so it will keep track of pools savings?
-			//gameState.networkHistory = NETWORK_HISTORY;
-			saveGameToDB(gameState);
-			
-			//console.warn("XXYY: game saved, network history saved.");
-		break;
 	}
 
 	
@@ -9490,6 +9538,7 @@ function handleClientData(peerId, data) {
 			broadcastLobbyState();
 			break;
 		case 'chat':
+			data.message = data.message.slice(0, MAX_MESSAGE_LEN);
 			broadcast({
 				type: 'chat',
 				from: player.name,
@@ -9927,6 +9976,26 @@ function updateHostLobbyUI() {
 			item.textContent = `${p.name}${specTag}`;
 			hostPlayerList.appendChild(item);
 			if (p.color) usedColors.push(p.color);
+		}
+	});
+
+	// Clear existing options
+	startPlayerList.innerHTML = '';
+
+	// Add header option
+	//const defaultOption = document.createElement("option");
+	//defaultOption.value = "";
+	//defaultOption.textContent = `-- Select game (${totalGames}) --`;
+	//startPlayerList.appendChild(defaultOption);
+
+	// Add each player
+	gameState.players.forEach(player => {
+		if(!player.quitted && !player.isSpectator){
+
+			const option = document.createElement("option");
+			option.value = player.id; // must use ID since playerIndex changes when kicking players.
+			option.textContent = player.name;
+			startPlayerList.appendChild(option);
 		}
 	});
 	
@@ -11745,7 +11814,13 @@ function startGame() {
 		}
 		
 		// Set initial turn (skips spectators)
-		gameState.turn.currentPlayerIndex = getNextPlayerIndex(random(0, gameState.players.length-1));
+		if(START_PLAYER === -1){
+			gameState.turn.currentPlayerIndex = getNextPlayerIndex(random(0, gameState.players.length-1));
+			console.warn("set random starting player index = "+gameState.turn.currentPlayerIndex);
+		}else{
+			gameState.turn.currentPlayerIndex = getPlayerIndex(START_PLAYER);
+			console.warn("set custom starting player: "+START_PLAYER+", index = "+gameState.turn.currentPlayerIndex);
+		}
 		gameState.turn.startPlayerIndex = gameState.turn.currentPlayerIndex;
 		gameState.turn.turnNumber = 1;
 		console.warn("currentPlayerIndex: "+gameState.turn.currentPlayerIndex);
@@ -12264,10 +12339,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 		if (e.key === 'Enter') {
 			toggleUiTopLeft(false);
 			let message = chatInput.value.trim();
+			message = message.slice(0, MAX_MESSAGE_LEN);
 			chatInput.value = message; // avoid leaving empty message if pressed space in accident.
+			
 			if(chatInput.value !== ''){
 				// send only the needed info, host handles adding colors etc.
-				sendToHost({ 
+				sendToHost({
 					type: 'chat', 
 					message: message,
 				});
