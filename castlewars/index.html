@@ -10934,6 +10934,32 @@ function setTileNeighbours(tile){
 	tile.neighbours = availableNeighbours;
 }
 
+function saveMap(){
+	let bounds = gameState.map.bounds;
+	let rows = [];
+	for(let q = bounds.q.min; q <= bounds.q.max; q++){
+		let row = "";
+		for(let r = bounds.r.min; r <= bounds.r.max; r++){
+			let tile = getTileAt(q,r);
+			let chr;
+			if(tile){
+				if(tile.type === "land"){
+					if(tile.object === "tree"){
+						chr = "O";
+					}else{
+						chr = "o";
+					}
+				}
+			}else{
+				chr = "_";
+			}
+			row += chr;
+		}
+		rows.push(row);
+	}
+	console.warn("rows");
+	console.warn(rows);
+}
 
 
 // NOTE: make sure map width/height is even.
