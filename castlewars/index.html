@@ -272,6 +272,15 @@ label {
 	flex: 1;
 }
 
+.input-group-slim {
+	display: flex;
+	gap: 10px;
+}
+
+.input-group-slim > div {
+	flex: 1;
+}
+
 .player-list {
 	width: 100%;
 	---padding: 10px;
@@ -763,7 +772,7 @@ button.redbutton:hover {
 	box-shadow: 0 5px 20px rgba(0,0,0,0.2);
 	---animation: fadeIn 0.2s ease;
 
-	padding-top: 128px;
+	padding-top: 104px;
 }
 
 @keyframes fadeIn {
@@ -804,10 +813,10 @@ button.redbutton:hover {
 
 /* Category buttons */
 .category-tabs {
-	display: flex;
+	display: inline-flex;
 	gap: 8px;
-	margin-bottom: 16px;
-	margin-top: 15px;
+	---margin-bottom: 16px;
+	---margin-top: 15px;
 }
 
 .category-btn {
@@ -1037,13 +1046,14 @@ input.disabled {
 	<div class="popup" id="map-popup">
 		
 		<div class="popup-top-bar">
-			<div class="input-group">
+			<div class="input-group-slim">
 				<div class="popup-title">Load map</div>
 				<button class="popup-close" id="popup-close">&times;</button>
 			</div>
 			<div class="category-tabs">
 				<button class="category-btn active" data-category="small">Small</button>
 				<button class="category-btn" data-category="normal">Normal</button>
+				<button class="category-btn" data-category="custom">Custom</button>
 			</div>
 			
 		</div>
@@ -1753,26 +1763,32 @@ function closePopup() {
 }
 
 // Render map list
-function renderMapList(category) {
+async function renderMapList(category) {
 	mapList.innerHTML = '';
-	const maps = customMaps[category];
+	
+	if(category !== 'custom'){
+		const maps = customMaps[category];
 
-	maps.forEach((map, index) => {
-		const div = document.createElement('div');
-		div.className = 'map-item';
-		div.innerHTML = `
-			<img src="${map.imageData}" alt="${map.name}" title="${map.name}: ${map.width} x ${map.height}">
-			<div>Land tiles: ${map.tileCount}</div>
-		`;
-		// <div>${map.width} x ${map.height}</div>
-		div.addEventListener('click', () => {
-			loadMap(category, index);
-			console.log("map loaded: "+category+index);
+		maps.forEach((map, index) => {
+			const div = document.createElement('div');
+			div.className = 'map-item';
+			div.innerHTML = `
+				<img src="${map.imageData}" alt="${map.name}" title="${map.name}: ${map.width} x ${map.height}">
+				<div>Land tiles: ${map.tileCount}</div>
+			`;
+			// <div>${map.width} x ${map.height}</div>
+			div.addEventListener('click', () => {
+				loadMap(category, index);
+				console.log("map loaded: "+category+index);
 
-			closePopup();
+				closePopup();
+			});
+			mapList.appendChild(div);
 		});
-		mapList.appendChild(div);
-	});
+	}else{
+		let savedMaps = await getAllSavedMaps();
+		
+	}
 }
 
 // Handle category switching
@@ -1791,7 +1807,7 @@ categoryBtns.forEach(btn => {
 // Open popup
 loadGameBtn.addEventListener('click', async () => {
 	if(loadedGameState){
-		loadSavedGame(null);
+		loadSavedGame(null); // will unload the saved game.
 	}else{
 		savedGamesPopupOverlay.style.display = 'flex';
 		let savedGames = await getAllSavedGames();
@@ -2013,7 +2029,9 @@ document.body.addEventListener('touchend', e => {
 
 // --- CONSTANTS ---
 const DB_NAME = 'HexWarlordsDB';
+const DB_VERSION_NUMBER = 2;
 const DB_STORE_NAME = 'savedGames';
+const DB_STORE_NAME_MAPS = 'savedMaps';
 
 const PLAYER_COLORS_ARR = [
 	'#FF2222',
@@ -10227,16 +10245,17 @@ function broadcastMapState() {
 // --- INDEXEDDB
 // =================================================================
 
+// db to store games in roomName key
 function initDB() {
-	const request = indexedDB.open(DB_NAME, 1);
+	const request = indexedDB.open(DB_NAME, DB_VERSION_NUMBER);
 	
 	request.onerror = (e) => {
-		console.error("IndexedDB error:", e.target.errorCode);
+		console.error("IndexedDB saved games error:", e.target.errorCode);
 	};
 	
 	request.onsuccess = (e) => {
 		db = e.target.result;
-		console.log("IndexedDB initialized.");
+		console.log("IndexedDB saved games initialized.");
 		console.log(db);
 	};
 	
@@ -10245,9 +10264,42 @@ function initDB() {
 		if (!db.objectStoreNames.contains(DB_STORE_NAME)) {
 			db.createObjectStore(DB_STORE_NAME, { keyPath: 'roomName' });
 		}
+		if (!db.objectStoreNames.contains(DB_STORE_NAME_MAPS)) {
+			db.createObjectStore(DB_STORE_NAME_MAPS, { keyPath: 'mapName' });
+		}
 	};
 }
 
+
+
+
+async function getAllSavedMaps() {
+	return new Promise((resolve, reject) => {
+		if (!db) {
+			resolve(null); // no saves to be found
+			return;
+		}
+
+		const transaction = db.transaction([DB_STORE_NAME_MAPS], 'readonly');
+		const objectStore = transaction.objectStore(DB_STORE_NAME_MAPS);
+		const getAllRequest = objectStore.getAll();
+
+		getAllRequest.onsuccess = (event) => {
+			const allSavedMaps = event.target.result;
+
+			// Sort saves by saveDate (newest first)
+			//allSaves.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+			allSavedMaps.sort((a, b) => new Date(b.saveDate) - new Date(a.saveDate));
+			
+			resolve(allSavedMaps); // return array of saved games.
+		};
+
+		getAllRequest.onerror = (e) => {
+			console.error('Error loading map:', e.target.error);
+			resolve(null); // no saves to be found
+		};
+	});
+}
 
 
 
@@ -10594,6 +10646,98 @@ function getTileCountCompact(mapdata){
 }
 
 
+
+function compressedToCompactInfo(coded){
+	switch(coded){
+		case 'a': return "L01";
+		case 'b': return "L02";
+		case 'c': return "L03";
+		case 'd': return "L04";
+		case 'e': return "L05";
+		case 'f': return "L06";
+		case 'A': return "LP1";
+		case 'B': return "LP2";
+		case 'C': return "LP3";
+		case 'D': return "LP4";
+		case 'E': return "LP5";
+		case 'F': return "LP6";
+		case 'o': return "L00";
+		case 'O': return "LT0";
+		case '_': return "W00";
+	}
+	return "W00";
+}
+
+function compactToCompressedInfo(td){
+	let coded = "_"; // default to water in case not valid value found.
+		
+	let type = td[0];
+	let object = td[1];
+	let owner = parseInt(td[2], 10); // 0 = nobody, 1-6 = players.
+
+	
+	if(type === "L"){
+		// if peasant:
+		if(object === "P"){
+			// = land with peasant of owner:
+			switch(owner){
+				// no case 0: non-owned lands cant have peasants.
+				case 1: coded = "A"; break;
+				case 2: coded = "B"; break;
+				case 3: coded = "C"; break;
+				case 4: coded = "D"; break;
+				case 5: coded = "E"; break;
+				case 6: coded = "F"; break;
+			}
+		}else if(object === "T"){
+			coded = "O"; // land with tree.
+		}else{
+			// no object:
+			// = empty land of owner:
+			switch(owner){
+				case 0: coded = "o"; break;
+				case 1: coded = "a"; break;
+				case 2: coded = "b"; break;
+				case 3: coded = "c"; break;
+				case 4: coded = "d"; break;
+				case 5: coded = "e"; break;
+				case 6: coded = "f"; break;
+			}
+		}
+	}else{
+		// water:
+		coded = "_";
+	}
+	return coded;
+}
+
+// input: mapdata = "[W00", ...] etc.
+// output:
+// aA = Player 1 owned: (empty, peasant)
+// bB = 2
+// cC = 3
+// dD = 4
+// eE = 5
+// fF = 6
+// oO = no owner: (empty, tree)
+// _ = water
+function compressMap(mapdata){
+	let compressed = [];
+	
+	let width = mapdata[0].length;
+	let height = mapdata.length;
+	for(let y = 0; y < height; y++){
+		let row = "";
+		for(let x = 0; x < width; x++){
+			row += compactToCompressedInfo(mapdata[y][x]);
+		}
+		compressed.push(row);
+	}
+	
+	return compressed;
+}
+
+
 async function buildMapList(mapSizeName, totalMaps) {
 	const t = mapSizeName[0];
 
@@ -10619,6 +10763,8 @@ async function buildMapList(mapSizeName, totalMaps) {
 			mapdata.name = name;
 			mapdata.imageData = imageData; // base64 string ready for <img src="...">
 			mapdata.tileCount = getTileCountCompact(mapdata);
+			mapdata.format = 2; // 1 = ["W00", "W00", ...] format, 2 = "____oooOoo___" etc, one byte per tile.
+			mapdata.data = compressMap(mapdata.data);
 			return mapdata;
 
 		} catch (err) {
@@ -10630,7 +10776,7 @@ async function buildMapList(mapSizeName, totalMaps) {
 	const results = await Promise.all(promises);
 	customMaps[mapSizeName] = results.filter(Boolean);
 
-	console.log(`✅ Loaded ${customMaps[mapSizeName].length}/${totalMaps} maps successfully.`);
+	console.log(`Loaded ${customMaps[mapSizeName].length}/${totalMaps} maps successfully.`);
 }
 
 // Helper to convert Blob → Base64 string
@@ -11042,7 +11188,7 @@ function loadParsedMap(parsedMap, compact = true){
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
 				let info;
 				if(compact){
-					info = compactToExpandedInfo(parsedMap.data[yy][xx]);
+					info = compactToExpandedInfo(compressedToCompactInfo(parsedMap.data[yy][xx]));
 				}else{
 					info = parsedMap.data[yy][xx];
 				}
@@ -11432,7 +11578,7 @@ function spawnPlayers(){
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
 				let info; // {type, object, owner}
 				if(compact){
-					info = compactToExpandedInfo(parsedMap.data[yy][xx]);
+					info = compactToExpandedInfo(compressedToCompactInfo(parsedMap.data[yy][xx]));
 				}else{
 					info = parsedMap.data[yy][xx];
 				}
@@ -11495,7 +11641,7 @@ function spawnPlayers(){
 			if(parsedMap.data[yy] && parsedMap.data[yy][xx]){
 				let info; // {type, object, owner}
 				if(compact){
-					info = compactToExpandedInfo(parsedMap.data[yy][xx]);
+					info = compactToExpandedInfo(compressedToCompactInfo(parsedMap.data[yy][xx]));
 				}else{
 					info = parsedMap.data[yy][xx];
 				}
