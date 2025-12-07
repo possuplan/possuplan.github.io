@@ -164,6 +164,10 @@ main {
 	background-color: var(--border-color);
 }
 
+#books-count {
+	margin-bottom:10px;
+}
+
 /* --- Book List Table --- */
 #books-table {
 	width: 100%;
@@ -400,6 +404,7 @@ button.secondary:hover {
 	<main id="main-content">
 		<div id="page-books" class="page">
 			<div style="overflow-x:auto;">
+				<div id="books-count"></div>
 				<table id="books-table">
 					<thead>
 						<tr>
@@ -673,6 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	const statusFilterContainer = document.getElementById('status-filter');
 	const pages = document.querySelectorAll('.page');
 	const booksTableBody = document.querySelector('#books-table tbody');
+	const booksCount = document.getElementById('books-count');
 	const addBookBtn = document.getElementById('add-book-btn');
 	const modalContainer = document.getElementById('modal-container');
 	const searchContainer = document.getElementById('search-container');
@@ -805,6 +811,7 @@ getBookFromGoogleBooks('9780140449136')
 
 		filteredBooks.sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate));
 
+		booksCount.textContent = "Total "+filteredBooks.length+" books";
 		booksTableBody.innerHTML = '';
 		if (filteredBooks.length === 0) {
 			booksTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No books found.</td></tr>`;
