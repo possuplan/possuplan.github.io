@@ -10705,24 +10705,18 @@ async function saveGameToDB(gameState) {
 	
 	let saveDate = new Date().toISOString();
 
-	let saved_INITIAL_STATE = deepClone(INITIAL_STATE);
-	saved_INITIAL_STATE = prepareSavedGameState(saved_INITIAL_STATE);
-
 	let initialStateToSave = {
 		// initial state is never modified, so its safe to leave json parse out.
-		initialState: saved_INITIAL_STATE, 
+		initialState: prepareSavedGameState(deepClone(INITIAL_STATE)), 
 		roomName: "init-"+gameState.settings.currentFormattedDate, 
 		saveDate: saveDate,
 		SESSION_ID: SESSION_ID,
 	};
 	
-	let savedGameState = deepClone(gameState);
-	savedGameState = prepareSavedGameState(savedGameState);
-
 
 	let stateToSave = {
 		// Create a deep clones to store, in case the objects gets modified while transaction:
-		gameState: savedGameState,
+		gameState: prepareSavedGameState(deepClone(gameState)),
 		networkHistory: deepClone(NETWORK_HISTORY),
 		
 		// roomName key is used for db key:
@@ -10775,18 +10769,6 @@ async function saveGameToDB(gameState) {
 	getReqPlay.onerror = (e) => {
 		console.warn('Failed to read existing entry before saving.');
 	};
-	
-	/*
-	let compre = await compressString(JSON.stringify(stateToSave));
-	console.log(compre.length);
-	
-	console.warn("saveGameToDB length = "+JSON.stringify(stateToSave).length);
-	console.warn("saveGameToDB initialState len = "+JSON.stringify(stateToSave.initialState).length);
-	console.warn("saveGameToDB gameState len = "+JSON.stringify(stateToSave.gameState).length);
-	console.warn("saveGameToDB networkHistory len = "+JSON.stringify(stateToSave.networkHistory).length);
-	
-	console.log(JSON.stringify(stateToSave.gameState));
-	*/
 }
 
 // roomKey = roomName without "play-" or "init-"
