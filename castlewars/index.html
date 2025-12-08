@@ -1188,12 +1188,8 @@ input.disabled {
 				</div>
 				<div class="input-group" style="flex-direction: row !important;">
 					<label for="start-player-list">Start player</label>
-					<select id="start-player-list" disabled>
+					<select id="start-player-list">
 					</select>
-					<div class="input-group" style="flex-direction: column !important;">
-						<label for="start-player-random">Random</label>
-						<input type="checkbox" id="start-player-random" value="1" checked>
-					</div>
 				</div>
 			</div>
 		</div>
@@ -1259,10 +1255,6 @@ input.disabled {
 					<label for="lobby-start-player-list">Start player</label>
 					<select id="lobby-start-player-list" disabled>
 					</select>
-					<div class="input-group" style="flex-direction: column !important;">
-						<label for="lobby-start-player-random">Random</label>
-						<input type="checkbox" id="lobby-start-player-random" value="1" checked disabled>
-					</div>
 				</div>
 			</div>
 			
@@ -1926,8 +1918,11 @@ let gameSounds = {
 	protect:      {filename: "sounds/protect.mp3", gain: 0.4, filter: false},
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
-	build:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
-	
+	// need one sound per castle level so the explosion animation gets chosen correctly.
+	build1:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
+	build2:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
+	build3:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
+
 	sell:         {filename: "sounds/sell.mp3",    gain: 0.4,   filter: false},
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
@@ -3349,15 +3344,11 @@ const startReplayBtn = document.getElementById('start-replay-btn');
 const hostPlayerList = document.getElementById('host-player-list');
 
 const startPlayerList = document.getElementById('start-player-list');
-const startPlayerRandom = document.getElementById('start-player-random');
-
 const lobbyStartPlayerList = document.getElementById('lobby-start-player-list');
-const lobbyStartPlayerRandom = document.getElementById('lobby-start-player-random');
 
 
 function loadedMapMode(disableButtons){
 	startPlayerList.disabled = disableButtons;
-	startPlayerRandom.disabled = disableButtons;
 	mapScale.disabled = disableButtons;
 	loadMapBtn.disabled = disableButtons;
 	loadRandomBtn.disabled = disableButtons;
@@ -3377,21 +3368,7 @@ startPlayerList.addEventListener("change", function () {
 	console.log("gameState.settings.startPlayerId:", gameState.settings.startPlayerId);
 });
 
-startPlayerRandom.addEventListener("change", function () {
-	const isChecked = startPlayerRandom.checked;
 
-	if(isChecked){
-		gameState.settings.startPlayerId = -1; // -1 = random player.
-		startPlayerList.disabled = true;
-	}else{
-		gameState.settings.startPlayerId = startPlayerList.value; // use selected player from list.
-		startPlayerList.disabled = false;
-	}
-	
-	broadcastLobbyState();
-	
-	console.log("gameState.settings.startPlayerId:", gameState.settings.startPlayerId);
-});
 
 // Lobby Page
 const lobbyRoomNameTitle = document.getElementById('lobby-room-name-title');
@@ -7973,7 +7950,7 @@ function executeAction(playerId, action) {
 					
 					if(playMoveUnit){
 						if(moveUnitType){
-							sounds.push({name:'build', q: q, r: r, action: action.type});
+							sounds.push({name:'build'+newUnit.level, q: q, r: r, action: action.type});
 						}else{
 							sounds.push({name:'moveunit', q: q, r: r, action: action.type});
 						}
@@ -9351,14 +9328,23 @@ function makeExplosionBySoundMessage(data){
 		}else{
 			ep.amount = 110; // for any other higher level in case more were added later.
 		}
-	}else if(data.name === 'build'){
+	}else if(data.name === 'build1' || data.name === 'build2' || data.name === 'build3'){
 		doExplosion = 1;
+		
+		level = parseInt(data.name[5], 10);
 		
 		let newcolor = "#FFFFFF";
 		if(data.playerIndex !== -1){
 			let player = getPlayerByIndex(data.playerIndex);
-			// create darker and grayer hex color from player.color:
-			newcolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
+			let basecolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
+			if(level == 1){
+				// create darker and grayer hex color from player.color:
+				newcolor = basecolor;
+			}else if(level == 2){
+				newcolor = blendHexColor(basecolor, "#FFFFFF", 0.2);
+			}else if(level >= 3){
+				newcolor = blendHexColor(basecolor, "#FFFFFF", 0.4);
+			}
 		}
 		ep.color = newcolor;
 		ep.shapeMode = 0; // triangles+squares
@@ -9369,7 +9355,7 @@ function makeExplosionBySoundMessage(data){
 		ep.fadeMode = "slow";
 		ep.rotationSpeed = {min:0, max:0};
 	}
-	
+
 	if(doExplosion){
 		createExplosion(ep);
 	}
@@ -10246,25 +10232,27 @@ function updateHostLobbyUI() {
 	});
 
 
+	// update startplayer list:
+	startPlayerList.innerHTML = '';
 
-	
-	if(gameState.settings.startPlayerId === -1){
-		startPlayerList.innerHTML = '';
-	}else{
-		startPlayerList.innerHTML = '';
-		// Add each player
-		gameState.players.forEach(player => {
-			if(!player.quitted && !player.isSpectator){
-				const option = document.createElement("option");
-				option.value = player.id; // must use ID since playerIndex changes when kicking players.
-				option.textContent = player.name;
-				if(player.id === gameState.settings.startPlayerId){
-					option.selected = true;
-				}
-				startPlayerList.appendChild(option);
+	const option1 = document.createElement("option");
+	option1.value = -1; // random player
+	option1.textContent = "(Random)";
+	startPlayerList.appendChild(option1);
+
+	// Add each player:
+	gameState.players.forEach(player => {
+		if(!player.quitted && !player.isSpectator){
+			const option = document.createElement("option");
+			option.value = player.id; // must use ID since playerIndex changes when kicking players.
+			option.textContent = player.name;
+			if(player.id === gameState.settings.startPlayerId){
+				option.selected = true;
 			}
-		});
-	}
+			startPlayerList.appendChild(option);
+		}
+	});
+
 	
 	// Update color picker
 	hostRoomColorPicker.innerHTML = '';
@@ -10347,28 +10335,29 @@ function updateLobbyUI() {
 		}
 	});
 	
-	// update startplayer list/checkbox:
-	if(gameState.settings.startPlayerId === -1){
-		lobbyStartPlayerRandom.checked = true;
-		lobbyStartPlayerList.innerHTML = '';
-	}else{
-		lobbyStartPlayerRandom.checked = false;
+	
+	
+	// update startplayer list:
+	lobbyStartPlayerList.innerHTML = '';
 
-		lobbyStartPlayerList.innerHTML = '';
-		// Add each player
-		gameState.players.forEach(player => {
-			if(!player.quitted && !player.isSpectator){
-				const option = document.createElement("option");
-				option.value = player.id; // must use ID since playerIndex changes when kicking players.
-				option.textContent = player.name;
-				if(player.id === gameState.settings.startPlayerId){
-					option.selected = true;
-				}
-				lobbyStartPlayerList.appendChild(option);
+	const option1 = document.createElement("option");
+	option1.value = -1; // random player
+	option1.textContent = "(Random)";
+	lobbyStartPlayerList.appendChild(option1);
+	
+	// Add each player:
+	gameState.players.forEach(player => {
+		if(!player.quitted && !player.isSpectator){
+			const option = document.createElement("option");
+			option.value = player.id; // must use ID since playerIndex changes when kicking players.
+			option.textContent = player.name;
+			if(player.id === gameState.settings.startPlayerId){
+				option.selected = true;
 			}
-		});
-			
-	}
+			lobbyStartPlayerList.appendChild(option);
+		}
+	});
+
 
 
 	// Update color picker
@@ -11294,6 +11283,7 @@ function compactToExpandedInfo(str){
 	return {type: type, object: obj, owner: owner};
 }
 
+
 function setTileNeighbours(tile, state = null){
 	let neigh = getHexNeighbors(tile.q,tile.r);
 	let availableNeighbours = [];
@@ -11310,6 +11300,7 @@ function setTileNeighbours(tile, state = null){
 	}
 	tile.neighbours = availableNeighbours;
 }
+
 
 function saveMap(){
 	let bounds = gameState.map.bounds;
@@ -12379,8 +12370,9 @@ document.addEventListener('keydown', (event) => {
 			rotateAroundScreenCenter(-0.03);
 		}else if(key === 'e') {
 			rotateAroundScreenCenter(0.03);
+		}else if(key === 'w') {
+			rotateAroundScreenCenter(-viewport.rotation);
 		}
-	
 	}
 });
 
