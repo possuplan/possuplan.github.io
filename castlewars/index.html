@@ -6168,29 +6168,35 @@ function getMapBounds(){
 	return gameState.map.bounds;
 }
 
-function getTileAt(q, r) {
+function getTileAt(q, r, state = null) {
 	let tileKey = `${q},${r}`;
-	let tileIndex = gameState.map.tiles[tileKey];
-	return gameState.map.tilesData[tileIndex];
+	if(!state){
+		let tileIndex = gameState.map.tiles[tileKey];
+		return gameState.map.tilesData[tileIndex];
+	}else{
+		let tileIndex = state.map.tiles[tileKey];
+		return state.map.tilesData[tileIndex];
+	}
 }
 
 
 // if tile doesnt exist: new tile created, if not: modifying the tile.
-function setTileAt(q, r, tileData, allowCreation = true) {
+function setTileAt(q, r, tileData, allowCreation = true, state = null) {
 	let tileKey = `${q},${r}`;
+	let useState = state ? state : gameState;
 
-	if (Object.hasOwn(gameState.map.tiles, tileKey)) {
+	if (Object.hasOwn(useState.map.tiles, tileKey)) {
 		//console.log("setTileAt Object.hasOwn at ",q,r);
 		// modify already existing tile:
-		let tileIndex = gameState.map.tiles[tileKey];
-		gameState.map.tilesData[tileIndex] = {...gameState.map.tilesData[tileIndex], ...tileData};
+		let tileIndex = useState.map.tiles[tileKey];
+		useState.map.tilesData[tileIndex] = {...useState.map.tilesData[tileIndex], ...tileData};
 	}else{
 		//console.log("setTileAt add new tile at ",q,r);
 		// add new tile:
 		if(allowCreation){
-			let tileIndex = gameState.map.tilesData.length;
-			gameState.map.tilesData.push({q, r, tileIndex, ...tileData});
-			gameState.map.tiles[tileKey] = tileIndex;
+			let tileIndex = useState.map.tilesData.length;
+			useState.map.tilesData.push({q, r, tileIndex, ...tileData});
+			useState.map.tiles[tileKey] = tileIndex;
 		}
 	}
 }
@@ -6210,13 +6216,13 @@ function setTileOwnerByIndex(tile, ownerIndex){
 
 
 // will set water outline to the tile, or if doesnt exist yet, adds new tile with that info.
-function setOutlineAt(q, r, lines, allowCreation = true) {
+function setOutlineAt(q, r, lines, allowCreation = true, state = null) {
 	let tile = {outline: lines};
 	
-	if(!getTileAt(q,r)){
+	if(!getTileAt(q,r, state)){
 		tile = {...tile, type: "water", ownerIndex: -1, object: null, savings: 0};
 	}
-	setTileAt(q, r, tile, allowCreation);
+	setTileAt(q, r, tile, allowCreation, state);
 
 	
 }
@@ -10457,23 +10463,78 @@ async function decompressToString(uint8) {
 }
 
 
+// prepare state for save, delete unnecessary keys and set animations finished.
+function prepareSavedGameState(state){
+	delete state.map.tiles;
+	for(let i = 0; i < state.map.tilesData.length; i++){
+		let tile = state.map.tilesData[i];
+		delete tile.neighbours;
+		delete tile.isProtected;
+		delete tile.outline;
+		delete tile.animationFinished;
+		delete tile.animationStyle;
+		delete tile.creationTime;
+	}
+	for(let i = 0; i < state.units.length; i++){
+		let unit = state.units[i];
+		delete unit.animationFinished;
+		delete unit.animationStyle;
+		delete unit.creationTime;
+		delete unit.wasSpawned;
+	}
+
+	return state;
+}
+
+
+// rebuilds all deleted keys
+//////////////////////////////
+// NOTE: savings arent updated for clients, so loading game wont work for them...
+function prepareLoadedGameState(state){
+	// set map.tiles (must be set before setTileAt() etc calls):
+	state.map.tiles = {};
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		let tile = state.map.tilesData[t];
+		state.map.tiles[`${tile.q},${tile.r}`] = t;
+	}
+	// set neighbours:
+	for(let t = 0; t < state.map.tilesData.length; t++){
+		const tile = state.map.tilesData[t];
+		// set tile.neighbours:
+		if(tile.type === "land"){
+			setTileNeighbours(tile, state);
+		}
+		// set tile.outline:
+		updateTileOutlines(tile.q, tile.r, false, state);
+	}
+	return state;
+}
+
+
 async function saveGameToDB(gameState) {
 	if(!db) return;
 	if(REPLAY_ENABLED) return;
 	
 	let saveDate = new Date().toISOString();
 
+	let saved_INITIAL_STATE = deepClone(INITIAL_STATE);
+	saved_INITIAL_STATE = prepareSavedGameState(saved_INITIAL_STATE);
+
 	let initialStateToSave = {
 		// initial state is never modified, so its safe to leave json parse out.
-		initialState: INITIAL_STATE, 
+		initialState: saved_INITIAL_STATE, 
 		roomName: "init-"+gameState.settings.currentFormattedDate, 
 		saveDate: saveDate,
 		SESSION_ID: SESSION_ID,
 	};
+	
+	let savedGameState = deepClone(gameState);
+	savedGameState = prepareSavedGameState(savedGameState);
+
 
 	let stateToSave = {
 		// Create a deep clones to store, in case the objects gets modified while transaction:
-		gameState: deepClone(gameState),
+		gameState: savedGameState,
 		networkHistory: deepClone(NETWORK_HISTORY),
 		
 		// roomName key is used for db key:
@@ -11063,12 +11124,12 @@ function compactToExpandedInfo(str){
 	return {type: type, object: obj, owner: owner};
 }
 
-function setTileNeighbours(tile){
+function setTileNeighbours(tile, state = null){
 	let neigh = getHexNeighbors(tile.q,tile.r);
 	let availableNeighbours = [];
 	for(let i = 0; i < neigh.length; i++){
 		let n = neigh[i];
-		const nTile = getTileAt(n.q, n.r);
+		const nTile = getTileAt(n.q, n.r, state);
 		if(nTile){
 			//availableNeighbours.push({tileIndex: nTile.tileIndex, neighbourIndex: i, q: n.q, r: n.r});
 			availableNeighbours.push(nTile.tileIndex);
@@ -11213,9 +11274,6 @@ function loadParsedMap(parsedMap, compact = true){
 	// set tile.neighbours for rendering pools with continuous lines:
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
-		const q = tile.q;
-		const r = tile.r;
-		
 		if(tile.type === "land"){
 			setTileNeighbours(tile);
 		}
@@ -11421,13 +11479,13 @@ function updateTileAndNeighbourOutlines(q, r){
 }
 
 
-function updateTileOutlines(q, r, allowCreation = true){
+function updateTileOutlines(q, r, allowCreation = true, state = null){
 	//console.warn("updateTileOutlines"+q+","+r);
 	let lines = [];
 	let neigh = getHexNeighbors(q, r);
 	for(let i = 0; i < neigh.length; i++){
 		let n = neigh[i];
-		const nTile = getTileAt(n.q, n.r);
+		const nTile = getTileAt(n.q, n.r, state);
 		let addline = 0;
 		if (nTile && nTile.type === 'water') {
 			addline = 1;
@@ -11440,29 +11498,8 @@ function updateTileOutlines(q, r, allowCreation = true){
 			lines.push(i);
 		}
 	}
-	/*
-	// old code, only works with zero rotation angle;
-	for(let i = 0; i < neigh.length; i++){
-		// skip topleft,top,topright neighbours:
-		if(i > 1 && i < 5){
-			continue;
-		}
-		let n = neigh[i];
-		const nTile = getTileAt(n.q, n.r);
-		let addline = 0;
-		if (nTile && nTile.type === 'water') {
-			addline = 1;
-		}
-		// if out of bounds, add outlines also:
-		if (!nTile){
-			addline = 1;
-		}
-		if(addline){
-			lines.push(i);
-		}
-	}
-	*/
-	setOutlineAt(q, r, lines, allowCreation);
+
+	setOutlineAt(q, r, lines, allowCreation, state);
 }
 
 
@@ -12128,6 +12165,8 @@ function startGame() {
 // checks all tiles if they are protected or not.
 // only used in drawMapTiles() function.
 function setProtectedTiles(){
+	return; // not used anymore.
+	
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		const tile = gameState.map.tilesData[t];
 		const q = tile.q;
@@ -12294,10 +12333,24 @@ function loadSavedGame(roomKey){
 				
 				loadedMapMode(true);
 				
+				//console.log("JSON.stringify(state.playData.gameState).length");
+				//console.log(JSON.stringify(state.playData.gameState).length);
+				//console.log("JSON.stringify(state.initialData.initialState).length");
+				//console.log(JSON.stringify(state.initialData.initialState).length);
+				
 				// state = { initialData: initialData, playData: playData }
 				
 				loadedGameState = deepClone(state.playData.gameState);
+				loadedGameState = prepareLoadedGameState(loadedGameState); // rebuilds deleted stuff.
+				
 				loadedGameStateInitial = deepClone(state.initialData.initialState);
+				loadedGameStateInitial = prepareLoadedGameState(loadedGameStateInitial); // rebuilds deleted stuff.
+				
+				//console.log("JSON.stringify(loadedGameState).length");
+				//console.log(JSON.stringify(loadedGameState).length);
+				//console.log("JSON.stringify(loadedGameStateInitial).length");
+				//console.log(JSON.stringify(loadedGameStateInitial).length);
+				
 				NETWORK_HISTORY = deepClone(state.playData.networkHistory);
 				console.warn("old sessionid = "+SESSION_ID+", new sessionid = "+state.playData.SESSION_ID);
 				SESSION_ID = state.playData.SESSION_ID; // copy the id so you can overwrite the save.
@@ -12750,7 +12803,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	
 	previousUnitBtn.onclick = () => {
-		refreshCanvas(); // test if this fixes the black bar issue.
+		//refreshCanvas(); // test if this fixes the black bar issue.
 		
 		let player = getMyPlayer();
 		
