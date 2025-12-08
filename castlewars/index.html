@@ -1990,7 +1990,7 @@ function playSound(key) {
 		console.error("Sound not found:", key);
 		return;
 	}
-	console.warn("playSound: "+key);
+	//console.warn("playSound: "+key);
 
 	const buffer = soundBuffers[sound.filename];
 	if (!buffer) return; // not loaded yet
@@ -2296,38 +2296,6 @@ let randomFunc = mulberry32(RANDOM_SEED);
 
 
 
-// list of messages sent to clients:
-const ACTION = {
-	// handleHostData:
-	'multiple_actions': 1,
-	'game_start': 2,
-	'replay_start': 3,
-	'full_state': 4,
-	'lobby_update': 5,
-	'map_update': 6,
-	'chat': 7,
-	'undo_counter': 8,
-	'tile_changed': 9,
-	'object_changed': 10,
-	'unit_added': 11,
-	'unit_removed': 12,
-	'unit_move_reset': 13,
-	'unit_moved': 14,
-	'turn_changed': 15,
-	'sound': 16,
-	'savings_update': 17,
-	
-	// handleClientData:
-	'join': 18,
-	'player_update': 19,
-	'host_quit': 20,
-	'action_sell': 21,
-	'action_move': 22,
-	'action_build': 23,
-	'action_undo': 24,
-	'action_end_turn': 25,
-};
-
 
 
 const SPECTATOR_COLOR = '#FFFFFF';
@@ -2347,14 +2315,193 @@ let REPLAY_ENABLED = 0;
 
 let MAX_MESSAGE_LEN = 200;
 
+
+
+// list of messages sent to clients:
+const ACTION = {
+	// handleHostData:
+	'multiple_actions': 1,
+	'game_start': 2,
+	'replay_start': 3,
+	'full_state': 4,
+	'lobby_update': 5,
+	'map_update': 6,
+	'chat': 7,
+	'undo_counter': 8,
+	'tile_changed': 9, // X
+	'object_changed': 10, // X
+	'unit_added': 11,
+	'unit_removed': 12, // X
+	'unit_move_reset': 13,
+	'unit_moved': 14, // X
+	'turn_changed': 15, // X
+	'sound': 16, // X
+	'savings_update': 17,
+	
+	// handleClientData:
+	'join': 18,
+	'player_update': 19,
+	'host_quit': 20,
+	'action_sell': 21,
+	'action_move': 22,
+	'action_build': 23,
+	'action_undo': 24,
+	'action_end_turn': 25,
+};
+
+// compress some actions into smaller format:
+// replay can read array or object format, so all actions doesnt have to be compressed.
+function compressAction(data){
+	switch(data.type){
+		case ACTION.unit_moved: {
+			return [data.type, data._T, data.unitId, data.q, data.r, data.hasMoved];
+		}
+		break;
+		case ACTION.turn_changed: {
+			return [data.type, data._T, data.currentPlayerIndex, data.turnNumber];
+		}
+		break;
+		case ACTION.sound: {
+			return [data.type, data._T, data.name, data.q, data.r, data.playerIndex, data.action];
+		}
+		break;
+		case ACTION.tile_changed: {
+			if(data.ownerIndex !== undefined && data.object !== undefined){
+				return [data.type, data._T, data.q, data.r, data.ownerIndex, data.object];
+				
+			}else if(data.ownerIndex !== undefined && data.object === undefined){
+				return [data.type, data._T, data.q, data.r, data.ownerIndex];
+				
+			}else if(data.ownerIndex === undefined && data.object !== undefined){
+				return [data.type, data._T, data.q, data.r, null, data.object];
+				
+			}else if(data.ownerIndex === undefined && data.object === undefined){
+				return [data.type, data._T, data.q, data.r];
+			}
+		}
+		break;
+		case ACTION.object_changed: {
+			if(data.animationStyle !== undefined && data.object !== undefined){
+				return [data.type, data._T, data.q, data.r, data.animationStyle, data.object];
+				
+			}else if(data.animationStyle !== undefined && data.object === undefined){
+				return [data.type, data._T, data.q, data.r, data.animationStyle];
+				
+			}else if(data.animationStyle === undefined && data.object !== undefined){
+				return [data.type, data._T, data.q, data.r, null, data.object];
+				
+			}else if(data.animationStyle === undefined && data.object === undefined){
+				return [data.type, data._T, data.q, data.r];
+				
+			}
+		}
+		break;
+		case ACTION.unit_removed: {
+			return [data.type, data._T, data.unitId];
+		}
+		break;
+	}
+	return data; // no handler made yet, just return uncompressed format.
+}
+
+
+
+// decompress some actions into smaller format:
+// replay can read array or object format.
+function deCompressAction(arr){
+	if(!Array.isArray(arr)){
+		return arr; // already decompressed format (object).
+	}
+	// these are always the same for array format:
+	let type = arr[0];
+	let _T = arr[1];
+	
+	switch(type){
+		case ACTION.unit_moved: {
+			return {
+				type: arr[0], 
+				_T: arr[1], 
+				unitId: arr[2], 
+				q: arr[3], 
+				r: arr[4], 
+				hasMoved: arr[5],
+			};
+		}
+		break;
+		case ACTION.turn_changed: {
+			return {
+				type: arr[0], 
+				_T: arr[1], 
+				currentPlayerIndex: arr[2], 
+				turnNumber: arr[3], 
+			};
+		}
+		break;
+		case ACTION.sound: {
+			return {
+				type: arr[0], 
+				_T: arr[1], 
+				name: arr[2], 
+				q: arr[3], 
+				r: arr[4], 
+				playerIndex: arr[5], 
+				action: arr[6], 
+			};
+		}
+		break;
+		case ACTION.tile_changed: {
+			let base = {
+				type: arr[0], 
+				_T: arr[1], 
+				q: arr[2], 
+				r: arr[3], 
+			};
+			if(arr[4] !== undefined && arr[4] !== null){
+				base.ownerIndex = arr[4];
+			}
+			if(arr[5] !== undefined){
+				base.object = arr[5];
+			}
+			return base;
+		}
+		break;
+		case ACTION.object_changed: {
+			let base = {
+				type: arr[0], 
+				_T: arr[1], 
+				q: arr[2], 
+				r: arr[3], 
+			};
+			if(arr[4] !== undefined && arr[4] !== null){
+				base.animationStyle = arr[4];
+			}
+			if(arr[5] !== undefined){
+				base.object = arr[5];
+			}
+			return base;
+		}
+		break;
+		case ACTION.unit_removed: {
+			return {
+				type: arr[0], 
+				_T: arr[1], 
+				unitId: arr[2], 
+			};
+		}
+		break;
+	}
+	console.error("ERROR: no handler found in deCompressAction for action: ");
+	console.error(arr);
+}
+
 function addNetworkHistory(data){
 	if(REPLAY_ENABLED) return;
 	
 	// add timestamp for when the action was received, will make replays more realistic feeling.
-	NETWORK_HISTORY.push({
+	NETWORK_HISTORY.push(compressAction({
 		...data, // {type: tile_changed, ...} etc.
 		_T: msNowFloor()-GAME_START_TIME, // milliseconds from start of game.
-	});
+	}));
 }
 
 
@@ -2532,11 +2679,11 @@ let placingUnit = null; // e.g., { type: 'Peasant', cost: 100 }
 let currentTurnActions = []; // For undo
 
 function deselectHex(){
-	console.log("deselectHex");
+	//console.log("deselectHex");
 	selectedHex = null;
 }
 function deselectUnit(){
-	console.log("deselectUnit");
+	//console.log("deselectUnit");
 	selectedUnit = null;
 	sellUnitBtn.disabled = true;
 }
@@ -8968,7 +9115,7 @@ function executeEndTurn(playerIndex) {
 	
 		
 		// send sound for died soldiers just once:
-		batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: "executeEndTurn"});
+		batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
 	}
 	
 
@@ -11919,11 +12066,11 @@ async function replayHistory(history) {
 	if (!history || history.length === 0) return;
 
 	// Broadcast the first message immediately
-	broadcast(history[0]);
+	broadcast(deCompressAction(history[0]));
 
 	for (let i = 1; i < history.length; i++) {
-		const prev = history[i - 1];
-		const curr = history[i];
+		const prev = deCompressAction(history[i - 1]);
+		const curr = deCompressAction(history[i]);
 
 		let delay = (curr._T - prev._T) * DELAY_MULTI;
 		if (delay < 0) delay = 0;
