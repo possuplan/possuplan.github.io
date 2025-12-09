@@ -424,6 +424,14 @@ button.secondary:hover {
 		<div id="page-new-book" class="page">
 			<h1>New Book</h1>
 			<div class="form-group">
+				<label for="new-startDate">Start Date</label>
+				<input type="date" id="new-startDate">
+			</div>
+			<div class="form-group">
+				<label for="new-endDate">End Date</label>
+				<input type="date" id="new-endDate">
+			</div>
+			<div class="form-group">
 				<label for="new-name">Name</label>
 				<input type="text" id="new-name">
 			</div>
@@ -459,10 +467,7 @@ button.secondary:hover {
 				<label for="new-status">Status</label>
 				<select id="new-status"></select>
 			</div>
-			<div class="form-group">
-				<label for="new-startDate">Start Date</label>
-				<input type="date" id="new-startDate">
-			</div>
+
 			<button id="add-book-btn">Add Book</button>
 		</div>
 
@@ -555,7 +560,16 @@ button.secondary:hover {
 					<div id="edit-feeling-value" class="value"></div>
 				</div>
 			</div>
-			 <div class="stat-item" id="feeling-history">
+			<div class="form-group">
+				<label for="edit-startDate">Start Date</label>
+				<input type="date" id="edit-startDate">
+			</div>
+			<div class="form-group">
+				<label for="edit-endDate">End Date</label>
+				<input type="date" id="edit-endDate">
+			</div>
+			
+			<div class="stat-item" id="feeling-history">
 				<label>Feeling History</label>
 				<div id="feeling-history-value" class="value"></div>
 			</div>
@@ -595,10 +609,6 @@ button.secondary:hover {
 				<input type="text" id="edit-isbn">
 			</div>
 			<div class="form-group">
-				<label for="edit-startDate">Start Date</label>
-				<input type="date" id="edit-startDate">
-			</div>
-			 <div class="form-group">
 				<label>Current Page</label>
 				<p id="edit-currentPage" style="font-size: 1.2em;"></p>
 			</div>
@@ -809,7 +819,8 @@ getBookFromGoogleBooks('9780140449136')
 			);
 		}
 
-		filteredBooks.sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate));
+		//filteredBooks.sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate));
+		filteredBooks.sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
 
 		booksCount.textContent = "Total "+filteredBooks.length+" books";
 		booksTableBody.innerHTML = '';
@@ -953,6 +964,7 @@ getBookFromGoogleBooks('9780140449136')
 		modal.querySelector('#edit-edition').value = book.edition || '';
 		modal.querySelector('#edit-isbn').value = book.ISBN || '';
 		modal.querySelector('#edit-startDate').value = book.startDate || '';
+		modal.querySelector('#edit-endDate').value = book.endDate || '';
 		modal.querySelector('#edit-status').value = book.status;
 		modal.querySelector('#edit-currentPage').textContent = `${book.currentPage || 0} / ${book.pages}`;
 		modal.querySelector('#edit-score-value').textContent = book.score != null ? book.score.toFixed(1) : 'N/A';
@@ -1026,9 +1038,14 @@ getBookFromGoogleBooks('9780140449136')
 
 	// --- Data Handling ---
 	async function handleAddBook() {
+		let bookHasBeenRead = document.getElementById('new-endDate').value ? true : false;
+		let status = parseInt(document.getElementById('new-status').value, 10);
+		if(bookHasBeenRead){
+			status = 3;
+		}
 		const newBook = {
 			type: 0,
-			status: parseInt(document.getElementById('new-status').value, 10),
+			status: status,
 			score: null,
 			feeling: '',
 			name: document.getElementById('new-name').value,
@@ -1040,7 +1057,7 @@ getBookFromGoogleBooks('9780140449136')
 			edition: document.getElementById('new-edition').value,
 			ISBN: document.getElementById('new-isbn').value,
 			startDate: document.getElementById('new-startDate').value,
-			endDate: null,
+			endDate: document.getElementById('new-endDate').value,
 			currentPage: 0,
 			creationDate: new Date().toISOString(),
 			notes: []
@@ -1068,6 +1085,7 @@ getBookFromGoogleBooks('9780140449136')
 		document.getElementById('new-edition').value = '';
 		document.getElementById('new-isbn').value = '';
 		document.getElementById('new-startDate').value = new Date().toISOString().split('T')[0];
+		document.getElementById('new-endDate').value = '';
 	}
 
 	async function handleAddNote(source) {
@@ -1095,6 +1113,7 @@ getBookFromGoogleBooks('9780140449136')
 		// Update book's current page
 		const maxPage = Math.max(...book.notes.map(n => n.page));
 		book.currentPage = maxPage;
+		
 		
 		// Handle book end date
 		if (source === 'note') { // from new note modal
@@ -1266,6 +1285,16 @@ getBookFromGoogleBooks('9780140449136')
 				const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
 				if (book.hasOwnProperty(field)) {
 					 book[field] = value;
+					 // set 'read' status if book was ended.:
+					 if(field === 'endDate'){
+						book.status = 3; 
+					 }
+					 // clear end date if status is not 'read':
+					 if(field === 'status'){
+						if(value != 3){
+							book.endDate = ''; 
+						}
+					 }
 					 await dbActions.update(book);
 					 await fetchBooks();
 					 renderBooks(); // Update main list in background
