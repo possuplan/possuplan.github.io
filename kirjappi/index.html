@@ -804,8 +804,96 @@ getBookFromGoogleBooks('9780140449136')
 			statusFilterContainer.appendChild(item);
 		});
 	}
-
+		
 	function renderBooks() {
+		let filteredBooks = books;
+
+		// Status filter
+		if (currentStatus != -1) {
+			filteredBooks = books.filter(b => b.status == currentStatus);
+		}
+
+		// Search filter
+		const searchTerm = searchInput.value.toLowerCase();
+		if (searchContainer.classList.contains('active') && searchTerm) {
+			filteredBooks = filteredBooks.filter(b =>
+				b.name.toLowerCase().includes(searchTerm) ||
+				b.writer.toLowerCase().includes(searchTerm)
+			);
+		}
+
+		// Sort newest endDate first
+		filteredBooks.sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+
+		booksCount.textContent = "Total " + filteredBooks.length + " books";
+		booksTableBody.innerHTML = '';
+
+		if (filteredBooks.length === 0) {
+			booksTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No books found.</td></tr>`;
+			return;
+		}
+
+		// --- Group by year ---
+		const groups = {};
+		filteredBooks.forEach(b => {
+			let tempEndDate = b.endDate;
+			if(tempEndDate === null){
+				tempEndDate = '';
+			}
+			let year = "Unknown";
+			if(tempEndDate){
+				year = new Date(tempEndDate).getFullYear();
+			}
+			if (!groups[year]) groups[year] = [];
+			groups[year].push(b);
+		});
+
+		// Render groups from newest year to oldest
+		const sortedYears = Object.keys(groups).sort((a, b) => b - a);
+
+
+		sortedYears.forEach(year => {
+			const items = groups[year];
+
+
+			// Header row for this year
+			const headerRow = document.createElement('tr');
+			headerRow.classList.add('year-header');
+			headerRow.innerHTML = `
+				<td colspan="5" style="font-weight:bold; font-size:22px; padding-top:12px; cursor:default">
+					${year} (${items.length} book${items.length > 1 ? 's' : ''})
+				</td>
+			`;
+			booksTableBody.appendChild(headerRow);
+
+			// Render books for this year
+			items.forEach(book => {
+				const row = document.createElement('tr');
+				row.dataset.bookId = book.id;
+				let status = getStatus(book.status);
+				
+				let pages = book.pages ? book.pages : 0;
+				
+				let pageStr = "";
+				if(pages){
+					pageStr = `${book.currentPage || 0} / ${pages}`;
+				}
+
+				row.innerHTML = `
+					<td data-action="status" class="status-cell2" style="background-image:url('${status.image}')">&nbsp;</td>
+					<td data-action="edit">${book.name}</td>
+					<td data-action="note">${pageStr}</td>
+					<td data-action="score">${book.score != null ? book.score.toFixed(1) : '&nbsp;'}</td>
+					<td data-action="feeling">${book.feeling || '&nbsp;'}</td>
+				`;
+
+				booksTableBody.appendChild(row);
+			});
+		});
+	}
+
+
+	function renderBooks1() {
 		let filteredBooks = books;
 		if (currentStatus != -1) {
 			filteredBooks = books.filter(b => b.status == currentStatus);
@@ -953,6 +1041,9 @@ getBookFromGoogleBooks('9780140449136')
 	async function openEditBookModal() {
 		const book = await dbActions.get(activeBookId);
 		const modal = document.getElementById('edit-book-modal');
+		
+		console.warn("openEditBookModal:");
+		console.warn(book);
 		
 		// Populate fields
 		modal.querySelector('#edit-name').value = book.name || '';
