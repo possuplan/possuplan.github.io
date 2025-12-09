@@ -938,6 +938,7 @@ input.disabled {
 
 
 
+
 #build-soldier-btn {
 	background-image: url('images/orig-scaled/128x128/soldier1.png');
 }
@@ -1028,6 +1029,79 @@ input.disabled {
 	filter: brightness(0.5);
 }
 
+
+
+
+#picker-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width:100%;
+}
+
+/* Popup container */
+#picker-popup {
+	position: fixed;
+	inset: 0;
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background: rgba(0, 0, 0, 0.7);
+	z-index: 9999;
+}
+
+/* Visible state */
+#picker-popup.active {
+	display: flex;
+}
+
+
+.picker {
+	position: relative;
+	width: 100%;
+    max-width: 300px;
+	height: 150px;
+	background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red);
+	cursor: crosshair;
+	touch-action: none;
+	border: 1px solid #ccc;
+	overflow: hidden;
+}
+
+.picker::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(to top, #808080, transparent);
+}
+
+.indicator {
+	position: absolute;
+	width: 12px;
+	height: 12px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	pointer-events: none;
+	transform: translate(-50%, -50%);
+	box-shadow: 0 0 2px #000;
+}
+
+input[type="range"] {
+	margin-top: 20px;
+	margin-bottom: 20px;
+
+	width: 100%;
+	max-width: 300px;
+}
+
+#preview {
+	---margin-top: 20px;
+	width: 50px;
+	height: 50px;
+	border: 1px solid #000;
+}
+
 </style>
 </head>
 <body>
@@ -1074,6 +1148,20 @@ input.disabled {
 	</div>
 </div>
 
+
+<div id="picker-popup">
+	<div id="picker-wrapper">
+		<div class="picker" id="picker">
+			<div class="indicator" id="indicator"></div>
+		</div>
+		<input type="range" id="lightness" min="0" max="100" value="50">
+		<div class="input-group">
+			<button style="flex: 1" class="picker-popup-cancel" id="picker-popup-cancel">Cancel</button>
+			<button style="flex: 3; cursor:default" id="preview"></button>
+			<button style="flex: 1" class="picker-popup-select" id="picker-popup-select">Select</button>
+		</div>
+	</div>
+</div>
 
 
 <div id="image-popup">
@@ -1299,7 +1387,7 @@ input.disabled {
 			<div id="player-ui-list" class="ui-panel"></div>
 			<div id="chat-ui" class="ui-panel">
 				<div id="chat-messages"></div>
-				<input type="text" id="chat-input" maxlength="200" placeholder="Type message..." disabled>
+				<input type="text" inputmode="text" id="chat-input" maxlength="200" placeholder="Type message...">
 			</div>
 			
 			<div id="debug-ui">
@@ -1625,6 +1713,20 @@ const loadedMapImg = document.getElementById('loaded-map');
 const lobbyLoadedMapImg = document.getElementById('lobby-loaded-map');
 
 
+
+// color picker:
+const pickerPopup = document.getElementById('picker-popup');
+const pickerPopupSelect = document.getElementById('picker-popup-select');
+const pickerPopupCancel = document.getElementById('picker-popup-cancel');
+
+
+
+const picker = document.getElementById('picker');
+const indicator = document.getElementById('indicator');
+const lightnessSlider = document.getElementById('lightness');
+const preview = document.getElementById('preview');
+
+
 const hostCustomColorPicker = document.getElementById("host-custom-color-input");
 const lobbyCustomColorPicker = document.getElementById("lobby-custom-color-input");
 
@@ -1634,14 +1736,35 @@ const lobbyPreviewTile = document.getElementById("lobby-preview-tile");
 const hostPreviewTileMsg = document.getElementById("host-preview-tile-msg");
 const lobbyPreviewTileMsg = document.getElementById("lobby-preview-tile-msg");
 
+let currentColor = "#FFFFFF";
+
+pickerPopupSelect.addEventListener("click", () => {
+	pickerPopup.style.display = "none";
+	let color = currentColor;
+	let textColor = getPlayerTextColor(color);
+	updatePlayerColor(color, textColor);
+	if(localPlayer.isHost){
+		updateHostPreviewTile(color);
+	}else{
+		updateLobbyPreviewTile(color);
+	}
+});
+pickerPopupCancel.addEventListener("click", () => {
+	pickerPopup.style.display = "none";
+});
+
 
 hostPreviewTile.addEventListener("click", () => {
-	hostCustomColorPicker.value = getMyPlayer().color;
-	hostCustomColorPicker.click();
+	//hostCustomColorPicker.value = getMyPlayer().color;
+	//hostCustomColorPicker.click();
+	currentColor = getMyPlayer().color;
+	pickerPopup.style.display = "flex";
 });
 lobbyPreviewTile.addEventListener("click", () => {
-	lobbyCustomColorPicker.value = getMyPlayer().color;
-	lobbyCustomColorPicker.click();
+	//lobbyCustomColorPicker.value = getMyPlayer().color;
+	//lobbyCustomColorPicker.click();
+	currentColor = getMyPlayer().color;
+	pickerPopup.style.display = "flex";
 });
 
 
@@ -1652,7 +1775,7 @@ function updateLobbyPreviewTile(color){
 	createHexagonMaskedImage(getImage("land"), HEX_SIZE, 1, lobbyPreviewTile, color);
 }
 
-
+/*
 hostCustomColorPicker.addEventListener('input', (e) => {
 	console.log("Live color:", e.target.value);
 	updateHostPreviewTile(e.target.value);
@@ -1661,8 +1784,9 @@ lobbyCustomColorPicker.addEventListener('input', (e) => {
 	console.log("Live color:", e.target.value);
 	updateLobbyPreviewTile(e.target.value);
 });
+*/
 
-
+/*
 hostCustomColorPicker.addEventListener('change', (e) => {
 	console.log("Final color:", e.target.value);
 	let color = e.target.value;
@@ -1678,6 +1802,80 @@ lobbyCustomColorPicker.addEventListener('change', (e) => {
 	updatePlayerColor(color, textColor);
 	updateLobbyPreviewTile(e.target.value);
 });
+*/
+
+
+
+//////////////////////////////
+// color picker:
+
+
+let hue = 0;
+let saturation = 100;
+let lightness = 50;
+
+function updateColorPreview() {
+	const [r, g, b] = hslToRgb(hue, saturation, lightness);
+	currentColor = rgbToHex(r, g, b);
+	preview.style.backgroundColor = rgbToHex(r, g, b);
+}
+
+function hslToRgb(h, s, l) {
+	s /= 100;
+	l /= 100;
+	const k = n => (n + h / 30) % 12;
+	const a = s * Math.min(l, 1 - l);
+	const f = n => l - a * Math.max(Math.min(k(n) - 3, 9 - k(n), 1), -1);
+	return [Math.round(f(0)*255), Math.round(f(8)*255), Math.round(f(4)*255)];
+}
+
+function handlePointer(e) {
+	const rect = picker.getBoundingClientRect();
+	const x = Math.min(Math.max((e.clientX || e.touches[0].clientX) - rect.left, 0), rect.width);
+	const y = Math.min(Math.max((e.clientY || e.touches[0].clientY) - rect.top, 0), rect.height);
+
+	hue = (x / rect.width) * 360;
+	saturation = 100 - (y / rect.height) * 100;
+
+	indicator.style.left = `${x}px`;
+	indicator.style.top = `${y}px`;
+
+	updateColorPreview();
+}
+
+picker.addEventListener('mousedown', e => {
+	handlePointer(e);
+	const moveHandler = e => handlePointer(e);
+	const upHandler = () => {
+		window.removeEventListener('mousemove', moveHandler);
+		window.removeEventListener('mouseup', upHandler);
+	};
+	window.addEventListener('mousemove', moveHandler);
+	window.addEventListener('mouseup', upHandler);
+});
+
+picker.addEventListener('touchstart', e => {
+	e.preventDefault();
+	handlePointer(e);
+	const moveHandler = e => handlePointer(e);
+	const endHandler = () => {
+		window.removeEventListener('touchmove', moveHandler);
+		window.removeEventListener('touchend', endHandler);
+	};
+	window.addEventListener('touchmove', moveHandler);
+	window.addEventListener('touchend', endHandler);
+});
+
+lightnessSlider.addEventListener('input', e => {
+	lightness = e.target.value;
+	updateColorPreview();
+});
+
+// initial preview
+updateColorPreview();
+
+
+
 
 
 
@@ -4458,23 +4656,22 @@ function hexToRgba(hex, opacity = 1) {
 }
 
 
+function rgbToHex(r, g, b){
+	return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToRgb(hex){
+	hex = hex.replace(/^#/, "");
+	if (hex.length === 3) {
+		hex = hex.split("").map(x => x + x).join("");
+	}
+	const num = parseInt(hex, 16);
+	return [num >> 16, (num >> 8) & 255, num & 255];
+}
+
 function blendHexColor(color1, color2 = "#000000", percentage = 0.5) {
 	// Ensure percentage is between 0 and 1
 	percentage = Math.min(Math.max(percentage, 0), 1);
-
-	// Helper to convert hex to RGB
-	const hexToRgb = hex => {
-		hex = hex.replace(/^#/, "");
-		if (hex.length === 3) {
-			hex = hex.split("").map(x => x + x).join("");
-		}
-		const num = parseInt(hex, 16);
-		return [num >> 16, (num >> 8) & 255, num & 255];
-	};
-
-	// Helper to convert RGB to hex
-	const rgbToHex = ([r, g, b]) =>
-		"#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
 
 	const rgb1 = hexToRgb(color1);
 	const rgb2 = hexToRgb(color2);
@@ -4482,7 +4679,7 @@ function blendHexColor(color1, color2 = "#000000", percentage = 0.5) {
 	// Blend each channel
 	const blended = rgb1.map((c, i) => Math.round(c * (1 - percentage) + rgb2[i] * percentage));
 
-	return rgbToHex(blended);
+	return rgbToHex(blended[0], blended[1], blended[2]);
 }
 
 
@@ -6502,7 +6699,7 @@ function updateGameUI() {
 	}
 	
 	
-	chatInput.disabled = false; // no idea why it is disabled by default...
+	//chatInput.disabled = false; // no idea why it is disabled by default...
 }
 
 
@@ -7705,6 +7902,7 @@ function executeAction(playerId, action) {
 			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
 
 
+
 			const moveCheck = isMoveValid(unit, { q: toQ, r: toR }, player);
 			if (moveCheck.valid) {
 				const fromQ = unit.q;
@@ -7713,6 +7911,8 @@ function executeAction(playerId, action) {
 				const oldOwnerIndex = toTile.ownerIndex;
 				const oldObject = toTile.object;
 				const oldSavings = toTile.savings;
+				
+				let hexClaimed = false;
 				
 				actionForUndo = {
 					type: 'move',
@@ -7763,6 +7963,7 @@ function executeAction(playerId, action) {
 					toTile.savings = 0; // update host data.
 
 					tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, ownerIndex: playerIndex });
+					hexClaimed = true;
 					
 					if(!isAiPlayer(playerIndex)){
 						if (!toTile.object) {
@@ -7803,6 +8004,20 @@ function executeAction(playerId, action) {
 					toTile.object = null;
 
 					tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null });
+				}
+				
+				// if claimed a tile, check if anyone dies:
+				if(hexClaimed){
+					// old owner = oldOwnerIndex
+					//let pools = findEconomyPools(oldOwnerIndex);
+					//let killdata = calculateBalanceAndKillSoldiers(pools);
+					//let batchActions = killdata.batchActions;
+					//pools = killdata.pools;
+					// put batchActions into undo history with the current actionForUndo,
+					// maybe add new key for it like actionForUndo.poolActions = batchActions ?
+					// and then put those batchActions into updates so they will be sent to all players?
+					// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
+					// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
 				}
 				
 				// push to updates all tile_changed updates that were merged into one:
@@ -7961,6 +8176,20 @@ function executeAction(playerId, action) {
 					console.warn(actionForUndo);
 					updates.push({ type: ACTION.unit_added, unit: newUnit });
 					
+					
+					// if claimed a tile, check if anyone dies:
+					if(didClaim){
+						// old owner = oldOwnerIndex
+						//let pools = findEconomyPools(oldOwnerIndex);
+						//let killdata = calculateBalanceAndKillSoldiers(pools);
+						//let batchActions = killdata.batchActions;
+						//pools = killdata.pools;
+						// put batchActions into undo history with the current actionForUndo,
+						// maybe add new key for it like actionForUndo.poolActions = batchActions ?
+						// and then put those batchActions into updates so they will be sent to all players?
+						// for undo it has to remember the pool before changing it, so when undoing, it has to revert back to
+						// savings before soldiers died (and make soldiers alive again and remove the 'dead' object).
+					}
 					
 					// push to updates all tile_changed updates that were merged into one:
 					pushMergedUpdates(updates, tileChangedUpdates);
@@ -9017,19 +9246,17 @@ function processEndOfDay(){
 
 
 
-function executeEndTurn(playerIndex) {
-	// --- 1. Apply income and wages for current player ---
-	const player = getPlayerByIndex(playerIndex);
-	const pools = findEconomyPools(playerIndex);
-	
-	console.log("executeEndTurn");
-	
+
+function calculateBalanceAndKillSoldiers(pools){
+	// check if soldiers will be killed:
 	// send actions in one array to speed up messages and avoiding clutter.
 	let batchActions = [];
 	
 	let allSoldiersKilled = [];
 	
-	for (const pool of pools) {
+
+	// add income and deduct wages:
+	for (let pool of pools) {
 		pool.totalSavings += pool.totalIncome;
 		pool.totalSavings -= pool.totalWages;
 		
@@ -9042,16 +9269,13 @@ function executeEndTurn(playerIndex) {
 			}
 		}
 	}
-	
 
 	
+	// kill soldiers kill units:
 	if(allSoldiersKilled.length > 0){
-
-
-		
 		// --- 2. Kill soldiers & turn to crosses ---
 		for (const soldier of allSoldiersKilled) {
-			const tile = getTileAt(soldier.q, soldier.r);
+			let tile = getTileAt(soldier.q, soldier.r);
 			if (tile) {
 				tile.object = 'dead'; // Turn to dead (crosses)
 				tile.actionTurnNumber = gameState.turn.turnNumber;
@@ -9072,31 +9296,44 @@ function executeEndTurn(playerIndex) {
 					type: ACTION.unit_removed, 
 					unitId: soldier.id,
 				});
-				
-				
-				/*
-				broadcast({ 
-					type: ACTION.object_changed, 
-					q: soldier.q, 
-					r: soldier.r, 
-					object: tile.object,
-					animationStyle: tile.animationStyle,
-				});
-				*/
 			}
+			
+			console.warn("allSoldiersKilled");
+			console.warn(allSoldiersKilled);
 
 			//gameState.units = gameState.units.filter(u => u.id !== soldier.id);
 			//broadcast({ type: ACTION.unit_removed, unitId: soldier.id });
 		}
 		
-	
-		
+
 		// send sound for died soldiers just once:
+		//batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
+	}
+	
+	return {batchActions: batchActions, pools: pools};
+}
+
+
+
+function executeEndTurn(playerIndex) {
+	// --- 1. Apply income and wages for current player ---
+	const player = getPlayerByIndex(playerIndex);
+	let pools = findEconomyPools(playerIndex);
+	
+	console.log("executeEndTurn");
+	
+	
+	// this should be executed at every move/build, not end of the turn:
+	let killdata = calculateBalanceAndKillSoldiers(pools);
+	let batchActions = killdata.batchActions;
+	pools = killdata.pools;
+	
+	// send sound for died soldiers just once:
+	if(batchActions.length > 0){
 		batchActions.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.action_end_turn});
 	}
 	
-
-
+	
 	
 	// --- 3. Reset "hasMoved" for all *this player's* units ---
 	gameState.units.forEach(u => {
@@ -9141,12 +9378,13 @@ function executeEndTurn(playerIndex) {
 		});
 	}
 	
-	
-	
 	// --- 6. Check for AI turn ---
 	// NEW: This will now start the AI's sequential turn
 	checkForAITurn(); // start AI turn if it is his turn.
 }
+
+
+
 
 
 const uiRightTopRow = document.getElementById('ui-right-top-row-id');
