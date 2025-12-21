@@ -1156,9 +1156,9 @@ input[type="range"] {
 		</div>
 		<input type="range" id="lightness" min="0" max="100" value="50">
 		<div class="input-group">
-			<button style="flex: 1" class="picker-popup-cancel" id="picker-popup-cancel">Cancel</button>
-			<button style="flex: 3; cursor:default" id="preview"></button>
 			<button style="flex: 1" class="picker-popup-select" id="picker-popup-select">Select</button>
+			<button style="flex: 3; cursor:default" id="preview"></button>
+			<button style="flex: 1" class="picker-popup-cancel" id="picker-popup-cancel">Cancel</button>
 		</div>
 	</div>
 </div>
@@ -1438,6 +1438,17 @@ input[type="range"] {
 
 
 <script>
+"use strict";
+
+// for random function mulberry32()
+function getRandomSeed(){
+	const seedArray = new Uint32Array(1);
+	crypto.getRandomValues(seedArray);
+	return seedArray[0];
+}
+
+const RANDOM_SEED = getRandomSeed();
+console.log("seed = "+RANDOM_SEED);
 
 
 function mulberry32(seed) {
@@ -1451,18 +1462,9 @@ function mulberry32(seed) {
 }
 
 
-// for random function mulberry32()
-function getRandomSeed(){
-	const seedArray = new Uint32Array(1);
-	crypto.getRandomValues(seedArray);
-	return seedArray[0];
-}
-
-const RANDOM_SEED = getRandomSeed();
-
-console.log("seed = "+RANDOM_SEED);
-//const randomFunc = Math.random;
 let randomFunc = mulberry32(RANDOM_SEED);
+
+//const randomFunc = Math.random;
 
 //const points = poissonDiskSampler(32, 32, 2, randomFunc);
 //console.log(points);
@@ -1785,17 +1787,26 @@ pickerPopupCancel.addEventListener("click", () => {
 });
 
 
+function launchColorPicker(){
+	let color = hexToRgb(getMyPlayer().color);
+	let hsl = rgbToHsl(color[0], color[1], color[2]);
+	hue = hsl.h;
+	saturation = hsl.s;
+	lightness = hsl.l;
+	
+	pickerPopup.style.display = "flex";
+	
+	// update colors/indicator AFTER popup is set visible:
+	updateColorPreview();
+	updateIndicator();
+}
+
 hostPreviewTile.addEventListener("click", () => {
-	//hostCustomColorPicker.value = getMyPlayer().color;
-	//hostCustomColorPicker.click();
-	currentColor = getMyPlayer().color;
-	pickerPopup.style.display = "flex";
+	launchColorPicker();
 });
+
 lobbyPreviewTile.addEventListener("click", () => {
-	//lobbyCustomColorPicker.value = getMyPlayer().color;
-	//lobbyCustomColorPicker.click();
-	currentColor = getMyPlayer().color;
-	pickerPopup.style.display = "flex";
+	launchColorPicker();
 });
 
 
@@ -1852,6 +1863,47 @@ function updateColorPreview() {
 	preview.style.backgroundColor = rgbToHex(r, g, b);
 }
 
+
+
+function rgbToHsl(r, g, b) {
+	// Normalize r, g, b to [0, 1]
+	r /= 255;
+	g /= 255;
+	b /= 255;
+
+	const max = Math.max(r, g, b);
+	const min = Math.min(r, g, b);
+	const delta = max - min;
+
+	let h = 0, s = 0, l = (max + min) / 2;
+
+	if (delta !== 0) {
+		s = delta / (1 - Math.abs(2 * l - 1));
+
+		switch(max) {
+			case r:
+				h = ((g - b) / delta) % 6;
+				break;
+			case g:
+				h = ((b - r) / delta) + 2;
+				break;
+			case b:
+				h = ((r - g) / delta) + 4;
+				break;
+		}
+
+		h *= 60;
+		if (h < 0) h += 360;
+	}
+
+	return { 
+		h: Math.round(h), 
+		s: +(s * 100).toFixed(1), 
+		l: +(l * 100).toFixed(1) 
+	};
+}
+
+
 function hslToRgb(h, s, l) {
 	s /= 100;
 	l /= 100;
@@ -1860,6 +1912,21 @@ function hslToRgb(h, s, l) {
 	const f = n => l - a * Math.max(Math.min(k(n) - 3, 9 - k(n), 1), -1);
 	return [Math.round(f(0)*255), Math.round(f(8)*255), Math.round(f(4)*255)];
 }
+
+function updateIndicator(){
+	const rect = picker.getBoundingClientRect();
+	
+	let x = (hue/360)*rect.width;
+	let y = ((100-saturation)/100)*rect.height;
+	
+	indicator.style.left = `${x}px`;
+	indicator.style.top = `${y}px`;
+	
+	console.log(lightness);
+	
+	lightnessSlider.value = lightness;
+}
+
 
 function handlePointer(e) {
 	const rect = picker.getBoundingClientRect();
@@ -1899,7 +1966,7 @@ picker.addEventListener('touchstart', e => {
 });
 
 lightnessSlider.addEventListener('input', e => {
-	lightness = e.target.value;
+	lightness = e.target.value; // 0-100
 	updateColorPreview();
 });
 
