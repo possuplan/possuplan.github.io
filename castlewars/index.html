@@ -2570,7 +2570,8 @@ const LAND_COLOR = '#224422'; // Unclaimed land
 const HEX_SIZE = 40; // Radius of hexagon
 const SQRT3 = Math.sqrt(3);
 
-let HEX_LINE_MULTI = 0.958; // used to draw inside hex so the thick line wont get outside of hex.
+let HEX_LINE_MULTI = 0.958; // 3px wide. used to draw inside hex so the thick line wont get outside of hex.
+let HEX_LINE_MULTI2 = 0.971; // 2px wide line.
 let PULSE_SPEED = 0.005; // used for pulsating effects.
 
 let NETWORK_HISTORY = []; // stores all network action messages and sounds. {updates, sounds}
@@ -2941,6 +2942,7 @@ let viewport = { x: 0, y: 0, zoom: 1, rotation: 0};
 let dragStart = null;
 let isDragging = false;
 let selectedHex = null; // {q, r}
+let focusedHex = null;
 let selectedUnit = null;
 let placingUnit = null; // e.g., { type: 'Peasant', cost: 100 }
 let currentTurnActions = []; // For undo
@@ -5284,12 +5286,19 @@ function drawMapTiles(){
 				if(tile.ownerIndex !== -1 && !previewdraw){
 					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayerByIndex(tile.ownerIndex);
+					
+					if(!player){
+						console.warn(player);
+						console.warn(tile.ownerIndex);
+						console.warn(tile);
+					}
 	
 					if(drawtextures){
 						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 					
 
 						let color = player.color;
+						
 						if(!tile.isProtected){
 							// showing unprotected lands might make game boring, also confusing when it shows different color.
 							//color = lightenHexColor(player.color, 0.2);
@@ -5593,8 +5602,13 @@ function drawUnitsByType(unitType){
 			let hsize = drawSize/2;
 			let offsetX = imginfo.offsetX;
 			let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-			let dx = x-((hsize-offsetX)*scale);
-			let dy = y-((hsize-offsetY+10)*ratio*scale);
+			
+			// used for ctx.translate:
+			let xoff = ((offsetX)*scale);
+			let yoff = ((offsetY+10)*ratio*scale);
+			
+			//let dx = x-((hsize-offsetX)*scale);
+			//let dy = y-((hsize-offsetY+10)*ratio*scale);
 			let dw = drawSize*scale;
 			let dh = drawSize*ratio*scale;
 			
@@ -5655,8 +5669,13 @@ function drawUnitsByType(unitType){
 						hsize = drawSize/2;
 						offsetX = imginfo.offsetX;
 						offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
-						dx = x-((hsize-offsetX)*scale);
-						dy = y-((hsize-offsetY+10)*ratio*scale);
+						
+						// used for ctx.translate:
+						xoff = ((offsetX)*scale);
+						yoff = ((offsetY+10)*ratio*scale);
+						
+						//dx = x-((hsize-offsetX)*scale);
+						//dy = y-((hsize-offsetY+10)*ratio*scale);
 						dw = drawSize*scale;
 						dh = drawSize*ratio*scale;
 					}else{
@@ -5674,8 +5693,9 @@ function drawUnitsByType(unitType){
 			
 			
 			//ctx.translate(dx, dy - buildOffsetY);
-			ctx.translate(x, y);
+			ctx.translate(x-xoff, y-yoff);
 			ctx.rotate(-viewport.rotation);
+			
 			
 			drawImageMippedCropped(ctx, imageKey, 0, -buildOffsetY, dw, dh, -1, cropBottomPercent);
 
@@ -6246,6 +6266,38 @@ let drawRanges = 0;
 
 let previewdraw = 0;
 
+
+let focusedHexEnabled = true;
+
+function drawFocusedHex(){
+	if(focusedHex){
+		let tile = getTileAt(focusedHex.q, focusedHex.r);
+		if(tile && tile.type !== 'water'){
+			const x = axialToPixelX(focusedHex.q, focusedHex.r);
+			const y = axialToPixelY(focusedHex.q, focusedHex.r);
+			
+
+			if(selectedUnit){
+				drawHexagonPathLines(x, y, null, HEX_LINE_MULTI);
+				ctx.setLineDash([12.5, 15]);
+				ctx.strokeStyle = 'rgba(255,255,0, 0.4)';
+				ctx.lineWidth = 3;
+			}else{
+				drawHexagonPathLines(x, y, null, HEX_LINE_MULTI2);
+				ctx.strokeStyle = 'rgba(255,255,255, 0.4)';
+				ctx.lineWidth = 2;
+			}
+			
+			ctx.lineCap = 'round';
+			ctx.stroke();
+			ctx.lineCap = 'butt'; // reset to default
+			ctx.setLineDash([]); // reset possible dash.
+		}
+	}
+}
+
+
+
 function render() {
 	if (!gameState.settings.gameStarted) return;
 	
@@ -6303,6 +6355,11 @@ function render() {
 		drawPlacementHighlight();
 	}
 	
+	if(focusedHexEnabled){
+		drawFocusedHex();
+	}
+	
+	
 	// UNIT SELECTION DRAWING:
 	if(!previewdraw){
 		drawUnitSelection();
@@ -6343,6 +6400,9 @@ function handleCanvasMouseMove(e) {
 	
 	lastMousePos.x = e.clientX;
 	lastMousePos.y = e.clientY;
+	
+	focusedHex = pixelToAxial(e.clientX, e.clientY);
+
 	
 	if (dragStart && dragStart.canDrag) {
 		const dx = e.clientX - lastpos.x;
@@ -10578,6 +10638,7 @@ function addPlayer(player){
 // if a player needs to be kicked during game, then he should be set as spectator.
 function removePlayer(peerId){
 	gameState.players = gameState.players.filter(player => player.id !== peerId);
+	rebuildPlayerIndexes();
 }
 
 
@@ -12881,6 +12942,16 @@ async function startReplay(){
 }
 
 
+
+// if player is kicked, the indexes must be rebuilt.
+function rebuildPlayerIndexes(){
+	for(let i = 0; i < gameState.players.length; i++){
+		gameState.players[i].playerIndex = i;
+	}
+}
+
+
+
 function startGame() {
 	
 
@@ -12980,6 +13051,7 @@ function startGame() {
 		
 		// Filter out players without connection from play (unless they are host or ai):
 		gameState.players = gameState.players.filter(p => p.id === localPlayer.id || connections.has(p.id) || p.isAI);
+		
 		
 
 		// list playing players for colors: (not sure what is this for)
