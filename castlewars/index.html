@@ -146,6 +146,7 @@ html, body {
 
 h1, h2, h3 {
 	margin-top: 0;
+	margin-bottom:2px;
 	text-align: center;
 	font-weight: 500;
 }
@@ -265,7 +266,7 @@ label {
 .input-group {
 	display: flex;
 	gap: 10px;
-	margin-bottom: 15px;
+	margin-bottom: 7px;
 }
 
 .input-group > div {
@@ -287,7 +288,18 @@ label {
 	background: #000000;
 	border:1px solid #333333;
 	border-radius: 6px;
-	height: 163px;
+	height: 115px;
+	overflow-y:auto;
+	----margin-top: 15px;
+}
+
+.lobby-player-list {
+	width: 100%;
+	---padding: 10px;
+	background: #000000;
+	border:1px solid #333333;
+	border-radius: 6px;
+	height: 160px;
 	overflow-y:auto;
 	----margin-top: 15px;
 }
@@ -1263,7 +1275,12 @@ input[type="range"] {
 			<div style="flex:1">
 				<span class="label">Joined Players:</span>
 				<div id="host-player-list" class="player-list"></div>
+				
+				<div class="input-group">
+					<button id="add-ai-btn">Add AI</button>
+				</div>
 			</div>
+			
 		</div>
 		
 		<!-- todo: later when random map generator is added, or map editor, then enable these inputs: -->
@@ -1291,6 +1308,7 @@ input[type="range"] {
 			</div>
 		</div>
 		
+
 		<div class="input-group">
 			<div style="width:110px; flex:0 0 auto;">
 				<span class="label">Loaded map</span>
@@ -1315,10 +1333,7 @@ input[type="range"] {
 			<button id="load-map-btn">Select Map</button>
 			<button id="load-game-btn" style="display:block">Load Game</button>
 		</div>
-		
-		<div class="input-group">
-			<button id="add-ai-btn">Add AI</button>
-		</div>
+
 		
 		<button id="start-game-btn" class="primary">Start Game</button>
 		<button id="start-replay-btn" class="primary" style="display:none">Start Replay</button>
@@ -1373,7 +1388,7 @@ input[type="range"] {
 			</div>
 			<div style="flex:1">
 				<span class="label">Joined Players</span>
-				<div id="lobby-player-list" class="player-list"></div>
+				<div id="lobby-player-list" class="lobby-player-list"></div>
 			</div>
 		</div>
 		
@@ -3705,6 +3720,10 @@ const lobbyStartPlayerList = document.getElementById('lobby-start-player-list');
 const hostTextureType = document.getElementById('host-texture-type');
 const lobbyTextureType = document.getElementById('lobby-texture-type');
 
+const hostTextureTypeMsg = document.getElementById('host-texture-type-msg');
+const lobbyTextureTypeMsg = document.getElementById('lobby-texture-type-msg');
+
+
 
 hostTextureType.addEventListener("change", function(){
 	let player = getMyPlayer();
@@ -3755,6 +3774,7 @@ const hostRoomColorPicker = document.getElementById('host-room-color-picker');
 
 const lobbyColorPickerMsg = document.getElementById('lobby-color-picker-msg');
 const hostRoomColorPickerMsg = document.getElementById('host-room-color-picker-msg');
+
 
 
 const lobbyPlayerList = document.getElementById('lobby-player-list');
@@ -10948,6 +10968,7 @@ function setupConnection(conn) {
 				//gameState.players = gameState.players.filter(p => p.id !== conn.peer);
 				
 				if (gameState.settings.gameStarted) {
+					
 					addSystemChatMessage(`&gt; ${player.name}${specflag} has left.`, "#FFFF00");
 					// set quitted player as AI:
 					gameState.players = gameState.players.map(p =>
@@ -11253,11 +11274,15 @@ function updateHostLobbyUI() {
 		hostRoomColorPickerMsg.style.display = "block";
 		hostPreviewTile.style.display = "none";
 		hostPreviewTileMsg.style.display = "block";
+		hostTextureType.style.display = "none";
+		hostTextureTypeMsg.style.display = "block";
 	} else {
 		hostRoomColorPicker.style.display = "flex";
 		hostRoomColorPickerMsg.style.display = "none";
 		hostPreviewTile.style.display = "block";
 		hostPreviewTileMsg.style.display = "none";
+		hostTextureType.style.display = "block";
+		hostTextureTypeMsg.style.display = "none";
 		
 		//console.log("usedColors");
 		//console.log(usedColors);
@@ -11359,11 +11384,15 @@ function updateLobbyUI() {
 		lobbyColorPickerMsg.style.display = "block";
 		lobbyPreviewTile.style.display = "none";
 		lobbyPreviewTileMsg.style.display = "block";
+		lobbyTextureType.style.display = "none";
+		lobbyTextureTypeMsg.style.display = "block";
 	} else {
 		lobbyColorPicker.style.display = "flex";
 		lobbyColorPickerMsg.style.display = "none";
 		lobbyPreviewTile.style.display = "block";
 		lobbyPreviewTileMsg.style.display = "none";
+		lobbyTextureType.style.display = "block";
+		lobbyTextureTypeMsg.style.display = "none";
 		
 		//console.log("usedColors");
 		//console.log(usedColors);
