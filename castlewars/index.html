@@ -611,6 +611,22 @@ label {
 }
 
 
+.lobby-chat-messages {
+	flex-grow: 1;
+	overflow-y: auto;
+	font-size: 13px;
+	padding: 5px;
+	user-select: text !important;
+	overflow-wrap: anywhere;
+	border: 1px solid gray;
+	border-radius: 5px;
+	max-height: 48px;
+}
+
+.lobby-chat-input {
+	width:32% !important;
+}
+
 
 #build-popup-close {
 	margin-top: 5px;
@@ -1215,21 +1231,37 @@ input[type="range"] {
 
 		<div class="input-group">
 			<div style="flex:1">
-				<span class="label">Select Color</span>
+				<span class="label">Select Color:</span>
 				<div id="host-room-color-picker" class="color-picker"></div>
 				<div id="host-room-color-picker-msg" style="display:none"><i>Not available.</i></div>
 			</div>
 			<div style="flex:1">
-				<span class="label">Custom Color</span>
-				
+				<span class="label">Custom Color:</span>
 				<div id="host-preview-tile-wrapper">
-					<canvas id="host-preview-tile" style="width:110px; height:110px"></canvas>
+					<canvas id="host-preview-tile" style="width:90px; height:90px"></canvas>
 					<div id="host-preview-tile-msg" style="display:none"><i>Not available.</i></div>
 				</div>
-				<input type="color" id="host-custom-color-input" style="visibility:hidden" value="#3498db">
+				
+				<span class="label">Texture:</span>
+				<!-- land-c1... landTextures -->
+				<div id="host-texture-type-wrapper">
+					<select id="host-texture-type">
+						<option value="0">Grass</option>
+						<option value="1">Granite</option>
+						<option value="2">Sand</option>
+						<option value="3">Quartz</option>
+						<option value="4">Brick</option>
+						<option value="5">Triangular</option>
+						<option value="6">Emerald</option>
+						<option value="7">Crystal</option>
+						<option value="8">Mercury</option>
+					</select>
+					<div id="host-texture-type-msg" style="display:none"><i>Not available.</i></div>
+				</div>
+
 			</div>
 			<div style="flex:1">
-				<span class="label">Joined Players</span>
+				<span class="label">Joined Players:</span>
 				<div id="host-player-list" class="player-list"></div>
 			</div>
 		</div>
@@ -1245,22 +1277,18 @@ input[type="range"] {
 				<input type="number" id="map-height" value="24">
 			</div>
 		</div>
-		
-		<div class="input-group">
-			<button id="add-ai-btn">Add AI</button>
-		</div>
-		
 		<div style="display:none">
 			<label for="start-money">Starting Money</label>
 			<input type="number" id="start-money" value="1000">
 		</div>
-
-
 		
-		<div class="input-group">
-			<button id="load-random-map-btn">Random map</button>
-			<button id="load-map-btn">Select Map</button>
-			<button id="load-game-btn" style="display:block">Load Game</button>
+		<div id="lobby-chat-ui" class="lobby-ui-panel">
+			<div>
+				<div class="input-group" style="flex-direction: row !important;">
+					<div id="lobby-chat-messages" class="lobby-chat-messages"></div>
+					<input type="text" inputmode="text" id="lobby-chat-input" class="lobby-chat-input" maxlength="200" placeholder="Type message...">
+				</div>
+			</div>
 		</div>
 		
 		<div class="input-group">
@@ -1281,6 +1309,16 @@ input[type="range"] {
 				</div>
 			</div>
 		</div>
+
+		<div class="input-group">
+			<button id="load-random-map-btn">Random map</button>
+			<button id="load-map-btn">Select Map</button>
+			<button id="load-game-btn" style="display:block">Load Game</button>
+		</div>
+		
+		<div class="input-group">
+			<button id="add-ai-btn">Add AI</button>
+		</div>
 		
 		<button id="start-game-btn" class="primary">Start Game</button>
 		<button id="start-replay-btn" class="primary" style="display:none">Start Replay</button>
@@ -1296,7 +1334,7 @@ input[type="range"] {
 
 <div id="lobby-page" class="page">
 	<div class="container">
-		<h2 id="lobby-room-name-title">Joining: default-room</h2>
+		<h2 id="lobby-room-name-title">Joined: </h2>
 		
 
 		<label for="lobby-player-name">Your Name</label>
@@ -1304,18 +1342,34 @@ input[type="range"] {
 		
 		<div class="input-group">
 			<div style="flex:1">
-				<span class="label">Select Color</span>
+				<span class="label">Select Color:</span>
 				<div id="lobby-color-picker" class="color-picker"></div>
 				<div id="lobby-color-picker-msg" style="display:none"><i>Not available.</i></div>
 			</div>
 			<div style="flex:1">
-				<span class="label">Custom Color</span>
-				
+				<span class="label">Custom Color:</span>
 				<div id="lobby-preview-tile-wrapper">
-					<canvas id="lobby-preview-tile" style="width:110px; height:110px"></canvas>
+					<canvas id="lobby-preview-tile" style="width:90px; height:90px"></canvas>
 					<div id="lobby-preview-tile-msg" style="display:none"><i>Not available.</i></div>
 				</div>
-				<input type="color" id="lobby-custom-color-input" style="visibility:hidden" value="#3498db">
+
+				<span class="label">Texture:</span>
+				<!-- land-c1... landTextures -->
+				<div id="lobby-texture-type-wrapper">
+					<select id="lobby-texture-type">
+						<option value="0">Grass</option>
+						<option value="1">Granite</option>
+						<option value="2">Sand</option>
+						<option value="3">Quartz</option>
+						<option value="4">Brick</option>
+						<option value="5">Triangular</option>
+						<option value="6">Emerald</option>
+						<option value="7">Crystal</option>
+						<option value="8">Mercury</option>
+					</select>
+					<div id="lobby-texture-type-msg" style="display:none"><i>Not available.</i></div>
+				</div>
+				
 			</div>
 			<div style="flex:1">
 				<span class="label">Joined Players</span>
@@ -1326,6 +1380,15 @@ input[type="range"] {
 		<div id="lobby-game-settings" style="display:none">
 			<p><strong>Map:</strong> <span id="lobby-map-size">...</span></p>
 			<p><strong>Money:</strong> <span id="lobby-start-money">...</span></p>
+		</div>
+		
+		<div id="client-lobby-chat-ui" class="lobby-ui-panel">
+			<div>
+				<div class="input-group" style="flex-direction: row !important;">
+					<div id="client-lobby-chat-messages" class="lobby-chat-messages"></div>
+					<input type="text" inputmode="text" id="client-lobby-chat-input" class="lobby-chat-input" maxlength="200" placeholder="Type message...">
+				</div>
+			</div>
 		</div>
 		
 		<div class="input-group">
@@ -1760,8 +1823,8 @@ const lightnessSlider = document.getElementById('lightness');
 const preview = document.getElementById('preview');
 
 
-const hostCustomColorPicker = document.getElementById("host-custom-color-input");
-const lobbyCustomColorPicker = document.getElementById("lobby-custom-color-input");
+//const hostCustomColorPicker = document.getElementById("host-custom-color-input");
+//const lobbyCustomColorPicker = document.getElementById("lobby-custom-color-input");
 
 const hostPreviewTile = document.getElementById("host-preview-tile");
 const lobbyPreviewTile = document.getElementById("lobby-preview-tile");
@@ -1811,10 +1874,12 @@ lobbyPreviewTile.addEventListener("click", () => {
 
 
 function updateHostPreviewTile(color){
-	createHexagonMaskedImage(getImage("land"), HEX_SIZE, 1, hostPreviewTile, color);
+	let textureType = landTextures[getMyPlayer().textureType ?? 0];
+	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, hostPreviewTile, color);
 }
 function updateLobbyPreviewTile(color){
-	createHexagonMaskedImage(getImage("land"), HEX_SIZE, 1, lobbyPreviewTile, color);
+	let textureType = landTextures[getMyPlayer().textureType ?? 0];
+	createHexagonMaskedImage(getImage(textureType), HEX_SIZE, 1, lobbyPreviewTile, color);
 }
 
 
@@ -2615,6 +2680,8 @@ const ACTION = {
 	'action_undo': 24,
 	'action_end_turn': 25,
 	'check_balance': 26,
+	
+	'lobby_chat': 27,
 };
 
 // compress some actions into smaller format:
@@ -3009,6 +3076,9 @@ if(use_homm3){
 	unitOffsets = [{x:0,y:0}, {x:0,y:0}, {x:0,y:0},   {x:0,y:0}, {x:0,y:0}, {x:0,y:0}, {x:0,y:3}];
 }
 
+// host-texture-type select list values link to this array indexes.
+let landTextures = ['land', 'land-c1', 'land-c2', 'land-c3', 'land-c4', 'land-c5', 'land-c6', 'land-c7', 'land-c8'];
+
 // images =
 if(use_orig){
 	imageAssets = {
@@ -3016,13 +3086,25 @@ if(use_orig){
 		'ui-undo': {path:'images/ui/undo.png', isUi: true},
 		'ui-endturn': {path:'images/ui/endturn.png', isUi: true},
 		'ui-chat': {path:'images/ui/chat.png', isUi: true},
+		
 		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
 		'water-anim': {path:'images/water-anim.png', scale:1, offsetX: 0, isPattern: true, isAnimated: true, animationData: waterAnimData},
 		'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
+		
 		'land':     {path:'images/land2b2b.jpg', scale:1, offsetX: 0}, 
+		'land-c1':  {path:'images/land-c1.jpg', scale:1, offsetX: 0}, 
+		'land-c2':  {path:'images/land-c2.jpg', scale:1, offsetX: 0}, 
+		'land-c3':  {path:'images/land-c3.jpg', scale:1, offsetX: 0}, 
+		'land-c4':  {path:'images/land-c4.jpg', scale:1, offsetX: 0}, 
+		'land-c5':  {path:'images/land-c5.jpg', scale:1, offsetX: 0}, 
+		'land-c6':  {path:'images/land-c6.jpg', scale:1, offsetX: 0}, 
+		'land-c7':  {path:'images/land-c7.jpg', scale:1, offsetX: 0}, 
+		'land-c8':  {path:'images/land-c8.jpg', scale:1, offsetX: 0}, 
+		// NOTE: must update landTextures array if new textures added.
+		
 		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
-
 		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
+		
 		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
 		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: 3, offsetY: 5},
 		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: 2, offsetY: 5},
@@ -3620,6 +3702,21 @@ const hostPlayerList = document.getElementById('host-player-list');
 const startPlayerList = document.getElementById('start-player-list');
 const lobbyStartPlayerList = document.getElementById('lobby-start-player-list');
 
+const hostTextureType = document.getElementById('host-texture-type');
+const lobbyTextureType = document.getElementById('lobby-texture-type');
+
+
+hostTextureType.addEventListener("change", function(){
+	let player = getMyPlayer();
+	player.textureType = parseInt(hostTextureType.value, 10);
+	
+	broadcastLobbyState();
+	
+	console.warn("player.textureType:", player.textureType);
+});
+
+
+
 
 function loadedMapMode(disableButtons){
 	startPlayerList.disabled = disableButtons;
@@ -3631,6 +3728,8 @@ function loadedMapMode(disableButtons){
 	
 	// todo: make clients disable these too by listening to message of loaded map.
 }
+
+
 
 
 
@@ -3667,6 +3766,13 @@ ctx = canvas.getContext('2d');
 const playerUIList = document.getElementById('player-ui-list');
 const chatMessages = document.getElementById('chat-messages');
 const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
+
+
+const lobbyChatMessages = document.getElementById('lobby-chat-messages');
+const lobbyChatInput = document.getElementById('lobby-chat-input');
+
+const clientLobbyChatMessages = document.getElementById('client-lobby-chat-messages');
+const clientLobbyChatInput = document.getElementById('client-lobby-chat-input');
 
 //ctx.imageSmoothingEnabled = true;
 //ctx.imageSmoothingQuality = 'high';
@@ -4124,6 +4230,40 @@ function toggleUiTopLeft(toggleValue = null){
 }
 
 
+
+function pushLobbyChatMessage(from, message, isSpectator, color = '#FFF') {
+	
+	
+	let spectag = "";
+	let nameStr = `${from}:`;
+	
+	if(isSpectator){
+		spectag = " (spec)";
+		color = "#FFFFFF"; // force spectator color.
+		nameStr = `(${from}):`;
+	}
+
+	const item = document.createElement('div');
+	item.innerHTML = `<strong style="color: ${color};" class="msgfromtext"></strong><span class="msgtext"></span>`;
+
+	const safeMsgFrom = document.createTextNode(nameStr);
+	const safeMsg = document.createTextNode(` ${message}`);
+	item.querySelector(".msgfromtext").appendChild(safeMsgFrom);
+	item.querySelector(".msgtext").appendChild(safeMsg);
+
+	lobbyChatMessages.appendChild(item);
+	lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
+
+	const item2 = item.cloneNode(true);
+	clientLobbyChatMessages.appendChild(item2);
+	clientLobbyChatMessages.scrollTop = clientLobbyChatMessages.scrollHeight;
+	
+	
+	limitLobbyChatUIMessages();
+
+}
+
+
 function pushChatMessage(from, message, isSpectator, color = '#FFF') {
 	
 	// moved on top here so it will be ready for rendering chat.
@@ -4177,12 +4317,30 @@ function limitChatUIMessages(){
 	}
 }
 
+function limitLobbyChatUIMessages(){
+	// --- FIX: Prevent Memory Leak ---
+	// no need to see that far in chat history anyway...
+	while (lobbyChatMessages.children.length > 100) {
+		lobbyChatMessages.removeChild(lobbyChatMessages.firstElementChild);
+	}
+	while (clientLobbyChatMessages.children.length > 100) {
+		clientLobbyChatMessages.removeChild(clientLobbyChatMessages.firstElementChild);
+	}
+}
+
+
 
 
 // sendmessage addmessage pushmessage sendchatmessage
 function addChatMessage(from, message, isSpectator, color = '#FFF') {
 	pushChatMessage(from, message, isSpectator, color);
 }
+
+// sendmessage addmessage pushmessage sendchatmessage
+function addLobbyChatMessage(from, message, isSpectator, color = '#FFF') {
+	pushLobbyChatMessage(from, message, isSpectator, color);
+}
+
 
 
 function addCurrentTurnChatMessage(){
@@ -5287,15 +5445,21 @@ function drawMapTiles(){
 					// Draw the gray texture (owned land) with multiply operation:
 					const player = getPlayerByIndex(tile.ownerIndex);
 					
-					if(!player){
-						console.warn(player);
-						console.warn(tile.ownerIndex);
-						console.warn(tile);
-					}
-	
 					if(drawtextures){
-						drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
-					
+						
+						let textureType = 0;
+						
+						if(player.textureType !== undefined){
+							textureType = player.textureType;
+							// make sure wont read out of array if someone messed with textures changes:
+							if(textureType > landTextures.length-1){
+								textureType = landTextures.length-1;
+							}
+						}
+						
+						let textureName = landTextures[textureType];
+						
+						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
 						let color = player.color;
 						
@@ -5691,11 +5855,12 @@ function drawUnitsByType(unitType){
 			
 			ctx.save();
 			
-			
-			//ctx.translate(dx, dy - buildOffsetY);
-			ctx.translate(x-xoff, y-yoff);
+			// move to object position
+			ctx.translate(x, y);
+			// undo viewport rotation
 			ctx.rotate(-viewport.rotation);
-			
+			// now apply screen-space offsets
+			ctx.translate(-xoff, -yoff);
 			
 			drawImageMippedCropped(ctx, imageKey, 0, -buildOffsetY, dw, dh, -1, cropBottomPercent);
 
@@ -10286,6 +10451,11 @@ function handleHostData(data) {
 			addChatMessage(data.from, data.message, data.isSpectator, data.textColor);
 		}
 		break;
+		case ACTION.lobby_chat: {
+			data.message = data.message.slice(0, MAX_MESSAGE_LEN);
+			addLobbyChatMessage(data.from, data.message, data.isSpectator, data.textColor);
+		}
+		break;
 		case ACTION.undo_counter: {
 			let playerIndex = data.playerIndex;
 			
@@ -10589,6 +10759,10 @@ function handleClientData(peerId, data) {
 			if(data.textColor !== undefined){
 				player.textColor = data.textColor;
 			}
+			if(data.textureType !== undefined){
+				player.textureType = data.textureType;
+			}
+			
 			//console.warn("player_update");
 			//console.warn(data);
 			//console.log(player);
@@ -10604,7 +10778,18 @@ function handleClientData(peerId, data) {
 				color: player.color,
 				textColor: player.textColor,
 			});
-			break;
+		break;
+		case ACTION.lobby_chat:
+			data.message = data.message.slice(0, MAX_MESSAGE_LEN);
+			broadcast({
+				type: ACTION.lobby_chat,
+				from: player.name,
+				isSpectator: player.isSpectator,
+				message: data.message,
+				color: player.color,
+				textColor: player.textColor,
+			});
+		break;
 		case ACTION.host_quit:
 			console.warn("host has quit the game. showing popup to continue game or quit.");
 		break;
@@ -10828,7 +11013,7 @@ function executeJoin(hostPeerId) {
 		
 		// Go to lobby page
 		lobbyPlayerNameInput.value = localPlayer.name;
-		lobbyRoomNameTitle.textContent = `Joining: ${hostPeerId}`; // Use the ID we joined
+		lobbyRoomNameTitle.textContent = `Joined: ${hostPeerId}`; // Use the ID we joined
 		showPage('lobby');
 	});
 	
@@ -11090,7 +11275,7 @@ function updateHostLobbyUI() {
 			} else {
 				box.onclick = () => {
 					//console.log("tried to change color");
-					hostCustomColorPicker.value = colorInfo.color;
+					//hostCustomColorPicker.value = colorInfo.color;
 					updateHostPreviewTile(colorInfo.color);
 					
 					updatePlayerColor(colorInfo.color, colorInfo.textColor);
@@ -11122,7 +11307,7 @@ function updateLobbyUI() {
 	updateLobbyPreviewTile(getMyPlayer().color);
 
 	// Update settings info
-	lobbyRoomNameTitle.textContent = `Joining: ${gameState.settings.roomName}`;
+	lobbyRoomNameTitle.textContent = `Joined: ${gameState.settings.roomName}`;
 	lobbyMapSize.textContent = `${gameState.settings.mapWidth} x ${gameState.settings.mapHeight}`;
 	lobbyStartMoney.textContent = `${gameState.settings.startingMoney} G`;
 	lobbyMapScale.value = gameState.settings.mapScale;
@@ -11196,7 +11381,7 @@ function updateLobbyUI() {
 			} else {
 				box.onclick = () => {
 					//console.log("tried to change color");
-					lobbyCustomColorPicker.value = colorInfo.color;
+					//lobbyCustomColorPicker.value = colorInfo.color;
 					updateLobbyPreviewTile(colorInfo.color);
 					
 					updatePlayerColor(colorInfo.color, colorInfo.textColor);
@@ -13516,8 +13701,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 	await loadImages();
 	
-	hostCustomColorPicker.value = "#FF00FF";
-	lobbyCustomColorPicker.value = "#FF00FF";
+	//hostCustomColorPicker.value = "#FF00FF";
+	//lobbyCustomColorPicker.value = "#FF00FF";
 
 	//hostBtn.disabled = true;
 	hostBtn.disabled = false; // allow hosting while connecting to peerjs.
@@ -13582,8 +13767,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 		sendToHost({
 			type: ACTION.player_update,
 			name: localPlayer.name,
-			//color: localPlayer.color,
-			//textColor: localPlayer.textColor,
+		});
+	};
+	
+	lobbyTextureType.onchange = (e) => {
+		localPlayer.textureType = parseInt(e.target.value, 10);
+		sendToHost({
+			type: ACTION.player_update,
+			textureType: localPlayer.textureType,
 		});
 	};
 	
@@ -13636,6 +13827,46 @@ window.addEventListener('DOMContentLoaded', async () => {
 	toggleUiBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	toggleUiBtn.tabIndex = -1; //remove it from the tab order
 	
+	
+
+	lobbyChatInput.onkeydown = (e) => {
+		// enter key "enter"
+		if (e.key === 'Enter') {
+			
+			let message = lobbyChatInput.value.trim();
+			message = message.slice(0, MAX_MESSAGE_LEN);
+			lobbyChatInput.value = message; // avoid leaving empty message if pressed space in accident.
+			
+			if(lobbyChatInput.value !== ''){
+				// send only the needed info, host handles adding colors etc.
+				sendToHost({
+					type: ACTION.lobby_chat, 
+					message: message,
+				});
+				lobbyChatInput.value = '';
+			}
+		}
+	};
+	
+
+	clientLobbyChatInput.onkeydown = (e) => {
+		// enter key "enter"
+		if (e.key === 'Enter') {
+			
+			let message = clientLobbyChatInput.value.trim();
+			message = message.slice(0, MAX_MESSAGE_LEN);
+			clientLobbyChatInput.value = message; // avoid leaving empty message if pressed space in accident.
+			
+			if(clientLobbyChatInput.value !== ''){
+				// send only the needed info, host handles adding colors etc.
+				sendToHost({
+					type: ACTION.lobby_chat, 
+					message: message,
+				});
+				clientLobbyChatInput.value = '';
+			}
+		}
+	};
 	
 	chatInput.onkeydown = (e) => {
 		// enter key "enter"
