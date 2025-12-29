@@ -1779,15 +1779,27 @@ function giveRandomName(){
 // set random nick on first start:
 playerNameInput.value = getLocalStorageItem("playerName") || randomPlayerName();
 
+
+function isValidName(name){
+	return (name.trim().length > 0);
+}
+
+
 // if player types own nick, it will remember it:
 playerNameInput.addEventListener("input", () => {
-	setLocalStorageItem("playerName", playerNameInput.value);
+	if(isValidName(playerNameInput.value)){
+		setLocalStorageItem("playerName", playerNameInput.value.trim());
+	}
 });
 hostRoomPlayerNameInput.addEventListener("input", () => {
-	setLocalStorageItem("playerName", hostRoomPlayerNameInput.value);
+	if(isValidName(hostRoomPlayerNameInput.value)){
+		setLocalStorageItem("playerName", hostRoomPlayerNameInput.value.trim());
+	}
 });
 lobbyPlayerNameInput.addEventListener("input", () => {
-	setLocalStorageItem("playerName", lobbyPlayerNameInput.value);
+	if(isValidName(lobbyPlayerNameInput.value)){
+		setLocalStorageItem("playerName", lobbyPlayerNameInput.value.trim());
+	}
 });
 
 
@@ -2303,10 +2315,11 @@ let gameSounds = {
 	sell:         {filename: "sounds/sell.mp3",    gain: 0.4,   filter: false},
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
+	claimRock:    {filename: "sounds/kill-castle-short.mp3",     gain: 0.4,   filter: false},
 	
 	// used for: soldier kills castle.
 	killCastle:   {filename: "sounds/kill-castle-short.mp3",     gain: 0.4,   filter: false},
-	
+
 	// used for: knight kills peasant, horse kills knight.
 	swordKill:    {filename: "sounds/sword-kill.mp3",      gain: 1,   filter: false},
 
@@ -2660,6 +2673,7 @@ let GAME_START_TIME = 0;
 let REPLAY_ENABLED = 0;
 
 let MAX_MESSAGE_LEN = 200;
+let MAX_LOBBY_MESSAGE_LEN = 100;
 
 
 
@@ -3121,10 +3135,14 @@ if(use_orig){
 		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
 		
 		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
-		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: 3, offsetY: 5},
-		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: 2, offsetY: 5},
+		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: -2, offsetY: -2},
+		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: -2, offsetY: 0},
+		'rock2':    {path:'images/orig-scaled/128x128/rock2.png', scale:1.6, offsetX: 0, offsetY: 2},
+		
 		'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1.6, offsetX: 0},
 		'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
+		
+		
 
 		'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
 		'castle2':  {path:'images/'+pathPrefix+'/castle2.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
@@ -4253,7 +4271,6 @@ function toggleUiTopLeft(toggleValue = null){
 
 function pushLobbyChatMessage(from, message, isSpectator, color = '#FFF') {
 	
-	
 	let spectag = "";
 	let nameStr = `${from}:`;
 	
@@ -4278,10 +4295,30 @@ function pushLobbyChatMessage(from, message, isSpectator, color = '#FFF') {
 	clientLobbyChatMessages.appendChild(item2);
 	clientLobbyChatMessages.scrollTop = clientLobbyChatMessages.scrollHeight;
 	
+	limitLobbyChatUIMessages();
+}
+
+
+function pushLobbySystemChatMessage(message, color = '#FFF') {
+	const item = document.createElement('div');
+
+	const strong = document.createElement('strong');
+	strong.style.color = color;
+	strong.textContent = message; // SAFE
+
+	item.appendChild(strong);
+
+	lobbyChatMessages.appendChild(item);
+	lobbyChatMessages.scrollTop = lobbyChatMessages.scrollHeight;
+
+	const item2 = item.cloneNode(true);
+	clientLobbyChatMessages.appendChild(item2);
+	clientLobbyChatMessages.scrollTop = clientLobbyChatMessages.scrollHeight;
 	
 	limitLobbyChatUIMessages();
-
 }
+
+
 
 
 function pushChatMessage(from, message, isSpectator, color = '#FFF') {
@@ -4361,6 +4398,9 @@ function addLobbyChatMessage(from, message, isSpectator, color = '#FFF') {
 	pushLobbyChatMessage(from, message, isSpectator, color);
 }
 
+function addLobbySystemChatMessage(message, color = '#FFF') {
+	pushLobbySystemChatMessage(message, color);
+}
 
 
 function addCurrentTurnChatMessage(){
@@ -4421,9 +4461,20 @@ function addSystemChatMessage(message, color = '#FFF') {
 		//console.warn("hideTopFloatUi2");
 		hideTopFloatUi();
 	}
-	
+	/*
 	const item = document.createElement('div');
 	item.innerHTML = `<strong style="color: ${color};">${message}</strong>`;
+	chatMessages.appendChild(item);
+	chatMessages.scrollTop = chatMessages.scrollHeight;
+	*/
+
+	const item = document.createElement('div');
+
+	const strong = document.createElement('strong');
+	strong.style.color = color;
+	strong.textContent = message; // SAFE
+
+	item.appendChild(strong);
 	chatMessages.appendChild(item);
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 	
@@ -4998,6 +5049,11 @@ function drawObject(ctx, x, y, objectName, tile = null){
 		let hsize = drawSize/2;
 		let offsetX = imginfo.offsetX;
 		let offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+		
+		// used for ctx.translate:
+		let xoff = ((offsetX)*scale);
+		let yoff = ((offsetY+10)*ratio*scale);
+		
 		let dx = x-((hsize-offsetX)*scale);
 		let dy = y-((hsize-offsetY+10)*ratio*scale);
 		let dw = drawSize*scale;
@@ -5062,6 +5118,11 @@ function drawObject(ctx, x, y, objectName, tile = null){
 						hsize = drawSize/2;
 						offsetX = imginfo.offsetX;
 						offsetY = imginfo.offsetY ? imginfo.offsetY : 0;
+						
+						// used for ctx.translate:
+						xoff = ((offsetX)*scale);
+						yoff = ((offsetY+10)*ratio*scale);
+						
 						dx = x-((hsize-offsetX)*scale);
 						dy = y-((hsize-offsetY+10)*ratio*scale);
 						dw = drawSize*scale;
@@ -5079,8 +5140,17 @@ function drawObject(ctx, x, y, objectName, tile = null){
 		}
 		ctx.save();
 		
+		//ctx.translate(x, y);
+		//ctx.rotate(-viewport.rotation);
+		
+		// move to object position
 		ctx.translate(x, y);
+		// undo viewport rotation
 		ctx.rotate(-viewport.rotation);
+		// now apply screen-space offsets
+		ctx.translate(-xoff, -yoff);
+		
+		// draw object:
 		drawImageMippedCropped(ctx, imageKey, 0, -buildOffsetY, dw, dh, -1, cropBottomPercent);
 		ctx.restore();
 		//drawImageMippedCropped(ctx, imageKey, dx, dy-buildOffsetY, dw, dh, -1, cropBottomPercent);
@@ -5882,6 +5952,7 @@ function drawUnitsByType(unitType){
 			// now apply screen-space offsets
 			ctx.translate(-xoff, -yoff);
 			
+			// draw unit:
 			drawImageMippedCropped(ctx, imageKey, 0, -buildOffsetY, dw, dh, -1, cropBottomPercent);
 
 			ctx.restore();
@@ -7315,9 +7386,21 @@ function handleHexClick(hex) {
 				// poolHex guaranteed to be in validMoveHexes.
 				const isValidMove = validMoveHexes.some(h => h.q === hex.q && h.r === hex.r);
 				
+				console.warn("isValidMove:",isValidMove);
 				//console.log("isValidMove: "+isValidMove);
 			
 				if (isValidMove) {
+					
+					
+					let unitCheck = gameState.units.find(u => u.id === selectedUnit.id);
+					let moveCheck = isMoveValid(unitCheck, { q: hex.q, r: hex.r }, myPlayer);
+					
+					if(!moveCheck.valid){
+						playSound('protect');
+						console.warn("playsound protect");
+					}else{
+						console.warn("isMoveValid = true");
+					}
 					sendToHost({
 						type: ACTION.action_move,
 						unitId: selectedUnit.id,
@@ -7325,8 +7408,16 @@ function handleHexClick(hex) {
 						toR: hex.r,
 						poolHex: poolHex,
 					});
-					// Deselect
-					deselectUnit();
+					
+					if(moveCheck.valid){
+						deselectUnit();
+					}else{
+						// set selected hex to the selected unit position:
+						// caused some crash on addCost() if moved to rock first and then to tree,
+						// probably remembered the selectedHex as the rock hex, so it failed...
+						selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
+						updatePools = false; // ensure it wont update pools with the hex we try to move onto.
+					}
 					//deselectHex();
 				} else {
 					// Clicked somewhere else, check for new selection
@@ -7863,6 +7954,11 @@ function isMoveValid(unit, toHex, player) {
 		return badMove('Cannot move into water.');
 	}
 	
+	if (toTile.object && toTile.object === 'rock2' && unit.level < 2){
+		return badMove('low_level');
+	}
+	
+	
 	const targetUnit = getUnitAt(toHex.q, toHex.r);
 
 	// Find the unit's entire pool
@@ -7983,7 +8079,11 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 	if (!tile || tile.type === 'water'){
 		return badMove("not_land"); // Must be on land
 	}
-
+	if (tile.object && tile.object === 'rock2' && unitLevel < 2){
+		return badMove('low_level');
+	}
+	
+	
 	// if there is an unit on the hex:
 	const hexUnit = getUnitAt(hex.q, hex.r);
 	if (hexUnit){
@@ -8310,6 +8410,8 @@ function executeAction(playerId, action) {
 							sounds.push({name:'claimTree', q: toQ, r: toR, action: action.type});
 						}else if(toTile.object === 'grass'){
 							sounds.push({name:'claimGrass', q: toQ, r: toR, action: action.type});
+						}else if(toTile.object === 'rock2'){
+							sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
 						}else{
 							if(!actionForUndo.killedUnit){
 								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
@@ -8457,6 +8559,8 @@ function executeAction(playerId, action) {
 									sounds.push({name:'claimTree', q: q, r: r, action: action.type});
 								}else if(tile.object === 'grass'){
 									sounds.push({name:'claimGrass', q: q, r: r, action: action.type});
+								}else if(tile.object === 'rock2'){
+									sounds.push({name:'claimRock', q: q, r: r, action: action.type});
 								}else{
 									playMoveUnit = true;
 									//sounds.push({name:'moveunit', q: q, r: r, action: action.type});
@@ -10256,6 +10360,27 @@ function makeExplosionBySoundMessage(data){
 		}else{
 			ep.amount = 80; // for any other higher level in case more were added later.
 		}
+	}else if(data.name === 'claimRock'){
+		doExplosion = 0;
+		
+		ep.color = "#888888";
+		ep.shapeMode = 0; // triangles+squares
+		ep.initialSpeed = 4;
+		ep.amount = 40;
+		
+		createExplosion(ep);
+		
+		ep.color = "#666666";
+		ep.initialSpeed = 1.5;
+		ep.upSpeedMulti = 1;
+		ep.toFloor = 0;
+		ep.fadeAtGround = 1;
+		ep.life = 2;
+		ep.rotationSpeed = {min:0,max:0};
+		ep.amount = 50;
+		
+		createExplosion(ep);
+
 	}else if(data.name === 'claimGrass'){
 		doExplosion = 1;
 		
@@ -10473,7 +10598,11 @@ function handleHostData(data) {
 		break;
 		case ACTION.lobby_chat: {
 			data.message = data.message.slice(0, MAX_MESSAGE_LEN);
-			addLobbyChatMessage(data.from, data.message, data.isSpectator, data.textColor);
+			if(data.from !== undefined){
+				addLobbyChatMessage(data.from, data.message, data.isSpectator, data.textColor);
+			}else{
+				addLobbySystemChatMessage(data.message);
+			}
 		}
 		break;
 		case ACTION.undo_counter: {
@@ -10765,8 +10894,15 @@ function handleClientData(peerId, data) {
 				if (p) p.isTaken = true;
 			}
 			broadcastLobbyState();
+			
 			if(gameState.settings.gameStarted){
 				addSystemChatMessage(`${player.name} has joined${specflag}.`, "#AAAAFF");
+			}else{
+				broadcast({
+					type: ACTION.lobby_chat,
+					message: `${player.name} has joined${specflag}.`,
+				});
+				//addLobbySystemChatMessage(`${player.name} has joined${specflag}.`);
 			}
 			break;
 		case ACTION.player_update:
@@ -10969,7 +11105,7 @@ function setupConnection(conn) {
 				
 				if (gameState.settings.gameStarted) {
 					
-					addSystemChatMessage(`&gt; ${player.name}${specflag} has left.`, "#FFFF00");
+					addSystemChatMessage(`>>> ${player.name}${specflag} has left.`, "#FFFF00");
 					// set quitted player as AI:
 					gameState.players = gameState.players.map(p =>
 						//p.id === conn.peer ? { ...p, isSpectator: true, quitted: true } : p
@@ -10977,7 +11113,7 @@ function setupConnection(conn) {
 					);
 					// let others play if quitter was in turn:
 					if(conn.peer == gameState.players[gameState.turn.currentPlayerIndex].id){
-						addSystemChatMessage(`&gt; ${player.name}${specflag} has been set as AI player.`, "#FFFF00");
+						addSystemChatMessage(`>>> ${player.name}${specflag} has been set as AI player.`, "#FFFF00");
 						//advanceToNextPlayer();
 						checkForAITurn(); // start AI turn if it is his turn.
 					}else{
@@ -10996,7 +11132,7 @@ function setupConnection(conn) {
 			// We were disconnected from host
 			//alert('Disconnected from host. Returning to start page.');
 			console.warn('Disconnected from host. Returning to start page.');
-			addSystemChatMessage("&gt; Host has left the game.", "#FFFF00");
+			addSystemChatMessage(">>> Host has left the game. Game is now unplayable.", "#FFFF00");
 
 		}
 	});
@@ -11029,12 +11165,11 @@ function executeJoin(hostPeerId) {
 			isSpectator: localPlayer.isSpectator
 		});
 		
-
-		
-		
 		// Go to lobby page
-		lobbyPlayerNameInput.value = localPlayer.name;
+		lobbyPlayerNameInput.value = localPlayer.name.trim();
 		lobbyRoomNameTitle.textContent = `Joined: ${hostPeerId}`; // Use the ID we joined
+		
+		pushLobbySystemChatMessage("--- Beginning of the chat ---", "#FF0");
 		showPage('lobby');
 	});
 	
@@ -11060,6 +11195,11 @@ function joinGame(isSpectator) {
 		return;
 	}
 	
+	if (!isValidName(playerNameInput.value)) {
+		alert("Player name cannot be empty.");
+		return;
+	}
+	
 	if (!peer || peer.destroyed) {
 		console.log("Peer is destroyed, re-initializing for join.");
 		initPeerJS(); // Re-init
@@ -11080,7 +11220,11 @@ function hostGame() {
 		alert("Please enter a Game Room Name.");
 		return;
 	}
-
+	if (!isValidName(playerNameInput.value)) {
+		alert("Player name cannot be empty.");
+		return;
+	}
+	
 	if (peer) {
 		peer.destroy();
 	}
@@ -11136,7 +11280,7 @@ function hostGame() {
 				});
 			}
 
-
+			pushLobbySystemChatMessage("--- Beginning of the chat ---", "#FF0");
 			
 			updateHostLobbyUI();
 			showPage('host');
@@ -12722,7 +12866,16 @@ function shuffle(array) {
 }
 
 
-
+function spawnRocks(){
+	// spawn random rocks:
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		let tile = gameState.map.tilesData[t];
+		// if land, no object yet, no owner:
+		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < 0.05 ){
+			tile.object = "rock2";
+		}
+	}
+}
 
 function spawnTrees(test1 = 1){
 	
@@ -12740,6 +12893,7 @@ function spawnTrees(test1 = 1){
 		}
 	}
 	
+
 	/*
 	// poissonDiskSampler version, makes too evenly spaced to my taste...
 	let treePlaces = [];
@@ -13298,6 +13452,7 @@ function startGame() {
 		generateMap(gameState.settings.mapWidth, gameState.settings.mapHeight);
 		spawnPlayers();
 		spawnTrees();
+		spawnRocks();
 		
 		let myPlayer = getMyPlayer();
 		if(myPlayer.isSpectator){
@@ -13660,7 +13815,32 @@ function showBuildPopup(){
 
 
 
-const LOOKUP = { gameState };
+const LOOKUP = { 
+	gameState, 
+};
+
+function getByPath(obj, path) {
+	return path.split('.').reduce((acc, key) => {
+		if (acc == null) return undefined;
+		return acc[key];
+	}, obj);
+}
+/*
+// same as writing:
+function getByPath(obj, path) {
+	const keys = path.split('.');
+	let current = obj;
+
+	for (const key of keys) {
+		if (current == null) {
+			return undefined;
+		}
+		current = current[key];
+	}
+
+	return current;
+}
+*/
 
 
 function parseOutCommand(cmd) {
@@ -13671,24 +13851,22 @@ function parseOutCommand(cmd) {
 		return null;
 	}
 
-	const varName = parts[1];
-
 	// Look up global variable
-	const value = LOOKUP[varName];//window[varName];
+	//const varName = parts[1];
+	//const value = gameState[varName];
+	const path = parts[1];
+	const value = getByPath(gameState, path);
 
 	if (value === undefined) {
-		console.error("varName '"+varName+"' not found");
+		console.error("path '"+path+"' not found");
 		return null;
 	}else{
 		console.warn("parseOutCommand: ");
 		console.warn(value);
-		console.log(window);
+		//console.log(window);
 	}
 	
-	
-	return JSON.stringify(LOOKUP[varName]);
-
-	//return JSON.stringify(value);
+	return JSON.stringify(value);
 }
 
 
@@ -13743,14 +13921,22 @@ window.addEventListener('DOMContentLoaded', async () => {
 	joinBtn.onclick = () => joinGame(false);
 	spectateBtn.onclick = () => joinGame(true);
 	randomNameBtn.onclick = () => giveRandomName();
-	playerNameInput.onchange = (e) => localPlayer.name = e.target.value;
+	//playerNameInput.onchange = (e) => localPlayer.name = e.target.value;
 	
-
+	playerNameInput.onchange = () => {
+		if(isValidName(playerNameInput.value)){
+			playerNameInput.value = playerNameInput.value.trim();
+			localPlayer.name = playerNameInput.value;
+		}
+	}
 
 	// --- Host Page ---
 	hostRoomPlayerNameInput.onchange = () => {
-		localPlayer.name = hostRoomPlayerNameInput.value;
-		broadcastLobbyState();
+		if(isValidName(hostRoomPlayerNameInput.value)){
+			hostRoomPlayerNameInput.value = hostRoomPlayerNameInput.value.trim();
+			localPlayer.name = hostRoomPlayerNameInput.value;
+			broadcastLobbyState();
+		}
 	}
 	
 	mapWidthInput.onchange = () => {
@@ -13792,11 +13978,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 	// --- Lobby Page ---
 	lobbyPlayerNameInput.onchange = (e) => {
-		localPlayer.name = e.target.value;
-		sendToHost({
-			type: ACTION.player_update,
-			name: localPlayer.name,
-		});
+		if(isValidName(e.target.value)){
+			lobbyPlayerNameInput.value = e.target.value.trim();
+			localPlayer.name = lobbyPlayerNameInput.value;
+			sendToHost({
+				type: ACTION.player_update,
+				name: localPlayer.name,
+			});
+		}
 	};
 	
 	lobbyTextureType.onchange = (e) => {
@@ -13863,7 +14052,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 		if (e.key === 'Enter') {
 			
 			let message = lobbyChatInput.value.trim();
-			message = message.slice(0, MAX_MESSAGE_LEN);
+			message = message.slice(0, MAX_LOBBY_MESSAGE_LEN);
 			lobbyChatInput.value = message; // avoid leaving empty message if pressed space in accident.
 			
 			if(lobbyChatInput.value !== ''){
@@ -13883,7 +14072,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 		if (e.key === 'Enter') {
 			
 			let message = clientLobbyChatInput.value.trim();
-			message = message.slice(0, MAX_MESSAGE_LEN);
+			message = message.slice(0, MAX_LOBBY_MESSAGE_LEN);
 			clientLobbyChatInput.value = message; // avoid leaving empty message if pressed space in accident.
 			
 			if(clientLobbyChatInput.value !== ''){
