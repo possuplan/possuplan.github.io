@@ -2303,8 +2303,8 @@ let gameSounds = {
 	info:         {filename: "sounds/info.mp3",    gain: 1,   filter: false},
 	kill:         {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
 	//destroy:      {filename: "sounds/kill.mp3",    gain: 1,   filter: false},
-	move:         {filename: "sounds/move.mp3",    gain: 1,   filter: false},
-	protect:      {filename: "sounds/protect.mp3", gain: 0.4, filter: false},
+	move:         {filename: "sounds/move.mp3",    gain: 0.4,   filter: false},
+	protect:      {filename: "sounds/protect.mp3", gain: 0.2, filter: false},
 	sea:          {filename: "sounds/sea.mp3",     gain: 1,   filter: false},
 	
 	// need one sound per castle level so the explosion animation gets chosen correctly.
@@ -2312,19 +2312,166 @@ let gameSounds = {
 	build2:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
 	build3:        {filename: "sounds/build.mp3",    gain: 0.4,   filter: false},
 
-	sell:         {filename: "sounds/sell.mp3",    gain: 0.4,   filter: false},
+	sell:         {filename: "sounds/sell.mp3",    gain: 0.15,   filter: false},
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
-	claimRock:    {filename: "sounds/kill-castle-short.mp3",     gain: 0.4,   filter: false},
+	claimRock:    {filename: "sounds/kill-castle-short.mp3",     gain: 0.2,   filter: false},
 	
 	// used for: soldier kills castle.
-	killCastle:   {filename: "sounds/kill-castle-short.mp3",     gain: 0.4,   filter: false},
+	killCastle:   {filename: "sounds/kill-castle-short.mp3",     gain: 0.2,   filter: false},
 
 	// used for: knight kills peasant, horse kills knight.
 	swordKill:    {filename: "sounds/sword-kill.mp3",      gain: 1,   filter: false},
 
-	diedByStarving: {filename: "sounds/died-by-starving.mp3",  gain: 1,   filter: false},
+	diedByStarving: {filename: "sounds/died-by-starving.mp3",  gain: 0.6,   filter: false},
 };
+
+/*
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const soundBuffers = {}; // store multiple decoded sounds
+
+// Master buses
+const musicGain = audioCtx.createGain();
+musicGain.gain.value = 1.0;
+musicGain.connect(audioCtx.destination);
+
+const sfxGain = audioCtx.createGain();
+sfxGain.gain.value = 1.0;
+sfxGain.connect(audioCtx.destination);
+
+
+async function preloadAllSounds() {
+	const promises = Object.values(gameSounds).map(sound =>
+		fetch(sound.filename)
+			.then(res => res.arrayBuffer())
+			.then(data => audioCtx.decodeAudioData(data))
+			.then(decoded => {
+				soundBuffers[sound.filename] = decoded;
+			})
+	);
+
+	await Promise.all(promises);
+	console.log("All sounds loaded");
+}
+preloadAllSounds().then(() => {
+	console.log("All sounds loaded. Ready to play sounds");
+});
+
+
+function playSound(key) {
+	const sound = gameSounds[key];
+	if (!sound) {
+		console.error("Sound not found:", key);
+		return;
+	}
+
+	const buffer = soundBuffers[sound.filename];
+	if (!buffer) return;
+
+	const source = audioCtx.createBufferSource();
+	source.buffer = buffer;
+
+	// Per-instance gain (cheap)
+	const gainNode = audioCtx.createGain();
+	gainNode.gain.value = sound.gain ?? 1.0;
+
+	let lastNode = source;
+
+	// Optional per-instance filter
+	if (sound.filter) {
+		const filter = audioCtx.createBiquadFilter();
+		filter.type = "lowpass";
+		filter.frequency.value = sound.filterFrequency ?? 3000;
+		lastNode.connect(filter);
+		lastNode = filter;
+	}
+
+	lastNode.connect(gainNode);
+	gainNode.connect(sfxGain);
+
+	source.start();
+}
+
+*/
+
+
+const musicPlaylist = [
+	'music/game_test1_ver1.mp3',
+	'music/game_test3_ver1.mp3',
+	'music/game_test5_ver1.mp3',
+	'music/Kate Z. - Tusker (Gurning 64 mix).mp3',
+	'music/Kate Z. - Tusker (Into the Heart of Darkness Radio Edit).mp3',
+	'music/tsr - Tusker - Desert track (tsr remix).mp3',
+	'music/tsr - Tusker - Jungle track (tsr remix).mp3',
+];
+
+let currentTrackIndex = random(0, musicPlaylist.length-1);
+let audio = null;
+let isPaused = true;
+
+function playMusic() {
+	if (musicPlaylist.length === 0) return;
+	
+	if (!audio) {
+		audio = new Audio(musicPlaylist[currentTrackIndex]);
+		audio.volume = 0.04;
+		audio.preload = 'auto';
+
+		audio.addEventListener('ended', playNextTrack);
+	}
+
+	if (isPaused) {
+		audio.play().catch(err => console.error(err));
+		isPaused = false;
+	}
+}
+
+function playNextTrack() {
+	currentTrackIndex = (currentTrackIndex + 1) % musicPlaylist.length;
+
+	audio.src = musicPlaylist[currentTrackIndex];
+	audio.load();
+	audio.play();
+	isPaused = false;
+}
+
+
+function pauseMusic() {
+	if (audio && !isPaused) {
+		audio.pause();
+		isPaused = true;
+	}
+}
+
+function restartMusic() {
+	if (!audio) return;
+
+	currentTrackIndex = 0;
+	audio.src = musicPlaylist[0];
+	audio.load();
+	audio.play();
+	isPaused = false;
+}
+
+function randomTrack() {
+	if (!audio) return;
+
+	currentTrackIndex = random(0, musicPlaylist.length-1);
+	audio.src = musicPlaylist[currentTrackIndex];
+	audio.load();
+	audio.play();
+	isPaused = false;
+}
+
+function setMusicVolume(value) {
+	if (audio) {
+		audio.volume = Math.max(0, Math.min(1, value));
+	}
+}
+
+
+
+
 
 const soundContext = new (window.AudioContext || window.webkitAudioContext)();
 const soundBuffers = {}; // store multiple decoded sounds
@@ -3069,76 +3216,6 @@ let selectedPool = [];
 let myCurrentSavings = 0; // Client-side savings
 
 
-const musicPlaylist = [
-	'music/game_test1_ver1.mp3',
-	'music/game_test3_ver1.mp3',
-	'music/game_test5_ver1.mp3',
-	'music/Kate Z. - Tusker (Gurning 64 mix).mp3',
-	'music/Kate Z. - Tusker (Into the Heart of Darkness Radio Edit).mp3',
-	'music/tsr - Tusker - Desert track (tsr remix).mp3',
-	'music/tsr - Tusker - Jungle track (tsr remix).mp3',
-];
-
-let currentTrackIndex = random(0, musicPlaylist.length-1);
-let audio = null;
-let isPaused = true;
-
-function playMusic() {
-	if (!audio) {
-		audio = new Audio(musicPlaylist[currentTrackIndex]);
-		audio.volume = 0.4;
-		audio.preload = 'auto';
-
-		audio.addEventListener('ended', playNextTrack);
-	}
-
-	if (isPaused) {
-		audio.play().catch(err => console.error(err));
-		isPaused = false;
-	}
-}
-
-function playNextTrack() {
-	currentTrackIndex = (currentTrackIndex + 1) % musicPlaylist.length;
-
-	audio.src = musicPlaylist[currentTrackIndex];
-	audio.load();
-	audio.play();
-}
-
-
-function pauseMusic() {
-	if (audio && !isPaused) {
-		audio.pause();
-		isPaused = true;
-	}
-}
-
-function restartMusic() {
-	if (!audio) return;
-
-	currentTrackIndex = 0;
-	audio.src = musicPlaylist[0];
-	audio.load();
-	audio.play();
-	isPaused = false;
-}
-
-function randomTrack() {
-	if (!audio) return;
-
-	currentTrackIndex = random(0, musicPlaylist.length-1);
-	audio.src = musicPlaylist[currentTrackIndex];
-	audio.load();
-	audio.play();
-	isPaused = false;
-}
-
-function setMusicVolume(value) {
-	if (audio) {
-		audio.volume = Math.max(0, Math.min(1, value));
-	}
-}
 
 
 
@@ -4224,7 +4301,7 @@ function showPage(pageId) {
 		randomTrack();
 		
 		playMusic();
-		setMusicVolume(0.1);
+		//setMusicVolume(0.07);
 	}
 	Object.values(pages).forEach(page => page.classList.remove('active'));
 	if (pages[pageId]) {
@@ -4630,10 +4707,17 @@ function getMyPlayer() {
 
 // =================================================================
 // --- HEXAGON MATH
-// (Using "pointy top" axial coordinates)
 // =================================================================
 
 function axialToPixel(q, r) {
+	// If first argument is an object, extract values
+	if (q !== null && typeof q === "object") {
+		r = q.r;
+		q = q.q; // must be set here or overwrites q before r.
+	}
+	if (typeof q !== "number" || typeof r !== "number") {
+		throw new TypeError("axialToPixel expects (q, r) numbers or an object { q, r }");
+	}
 	const x = HEX_SIZE * (3/2 * q);
 	const y = HEX_SIZE * (SQRT3/2 * q + SQRT3 * r);
 	return { x, y };
@@ -4641,14 +4725,38 @@ function axialToPixel(q, r) {
 
 // faster functions without object creation:
 function axialToPixelX(q, r) {
+	// If first argument is an object, extract values
+	if (q !== null && typeof q === "object") {
+		r = q.r;
+		q = q.q; // must be set here or overwrites q before r.
+	}
+	if (typeof q !== "number" || typeof r !== "number") {
+		throw new TypeError("axialToPixelX expects (q, r) numbers or an object { q, r }");
+	}
 	return HEX_SIZE * (3/2 * q);
 }
 function axialToPixelY(q, r) {
+	// If first argument is an object, extract values
+	if (q !== null && typeof q === "object") {
+		r = q.r;
+		q = q.q; // must be set here or overwrites q before r.
+	}
+	if (typeof q !== "number" || typeof r !== "number") {
+		throw new TypeError("axialToPixelY expects (q, r) numbers or an object { q, r }");
+	}
 	return HEX_SIZE * (SQRT3/2 * q + SQRT3 * r);
 }
 
 
 function pixelToAxial(x, y) {
+	// If first argument is an object, extract values
+	if (x !== null && typeof x === "object") {
+		y = x.y;
+		x = x.x; // must be set here or overwrites q before r.
+	}
+	if (typeof x !== "number" || typeof y !== "number") {
+		throw new TypeError("pixelToAxial expects (x, y) numbers or an object { x, y }");
+	}
 	// 1. undo translation
 	let vx = x - viewport.x;
 	let vy = y - viewport.y;
@@ -4672,6 +4780,7 @@ function pixelToAxial(x, y) {
 }
 
 
+/*
 function pixelToAxial1(x, y) {
 	// Apply viewport inverse transform
 	const viewX = (x - viewport.x) / viewport.zoom;
@@ -4682,9 +4791,17 @@ function pixelToAxial1(x, y) {
 
 	return hexRound(q, r);
 }
-
+*/
 
 function hexRound(q, r) {
+	// If first argument is an object, extract values
+	if (q !== null && typeof q === "object") {
+		r = q.r;
+		q = q.q; // must be set here or overwrites q before r.
+	}
+	if (typeof q !== "number" || typeof r !== "number") {
+		throw new TypeError("hexRound expects (q, r) numbers or an object { q, r }");
+	}
 	const s = -q - r;
 	let rq = Math.round(q);
 	let rr = Math.round(r);
@@ -4711,6 +4828,14 @@ function hexRound(q, r) {
 
 
 function getHexNeighbors(q, r) {
+	// If first argument is an object, extract values
+	if (q !== null && typeof q === "object") {
+		r = q.r;
+		q = q.q; // must be set here or overwrites q before r.
+	}
+	if (typeof q !== "number" || typeof r !== "number") {
+		throw new TypeError("hexRound expects (q, r) numbers or an object { q, r }");
+	}
 	return [                    //              i for "angle index" calculations
 		{ q: q,     r: r + 1 }, // bottom       0
 		{ q: q - 1, r: r + 1 }, // bottom left  1
@@ -6739,7 +6864,79 @@ function drawFocusedHex(){
 	}
 }
 
-let lastTimeTextParticle = performance.now();
+
+let lastActionHexes = [];
+
+// used to remove actionhex when player uses undo
+function removeLastActionHex(id){
+	lastActionHexes = lastActionHexes.filter(a => a.id !== id);
+}
+
+// id should be unitId, if other than units used, should add prefix for their ids here.
+function pushLastActionHex(q, r, id, color = "#FFFFFF"){
+	lastActionHexes.push({
+		q: q, 
+		r: r, 
+		id: id,
+		startTime: performance.now(),
+		color: color,
+	});
+}
+
+
+
+function drawLastActionHexes(){
+	let dashed = true;
+	let now = performance.now();
+	let maxScale = 20;
+	let hexLife = 1000;
+	
+	for(let i = lastActionHexes.length-1; i >= 0; i--) {
+		let hex = lastActionHexes[i];
+		let unitId = hex.id;
+		
+		let percent = (now - hex.startTime) / hexLife;
+		if(percent > 1) percent = 1;
+		
+		let scale = maxScale*(1-percent);
+		
+		if(now - hex.startTime < hexLife){
+
+			const x = axialToPixelX(hex);
+			const y = axialToPixelY(hex);
+			
+			// Determine rotation (in radians)
+			let rotation = (now - hex.startTime) * 0.005; // example: rotates over time
+
+			ctx.save(); // Save the current state
+			ctx.translate(x, y); // Move origin to hex center
+			ctx.rotate(rotation); // Apply rotation
+			
+			if(dashed){
+				drawHexagonPathLines(0, 0, null, scale);
+				ctx.setLineDash([12.5, 15]);
+				ctx.strokeStyle = hex.color;//'rgba(255,255,0, 1)';
+				ctx.lineWidth = 5;
+			}else{
+				drawHexagonPathLines(0, 0, null, scale);
+				ctx.strokeStyle = hex.color;//'rgba(255,255,255, 1)';
+				ctx.lineWidth = 5;
+			}
+			
+			ctx.lineCap = 'round';
+			ctx.stroke();
+			ctx.lineCap = 'butt'; // reset to default
+			ctx.setLineDash([]); // reset possible dash.
+			
+			ctx.restore(); // Restore original state
+		}else{
+			// remove when dead:
+			lastActionHexes.splice(i, 1);
+		}
+	}
+}
+
+
 
 function render() {
 	if (!gameState.settings.gameStarted) return;
@@ -6751,10 +6948,6 @@ function render() {
 
 	//console.log(tileZoomMipLevel);
   
-	let now = performance.now();
-	const dt_text = (now - lastTimeTextParticle) / 1000;
-	lastTimeTextParticle = now;
-
 	
 	// Save the context state
 	ctx.save();
@@ -6827,8 +7020,10 @@ function render() {
 	drawProtectMessages();
 	
 	
-	updateTextParticles(dt_text);
+	updateTextParticles();
 	drawTextParticles();
+	
+	drawLastActionHexes();
 	
 	ctx.restore();
 	
@@ -7440,7 +7635,6 @@ function getSelectedPoolHex(){
 let EDITOR_ENABLED = 0;
 
 function handleHexClick(hex) {
-	
 
 
 	if(REPLAY_ENABLED) return;
@@ -10939,6 +11133,10 @@ function handleHostData(data) {
 			needsUIUpdate = true;
 			updateHighlights();
 			
+			
+			pushLastActionHex(data.unit.q, data.unit.r, data.unit.id, "#FFFF00");
+
+			
 			//updateLocalPoolsInfo();
 		}
 		break;
@@ -10980,6 +11178,8 @@ function handleHostData(data) {
 				unit.q = data.q;
 				unit.r = data.r;
 				unit.hasMoved = data.hasMoved;
+				
+				pushLastActionHex(unit.q, unit.r, unit.id);
 			}
 			needsUIUpdate = true;
 			updateHighlights();
