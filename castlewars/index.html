@@ -1004,7 +1004,7 @@ input.disabled {
 
 
 #toggle-ui-btn {
-	background-image: url('images/ui/chat.png');
+	background-image: url('images/ui/chat-settings.png');
 }
 
 
@@ -2711,6 +2711,7 @@ const ACTION = {
 	'check_balance': 26,
 	
 	'lobby_chat': 27,
+	'system_message': 28,
 };
 
 // compress some actions into smaller format:
@@ -2729,18 +2730,20 @@ function compressAction(data){
 			return [data.type, data._T, data.name, data.q, data.r, data.playerIndex, data.action];
 		}
 		break;
+		
 		case ACTION.tile_changed: {
+			let FText = data.FText ?? 0;
 			if(data.ownerIndex !== undefined && data.object !== undefined){
-				return [data.type, data._T, data.q, data.r, data.ownerIndex, data.object];
+				return [data.type, data._T, data.q, data.r, FText, data.ownerIndex, data.object];
 				
 			}else if(data.ownerIndex !== undefined && data.object === undefined){
-				return [data.type, data._T, data.q, data.r, data.ownerIndex];
+				return [data.type, data._T, data.q, data.r, FText, data.ownerIndex];
 				
 			}else if(data.ownerIndex === undefined && data.object !== undefined){
-				return [data.type, data._T, data.q, data.r, null, data.object];
+				return [data.type, data._T, data.q, data.r, FText, null, data.object];
 				
 			}else if(data.ownerIndex === undefined && data.object === undefined){
-				return [data.type, data._T, data.q, data.r];
+				return [data.type, data._T, data.q, data.r, FText];
 			}
 		}
 		break;
@@ -2761,7 +2764,8 @@ function compressAction(data){
 		}
 		break;
 		case ACTION.unit_removed: {
-			return [data.type, data._T, data.unitId];
+			let FText = data.FText ?? 0;
+			return [data.type, data._T, data.unitId, FText];
 		}
 		break;
 	}
@@ -2819,12 +2823,13 @@ function deCompressAction(arr){
 				_T: arr[1], 
 				q: arr[2], 
 				r: arr[3], 
+				FText: arr[4], 
 			};
-			if(arr[4] !== undefined && arr[4] !== null){
-				base.ownerIndex = arr[4];
+			if(arr[5] !== undefined && arr[5] !== null){
+				base.ownerIndex = arr[5];
 			}
-			if(arr[5] !== undefined){
-				base.object = arr[5];
+			if(arr[6] !== undefined){
+				base.object = arr[6];
 			}
 			return base;
 		}
@@ -2850,6 +2855,7 @@ function deCompressAction(arr){
 				type: arr[0], 
 				_T: arr[1], 
 				unitId: arr[2], 
+				FText: arr[3], 
 			};
 		}
 		break;
@@ -3062,6 +3068,83 @@ let selectedPool = [];
 
 let myCurrentSavings = 0; // Client-side savings
 
+
+const musicPlaylist = [
+	'music/game_test1_ver1.mp3',
+	'music/game_test3_ver1.mp3',
+	'music/game_test5_ver1.mp3',
+	'music/Kate Z. - Tusker (Gurning 64 mix).mp3',
+	'music/Kate Z. - Tusker (Into the Heart of Darkness Radio Edit).mp3',
+	'music/tsr - Tusker - Desert track (tsr remix).mp3',
+	'music/tsr - Tusker - Jungle track (tsr remix).mp3',
+];
+
+let currentTrackIndex = random(0, musicPlaylist.length-1);
+let audio = null;
+let isPaused = true;
+
+function playMusic() {
+	if (!audio) {
+		audio = new Audio(musicPlaylist[currentTrackIndex]);
+		audio.volume = 0.4;
+		audio.preload = 'auto';
+
+		audio.addEventListener('ended', playNextTrack);
+	}
+
+	if (isPaused) {
+		audio.play().catch(err => console.error(err));
+		isPaused = false;
+	}
+}
+
+function playNextTrack() {
+	currentTrackIndex = (currentTrackIndex + 1) % musicPlaylist.length;
+
+	audio.src = musicPlaylist[currentTrackIndex];
+	audio.load();
+	audio.play();
+}
+
+
+function pauseMusic() {
+	if (audio && !isPaused) {
+		audio.pause();
+		isPaused = true;
+	}
+}
+
+function restartMusic() {
+	if (!audio) return;
+
+	currentTrackIndex = 0;
+	audio.src = musicPlaylist[0];
+	audio.load();
+	audio.play();
+	isPaused = false;
+}
+
+function randomTrack() {
+	if (!audio) return;
+
+	currentTrackIndex = random(0, musicPlaylist.length-1);
+	audio.src = musicPlaylist[currentTrackIndex];
+	audio.load();
+	audio.play();
+	isPaused = false;
+}
+
+function setMusicVolume(value) {
+	if (audio) {
+		audio.volume = Math.max(0, Math.min(1, value));
+	}
+}
+
+
+
+
+
+
 // --- IMAGE CACHING ---
 let imageCache = {};
 let imageAssets;
@@ -3114,7 +3197,7 @@ if(use_orig){
 		'ui-sell': {path:'images/ui/sell.png', isUi: true},
 		'ui-undo': {path:'images/ui/undo.png', isUi: true},
 		'ui-endturn': {path:'images/ui/endturn.png', isUi: true},
-		'ui-chat': {path:'images/ui/chat.png', isUi: true},
+		'ui-chat': {path:'images/ui/chat-settings.png', isUi: true},
 		
 		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
 		'water-anim': {path:'images/water-anim.png', scale:1, offsetX: 0, isPattern: true, isAnimated: true, animationData: waterAnimData},
@@ -4137,6 +4220,12 @@ function centerAndSelectFirstUnit(selectUnit = true){
 
 
 function showPage(pageId) {
+	if(pageId === 'game'){
+		randomTrack();
+		
+		playMusic();
+		setMusicVolume(0.1);
+	}
 	Object.values(pages).forEach(page => page.classList.remove('active'));
 	if (pages[pageId]) {
 		pages[pageId].classList.add('active');
@@ -6270,6 +6359,104 @@ function createExplosion(ep) {
 
 
 
+const textParticles = [];
+
+function spawnFloatingText({x, y, text = "+1", color = "yellow", font = "20px Arial"}){
+	let moveDuration = 0.3;
+	let fadeDuration = 3.5;
+	let totalLife = moveDuration+fadeDuration;
+	textParticles.push({
+		x,
+		startY: y,
+		y,
+		offsetY: 0,
+		startTime: performance.now(),
+
+		text,
+		color,
+		font,
+
+		elapsed: 0,
+		alpha: 1,
+
+		moveDuration: moveDuration, // seconds
+		fadeDuration: fadeDuration,
+		moveDistance: 55,
+		totalLife: totalLife
+	});
+}
+
+
+function updateTextParticles() {
+	
+	for (let i = textParticles.length - 1; i >= 0; i--) {
+		const p = textParticles[i];
+	
+		p.elapsed = (performance.now() - p.startTime) / 1000;
+		//p.elapsed += dt;
+
+		// Move upward for first 0.5s
+		//if (p.elapsed <= p.moveDuration) {
+			const t = p.elapsed / p.moveDuration;
+			//p.y = p.startY - t * p.moveDistance;
+			
+			// update offset, not directly y coordinate or rotation wont work:
+			p.offsetY = -t * p.moveDistance; 
+			if(p.offsetY < -p.moveDistance){
+				p.offsetY = -p.moveDistance; // fix random end positions.
+			}
+		//}
+
+		// Fade after movement stops
+		if (p.elapsed > p.moveDuration) {
+			const fadeTime = p.elapsed - p.moveDuration;
+			const t = Math.min(fadeTime / p.fadeDuration, 1);
+			p.alpha = 1 - t;
+		}
+
+		// Remove when dead
+		if (p.elapsed >= p.totalLife) {
+			textParticles.splice(i, 1);
+		}
+	}
+}
+
+function drawTextParticles() {
+	for (const p of textParticles) {
+		if (p.alpha <= 0) continue;
+
+		ctx.save();
+		
+		// move to object position
+		ctx.translate(p.x, p.y);
+		// undo viewport rotation
+		ctx.rotate(-viewport.rotation);
+		// now apply screen-space offsets
+		ctx.translate(0, p.offsetY);
+		
+		// draw text:
+		ctx.globalAlpha = p.alpha;
+		
+		// stroke:
+		ctx.font = "30px sans-serif";
+		ctx.lineWidth = 4; // outline thickness
+		ctx.strokeStyle = "black";
+		ctx.fillStyle = p.color;
+		ctx.lineJoin = "round"; // prevents sharp corners on letters
+		ctx.strokeText(p.text, 0, 0);
+		// fill:
+		ctx.fillStyle = p.color;
+		ctx.fillText(p.text, 0, 0);
+		
+		
+		ctx.restore();
+	}
+}
+
+
+
+
+// renderexplosions renderparticles drawparticles
 function renderParticles() {
 	// 1. Pre-calculate rotation math to save performance
 	// We want the Z-offset to always point "Up" on the monitor.
@@ -6552,7 +6739,7 @@ function drawFocusedHex(){
 	}
 }
 
-
+let lastTimeTextParticle = performance.now();
 
 function render() {
 	if (!gameState.settings.gameStarted) return;
@@ -6564,6 +6751,9 @@ function render() {
 
 	//console.log(tileZoomMipLevel);
   
+	let now = performance.now();
+	const dt_text = (now - lastTimeTextParticle) / 1000;
+	lastTimeTextParticle = now;
 
 	
 	// Save the context state
@@ -6623,6 +6813,9 @@ function render() {
 	
 	// explosion particles
 	renderParticles();
+
+
+
 	
 	// UNITS DRAWING:
 	if(!previewdraw){
@@ -6633,6 +6826,9 @@ function render() {
 	// draw "stop!" messages on protecting units
 	drawProtectMessages();
 	
+	
+	updateTextParticles(dt_text);
+	drawTextParticles();
 	
 	ctx.restore();
 	
@@ -6970,8 +7166,11 @@ function setOutlineAt(q, r, lines, allowCreation = true, state = null) {
 		tile = {...tile, type: "water", ownerIndex: -1, object: null, savings: 0};
 	}
 	setTileAt(q, r, tile, allowCreation, state);
+}
 
-	
+
+function getUnitById(unitId){
+	return gameState.units.find(u => u.id === unitId);
 }
 
 function getUnitAt(q, r) {
@@ -7241,6 +7440,9 @@ function getSelectedPoolHex(){
 let EDITOR_ENABLED = 0;
 
 function handleHexClick(hex) {
+	
+
+
 	if(REPLAY_ENABLED) return;
 	
 	if(EDITOR_ENABLED){
@@ -8301,7 +8503,7 @@ function executeAction(playerId, action) {
 			addCost(actionPool, sellPrice, poolHex, action.type);
 			
 			// remove unit:
-			updates.push({ type: ACTION.unit_removed, unitId: unit.id });
+			updates.push({ type: ACTION.unit_removed, unitId: unit.id, FText: sellPrice });
 			
 			if(!isAiPlayer(playerIndex)){
 				sounds.push({name:'sell', q: unit.q, r: unit.r, action: action.type, level: unit.level});
@@ -8419,14 +8621,21 @@ function executeAction(playerId, action) {
 						}
 					}
 					
+					
 					// add tree claiming money:
+					let moneyAdded = 0;
 					if(toTile.object === 'tree'){
-						addCost(actionPool, 1, poolHex, action.type);
+						moneyAdded = 1;
+					}else if(toTile.object === 'rock2'){
+						moneyAdded = 5;
+					}
+					if(moneyAdded){
+						addCost(actionPool, moneyAdded, poolHex, action.type);
 					}
 					
 					toTile.object = null;
 
-					tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null });
+					tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null, FText: moneyAdded });
 				}
 				
 
@@ -8570,15 +8779,22 @@ function executeAction(playerId, action) {
 							}
 						}
 						
+
 						// add tree claiming money:
+						let moneyAdded = 0;
 						if(tile.object === 'tree'){
-							addCost(actionPool, 1, poolHex, action.type);
+							moneyAdded = 1;
+						}else if(tile.object === 'rock2'){
+							moneyAdded = 5;
+						}
+						if(moneyAdded){
+							addCost(actionPool, moneyAdded, poolHex, action.type);
 						}
 						
 						clearedObject = tile.object;
 						tile.object = null;
 
-						tileChangedUpdates.push({ type: ACTION.tile_changed, q: q, r: r, object: null });
+						tileChangedUpdates.push({ type: ACTION.tile_changed, q: q, r: r, object: null, FText: moneyAdded });
 					}
 					
 					actionForUndo = {
@@ -8801,14 +9017,16 @@ function executeAction(playerId, action) {
 					const tile = getTileAt(lastAction.toQ, lastAction.toR);
 					if (tile) {
 						// undo tree claiming money:
+						let moneyAdded = 0;
 						if(lastAction.clearedObject === 'tree'){
-							console.log("lastAction.type === 'move'");
-							console.log("lastAction.clearedObject === 'tree'");
-							console.log(actionPool);
-							console.log(poolHex);
-							
-							deductCost(actionPool, 1, poolHex, action.type);
+							moneyAdded = 1;
+						}else if(lastAction.clearedObject === 'rock2'){
+							moneyAdded = 5;
 						}
+						if(moneyAdded){
+							deductCost(actionPool, moneyAdded, poolHex, action.type);
+						}
+						
 						tile.object = lastAction.clearedObject;
 
 						tileChangedUpdates.push({ type: ACTION.tile_changed, q: lastAction.toQ, r: lastAction.toR, object: tile.object });
@@ -8921,9 +9139,16 @@ function executeAction(playerId, action) {
 					const tile = getTileAt(lastAction.unit.q, lastAction.unit.r);
 					if (tile) {
 						// undo tree claiming money:
+						let moneyAdded = 0;
 						if(lastAction.clearedObject === 'tree'){
-							deductCost(actionPool, 1, poolHex, action.type);
+							moneyAdded = 1;
+						}else if(lastAction.clearedObject === 'rock2'){
+							moneyAdded = 5;
 						}
+						if(moneyAdded){
+							deductCost(actionPool, moneyAdded, poolHex, action.type);
+						}
+						
 						tile.object = lastAction.clearedObject;
 
 						tileChangedUpdates.push({ type: ACTION.tile_changed, q: lastAction.unit.q, r: lastAction.unit.r, object: tile.object });
@@ -10605,6 +10830,9 @@ function handleHostData(data) {
 			}
 		}
 		break;
+		case ACTION.system_message:
+			addSystemChatMessage(data.message);
+		break;
 		case ACTION.undo_counter: {
 			let playerIndex = data.playerIndex;
 			
@@ -10643,6 +10871,16 @@ function handleHostData(data) {
 				//}
 				if (data.object !== undefined){
 					tile.object = data.object;
+				}
+				
+				// spawn Floating Text:
+				if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
+					spawnFloatingText({
+						x: axialToPixelX(data.q, data.r),
+						y: axialToPixelY(data.q, data.r),
+						text: `+${data.FText}`,
+						color: "yellow"
+					});
 				}
 			}
 			needsUIUpdate = true;
@@ -10705,6 +10943,19 @@ function handleHostData(data) {
 		}
 		break;
 		case ACTION.unit_removed: {
+			
+			// spawn Floating Text:
+			if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
+				let unit = getUnitById(data.unitId);
+				
+				spawnFloatingText({
+					x: axialToPixelX(unit.q, unit.r),
+					y: axialToPixelY(unit.q, unit.r),
+					text: `+${data.FText}`,
+					color: "yellow"
+				});
+			}
+			
 			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
 			needsUIUpdate = true;
 			updateHighlights();
@@ -13212,6 +13463,9 @@ function replaySpeedDown(){
 
 async function replayHistory(history) {
 	if (!history || history.length === 0) return;
+	
+	// broadcast message for start of replay:
+	broadcast({ type: ACTION.system_message, message: "--- Replay has started ---" });
 
 	// Broadcast the first message immediately
 	broadcast(deCompressAction(history[0]));
@@ -13227,6 +13481,9 @@ async function replayHistory(history) {
 
 		broadcast(curr);
 	}
+	
+	// broadcast message for end of replay:
+	broadcast({ type: ACTION.system_message, message: "--- Replay has ended ---" });
 }
 
 
