@@ -589,7 +589,7 @@ label {
 
 	border-bottom-right-radius: 8px;
 
-	padding: 0 0 0 4px;
+	---padding: 0 0 0 4px;
 }
 
 #chat-messages {
@@ -905,6 +905,41 @@ button.redbutton:hover {
 
 
 
+#game-settings-ui {
+	display: none;
+	flex-direction: column;
+	padding-left: 4px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 200px;
+	font-size: 18px;
+	line-height: 20px;      /* your chosen line height */
+	----height: calc(3 * 20px);   /* 3 lines tall */
+	pointer-events: none;
+	overflow-wrap: anywhere;
+	z-index: 9999;
+	background-color:black;
+	
+    min-height: 300px;
+	
+	border-radius:8px;
+}
+
+#music-volume {
+	width: 100%;
+}
+#music-volume-wrapper {
+	padding:5px 12px 5px 10px;
+}
+
+#close-game-settings-btn {
+    padding-bottom: 10px;
+    line-height: 30px;
+	font-size:36px;
+}
+
+
 #top-float-ui {
 	display: none;
 	flex-direction: column;
@@ -1005,6 +1040,13 @@ input.disabled {
 
 #toggle-ui-btn {
 	background-image: url('images/ui/chat-settings.png');
+}
+
+#game-settings-btn {
+	background-image: url('images/ui/settings-icon.png');
+}
+#game-settings-btn.active {
+	background-color:#4e3a7a;
 }
 
 
@@ -1115,13 +1157,15 @@ input.disabled {
 	box-shadow: 0 0 2px #000;
 }
 
-input[type="range"] {
+#lightness {
 	margin-top: 20px;
 	margin-bottom: 20px;
 
 	width: 100%;
 	max-width: 300px;
 }
+
+
 
 #preview {
 	---margin-top: 20px;
@@ -1441,13 +1485,51 @@ input[type="range"] {
 		<div id="top-float-ui-messages"></div>
 	</div>
 	
+	<div id="game-settings-ui">
+		<div id="ui-menu" class="ui-panel">
+			<div class="input-group">
+				<div style="flex: 1;">
+					
+				</div>
+				<div style="flex: 1;">
+					<button id="close-game-settings-btn" class="gamebutton largefont">×</button>
+				</div>
+			</div>
+			Music:
+			<div class="input-group">
+				<div style="flex: 1;">
+					<button id="music-previous-btn" class="gamebutton">⏮</button>
+				</div>
+				<div style="flex: 1;">
+					<button id="music-pause-btn" class="gamebutton">⏸</button>
+					<button id="music-play-btn" class="gamebutton" style="display:none">▶</button>
+				</div>
+				<div style="flex: 1;">
+					<button id="music-next-btn" class="gamebutton">⏭</button>
+				</div>
+			</div>
+			<div id="music-volume-wrapper">
+				<input type="range" id="music-volume" min="0" max="200" value="1">
+			</div>
+		</div>
+	</div>
+	
 	
 	
 	<div id="game-ui">
 		<div id="ui-left">
 			<div id="ui-menu" class="ui-panel">
 				
-				<button id="quit-game-btn" class="gamebutton redbutton">Quit game</button>
+				<div class="input-group">
+					<div style="flex: 1;">
+						<button id="quit-game-btn" class="gamebutton redbutton">Quit game</button>
+					</div>
+					<div style="flex: 1;">
+						<button id="game-settings-btn" class="gamebutton largefont" title="Settings"></button>
+					</div>
+				</div>
+				
+				
 			
 				<div class="input-group">
 					<div style="flex: 1;">
@@ -2405,18 +2487,50 @@ const musicPlaylist = [
 	'music/tsr - Tusker - Jungle track (tsr remix).mp3',
 ];
 
+let musicVolumeInput = document.getElementById('music-volume');
+
 let currentTrackIndex = random(0, musicPlaylist.length-1);
 let audio = null;
 let isPaused = true;
+let defaultMusicVolume = 0.04;
+let maxMusicVolumeInputValue = 200; // volume input max value.
+let musicVolumePower = 2.5; // power curve
+
+function volumeToSlider(volume, slider) {
+	const min = Number(slider.min) || 0;
+	const max = Number(slider.max);
+
+	const normalized = Math.pow(volume, 1 / musicVolumePower);
+
+	return min + normalized * (max - min);
+}
+
+function sliderToVolume(slider) {
+	const min = Number(slider.min) || 0;
+	const max = Number(slider.max);
+
+	const normalized = (slider.value - min) / (max - min);
+
+	return Math.pow(normalized, musicVolumePower);
+}
+
+const musicVolumeSlider = document.getElementById('music-volume');
+musicVolumeSlider.addEventListener('input', e => {
+	let adjustedValue = sliderToVolume(e.target);
+	setMusicVolume(adjustedValue);
+});
+
 
 function playMusic() {
 	if (musicPlaylist.length === 0) return;
 	
 	if (!audio) {
 		audio = new Audio(musicPlaylist[currentTrackIndex]);
-		audio.volume = 0.04;
+		audio.volume = defaultMusicVolume;
 		audio.preload = 'auto';
-
+		
+		musicVolumeInput.value = volumeToSlider(audio.volume, musicVolumeInput);
+		
 		audio.addEventListener('ended', playNextTrack);
 	}
 
@@ -2427,6 +2541,8 @@ function playMusic() {
 }
 
 function playNextTrack() {
+	if (musicPlaylist.length === 0) return;
+	
 	currentTrackIndex = (currentTrackIndex + 1) % musicPlaylist.length;
 
 	audio.src = musicPlaylist[currentTrackIndex];
@@ -2434,6 +2550,18 @@ function playNextTrack() {
 	audio.play();
 	isPaused = false;
 }
+
+function playPreviousTrack() {
+	if (musicPlaylist.length === 0) return;
+	
+	currentTrackIndex = (currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length;
+
+	audio.src = musicPlaylist[currentTrackIndex];
+	audio.load();
+	audio.play();
+	isPaused = false;
+}
+
 
 
 function pauseMusic() {
@@ -2444,6 +2572,7 @@ function pauseMusic() {
 }
 
 function restartMusic() {
+	if (musicPlaylist.length === 0) return;
 	if (!audio) return;
 
 	currentTrackIndex = 0;
@@ -2454,6 +2583,7 @@ function restartMusic() {
 }
 
 function randomTrack() {
+	if (musicPlaylist.length === 0) return;
 	if (!audio) return;
 
 	currentTrackIndex = random(0, musicPlaylist.length-1);
@@ -2825,7 +2955,7 @@ let MAX_LOBBY_MESSAGE_LEN = 100;
 
 
 // list of messages sent to clients:
-// let action actions
+// let action actions =
 const ACTION = {
 	// handleHostData:
 	'multiple_actions': 1,
@@ -2866,7 +2996,11 @@ const ACTION = {
 function compressAction(data){
 	switch(data.type){
 		case ACTION.unit_moved: {
-			return [data.type, data._T, data.unitId, data.q, data.r, data.hasMoved];
+			if(data.wasUndo !== undefined){
+				return [data.type, data._T, data.unitId, data.q, data.r, data.hasMoved, data.wasUndo];
+			}else{
+				return [data.type, data._T, data.unitId, data.q, data.r, data.hasMoved];
+			}
 		}
 		break;
 		case ACTION.turn_changed: {
@@ -2933,7 +3067,7 @@ function deCompressAction(arr){
 	
 	switch(type){
 		case ACTION.unit_moved: {
-			return {
+			let base = {
 				type: arr[0], 
 				_T: arr[1], 
 				unitId: arr[2], 
@@ -2941,6 +3075,10 @@ function deCompressAction(arr){
 				r: arr[4], 
 				hasMoved: arr[5],
 			};
+			if(arr[6] !== undefined){
+				base.wasUndo = arr[6];
+			}
+			return base;
 		}
 		break;
 		case ACTION.turn_changed: {
@@ -4002,6 +4140,21 @@ const buildPopupClose = document.getElementById('build-popup-close');
 const toggleUiBtn = document.getElementById('toggle-ui-btn');
 const quitGameBtn = document.getElementById('quit-game-btn');
 
+
+const gameSettingsBtn = document.getElementById('game-settings-btn');
+const gameSettingsUi = document.getElementById('game-settings-ui');
+
+const closeGameSettingsBtn = document.getElementById('close-game-settings-btn');
+
+
+
+const musicPauseBtn = document.getElementById('music-pause-btn');
+const musicPlayBtn = document.getElementById('music-play-btn');
+const musicNextBtn = document.getElementById('music-next-btn');
+const musicPreviousBtn = document.getElementById('music-previous-btn');
+
+
+
 //const refreshCanvasBtn = document.getElementById('refresh-canvas');
 
 const rotateLeftBtn = document.getElementById('rotate-left');
@@ -4301,7 +4454,6 @@ function showPage(pageId) {
 		randomTrack();
 		
 		playMusic();
-		//setMusicVolume(0.07);
 	}
 	Object.values(pages).forEach(page => page.classList.remove('active'));
 	if (pages[pageId]) {
@@ -4374,6 +4526,25 @@ function broadcast(data) {
 
 
 
+function toggleGameSettings(){
+	console.log("toggleGameSettings");
+	if(gameSettingsUi.style.display === 'flex'){
+		gameSettingsUi.style.opacity = '1';
+		gameSettingsUi.style.display = 'none';
+		console.log("toggleGameSettings none");
+		
+		
+		gameSettingsBtn.classList.remove('active');
+	}else{
+		gameSettingsUi.style.opacity = '1';
+		gameSettingsUi.style.display = 'flex';
+		console.log("toggleGameSettings flex");
+		
+		gameSettingsBtn.classList.add('active');
+	}
+}
+
+
 
 
 let hideTimeout = null;
@@ -4403,7 +4574,6 @@ function hideTopFloatUi(){
 		}, 1000); // matches the topFloatUi.style.transition time.
 	}, 10000); // 10 sec delay until hides top chat.
 }
-
 
 
 let showTopLeftUi = false;
@@ -6884,23 +7054,43 @@ function pushLastActionHex(q, r, id, color = "#FFFFFF"){
 }
 
 
+function pushLastActionHexCheckParams(ownerIndex, wasUndo, q, r, id, color){		
+	let player = getPlayerByIndex(ownerIndex);
+	if(!player.isAI && ownerIndex !== getMyPlayer().playerIndex){
+		if(wasUndo){
+			color = "#FF00FF"; // undo color
+		}
+		pushLastActionHex(q, r, id, color);
+	}
+}
+
+
+let lastActionMulti = 1; // later could modify this from game settings in-game.
+let lastActionStartScale = 40; // later could modify this from game settings in-game.
 
 function drawLastActionHexes(){
 	let dashed = true;
 	let now = performance.now();
-	let maxScale = 20;
-	let hexLife = 1000;
+	let maxScale = lastActionStartScale;
+	
+	let hexLife = 1000*lastActionMulti; // zoom in end time
+	let hexLife2 = 3500*lastActionMulti; // non-zoomed in end time
+	let alphaTime = 2500*lastActionMulti; // fade out start time
+	let alphaLen = 1000*lastActionMulti; // fade out length
 	
 	for(let i = lastActionHexes.length-1; i >= 0; i--) {
 		let hex = lastActionHexes[i];
 		let unitId = hex.id;
 		
-		let percent = (now - hex.startTime) / hexLife;
+		let timeDiff = now - hex.startTime;
+		
+		let percent = timeDiff / hexLife;
 		if(percent > 1) percent = 1;
 		
 		let scale = maxScale*(1-percent);
+		if(scale < 1) scale = 1;
 		
-		if(now - hex.startTime < hexLife){
+		if(timeDiff < hexLife2){
 
 			const x = axialToPixelX(hex);
 			const y = axialToPixelY(hex);
@@ -6911,6 +7101,13 @@ function drawLastActionHexes(){
 			ctx.save(); // Save the current state
 			ctx.translate(x, y); // Move origin to hex center
 			ctx.rotate(rotation); // Apply rotation
+			
+			let alpha = 1;
+			if(timeDiff > alphaTime){
+				alpha = 1-((timeDiff-alphaTime)/alphaLen);
+			}
+			
+			ctx.globalAlpha = alpha;
 			
 			if(dashed){
 				drawHexagonPathLines(0, 0, null, scale);
@@ -9192,7 +9389,7 @@ function executeAction(playerId, action) {
 					unit.q = lastAction.fromQ;
 					unit.r = lastAction.fromR;
 					unit.hasMoved = 0;
-					updates.push({ type: ACTION.unit_moved, unitId: unit.id, q: unit.q, r: unit.r, hasMoved: 0 });
+					updates.push({ type: ACTION.unit_moved, unitId: unit.id, q: unit.q, r: unit.r, hasMoved: 0, wasUndo: 1 });
 					
 					unitActionHex = {q: unit.q, r: unit.r};
 				}
@@ -9202,9 +9399,6 @@ function executeAction(playerId, action) {
 						setTileOwnerByIndex(tile, lastAction.oldOwnerIndex);
 						tile.savings = lastAction.oldSavings; // update host data.
 						tileChangedUpdates.push({ type: ACTION.tile_changed, q: lastAction.toQ, r: lastAction.toR, ownerIndex: tile.ownerIndex });
-						
-						
-						
 					}
 				}
 				if (lastAction.clearedObject) {
@@ -9401,7 +9595,7 @@ function executeAction(playerId, action) {
 				//addUnit(lastAction.soldUnit);
 				console.warn("lastAction.soldUnit");
 				console.warn(lastAction.soldUnit);
-				updates.push({ type: ACTION.unit_added, unit: lastAction.soldUnit });
+				updates.push({ type: ACTION.unit_added, unit: lastAction.soldUnit, wasUndo: 1 });
 				
 				unitActionHex = {q: lastAction.soldUnit.q, r: lastAction.soldUnit.r};
 				
@@ -11126,17 +11320,22 @@ function handleHostData(data) {
 		}
 		break;
 		case ACTION.unit_added: {
+			let unit = data.unit;
 			console.log("unit_added: gameState.units.push(data.unit);");
-			console.log(data.unit);
-			//gameState.units.push(data.unit);
-			addUnit(data.unit);
+			console.log(unit);
+			addUnit(unit);
 			needsUIUpdate = true;
 			updateHighlights();
 			
-			
-			pushLastActionHex(data.unit.q, data.unit.r, data.unit.id, "#FFFF00");
+			pushLastActionHexCheckParams(
+				unit.ownerIndex, 
+				data.wasUndo ?? 0, 
+				unit.q, 
+				unit.r, 
+				unit.id, 
+				"#FFFF00"
+			);
 
-			
 			//updateLocalPoolsInfo();
 		}
 		break;
@@ -11179,7 +11378,14 @@ function handleHostData(data) {
 				unit.r = data.r;
 				unit.hasMoved = data.hasMoved;
 				
-				pushLastActionHex(unit.q, unit.r, unit.id);
+				pushLastActionHexCheckParams(
+					unit.ownerIndex, 
+					data.wasUndo ?? 0, 
+					unit.q, 
+					unit.r, 
+					unit.id, 
+					"#FFFFFF"
+				);
 			}
 			needsUIUpdate = true;
 			updateHighlights();
@@ -14496,8 +14702,56 @@ window.addEventListener('DOMContentLoaded', async () => {
 	quitGameBtn.tabIndex = -1; //remove it from the tab order
 	
 	
+	musicPauseBtn.onclick = () => {
+		musicPauseBtn.style.display = "none";
+		musicPlayBtn.style.display = "block";
+		pauseMusic();
+	};
+	musicPauseBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicPauseBtn.tabIndex = -1; //remove it from the tab order
+	
+	musicPlayBtn.onclick = () => {
+		musicPauseBtn.style.display = "block";
+		musicPlayBtn.style.display = "none";
+		playMusic();
+	};
+	musicPlayBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicPlayBtn.tabIndex = -1; //remove it from the tab order
+
+	musicNextBtn.onclick = () => {
+		playNextTrack();
+	};
+	musicNextBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicNextBtn.tabIndex = -1; //remove it from the tab order
+	
+	musicPreviousBtn.onclick = () => {
+		playPreviousTrack();
+	};
+	musicPreviousBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicPreviousBtn.tabIndex = -1; //remove it from the tab order
+	
+
+	
+	closeGameSettingsBtn.onclick = () => {
+		toggleGameSettings();
+	};
+	closeGameSettingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	closeGameSettingsBtn.tabIndex = -1; //remove it from the tab order
+	
+	
+	
+	gameSettingsBtn.onclick = () => {
+		toggleGameSettings();
+	};
+	gameSettingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	gameSettingsBtn.tabIndex = -1; //remove it from the tab order
+	
+	
 	toggleUiBtn.onclick = () => {
 		toggleUiTopLeft();
+		if(gameSettingsUi.style.display === 'flex'){
+			toggleGameSettings();
+		}
 	};
 	toggleUiBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	toggleUiBtn.tabIndex = -1; //remove it from the tab order
