@@ -185,6 +185,13 @@ button[disabled] {
 	filter: brightness(0.5);
 }
 
+
+.lobbybutton {
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: contain;
+}
+	
 .gamebutton {
 	padding:4px;
 	
@@ -904,8 +911,59 @@ button.redbutton:hover {
 }
 
 
+#game-settings-ui-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width:100%;
+}
+
+/* Popup container */
+#game-settings-ui {
+	position: fixed;
+	inset: 0;
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background: rgba(0, 0, 0, 0.7);
+	z-index: 9999;
+}
+
+/* Visible state */
+#game-settings-ui.active {
+	display: flex;
+}
+
+/*
 
 #game-settings-ui {
+	display: none;
+	flex-direction: column;
+	padding-left: 4px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	max-width: 400px;
+	font-size: 18px;
+	line-height: 20px;    
+	----height: calc(3 * 20px);  
+	pointer-events: none;
+	overflow-wrap: anywhere;
+	z-index: 9999;
+	background-color:black;
+	
+    min-height: 300px;
+	
+	border-radius:8px;
+}
+
+*/
+
+
+
+#settings-ui {
 	display: none;
 	flex-direction: column;
 	padding-left: 4px;
@@ -933,7 +991,7 @@ button.redbutton:hover {
 	padding:5px 12px 5px 10px;
 }
 
-#close-game-settings-btn {
+#close-settings-btn {
     padding-bottom: 10px;
     line-height: 30px;
 	font-size:36px;
@@ -1042,12 +1100,29 @@ input.disabled {
 	background-image: url('images/ui/chat-settings.png');
 }
 
-#game-settings-btn {
+#settings-btn {
 	background-image: url('images/ui/settings-icon.png');
 }
-#game-settings-btn.active {
-	background-color:#4e3a7a;
+
+#game-settings-btn,
+#lobby-game-settings-btn {
+	background-image: url('images/ui/settings-icon.png');
 }
+
+#music-previous-btn {
+	background-image: url('images/ui/music-previous.png');
+}
+#music-next-btn {
+	background-image: url('images/ui/music-next.png');
+}
+#music-play-btn {
+	background-image: url('images/ui/music-play.png');
+}
+#music-pause-btn {
+	background-image: url('images/ui/music-pause.png');
+}
+
+
 
 
 #sell-unit-btn {
@@ -1236,6 +1311,39 @@ input.disabled {
 </div>
 
 
+
+<div id="game-settings-ui">
+	<div id="game-settings-ui-wrapper">
+		<div id="ui-menu" class="ui-panel">
+			<div class="input-group">
+				<div style="flex: 1;">
+					
+				</div>
+				<div style="flex: 1;">
+					<button id="close-game-settings-btn" class="gamebutton largefont">×</button>
+				</div>
+			</div>
+			Music:
+			<div class="input-group">
+				<div style="flex: 1;">
+					<button id="music-previous-btn" class="gamebutton"></button>
+				</div>
+				<div style="flex: 1;">
+					<button id="music-pause-btn" class="gamebutton"></button>
+					<button id="music-play-btn" class="gamebutton" style="display:none"></button>
+				</div>
+				<div style="flex: 1;">
+					<button id="music-next-btn" class="gamebutton"></button>
+				</div>
+			</div>
+			<div id="music-volume-wrapper">
+				<input type="range" id="music-volume" min="0" max="200" value="1">
+			</div>
+		</div>
+	</div>
+</div>
+
+
 <div id="image-popup">
 	<div style="padding:5px">Map preview</div>
 	<img id="popup-img" src="" alt="Enlarged view">
@@ -1272,6 +1380,8 @@ input.disabled {
 		<div id="connection-status" style="text-align: center; margin-top: 10px; font-size: 14px;">Initializing...</div>
 	</div>
 </div>
+
+
 
 
 <div id="host-page" class="page">
@@ -1363,6 +1473,7 @@ input.disabled {
 				<div class="input-group" style="flex-direction: row !important;">
 					<label for="map-scale">Map scale</label>
 					<input type="number" id="map-scale" value="1" min="1" max="4">
+					<button id="game-settings-btn" class="lobbybutton" title="More Settings"></button>
 				</div>
 				<div class="input-group" style="flex-direction: row !important;">
 					<label for="start-player-list">Start player</label>
@@ -1460,6 +1571,7 @@ input.disabled {
 				<div class="input-group" style="flex-direction: row !important;">
 					<label for="lobby-map-scale">Map scale</label>
 					<input type="number" id="lobby-map-scale" class="disabled" value="1" max="4" disabled>
+					<button id="lobby-game-settings-btn" class="lobbybutton" title="More Settings"></button>
 				</div>
 				<div class="input-group" style="flex-direction: row !important;">
 					<label for="lobby-start-player-list">Start player</label>
@@ -1485,27 +1597,27 @@ input.disabled {
 		<div id="top-float-ui-messages"></div>
 	</div>
 	
-	<div id="game-settings-ui">
+	<div id="settings-ui">
 		<div id="ui-menu" class="ui-panel">
 			<div class="input-group">
 				<div style="flex: 1;">
 					
 				</div>
 				<div style="flex: 1;">
-					<button id="close-game-settings-btn" class="gamebutton largefont">×</button>
+					<button id="close-settings-btn" class="gamebutton largefont">×</button>
 				</div>
 			</div>
 			Music:
 			<div class="input-group">
 				<div style="flex: 1;">
-					<button id="music-previous-btn" class="gamebutton">⏮</button>
+					<button id="music-previous-btn" class="gamebutton"></button>
 				</div>
 				<div style="flex: 1;">
-					<button id="music-pause-btn" class="gamebutton">⏸</button>
-					<button id="music-play-btn" class="gamebutton" style="display:none">▶</button>
+					<button id="music-pause-btn" class="gamebutton"></button>
+					<button id="music-play-btn" class="gamebutton" style="display:none"></button>
 				</div>
 				<div style="flex: 1;">
-					<button id="music-next-btn" class="gamebutton">⏭</button>
+					<button id="music-next-btn" class="gamebutton"></button>
 				</div>
 			</div>
 			<div id="music-volume-wrapper">
@@ -1525,7 +1637,7 @@ input.disabled {
 						<button id="quit-game-btn" class="gamebutton redbutton">Quit game</button>
 					</div>
 					<div style="flex: 1;">
-						<button id="game-settings-btn" class="gamebutton largefont" title="Settings"></button>
+						<button id="settings-btn" class="gamebutton largefont" title="Settings"></button>
 					</div>
 				</div>
 				
@@ -3373,7 +3485,7 @@ function getImagePath(unitData){
 	return imageAssets[buildImageName(unitData)].path;
 }
 
-let use_orig = 1;
+
 
 let waterAnimData = {
 	width: 416,
@@ -3407,84 +3519,72 @@ if(use_homm3){
 let landTextures = ['land', 'land-c1', 'land-c2', 'land-c3', 'land-c4', 'land-c5', 'land-c6', 'land-c7', 'land-c8'];
 
 // images =
-if(use_orig){
-	imageAssets = {
-		'ui-sell': {path:'images/ui/sell.png', isUi: true},
-		'ui-undo': {path:'images/ui/undo.png', isUi: true},
-		'ui-endturn': {path:'images/ui/endturn.png', isUi: true},
-		'ui-chat': {path:'images/ui/chat-settings.png', isUi: true},
-		
-		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
-		'water-anim': {path:'images/water-anim.png', scale:1, offsetX: 0, isPattern: true, isAnimated: true, animationData: waterAnimData},
-		'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
-		
-		'land':     {path:'images/land2b2b.jpg', scale:1, offsetX: 0}, 
-		'land-c1':  {path:'images/land-c1.jpg', scale:1, offsetX: 0}, 
-		'land-c2':  {path:'images/land-c2.jpg', scale:1, offsetX: 0}, 
-		'land-c3':  {path:'images/land-c3.jpg', scale:1, offsetX: 0}, 
-		'land-c4':  {path:'images/land-c4.jpg', scale:1, offsetX: 0}, 
-		'land-c5':  {path:'images/land-c5.jpg', scale:1, offsetX: 0}, 
-		'land-c6':  {path:'images/land-c6.jpg', scale:1, offsetX: 0}, 
-		'land-c7':  {path:'images/land-c7.jpg', scale:1, offsetX: 0}, 
-		'land-c8':  {path:'images/land-c8.jpg', scale:1, offsetX: 0}, 
-		// NOTE: must update landTextures array if new textures added.
-		
-		'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
-		'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
-		
-		'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
-		'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: -2, offsetY: -2},
-		'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: -2, offsetY: -2},
-		'rock2':    {path:'images/orig-scaled/128x128/rock2c.png', scale:1.8, offsetX: 0, offsetY: -3},
-		
-		'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1.6, offsetX: 0},
-		'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
-		
-		
+imageAssets = {
+	// for preloading images:
+	'ui-sell':           {path:'images/ui/sell.png', isUi: true},
+	'ui-undo':           {path:'images/ui/undo.png', isUi: true},
+	'ui-endturn':        {path:'images/ui/endturn.png', isUi: true},
+	'ui-chat':           {path:'images/ui/chat-settings.png', isUi: true},
+	'ui-settings':       {path:'images/ui/settings-icon.png', isUi: true},
+	'ui-music-previous': {path:'images/ui/music-previous.png', isUi: true},
+	'ui-music-next':     {path:'images/ui/music-next.png', isUi: true},
+	'ui-music-play':     {path:'images/ui/music-play.png', isUi: true},
+	'ui-music-pause':    {path:'images/ui/music-pause.png', isUi: true},
 
-		'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
-		'castle2':  {path:'images/'+pathPrefix+'/castle2.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
-		'castle3':  {path:'images/'+pathPrefix+'/castle3.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
-		'soldier1': {path:'images/'+pathPrefix+'/soldier1.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
-		'soldier2': {path:'images/'+pathPrefix+'/soldier2.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
-		'soldier3': {path:'images/'+pathPrefix+'/soldier3.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
-		'soldier4': {path:'images/'+pathPrefix+'/soldier4.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
-		
-		'soldier1-b': {path:'images/'+pathPrefix+'/soldier1-b.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
-		'soldier2-b': {path:'images/'+pathPrefix+'/soldier2-b.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
-		'soldier3-b': {path:'images/'+pathPrefix+'/soldier3-b.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
-		'soldier4-b': {path:'images/'+pathPrefix+'/soldier4-b.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
 
-		//'castle1':  {path:'images/orig-scaled/128x128/castle1.png', scale:1.8, offsetX: 0},
-		//'castle2':  {path:'images/orig-scaled/128x128/castle2.png', scale:1.8, offsetX: 0},
-		//'castle3':  {path:'images/orig-scaled/128x128/castle3.png', scale:1.8, offsetX: 0},
-		//'soldier1': {path:'images/orig-scaled/128x128/soldier1.png', scale:1.8, offsetX: 0},
-		//'soldier2': {path:'images/orig-scaled/128x128/soldier2.png', scale:1.8, offsetX: 0},
-		//'soldier3': {path:'images/orig-scaled/128x128/soldier3.png', scale:1.8, offsetX: 0},
-		//'soldier4': {path:'images/orig-scaled/128x128/soldier4.png', scale:1.8, offsetX: 0, offsetY: 3},
-	};
-	if(use_fill){
-		imageAssets['dirt'] = {path:'images/dirt3.png', scale:1, offsetX: 0, isPattern: true};
-	}
-}else{
-	imageAssets = {
-		'land': {path:'images/land2.jpg', scale:1, offsetX: 0}, 
-		'dirt': {path:'images/dirt2.jpg', scale:1, offsetX: 0},
-		'water': {path:'images/water.jpg', scale:1, offsetX: 0},
-		'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
-		'dead': {path:'images/orig-scaled/dead.png', scale:1, offsetX: 0},
-		'grass': {path:'images/orig-scaled/grass.png', scale:1, offsetX: 0},
-		'tree': {path:'images/orig-scaled/tree.png', scale:1, offsetX: 0},
-		'protect': {path:'images/orig-scaled/protect.png', scale:1, offsetX: 0},
-		'select': {path:'images/orig-scaled/select.png', scale:1, offsetX: 0},
-		'castle1': {path:'images/castle1.png', scale:0.7, offsetX: 0},
-		'castle2': {path:'images/castle2.png', scale:1, offsetX: 0},
-		'castle3': {path:'images/castle3.png', scale:1, offsetX: 0},
-		'soldier1': {path:'images/soldier1.png', scale:1, offsetX: -5},
-		'soldier2': {path:'images/soldier2.png', scale:1, offsetX: 0},
-		'soldier3': {path:'images/soldier3.png', scale:1, offsetX: 5},
-		'soldier4': {path:'images/soldier4.png', scale:1, offsetX: 0},
-	};
+	// ingame graphics:
+	'infinitewater': {path:'images/water.jpg', scale:1, offsetX: 0, isPattern: true},
+	'water-anim': {path:'images/water-anim.png', scale:1, offsetX: 0, isPattern: true, isAnimated: true, animationData: waterAnimData},
+	'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
+	
+	'land':     {path:'images/land2b2b.jpg', scale:1, offsetX: 0}, 
+	'land-c1':  {path:'images/land-c1.jpg', scale:1, offsetX: 0}, 
+	'land-c2':  {path:'images/land-c2.jpg', scale:1, offsetX: 0}, 
+	'land-c3':  {path:'images/land-c3.jpg', scale:1, offsetX: 0}, 
+	'land-c4':  {path:'images/land-c4.jpg', scale:1, offsetX: 0}, 
+	'land-c5':  {path:'images/land-c5.jpg', scale:1, offsetX: 0}, 
+	'land-c6':  {path:'images/land-c6.jpg', scale:1, offsetX: 0}, 
+	'land-c7':  {path:'images/land-c7.jpg', scale:1, offsetX: 0}, 
+	'land-c8':  {path:'images/land-c8.jpg', scale:1, offsetX: 0}, 
+	// NOTE: must update landTextures array if new textures added.
+	
+	'dirt':     {path:'images/dirt2.jpg', scale:1, offsetX: 0},
+	'water':    {path:'images/water.jpg', scale:1, offsetX: 0},
+	
+	'dead':     {path:'images/orig-scaled/128x128/dead.png', scale:2, offsetX: 0},
+	'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: -2, offsetY: -2},
+	'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: -2, offsetY: -2},
+	'rock2':    {path:'images/orig-scaled/128x128/rock2c.png', scale:1.8, offsetX: 0, offsetY: -3},
+	
+	'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1.6, offsetX: 0},
+	'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
+	
+	
+
+	'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
+	'castle2':  {path:'images/'+pathPrefix+'/castle2.png', scale: unitScales[1], offsetX: unitOffsets[1].x, offsetY: unitOffsets[1].y},
+	'castle3':  {path:'images/'+pathPrefix+'/castle3.png', scale: unitScales[2], offsetX: unitOffsets[2].x, offsetY: unitOffsets[2].y},
+	
+	'soldier1': {path:'images/'+pathPrefix+'/soldier1.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
+	'soldier2': {path:'images/'+pathPrefix+'/soldier2.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
+	'soldier3': {path:'images/'+pathPrefix+'/soldier3.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
+	'soldier4': {path:'images/'+pathPrefix+'/soldier4.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
+	
+	'soldier1-b': {path:'images/'+pathPrefix+'/soldier1-b.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
+	'soldier2-b': {path:'images/'+pathPrefix+'/soldier2-b.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
+	'soldier3-b': {path:'images/'+pathPrefix+'/soldier3-b.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
+	'soldier4-b': {path:'images/'+pathPrefix+'/soldier4-b.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
+
+	//'castle1':  {path:'images/orig-scaled/128x128/castle1.png', scale:1.8, offsetX: 0},
+	//'castle2':  {path:'images/orig-scaled/128x128/castle2.png', scale:1.8, offsetX: 0},
+	//'castle3':  {path:'images/orig-scaled/128x128/castle3.png', scale:1.8, offsetX: 0},
+	//'soldier1': {path:'images/orig-scaled/128x128/soldier1.png', scale:1.8, offsetX: 0},
+	//'soldier2': {path:'images/orig-scaled/128x128/soldier2.png', scale:1.8, offsetX: 0},
+	//'soldier3': {path:'images/orig-scaled/128x128/soldier3.png', scale:1.8, offsetX: 0},
+	//'soldier4': {path:'images/orig-scaled/128x128/soldier4.png', scale:1.8, offsetX: 0, offsetY: 3},
+};
+if(use_fill){
+	imageAssets['dirt'] = {path:'images/dirt3.png', scale:1, offsetX: 0, isPattern: true};
 }
 
 
@@ -3579,15 +3679,15 @@ function createHexagonMaskedImage(sourceImage, hexSize, textureScale = 1.0, canv
 
 // draws ">" triangle where the pointy right side is the x y coordinate.
 function drawRightTriangle(ctx, x, y, height, width) {
-	const halfHeight = height / 2;
+	const hh = height / 2;
 
 	ctx.beginPath();
 	
-	ctx.moveTo(x-width, y-halfHeight);                 // Top-left
-	ctx.lineTo(x-width, y-halfHeight + height);        // Bottom-left
-	ctx.moveTo(x-width, y-halfHeight);                 // Back to top-left
+	ctx.moveTo(x-width, y-hh);                 // Top-left
+	ctx.lineTo(x-width, y-hh + height);        // Bottom-left
+	ctx.moveTo(x-width, y-hh);                 // Back to top-left
 	ctx.lineTo(x, y);  // Top to center-right
-	ctx.moveTo(x-width, y-halfHeight + height);        // Bottom-left
+	ctx.moveTo(x-width, y-hh + height);        // Bottom-left
 	ctx.lineTo(x, y);  // Bottom to center-right
 
 	ctx.strokeStyle = 'yellow';
@@ -3769,6 +3869,7 @@ async function loadImages() {
 		img.src = obj.path;
 		imageCache[key] = img;
 
+		// dont process ui images, just preload them.
 		if (!obj.isUi) {
 			const promise = new Promise((resolve, reject) => {
 				img.onload = async () => {
@@ -4141,10 +4242,28 @@ const toggleUiBtn = document.getElementById('toggle-ui-btn');
 const quitGameBtn = document.getElementById('quit-game-btn');
 
 
+const settingsBtn = document.getElementById('settings-btn');
+const closeSettingsBtn = document.getElementById('close-settings-btn');
+const settingsUi = document.getElementById('settings-ui');
+
+
 const gameSettingsBtn = document.getElementById('game-settings-btn');
+const closeGameSettingsBtn = document.getElementById('close-game-settings-btn');
 const gameSettingsUi = document.getElementById('game-settings-ui');
 
-const closeGameSettingsBtn = document.getElementById('close-game-settings-btn');
+const lobbyGameSettingsBtn = document.getElementById('lobby-game-settings-btn');
+
+gameSettingsBtn.addEventListener("click", () => {
+	gameSettingsUi.style.display = "flex";
+});
+lobbyGameSettingsBtn.addEventListener("click", () => {
+	gameSettingsUi.style.display = "flex";
+});
+
+closeGameSettingsBtn.addEventListener("click", () => {
+	gameSettingsUi.style.display = "none";
+});
+
 
 
 
@@ -4526,21 +4645,13 @@ function broadcast(data) {
 
 
 
-function toggleGameSettings(){
-	console.log("toggleGameSettings");
-	if(gameSettingsUi.style.display === 'flex'){
-		gameSettingsUi.style.opacity = '1';
-		gameSettingsUi.style.display = 'none';
-		console.log("toggleGameSettings none");
-		
-		
-		gameSettingsBtn.classList.remove('active');
+function toggleSettings(){
+	if(settingsUi.style.display === 'flex'){
+		settingsUi.style.opacity = '1';
+		settingsUi.style.display = 'none';
 	}else{
-		gameSettingsUi.style.opacity = '1';
-		gameSettingsUi.style.display = 'flex';
-		console.log("toggleGameSettings flex");
-		
-		gameSettingsBtn.classList.add('active');
+		settingsUi.style.opacity = '1';
+		settingsUi.style.display = 'flex';
 	}
 }
 
@@ -5194,22 +5305,32 @@ function drawWaterShading(px, py, drawLines, color = "rgba(0,0,0, 0.6)"){
 
 
 
-function drawHexagonPathLines(px, py, drawLines = null, multi = 1) {
+function drawHexagonPathLines(px, py, drawLines = null, scale = 1) {
 	if(drawLines){
 		if(drawLines.length > 0){
 			ctx.beginPath();
 			for(let i = 0; i < drawLines.length; i++){
 				let ival = drawLines[i]; // convert getHexNeighbors indexes to i multiplier value for calculations of angles.
-				drawHexLine(ival, px, py, multi);
+				drawHexLine(ival, px, py, scale);
 			}
-			//ctx.closePath(); // only needed for drawing filled hex.
+			//ctx.closePath(); // only needed for drawing filled/complete hex.
 		}
 	}else{
+		const r = HEX_SIZE * scale;
+		
+		// draw all lines in one go:
 		ctx.beginPath();
-		for (let ival = 0; ival < 6; ival++) {
-			drawHexLine(ival, px, py, multi);
+		ctx.moveTo(
+			px + r * HEX_CORNERS[0].x, 
+			py + r * HEX_CORNERS[0].y
+		);
+		for (let ival = 1; ival < 6; ival++) {
+			ctx.lineTo(
+				px + r * HEX_CORNERS[ival].x, 
+				py + r * HEX_CORNERS[ival].y
+			);
 		}
-		//ctx.closePath(); // only needed for drawing filled hex.
+		ctx.closePath(); // complete the hex.
 	}
 }
 
@@ -7078,6 +7199,10 @@ function drawLastActionHexes(){
 	let alphaTime = 2500*lastActionMulti; // fade out start time
 	let alphaLen = 1000*lastActionMulti; // fade out length
 	
+
+	ctx.lineCap = 'round';
+	ctx.setLineDash([12.5, 15]);
+			
 	for(let i = lastActionHexes.length-1; i >= 0; i--) {
 		let hex = lastActionHexes[i];
 		let unitId = hex.id;
@@ -7106,31 +7231,44 @@ function drawLastActionHexes(){
 			if(timeDiff > alphaTime){
 				alpha = 1-((timeDiff-alphaTime)/alphaLen);
 			}
-			
+			if(alpha < 0) alpha = 0;
+
 			ctx.globalAlpha = alpha;
 			
-			if(dashed){
-				drawHexagonPathLines(0, 0, null, scale);
-				ctx.setLineDash([12.5, 15]);
-				ctx.strokeStyle = hex.color;//'rgba(255,255,0, 1)';
-				ctx.lineWidth = 5;
-			}else{
-				drawHexagonPathLines(0, 0, null, scale);
-				ctx.strokeStyle = hex.color;//'rgba(255,255,255, 1)';
-				ctx.lineWidth = 5;
+
+			drawHexagonPathLines(0, 0, null, scale);
+			
+			/*
+			ctx.beginPath();
+			let px = 0;
+			let py = 0;
+			let r = HEX_SIZE * scale;
+			ctx.moveTo(
+				px + r * HEX_CORNERS[0].x, 
+				py + r * HEX_CORNERS[0].y
+			);
+			for (let ival = 1; ival < 6; ival++) {
+				ctx.lineTo(
+					px + r * HEX_CORNERS[ival].x, 
+					py + r * HEX_CORNERS[ival].y
+				);
 			}
+			ctx.closePath();
+			*/
 			
-			ctx.lineCap = 'round';
+			ctx.strokeStyle = hex.color;//'rgba(255,255,0, 1)';
+			ctx.lineWidth = 5;
 			ctx.stroke();
-			ctx.lineCap = 'butt'; // reset to default
-			ctx.setLineDash([]); // reset possible dash.
-			
+	
 			ctx.restore(); // Restore original state
 		}else{
 			// remove when dead:
 			lastActionHexes.splice(i, 1);
 		}
 	}
+	
+	ctx.lineCap = 'butt'; // reset to default
+	ctx.setLineDash([]); // reset possible dash.
 }
 
 
@@ -14719,12 +14857,16 @@ window.addEventListener('DOMContentLoaded', async () => {
 	musicPlayBtn.tabIndex = -1; //remove it from the tab order
 
 	musicNextBtn.onclick = () => {
+		musicPauseBtn.style.display = "block";
+		musicPlayBtn.style.display = "none";
 		playNextTrack();
 	};
 	musicNextBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	musicNextBtn.tabIndex = -1; //remove it from the tab order
 	
 	musicPreviousBtn.onclick = () => {
+		musicPauseBtn.style.display = "block";
+		musicPlayBtn.style.display = "none";
 		playPreviousTrack();
 	};
 	musicPreviousBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
@@ -14732,25 +14874,25 @@ window.addEventListener('DOMContentLoaded', async () => {
 	
 
 	
-	closeGameSettingsBtn.onclick = () => {
-		toggleGameSettings();
+	closeSettingsBtn.onclick = () => {
+		toggleSettings();
 	};
-	closeGameSettingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
-	closeGameSettingsBtn.tabIndex = -1; //remove it from the tab order
+	closeSettingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	closeSettingsBtn.tabIndex = -1; //remove it from the tab order
 	
 	
 	
-	gameSettingsBtn.onclick = () => {
-		toggleGameSettings();
+	settingsBtn.onclick = () => {
+		toggleSettings();
 	};
-	gameSettingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
-	gameSettingsBtn.tabIndex = -1; //remove it from the tab order
+	settingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	settingsBtn.tabIndex = -1; //remove it from the tab order
 	
 	
 	toggleUiBtn.onclick = () => {
 		toggleUiTopLeft();
-		if(gameSettingsUi.style.display === 'flex'){
-			toggleGameSettings();
+		if(settingsUi.style.display === 'flex'){
+			toggleSettings();
 		}
 	};
 	toggleUiBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
