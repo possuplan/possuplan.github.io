@@ -987,6 +987,9 @@ button.redbutton:hover {
 #music-volume {
 	width: 100%;
 }
+#music-volume2 {
+	width: 100%;
+}
 #music-volume-wrapper {
 	padding:5px 12px 5px 10px;
 }
@@ -995,6 +998,21 @@ button.redbutton:hover {
     padding-bottom: 10px;
     line-height: 30px;
 	font-size:36px;
+}
+
+#close-game-settings-btn {
+    padding-bottom: 10px;
+    line-height: 30px;
+	font-size:36px;
+}
+
+.settings-panel {
+	width: 100%;
+	max-width: 400px;
+	border: 1px solid #454545;
+	border-radius: 8px;
+	padding: 10px;
+	background-color: black;
 }
 
 
@@ -1109,18 +1127,21 @@ input.disabled {
 	background-image: url('images/ui/settings-icon.png');
 }
 
-#music-previous-btn {
+.music-previous-btn {
 	background-image: url('images/ui/music-previous.png');
 }
-#music-next-btn {
+.music-next-btn {
 	background-image: url('images/ui/music-next.png');
 }
-#music-play-btn {
+.music-play-btn {
 	background-image: url('images/ui/music-play.png');
 }
-#music-pause-btn {
+.music-pause-btn {
 	background-image: url('images/ui/music-pause.png');
 }
+
+
+
 
 
 
@@ -1314,10 +1335,10 @@ input.disabled {
 
 <div id="game-settings-ui">
 	<div id="game-settings-ui-wrapper">
-		<div id="ui-menu" class="ui-panel">
+		<div id="ui-menu" class="ui-panel settings-panel">
 			<div class="input-group">
-				<div style="flex: 1;">
-					
+				<div style="flex: 5; padding: 10px 0 10px 0; font-size: 20px;">
+					Settings
 				</div>
 				<div style="flex: 1;">
 					<button id="close-game-settings-btn" class="gamebutton largefont">×</button>
@@ -1326,18 +1347,18 @@ input.disabled {
 			Music:
 			<div class="input-group">
 				<div style="flex: 1;">
-					<button id="music-previous-btn" class="gamebutton"></button>
+					<button id="music-previous-btn2" class="music-previous-btn gamebutton"></button>
 				</div>
 				<div style="flex: 1;">
-					<button id="music-pause-btn" class="gamebutton"></button>
-					<button id="music-play-btn" class="gamebutton" style="display:none"></button>
+					<button id="music-pause-btn2" class="music-pause-btn gamebutton" style="display:none"></button>
+					<button id="music-play-btn2" class="music-play-btn gamebutton"></button>
 				</div>
 				<div style="flex: 1;">
-					<button id="music-next-btn" class="gamebutton"></button>
+					<button id="music-next-btn2" class="music-next-btn gamebutton"></button>
 				</div>
 			</div>
 			<div id="music-volume-wrapper">
-				<input type="range" id="music-volume" min="0" max="200" value="1">
+				<input type="range" id="music-volume2" min="0" max="200" value="1">
 			</div>
 		</div>
 	</div>
@@ -1610,14 +1631,14 @@ input.disabled {
 			Music:
 			<div class="input-group">
 				<div style="flex: 1;">
-					<button id="music-previous-btn" class="gamebutton"></button>
+					<button id="music-previous-btn" class="music-previous-btn gamebutton"></button>
 				</div>
 				<div style="flex: 1;">
-					<button id="music-pause-btn" class="gamebutton"></button>
-					<button id="music-play-btn" class="gamebutton" style="display:none"></button>
+					<button id="music-pause-btn" class="music-pause-btn gamebutton"></button>
+					<button id="music-play-btn" class="music-play-btn gamebutton" style="display:none"></button>
 				</div>
 				<div style="flex: 1;">
-					<button id="music-next-btn" class="gamebutton"></button>
+					<button id="music-next-btn" class="music-next-btn gamebutton"></button>
 				</div>
 			</div>
 			<div id="music-volume-wrapper">
@@ -2600,6 +2621,7 @@ const musicPlaylist = [
 ];
 
 let musicVolumeInput = document.getElementById('music-volume');
+let musicVolumeInput2 = document.getElementById('music-volume2');
 
 let currentTrackIndex = random(0, musicPlaylist.length-1);
 let audio = null;
@@ -2607,6 +2629,12 @@ let isPaused = true;
 let defaultMusicVolume = 0.04;
 let maxMusicVolumeInputValue = 200; // volume input max value.
 let musicVolumePower = 2.5; // power curve
+
+let currentMusicVolume = defaultMusicVolume;
+
+musicVolumeInput.value = volumeToSlider(defaultMusicVolume, musicVolumeInput);
+musicVolumeInput2.value = volumeToSlider(defaultMusicVolume, musicVolumeInput2);
+
 
 function volumeToSlider(volume, slider) {
 	const min = Number(slider.min) || 0;
@@ -2626,10 +2654,18 @@ function sliderToVolume(slider) {
 	return Math.pow(normalized, musicVolumePower);
 }
 
-const musicVolumeSlider = document.getElementById('music-volume');
-musicVolumeSlider.addEventListener('input', e => {
+
+musicVolumeInput.addEventListener('input', e => {
 	let adjustedValue = sliderToVolume(e.target);
 	setMusicVolume(adjustedValue);
+	
+	musicVolumeInput2.value = e.target.value;
+});
+musicVolumeInput2.addEventListener('input', e => {
+	let adjustedValue = sliderToVolume(e.target);
+	setMusicVolume(adjustedValue);
+	
+	musicVolumeInput.value = e.target.value;
 });
 
 
@@ -2638,10 +2674,11 @@ function playMusic() {
 	
 	if (!audio) {
 		audio = new Audio(musicPlaylist[currentTrackIndex]);
-		audio.volume = defaultMusicVolume;
+		audio.volume = currentMusicVolume;
 		audio.preload = 'auto';
 		
 		musicVolumeInput.value = volumeToSlider(audio.volume, musicVolumeInput);
+		musicVolumeInput2.value = volumeToSlider(audio.volume, musicVolumeInput2);
 		
 		audio.addEventListener('ended', playNextTrack);
 	}
@@ -2654,7 +2691,9 @@ function playMusic() {
 
 function playNextTrack() {
 	if (musicPlaylist.length === 0) return;
-	
+	if(!audio){
+		playMusic();
+	}
 	currentTrackIndex = (currentTrackIndex + 1) % musicPlaylist.length;
 
 	audio.src = musicPlaylist[currentTrackIndex];
@@ -2665,6 +2704,9 @@ function playNextTrack() {
 
 function playPreviousTrack() {
 	if (musicPlaylist.length === 0) return;
+	if(!audio){
+		playMusic();
+	}
 	
 	currentTrackIndex = (currentTrackIndex - 1 + musicPlaylist.length) % musicPlaylist.length;
 
@@ -2706,8 +2748,9 @@ function randomTrack() {
 }
 
 function setMusicVolume(value) {
+	currentMusicVolume = Math.max(0, Math.min(1, value));
 	if (audio) {
-		audio.volume = Math.max(0, Math.min(1, value));
+		audio.volume = currentMusicVolume;
 	}
 }
 
@@ -4271,6 +4314,11 @@ const musicPauseBtn = document.getElementById('music-pause-btn');
 const musicPlayBtn = document.getElementById('music-play-btn');
 const musicNextBtn = document.getElementById('music-next-btn');
 const musicPreviousBtn = document.getElementById('music-previous-btn');
+
+const musicPauseBtn2 = document.getElementById('music-pause-btn2');
+const musicPlayBtn2 = document.getElementById('music-play-btn2');
+const musicNextBtn2 = document.getElementById('music-next-btn2');
+const musicPreviousBtn2 = document.getElementById('music-previous-btn2');
 
 
 
@@ -14701,6 +14749,37 @@ function rotateAroundScreenCenter(theta) {
 }
 
 
+
+function pauseMusicClick(){
+	musicPauseBtn.style.display = "none";
+	musicPlayBtn.style.display = "block";
+	musicPauseBtn2.style.display = "none";
+	musicPlayBtn2.style.display = "block";
+	pauseMusic();
+}
+function playMusicClick(){
+	musicPauseBtn.style.display = "block";
+	musicPlayBtn.style.display = "none";
+	musicPauseBtn2.style.display = "block";
+	musicPlayBtn2.style.display = "none";
+	playMusic();
+}
+function nextMusicClick(){
+	musicPauseBtn.style.display = "block";
+	musicPlayBtn.style.display = "none";
+	musicPauseBtn2.style.display = "block";
+	musicPlayBtn2.style.display = "none";
+	playNextTrack();
+}
+function prevMusicClick(){
+	musicPauseBtn.style.display = "block";
+	musicPlayBtn.style.display = "none";
+	musicPauseBtn2.style.display = "block";
+	musicPlayBtn2.style.display = "none";
+	playPreviousTrack();
+}
+
+
 // =================================================================
 // --- EVENT LISTENERS
 // =================================================================
@@ -14840,39 +14919,41 @@ window.addEventListener('DOMContentLoaded', async () => {
 	quitGameBtn.tabIndex = -1; //remove it from the tab order
 	
 	
-	musicPauseBtn.onclick = () => {
-		musicPauseBtn.style.display = "none";
-		musicPlayBtn.style.display = "block";
-		pauseMusic();
-	};
+	
+	musicPauseBtn.onclick = () => {pauseMusicClick();};
 	musicPauseBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	musicPauseBtn.tabIndex = -1; //remove it from the tab order
 	
-	musicPlayBtn.onclick = () => {
-		musicPauseBtn.style.display = "block";
-		musicPlayBtn.style.display = "none";
-		playMusic();
-	};
+	musicPlayBtn.onclick = () => {playMusicClick();};
 	musicPlayBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	musicPlayBtn.tabIndex = -1; //remove it from the tab order
 
-	musicNextBtn.onclick = () => {
-		musicPauseBtn.style.display = "block";
-		musicPlayBtn.style.display = "none";
-		playNextTrack();
-	};
+	musicNextBtn.onclick = () => {nextMusicClick();};
 	musicNextBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	musicNextBtn.tabIndex = -1; //remove it from the tab order
 	
-	musicPreviousBtn.onclick = () => {
-		musicPauseBtn.style.display = "block";
-		musicPlayBtn.style.display = "none";
-		playPreviousTrack();
-	};
+	musicPreviousBtn.onclick = () => {prevMusicClick();};
 	musicPreviousBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	musicPreviousBtn.tabIndex = -1; //remove it from the tab order
 	
 
+	musicPauseBtn2.onclick = () => {pauseMusicClick();};
+	musicPauseBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicPauseBtn2.tabIndex = -1; //remove it from the tab order
+	
+	musicPlayBtn2.onclick = () => {playMusicClick();};
+	musicPlayBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicPlayBtn2.tabIndex = -1; //remove it from the tab order
+
+	musicNextBtn2.onclick = () => {nextMusicClick();};
+	musicNextBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicNextBtn2.tabIndex = -1; //remove it from the tab order
+	
+	musicPreviousBtn2.onclick = () => {prevMusicClick();};
+	musicPreviousBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicPreviousBtn2.tabIndex = -1; //remove it from the tab order
+	
+	
 	
 	closeSettingsBtn.onclick = () => {
 		toggleSettings();
