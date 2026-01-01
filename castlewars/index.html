@@ -167,6 +167,10 @@ input[disabled], select[disabled] {
 	filter: brightness(0.5);
 }
 
+input[type="range"] {
+	width:100%;
+}
+
 
 button {
 	width: 100%;
@@ -287,6 +291,13 @@ label {
 
 .input-group-slim > div {
 	flex: 1;
+}
+
+.settings-title {
+	margin-bottom:5px;
+}
+.settings-title-nopad {
+	margin-bottom:0;
 }
 
 .player-list {
@@ -1337,14 +1348,16 @@ input.disabled {
 	<div id="game-settings-ui-wrapper">
 		<div id="ui-menu" class="ui-panel settings-panel">
 			<div class="input-group">
-				<div style="flex: 5; padding: 10px 0 10px 0; font-size: 20px;">
+				<div style="flex: 5; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
 					Settings
 				</div>
 				<div style="flex: 1;">
 					<button id="close-game-settings-btn" class="gamebutton largefont">×</button>
 				</div>
 			</div>
-			Music:
+			<div class="settings-title">
+				Music player:
+			</div>
 			<div class="input-group">
 				<div style="flex: 1;">
 					<button id="music-previous-btn2" class="music-previous-btn gamebutton"></button>
@@ -1360,6 +1373,44 @@ input.disabled {
 			<div id="music-volume-wrapper">
 				<input type="range" id="music-volume2" min="0" max="200" value="1">
 			</div>
+			<br>
+			<div>
+				<div class="settings-title">
+					Game end rule:
+				</div>
+				<div class="input-group">
+					<select id="game-end-rule">
+						<option value="0">Lose all warriors & Cannot buy anything</option>
+						<option value="1">Lose all warriors</option>
+					</select>
+				</div>
+			</div>
+			<br>
+			<div>
+				<div class="settings-title-nopad">
+					Trees chance per tile:
+				</div>
+				<div class="input-group" style="align-items:center">
+					<div style="flex: 4;">
+						<input type="range" id="tree-percent" min="0" max="100" value="15">
+					</div>
+					<div style="flex: 1;">
+						<input type="text" id="tree-percent-text" style="margin:0" disabled>
+					</div>
+				</div>
+				<div class="settings-title-nopad">
+					Rocks chance per tile:
+				</div>
+				<div class="input-group" style="align-items:center">
+					<div style="flex: 4;">
+						<input type="range" id="rock-percent" min="0" max="100" value="15">
+					</div>
+					<div style="flex: 1;">
+						<input type="text" id="rock-percent-text" style="margin:0" disabled>
+					</div>
+				</div>
+			</div>
+
 		</div>
 	</div>
 </div>
@@ -1374,14 +1425,14 @@ input.disabled {
 <div id="start-page" class="page active">
 	<div class="container">
 		<h1>Castle Wars</h1>
-		<label for="player-name">Player Name</label>
+		<label for="player-name">Your Name:</label>
 		
 		<div class="input-group">
 			<input type="text" id="player-name" value="" style="flex: 3">
 			<button id="random-name-btn" style="flex: 1">Random</button>
 		</div>
 		
-		<label for="game-name-input">Game Room Name</label>
+		<label for="game-name-input">Game Room Name:</label>
 		<input type="text" id="game-name-input" value="default-room">
 		<div class="input-group" style="display: flex; gap: 10px; align-items: center;">
 			<label for="server-name-input">Server:</label>
@@ -1409,7 +1460,7 @@ input.disabled {
 	<div class="container">
 		<h2 id="host-room-name-title">Hosting: default-room</h2>
 		
-		<label for="host-room-player-name">Your Name</label>
+		<label for="host-room-player-name">Your Name:</label>
 		<div class="input-group">
 			<input type="text" id="host-room-player-name" value="" style="flex: 3">
 			<button id="spectate-host-btn" class="toggle-btn" style="flex: 1">Spectate</button>
@@ -1478,7 +1529,7 @@ input.disabled {
 			<div>
 				<div class="input-group" style="flex-direction: row !important;">
 					<div id="lobby-chat-messages" class="lobby-chat-messages"></div>
-					<input type="text" inputmode="text" id="lobby-chat-input" class="lobby-chat-input" maxlength="200" placeholder="Type message...">
+					<input type="text" inputmode="text" id="lobby-chat-input" class="lobby-chat-input" maxlength="200" placeholder="Type message">
 				</div>
 			</div>
 		</div>
@@ -1486,18 +1537,24 @@ input.disabled {
 
 		<div class="input-group">
 			<div style="width:110px; flex:0 0 auto;">
-				<span class="label">Loaded map</span>
+				<span class="label">Loaded map:</span>
 				<img id="loaded-map" src="" width="100" height="100">
 			</div>
 			
 			<div>
 				<div class="input-group" style="flex-direction: row !important;">
-					<label for="map-scale">Map scale</label>
-					<input type="number" id="map-scale" value="1" min="1" max="4">
+					<label for="map-scale">Map scale:</label>
+					<!-- <input type="number" id="map-scale" value="1" min="1" max="4"> -->
+					<select id="map-scale">
+						<option value="1">1x</option>
+						<option value="2">2x</option>
+						<option value="3">3x</option>
+						<option value="4">4x</option>
+					</select>
 					<button id="game-settings-btn" class="lobbybutton" title="More Settings"></button>
 				</div>
 				<div class="input-group" style="flex-direction: row !important;">
-					<label for="start-player-list">Start player</label>
+					<label for="start-player-list">Start player:</label>
 					<select id="start-player-list">
 					</select>
 				</div>
@@ -1528,7 +1585,7 @@ input.disabled {
 		<h2 id="lobby-room-name-title">Joined: </h2>
 		
 
-		<label for="lobby-player-name">Your Name</label>
+		<label for="lobby-player-name">Your Name:</label>
 		<input type="text" id="lobby-player-name" value="">
 		
 		<div class="input-group">
@@ -1563,7 +1620,7 @@ input.disabled {
 				
 			</div>
 			<div style="flex:1">
-				<span class="label">Joined Players</span>
+				<span class="label">Joined Players:</span>
 				<div id="lobby-player-list" class="lobby-player-list"></div>
 			</div>
 		</div>
@@ -1577,25 +1634,31 @@ input.disabled {
 			<div>
 				<div class="input-group" style="flex-direction: row !important;">
 					<div id="client-lobby-chat-messages" class="lobby-chat-messages"></div>
-					<input type="text" inputmode="text" id="client-lobby-chat-input" class="lobby-chat-input" maxlength="200" placeholder="Type message...">
+					<input type="text" inputmode="text" id="client-lobby-chat-input" class="lobby-chat-input" maxlength="200" placeholder="Type message">
 				</div>
 			</div>
 		</div>
 		
 		<div class="input-group">
 			<div style="width:110px; flex:0 0 auto;">
-				<span class="label">Loaded map</span>
+				<span class="label">Loaded map:</span>
 				<img id="lobby-loaded-map" src="" width="100" height="100">
 			</div>
 			
 			<div>
 				<div class="input-group" style="flex-direction: row !important;">
-					<label for="lobby-map-scale">Map scale</label>
-					<input type="number" id="lobby-map-scale" class="disabled" value="1" max="4" disabled>
+					<label for="lobby-map-scale">Map scale:</label>
+					<!-- <input type="number" id="lobby-map-scale" class="disabled" value="1" max="4" disabled> -->
+					<select id="lobby-map-scale" disabled>
+						<option value="1">1x</option>
+						<option value="2">2x</option>
+						<option value="3">3x</option>
+						<option value="4">4x</option>
+					</select>
 					<button id="lobby-game-settings-btn" class="lobbybutton" title="More Settings"></button>
 				</div>
 				<div class="input-group" style="flex-direction: row !important;">
-					<label for="lobby-start-player-list">Start player</label>
+					<label for="lobby-start-player-list">Start player:</label>
 					<select id="lobby-start-player-list" disabled>
 					</select>
 				</div>
@@ -2610,6 +2673,7 @@ function playSound(key) {
 */
 
 
+
 const musicPlaylist = [
 	'music/game_test1_ver1.mp3',
 	'music/game_test3_ver1.mp3',
@@ -3425,6 +3489,9 @@ let gameState = {
 		startingMoney: 1000, // default 0 actually. for testing 1000.
 		roomName: 'default-room',
 		startPlayerId: -1, // -1 = random starting player.
+		treePercent: 0.15,
+		rockPercent: 0.05,
+		gameEndRule: 0,
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
 
@@ -3476,6 +3543,47 @@ function resetGameState(){
 	localPlayer.isDead = false;
 	localPlayer.isAI = false;
 }
+
+
+let gameEndRuleList = document.getElementById('game-end-rule');
+gameEndRuleList.value = gameState.settings.gameEndRule;
+	
+gameEndRuleList.addEventListener('change', e => {
+	gameState.settings.gameEndRule = e.target.value;
+	broadcastLobbyState();
+});
+
+
+let treePercentSlider = document.getElementById('tree-percent');
+let rockPercentSlider = document.getElementById('rock-percent');
+
+let treePercentText = document.getElementById('tree-percent-text');
+let rockPercentText = document.getElementById('rock-percent-text');
+
+// disable by default: hosting game will enable them.
+treePercentSlider.disabled = true;
+rockPercentSlider.disabled = true;
+
+treePercentSlider.value = Math.round(gameState.settings.treePercent*100);
+rockPercentSlider.value = Math.round(gameState.settings.rockPercent*100);
+treePercentText.value = treePercentSlider.value+"%";
+rockPercentText.value = rockPercentSlider.value+"%";
+
+treePercentSlider.addEventListener('input', e => {
+	treePercentText.value = e.target.value+"%";
+	
+	gameState.settings.treePercent = e.target.value/100;
+	
+	broadcastLobbyState();
+});
+rockPercentSlider.addEventListener('input', e => {
+	rockPercentText.value = e.target.value+"%";
+	
+	gameState.settings.rockPercent = e.target.value/100;
+	
+	broadcastLobbyState();
+});
+
 
 
 // --- CLIENT-SIDE STATE (not synced) ---
@@ -4303,8 +4411,11 @@ lobbyGameSettingsBtn.addEventListener("click", () => {
 	gameSettingsUi.style.display = "flex";
 });
 
-closeGameSettingsBtn.addEventListener("click", () => {
+function closeGameSettings(){
 	gameSettingsUi.style.display = "none";
+}
+closeGameSettingsBtn.addEventListener("click", () => {
+	closeGameSettings();
 });
 
 
@@ -11309,6 +11420,8 @@ function handleHostData(data) {
 			
 			GAME_START_TIME = msNowFloor();
 			
+			closeGameSettings();
+			
 			markDirty();
 			gameState = data.state;
 			
@@ -11381,6 +11494,14 @@ function handleHostData(data) {
 
 			gameState.map = data.map;
 			lobbyLoadedMapImg.src = data.map.imageData;
+			
+			treePercentSlider.value = Math.round(gameState.settings.treePercent*100);
+			rockPercentSlider.value = Math.round(gameState.settings.rockPercent*100);
+			treePercentText.value = treePercentSlider.value+"%";
+			rockPercentText.value = rockPercentSlider.value+"%";
+			
+			gameEndRuleList.value = gameState.settings.gameEndRule;
+			
 			updateLobbyUI();
 		}
 		break;
@@ -12095,6 +12216,9 @@ function hostGame() {
 			gameNameInput.value = gameName; 
 			hostRoomPlayerNameInput.value = localPlayer.name;
 			hostRoomNameTitle.textContent = `Hosting: ${gameName}`;
+			
+			treePercentSlider.disabled = false;
+			rockPercentSlider.disabled = false;
 			
 			// Reset player list and add host
 			gameState.players = []; 
@@ -13714,7 +13838,7 @@ function spawnRocks(){
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		let tile = gameState.map.tilesData[t];
 		// if land, no object yet, no owner:
-		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < 0.05 ){
+		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < gameState.settings.rockPercent ){
 			tile.object = "rock2";
 		}
 	}
@@ -13731,7 +13855,7 @@ function spawnTrees(test1 = 1){
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		let tile = gameState.map.tilesData[t];
 		// if land, no object yet, no owner:
-		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < 0.15 ){
+		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < gameState.settings.treePercent ){
 			tile.object = "tree";
 		}
 	}
