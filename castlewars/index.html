@@ -1355,6 +1355,8 @@ input.disabled {
 					<button id="close-game-settings-btn" class="gamebutton largefont">×</button>
 				</div>
 			</div>
+			
+			
 			<div class="settings-title">
 				Music player:
 			</div>
@@ -1373,18 +1375,33 @@ input.disabled {
 			<div id="music-volume-wrapper">
 				<input type="range" id="music-volume2" min="0" max="200" value="1">
 			</div>
+			
+			
+			<br>
+			<div>
+				<div class="settings-title">
+					Start money per hex:
+				</div>
+				<div class="input-group">
+					<input type="number" id="start-money-per-hex" step="any" disabled>
+				</div>
+			</div>
+			
+			
 			<br>
 			<div>
 				<div class="settings-title">
 					Game end rule:
 				</div>
 				<div class="input-group">
-					<select id="game-end-rule">
+					<select id="game-end-rule" disabled>
 						<option value="0">Lose all warriors & Cannot buy anything</option>
 						<option value="1">Lose all warriors</option>
 					</select>
 				</div>
 			</div>
+			
+			
 			<br>
 			<div>
 				<div class="settings-title-nopad">
@@ -1392,7 +1409,7 @@ input.disabled {
 				</div>
 				<div class="input-group" style="align-items:center">
 					<div style="flex: 4;">
-						<input type="range" id="tree-percent" min="0" max="100" value="15">
+						<input type="range" id="tree-percent" min="0" max="100" value="15" disabled>
 					</div>
 					<div style="flex: 1;">
 						<input type="text" id="tree-percent-text" style="margin:0" disabled>
@@ -1403,7 +1420,7 @@ input.disabled {
 				</div>
 				<div class="input-group" style="align-items:center">
 					<div style="flex: 4;">
-						<input type="range" id="rock-percent" min="0" max="100" value="15">
+						<input type="range" id="rock-percent" min="0" max="100" value="15" disabled>
 					</div>
 					<div style="flex: 1;">
 						<input type="text" id="rock-percent-text" style="margin:0" disabled>
@@ -3492,6 +3509,7 @@ let gameState = {
 		treePercent: 0.15,
 		rockPercent: 0.05,
 		gameEndRule: 0,
+		startMoneyPerHex: 0,
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
 
@@ -3545,11 +3563,20 @@ function resetGameState(){
 }
 
 
+let startMoneyPerHexInput = document.getElementById('start-money-per-hex');
+startMoneyPerHexInput.value = gameState.settings.startMoneyPerHex;
+
+startMoneyPerHexInput.addEventListener('change', e => {
+	gameState.settings.startMoneyPerHex = Number(e.target.value);
+	broadcastLobbyState();
+});
+
+
 let gameEndRuleList = document.getElementById('game-end-rule');
 gameEndRuleList.value = gameState.settings.gameEndRule;
 	
 gameEndRuleList.addEventListener('change', e => {
-	gameState.settings.gameEndRule = e.target.value;
+	gameState.settings.gameEndRule = Number(e.target.value);
 	broadcastLobbyState();
 });
 
@@ -3560,26 +3587,23 @@ let rockPercentSlider = document.getElementById('rock-percent');
 let treePercentText = document.getElementById('tree-percent-text');
 let rockPercentText = document.getElementById('rock-percent-text');
 
-// disable by default: hosting game will enable them.
-treePercentSlider.disabled = true;
-rockPercentSlider.disabled = true;
 
 treePercentSlider.value = Math.round(gameState.settings.treePercent*100);
 rockPercentSlider.value = Math.round(gameState.settings.rockPercent*100);
 treePercentText.value = treePercentSlider.value+"%";
 rockPercentText.value = rockPercentSlider.value+"%";
 
-treePercentSlider.addEventListener('input', e => {
+treePercentSlider.addEventListener('change', e => {
 	treePercentText.value = e.target.value+"%";
 	
-	gameState.settings.treePercent = e.target.value/100;
+	gameState.settings.treePercent = Number(e.target.value)/100;
 	
 	broadcastLobbyState();
 });
-rockPercentSlider.addEventListener('input', e => {
+rockPercentSlider.addEventListener('change', e => {
 	rockPercentText.value = e.target.value+"%";
 	
-	gameState.settings.rockPercent = e.target.value/100;
+	gameState.settings.rockPercent = Number(e.target.value)/100;
 	
 	broadcastLobbyState();
 });
@@ -11427,10 +11451,7 @@ function handleHostData(data) {
 			
 			// update localPlayer index (only valid after game starts, since players could be kicked before start):
 			localPlayer.playerIndex = getPlayerIndex(localPlayer.id);
-			// update all players indexes, might be messed up after kicking players before start:
-			for(let i = 0; i < gameState.players.length; i++){
-				gameState.players[i].playerIndex = i;
-			}
+
 			
 			// save initial gameState for replaying the games later.
 			INITIAL_STATE = deepClone(gameState);
@@ -11501,6 +11522,7 @@ function handleHostData(data) {
 			rockPercentText.value = rockPercentSlider.value+"%";
 			
 			gameEndRuleList.value = gameState.settings.gameEndRule;
+			startMoneyPerHexInput.value = gameState.settings.startMoneyPerHex;
 			
 			updateLobbyUI();
 		}
@@ -12217,8 +12239,16 @@ function hostGame() {
 			hostRoomPlayerNameInput.value = localPlayer.name;
 			hostRoomNameTitle.textContent = `Hosting: ${gameName}`;
 			
+			// enable settings inputs for host:
 			treePercentSlider.disabled = false;
 			rockPercentSlider.disabled = false;
+
+			treePercentText.disabled = true;
+			rockPercentText.disabled = true;
+			
+			startMoneyPerHexInput.disabled = false;
+			gameEndRuleList.disabled = false;
+	
 			
 			// Reset player list and add host
 			gameState.players = []; 
@@ -14392,7 +14422,10 @@ function startGame() {
 		
 		// Filter out players without connection from play (unless they are host or ai):
 		gameState.players = gameState.players.filter(p => p.id === localPlayer.id || connections.has(p.id) || p.isAI);
-		
+		// update all players indexes, might be messed up after kicking players before start:
+		for(let i = 0; i < gameState.players.length; i++){
+			gameState.players[i].playerIndex = i;
+		}
 		
 
 		// list playing players for colors: (not sure what is this for)
@@ -14426,6 +14459,15 @@ function startGame() {
 		spawnPlayers();
 		spawnTrees();
 		spawnRocks();
+		
+
+		// add money per tile:
+		for(let i = 0; i < gameState.map.tilesData.length; i++){
+			let tile = gameState.map.tilesData[i];
+			if(tile.ownerIndex !== -1){
+				tile.savings += gameState.settings.startMoneyPerHex;
+			}
+		}
 		
 		let myPlayer = getMyPlayer();
 		if(myPlayer.isSpectator){
@@ -14466,9 +14508,14 @@ function startGame() {
 	}
 	UNIT_ID_COUNTER = maxid+1;
 	
+	
+	
 	// Broadcast start
 	// At the very end of the function, AFTER broadcast(game_start):
-	broadcast({ type: ACTION.game_start, state: gameState });
+	broadcast({ 
+		type: ACTION.game_start, 
+		state: gameState,
+	});
 	checkForAITurn(); // start AI turn if it is his turn.
 	
 	// Send initial savings to all players
