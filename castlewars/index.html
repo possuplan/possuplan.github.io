@@ -1383,7 +1383,12 @@ input.disabled {
 					Start money per hex:
 				</div>
 				<div class="input-group">
-					<input type="number" id="start-money-per-hex" step="any" disabled>
+					<div style="flex: 1;">
+						<input type="number" id="start-money-per-hex" step="any" disabled>
+					</div>
+					<div style="flex: 1;">
+						
+					</div>
 				</div>
 			</div>
 			
@@ -1412,7 +1417,7 @@ input.disabled {
 						<input type="range" id="tree-percent" min="0" max="100" value="15" disabled>
 					</div>
 					<div style="flex: 1;">
-						<input type="text" id="tree-percent-text" style="margin:0" disabled>
+						<input type="text" id="tree-percent-text" style="margin:0; padding-right: 0;" disabled>
 					</div>
 				</div>
 				<div class="settings-title-nopad">
@@ -1423,7 +1428,7 @@ input.disabled {
 						<input type="range" id="rock-percent" min="0" max="100" value="15" disabled>
 					</div>
 					<div style="flex: 1;">
-						<input type="text" id="rock-percent-text" style="margin:0" disabled>
+						<input type="text" id="rock-percent-text" style="margin:0; padding-right: 0;" disabled>
 					</div>
 				</div>
 			</div>
@@ -2736,6 +2741,16 @@ function sliderToVolume(slider) {
 }
 
 
+// used with other sliders as well to get better precision for lower values.
+function valueToSlider(volume, slider) {
+	return volumeToSlider(volume, slider);
+}
+function sliderToValue(slider) {
+	return sliderToVolume(slider);
+}
+
+
+
 musicVolumeInput.addEventListener('input', e => {
 	let adjustedValue = sliderToVolume(e.target);
 	setMusicVolume(adjustedValue);
@@ -3423,6 +3438,7 @@ const CASTLE_DATA = {
 	"hut":      { visibleName: "Hut",     name: "hut",      type:"castle", level: 1, cost: 10 },
 };
 
+const EPSILON = 0.000001; // The margin of error for buying units etc.
 
 
 function getCheapestCost(data, type) {
@@ -3588,25 +3604,54 @@ let treePercentText = document.getElementById('tree-percent-text');
 let rockPercentText = document.getElementById('rock-percent-text');
 
 
-treePercentSlider.value = Math.round(gameState.settings.treePercent*100);
-rockPercentSlider.value = Math.round(gameState.settings.rockPercent*100);
-treePercentText.value = treePercentSlider.value+"%";
-rockPercentText.value = rockPercentSlider.value+"%";
+treePercentSlider.value = valueToSlider(gameState.settings.treePercent, treePercentSlider);
+rockPercentSlider.value = valueToSlider(gameState.settings.rockPercent, rockPercentSlider);
+treePercentText.value = percent2Decimals(gameState.settings.treePercent)+"%";
+rockPercentText.value = percent2Decimals(gameState.settings.rockPercent)+"%";
+
+
+/*
+musicVolumeInput2.value = valueToSlider(defaultMusicVolume, musicVolumeInput2);
+
+musicVolumeInput.addEventListener('input', e => {
+	let adjustedValue = sliderToValue(e.target);
+	setMusicVolume(adjustedValue);
+	
+	musicVolumeInput2.value = e.target.value;
+});
+*/
+
+function percent2Decimals(val){
+	return (Math.round(val*10000)/100);
+}
+
 
 treePercentSlider.addEventListener('change', e => {
-	treePercentText.value = e.target.value+"%";
+	let adjustedValue = sliderToValue(e.target); // 0...1 value
+	treePercentText.value = percent2Decimals(adjustedValue)+"%";
 	
-	gameState.settings.treePercent = Number(e.target.value)/100;
+	gameState.settings.treePercent = adjustedValue;
 	
 	broadcastLobbyState();
 });
 rockPercentSlider.addEventListener('change', e => {
-	rockPercentText.value = e.target.value+"%";
+	let adjustedValue = sliderToValue(e.target); // 0...1 value
+	rockPercentText.value = percent2Decimals(adjustedValue)+"%";
 	
-	gameState.settings.rockPercent = Number(e.target.value)/100;
+	gameState.settings.rockPercent = adjustedValue;
 	
 	broadcastLobbyState();
 });
+
+treePercentSlider.addEventListener('input', e => {
+	let adjustedValue = sliderToValue(e.target); // 0...1 value
+	treePercentText.value = percent2Decimals(adjustedValue)+"%";
+});
+rockPercentSlider.addEventListener('input', e => {
+	let adjustedValue = sliderToValue(e.target); // 0...1 value
+	rockPercentText.value = percent2Decimals(adjustedValue)+"%";
+});
+
 
 
 
@@ -6903,6 +6948,7 @@ function createExplosion(ep) {
 	let fadeAtGround = ep.fadeAtGround ?? 0;
 	let toFloor = ep.toFloor ?? 0;
 	let upSpeedMulti = ep.upSpeedMulti ?? 1;
+	let type = ep.type ?? "exp";
 
 	for (let i = 0; i < amount; i++) {
 		let speedVariation = initialSpeed * 0.5;
@@ -6923,6 +6969,7 @@ function createExplosion(ep) {
 		}
 
 		particles.push({
+			type: type, // explosion type, to check which to draw when.
 			// GROUND COORDINATES (The floor position)
 			x: x,
 			y: y,
@@ -7056,7 +7103,9 @@ function drawTextParticles() {
 
 
 // renderexplosions renderparticles drawparticles
-function renderParticles() {
+// default type is "exp", 
+// cross explosion is "crossExplosion" (death by starvation)
+function renderParticles(type = "exp") {
 	// 1. Pre-calculate rotation math to save performance
 	// We want the Z-offset to always point "Up" on the monitor.
 	// Since the context is rotated by viewport.rotation, we counter it.
@@ -7065,6 +7114,9 @@ function renderParticles() {
 
 	for (let i = particles.length - 1; i >= 0; i--) {
 		let p = particles[i];
+		if(p.type !== type){
+			continue;
+		}
 
 		// --- 1. PHYSICS UPDATE (Unchanged) ---
 		p.x += p.vx;
@@ -7499,6 +7551,9 @@ function render() {
 		drawHighlights();
 	}
 	
+	// draw under objects: cross explosion particles (death by starvation)
+	renderParticles("crossExplosion");
+
 	// OBJECTS DRAWING:
 	if(!previewdraw){
 		drawObjects();
@@ -7522,8 +7577,8 @@ function render() {
 		drawUnitSelection();
 	}
 	
-	// explosion particles
-	renderParticles();
+	// explosion particles (default type = exp)
+	renderParticles("exp");
 
 
 
@@ -7532,7 +7587,8 @@ function render() {
 	if(!previewdraw){
 		drawUnits();
 	}
-	
+
+
 
 	// draw "stop!" messages on protecting units
 	drawProtectMessages();
@@ -8072,6 +8128,7 @@ function findSelectedPool(findHex, pools = localPlayerPools, ownerIndex = localP
 
 
 function formatDecimal(num) {
+	num += EPSILON; // add 0.000001 in case the value is 9.99999999 etc...
 	const fixed = num.toFixed(2); // "12.30"
 	//if (fixed.endsWith("00")) return String(num|0); // integer case
 	//if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
@@ -8109,6 +8166,7 @@ function updateSelectedPoolUi(){
 	if(selectedPool){
 		console.warn("selectedPool:");
 		console.warn(selectedPool);
+		
 		let totalBalance = (selectedPool.totalSavings + selectedPool.totalIncome) - selectedPool.totalWages;
 		playerSavings.textContent = formatDecimal(selectedPool.totalSavings);
 		playerIncome.textContent = formatDecimal(selectedPool.totalIncome);
@@ -8331,6 +8389,7 @@ function handleHexClick(hex) {
 						// probably remembered the selectedHex as the rock hex, so it failed...
 						selectedHex = {q:selectedUnit.q, r:selectedUnit.r};
 						updatePools = false; // ensure it wont update pools with the hex we try to move onto.
+						sellUnitBtn.disabled = false;
 					}
 					//deselectHex();
 				} else {
@@ -8975,10 +9034,14 @@ function isPlacementValid(unitType, hex, player, poolHex, log_enabled = true) {
 	
 	let unitLevel = getUnitLevel(unitType);
 	let unitCost = getUnitCost(unitType);
-	// todo: add check if can afford? also checked in action_build though.
+
 
 	let actionPool = findSelectedPool(poolHex, findEconomyPools(player.playerIndex, log_enabled), player.playerIndex);
-
+	
+	if (!canAffordCheck(actionPool.totalSavings, unitCost)) {
+		console.log("not_enough_money");
+		return badMove("not_enough_money");
+	}
 	
 	let logallowed = prevhex !== (hex.q+","+hex.r);
 	if(logallowed){
@@ -9196,7 +9259,13 @@ function executeAction(playerId, action) {
 			console.log(poolHex);
 			
 			const unit = gameState.units.find(u => u.id === unitId);
-			if (!unit || unit.ownerIndex !== playerIndex) return;
+			// dont sell if not your unit:
+			// dont sell if unit already moved:
+			if (!unit || 
+				unit.ownerIndex !== playerIndex || 
+				unit.hasMoved){
+				return;
+			}
 			
 			let sellPrice = getUnitSellPrice(unit);
 			
@@ -9415,7 +9484,8 @@ function executeAction(playerId, action) {
 				const oldSavings = tile.savings;
 				
 				
-				if (totalSavings >= data.cost) {
+				
+				if (canAffordCheck(totalSavings, data.cost)) {
 					deductCost(actionPool, data.cost, poolHex, action.type);
 					
 					const newUnit = {
@@ -10200,8 +10270,9 @@ function distributePoolSavings(pools) {
 	}
 }
 
+
+
 function canAffordCheck(savings, cost) {
-	const EPSILON = 0.000001; // The margin of error
 	return savings >= cost - EPSILON;
 }
 
@@ -11516,10 +11587,11 @@ function handleHostData(data) {
 			gameState.map = data.map;
 			lobbyLoadedMapImg.src = data.map.imageData;
 			
-			treePercentSlider.value = Math.round(gameState.settings.treePercent*100);
-			rockPercentSlider.value = Math.round(gameState.settings.rockPercent*100);
-			treePercentText.value = treePercentSlider.value+"%";
-			rockPercentText.value = rockPercentSlider.value+"%";
+			treePercentSlider.value = valueToSlider(gameState.settings.treePercent, treePercentSlider);
+			rockPercentSlider.value = valueToSlider(gameState.settings.rockPercent, rockPercentSlider);
+			treePercentText.value = percent2Decimals(gameState.settings.treePercent)+"%";
+			rockPercentText.value = percent2Decimals(gameState.settings.rockPercent)+"%";
+			
 			
 			gameEndRuleList.value = gameState.settings.gameEndRule;
 			startMoneyPerHexInput.value = gameState.settings.startMoneyPerHex;
@@ -11620,6 +11692,7 @@ function handleHostData(data) {
 						const { x, y } = axialToPixel(data.q, data.r);
 						
 						let ep = {
+							type: "crossExplosion", // (death by starvation)
 							x: x,
 							y: y,
 							color: "#FF0000",
@@ -15404,10 +15477,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 			console.log("action_sell");
 			console.log(selectedUnit);
 			if(selectedUnit){
-				sendToHost({ 
+				sendToHost({
 					type: ACTION.action_sell, 
 					unitId: selectedUnit.id,
-					poolHex: getSelectedPoolHex(),
+					poolHex: getSelectedPoolHex(), // maybe should get this automatically from the unit position...
 				});
 				deselectUnit(); // Deselect
 				//deselectHex();
