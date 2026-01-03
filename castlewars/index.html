@@ -564,11 +564,11 @@ label {
 }
 
 
-#ui-menu {
+.ui-menu {
 	
 }
 
-#ui-menu .input-group {
+.ui-menu .input-group {
 	margin-bottom:0;
 }
 
@@ -1214,6 +1214,11 @@ input.disabled {
 	flex-direction: column;
 	align-items: center;
 	width:100%;
+	max-width: 400px;
+	background-color: black;
+	border: 1px solid #454545;
+	border-radius: 8px;
+	padding-top: 20px;
 }
 
 /* Popup container */
@@ -1346,7 +1351,7 @@ input.disabled {
 
 <div id="game-settings-ui">
 	<div id="game-settings-ui-wrapper">
-		<div id="ui-menu" class="ui-panel settings-panel">
+		<div id="game-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel">
 			<div class="input-group">
 				<div style="flex: 5; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
 					Settings
@@ -1704,7 +1709,7 @@ input.disabled {
 	</div>
 	
 	<div id="settings-ui">
-		<div id="ui-menu" class="ui-panel">
+		<div class="ui-menu ui-panel">
 			<div class="input-group">
 				<div style="flex: 1;">
 					
@@ -1736,7 +1741,7 @@ input.disabled {
 	
 	<div id="game-ui">
 		<div id="ui-left">
-			<div id="ui-menu" class="ui-panel">
+			<div class="ui-menu ui-panel">
 				
 				<div class="input-group">
 					<div style="flex: 1;">
@@ -2142,6 +2147,8 @@ const pickerPopup = document.getElementById('picker-popup');
 const pickerPopupSelect = document.getElementById('picker-popup-select');
 const pickerPopupCancel = document.getElementById('picker-popup-cancel');
 
+const pickerWrapper = document.getElementById('picker-wrapper');
+
 
 
 const picker = document.getElementById('picker');
@@ -2191,11 +2198,13 @@ function launchColorPicker(){
 	updateIndicator();
 }
 
-hostPreviewTile.addEventListener("click", () => {
+hostPreviewTile.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
 	launchColorPicker();
 });
 
-lobbyPreviewTile.addEventListener("click", () => {
+lobbyPreviewTile.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
 	launchColorPicker();
 });
 
@@ -4470,13 +4479,17 @@ const settingsUi = document.getElementById('settings-ui');
 const gameSettingsBtn = document.getElementById('game-settings-btn');
 const closeGameSettingsBtn = document.getElementById('close-game-settings-btn');
 const gameSettingsUi = document.getElementById('game-settings-ui');
+const gameSettingsUiWrapper2 = document.getElementById('game-settings-ui-wrapper2');
+
 
 const lobbyGameSettingsBtn = document.getElementById('lobby-game-settings-btn');
 
-gameSettingsBtn.addEventListener("click", () => {
+gameSettingsBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
 	gameSettingsUi.style.display = "flex";
 });
-lobbyGameSettingsBtn.addEventListener("click", () => {
+lobbyGameSettingsBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
 	gameSettingsUi.style.display = "flex";
 });
 
@@ -14722,14 +14735,25 @@ document.addEventListener('keyup', (event) => {
 	
 	
 function handleOutside(e) {
+	// Check if the click was outside the picker
+	if (!pickerWrapper.contains(e.target)) {
+		pickerPopup.style.display = "none";
+		//return true;
+	}
+	if (!gameSettingsUiWrapper2.contains(e.target)) {
+		gameSettingsUi.style.display = "none";
+		//return true;
+	}
+
 	if (!buildPopup.contains(e.target) && !buildSoldierBtn.contains(e.target) && !buildCastleBtn.contains(e.target)) {
 		if(isBuildPopupOpen()){
 			cancelBuildPopup();
-			return true;
+			//return true;
 		}
 	}
-	return false;
+	//return false;
 }
+
 
 document.addEventListener('click', handleOutside);
 //document.addEventListener('touchstart', handleOutside, { passive: true });
