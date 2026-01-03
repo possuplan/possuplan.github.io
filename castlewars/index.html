@@ -9483,9 +9483,8 @@ function executeAction(playerId, action) {
 				const oldObject = tile.object;
 				const oldSavings = tile.savings;
 				
-				
-				
 				if (canAffordCheck(totalSavings, data.cost)) {
+					
 					deductCost(actionPool, data.cost, poolHex, action.type);
 					
 					const newUnit = {
@@ -10266,6 +10265,7 @@ function distributePoolSavings(pools) {
 				hex.tile.savings = share;
 				distributedSoFar += share;
 			}
+
 		}
 	}
 }
@@ -10275,6 +10275,8 @@ function distributePoolSavings(pools) {
 function canAffordCheck(savings, cost) {
 	return savings >= cost - EPSILON;
 }
+
+
 
 
 
@@ -10964,6 +10966,47 @@ income: 5
 wages: 0
 balance: 5
 */
+
+// allows 1/100000 values, basically 1000 tiles possible to own with 2 decimal precision.
+// EPSILON  = 0.000001
+// accepted : 0.00001 value
+function clampMoney(money) {
+	let rounded = Math.round(money * 1e5) / 1e5;
+
+	// eliminate -0 and negative float noise only
+	if (Object.is(rounded, -0) || (rounded < 0 && rounded > -1e-5)){
+		rounded = 0;
+	}
+	console.warn(money, rounded);
+
+	return rounded;
+}
+
+
+
+/*
+clampMoney(-0.0000001);
+clampMoney(-0.000001);
+clampMoney(-0.000003999);
+clampMoney(-0.00001); // >= accepted
+clampMoney(-0.0001);
+clampMoney(-0.001);
+clampMoney(-0.01);
+clampMoney(-0.1);
+clampMoney(-1);
+clampMoney(0);
+clampMoney(1);
+clampMoney(0.1);
+clampMoney(0.01);
+clampMoney(0.001);
+clampMoney(0.0001);
+clampMoney(0.00001); // <= accepted
+clampMoney(0.000001);
+clampMoney(0.0000001);
+*/
+
+
+
 function calculateBalanceAndKillSoldiers(pools, addedUnit = null){
 	// check if soldiers will be killed.
 	
@@ -10978,6 +11021,9 @@ function calculateBalanceAndKillSoldiers(pools, addedUnit = null){
 	for (let pool of pools) {
 		pool.totalSavings += pool.totalIncome;
 		pool.totalSavings -= pool.totalWages;
+		
+		// avoid -0.000001 negative values or 0.000001 positive values (EPSILON):
+		pool.totalSavings = clampMoney(pool.totalSavings);
 		
 		if (pool.totalSavings < 0) {
 		//if (pool.totalSavings-pool.totalWages < 0) {
