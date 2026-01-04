@@ -2625,6 +2625,7 @@ let gameSounds = {
 	claimGrass:   {filename: "sounds/claim-grass.mp3",     gain: 0.4,   filter: false},
 	claimTree:    {filename: "sounds/claim-tree.mp3",      gain: 0.1,   filter: false},
 	claimRock:    {filename: "sounds/kill-castle-short.mp3",     gain: 0.2,   filter: false},
+	claimMine:    {filename: "sounds/mine-explosion.mp3",     gain: 0.2,   filter: false},
 	
 	// used for: soldier kills castle.
 	killCastle:   {filename: "sounds/kill-castle-short.mp3",     gain: 0.2,   filter: false},
@@ -3784,10 +3785,10 @@ imageAssets = {
 	'grass':    {path:'images/orig-scaled/128x128/grass.png', scale:2, offsetX: -2, offsetY: -2},
 	'tree':     {path:'images/orig-scaled/128x128/tree.png', scale:2, offsetX: -2, offsetY: -2},
 	'rock2':    {path:'images/orig-scaled/128x128/rock2c.png', scale:1.8, offsetX: 0, offsetY: -3},
+	'mine1':    {path:'images/orig-scaled/128x128/mine1.png', scale:1.8, offsetX: 0, offsetY: -10},
 	
 	'protect':  {path:'images/orig-scaled/128x128/protect.png', scale:1.6, offsetX: 0},
 	'select':   {path:'images/orig-scaled/128x128/select.png', scale:1, offsetX: 0},
-	
 	
 
 	'castle1':  {path:'images/'+pathPrefix+'/castle1.png', scale: unitScales[0], offsetX: unitOffsets[0].x, offsetY: unitOffsets[0].y},
@@ -4088,6 +4089,7 @@ function drawPaletteImage(ctx2, bmp, dx = 0, dy = 0) {
 
 	ctx2.putImageData(imgData, dx, dy);
 }
+
 
 
 async function loadImages() {
@@ -4426,9 +4428,17 @@ const hostRoomColorPickerMsg = document.getElementById('host-room-color-picker-m
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const lobbyStatus = document.getElementById('lobby-status');
 
+
+
 // Game Page
 canvas = document.getElementById('game-canvas');
 ctx = canvas.getContext('2d');
+
+
+
+
+
+
 const playerUIList = document.getElementById('player-ui-list');
 const chatMessages = document.getElementById('chat-messages');
 const topFloatUiChatMessages = document.getElementById('top-float-ui-messages');
@@ -7521,6 +7531,9 @@ function drawLastActionHexes(){
 
 
 
+
+
+
 function render() {
 	if (!gameState.settings.gameStarted) return;
 	
@@ -7823,9 +7836,9 @@ function handleTouchMove(e) {
 			);
 			const deltaAngle = newAngle - initialAngle;
 
-			//viewport.rotation += deltaAngle;  // rotate viewport
 			rotateAroundScreenCenter(deltaAngle);
-			initialAngle = newAngle;          // update for next frame
+			
+			initialAngle = newAngle; // update for next frame
 		}
 	}
 }
@@ -9314,6 +9327,7 @@ function executeAction(playerId, action) {
 			console.log(poolHex);
 			
 			const unit = gameState.units.find(u => u.id === unitId);
+			let unitCopy = {...unit}; // used when killing current unit.
 			if (!unit || unit.ownerIndex !== playerIndex) return;
 			
 			let actionPool = findSelectedPool(poolHex, findEconomyPools(playerIndex), playerIndex);
@@ -9342,6 +9356,8 @@ function executeAction(playerId, action) {
 					clearedObject: oldObject,
 					poolHex: poolHex,
 				};
+				
+				let killMovedUnit = false;
 				
 				// add all tile changes into this, so only one tile_changed update is needed:
 				let tileChangedUpdates = [];
@@ -9372,8 +9388,6 @@ function executeAction(playerId, action) {
 				unit.hasMoved = 1;
 				updates.push({ type: ACTION.unit_moved, unitId: unit.id, q: toQ, r: toR, hasMoved: 1 });
 				
-
-				
 				// Claim hex
 				if (toTile.ownerIndex !== playerIndex) {
 					setTileOwnerByIndex(toTile, playerIndex);
@@ -9401,6 +9415,7 @@ function executeAction(playerId, action) {
 				}
 				
 				if (toTile.object) {
+
 					if(!isAiPlayer(playerIndex)){
 						if(toTile.object === 'tree'){
 							sounds.push({name:'claimTree', q: toQ, r: toR, action: action.type});
@@ -9408,6 +9423,34 @@ function executeAction(playerId, action) {
 							sounds.push({name:'claimGrass', q: toQ, r: toR, action: action.type});
 						}else if(toTile.object === 'rock2'){
 							sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
+						}else if(toTile.object === 'mine1'){
+							sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
+							
+							
+							killMovedUnit = true;
+
+							
+
+							/*
+							toTile.object = 'dead'; // Turn to dead (crosses)
+							toTile.actionTurnNumber = gameState.turn.turnNumber;
+							
+							// add animation info for host:
+							toTile.creationTime = msNowFloor(); 
+							toTile.animationFinished = 0; // ensure no animation will be visible.
+							toTile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
+							
+							updates.push({ 
+								type: ACTION.object_changed, 
+								q: toQ, 
+								r: toR, 
+								object: toTile.object,
+								animationStyle: toTile.animationStyle,
+							});
+							*/
+							
+							
+							
 						}else{
 							if(!actionForUndo.killedUnit){
 								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
@@ -9432,7 +9475,10 @@ function executeAction(playerId, action) {
 					tileChangedUpdates.push({ type: ACTION.tile_changed, q: toQ, r: toR, object: null, FText: moneyAdded });
 				}
 				
-
+				if(killMovedUnit){
+					actionForUndo.killedUnit = unitCopy; // Store copy
+					updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
+				}
 				
 				// push to updates all tile_changed updates that were merged into one:
 				pushMergedUpdates(updates, tileChangedUpdates);
@@ -9511,6 +9557,10 @@ function executeAction(playerId, action) {
 						hasMoved: 1,
 						internalType: data.type,
 					};
+					let unitCopy = {...newUnit}; // used for mines killing.
+					
+					let killAddedUnit = false;
+					
 					//console.log("action_build: gameState.units.push(newUnit);");
 					//console.log(newUnit);
 					
@@ -9554,8 +9604,24 @@ function executeAction(playerId, action) {
 						}
 					}
 					
-					let clearedObject = null;
+					actionForUndo = {
+						type: 'build', 
+						unit: newUnit, 
+						cost: data.cost, 
+						didClaim: didClaim, 
+						oldSavings: oldSavings,
+						oldOwnerIndex: oldOwnerIndex,
+						clearedObject: null,
+						poolHex: poolHex,
+						actionPlayerIndex: playerIndex, // who did this action, used for starvation undoing only.
+					};
+					
+					
+					actionForUndo.clearedObject = null;
+					
+					
 					if (tile.object) {
+						
 						if(!isAiPlayer(playerIndex)){
 							if(moveUnitType == 0){
 								if(tile.object === 'tree'){
@@ -9564,6 +9630,15 @@ function executeAction(playerId, action) {
 									sounds.push({name:'claimGrass', q: q, r: r, action: action.type});
 								}else if(tile.object === 'rock2'){
 									sounds.push({name:'claimRock', q: q, r: r, action: action.type});
+								}else if(tile.object === 'mine1'){
+									sounds.push({name:'claimMine', q: q, r: r, action: action.type});
+
+									//actionForUndo.killedUnit = unitCopy; // Store copy
+									//updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
+									
+									killAddedUnit = true;
+									
+									
 								}else{
 									playMoveUnit = true;
 									//sounds.push({name:'moveunit', q: q, r: r, action: action.type});
@@ -9585,12 +9660,12 @@ function executeAction(playerId, action) {
 							addCost(actionPool, moneyAdded, poolHex, action.type);
 						}
 						
-						clearedObject = tile.object;
+						actionForUndo.clearedObject = tile.object;
 						tile.object = null;
 
 						tileChangedUpdates.push({ type: ACTION.tile_changed, q: q, r: r, object: null, FText: moneyAdded });
 					}
-					
+					/*
 					actionForUndo = {
 						type: 'build', 
 						unit: newUnit, 
@@ -9602,6 +9677,7 @@ function executeAction(playerId, action) {
 						poolHex: poolHex,
 						actionPlayerIndex: playerIndex, // who did this action, used for starvation undoing only.
 					};
+					*/
 
 					
 					if (buildCheck.action === 'attack') {
@@ -9708,6 +9784,13 @@ function executeAction(playerId, action) {
 					actionForUndo.addedUnitWasKilled = addedUnitWasKilled;
 					
 					updates.push({ type: ACTION.unit_added, unit: newUnit });
+					
+					if(killAddedUnit){
+						// dont add killed unit or it will create that unit after undo...
+						//actionForUndo.killedUnit = { ...unitCopy };
+						updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
+					}
+					
 					
 					/*
 					if(!addedUnitWasKilled){
@@ -11320,6 +11403,85 @@ function addUnit(unit){
 }
 
 
+
+function doBloodSplash(ep){
+
+	//////////////////
+	// create splat trails explosion:
+	ep.color = "#AA0000";
+	ep.shapeMode = 1; // circles
+	ep.initialSpeed = 6;
+	ep.toFloor = 1;
+	ep.fadeAtGround = 1;
+	ep.life = 4;
+
+	// different amount for different level units:
+	if(ep.level == 1){
+		ep.amount = 60;
+	}else if(ep.level == 2){
+		ep.amount = 70;
+	}else if(ep.level == 3){
+		ep.amount = 80;
+	}else{
+		ep.amount = 80; // for any other higher level in case more were added later.
+	}
+	createExplosion(ep);
+	
+	//////////////////
+	// create normal secondary explosion:
+	ep.color = "#CC0000";
+	ep.initialSpeed = 2;
+	ep.upSpeedMulti = 0.6;
+	ep.toFloor = 0;
+	ep.fadeAtGround = 1;
+	ep.life = 2;
+	
+	createExplosion(ep);
+	
+	return ep;
+}
+
+function doMineExplosion(ep){
+
+	//////////////////
+	// create splat trails explosion:
+	ep.color = "#FFFF00";
+	ep.shapeMode = 1; // circles
+	ep.initialSpeed = 6;
+	ep.toFloor = 1;
+	ep.fadeAtGround = 1;
+	ep.life = 4;
+
+	// different amount for different level units:
+	if(ep.level == 1){
+		ep.amount = 60;
+	}else if(ep.level == 2){
+		ep.amount = 70;
+	}else if(ep.level == 3){
+		ep.amount = 80;
+	}else{
+		ep.amount = 80; // for any other higher level in case more were added later.
+	}
+	createExplosion(ep);
+	
+	//////////////////
+	// create normal secondary explosion:
+	/*
+	ep.color = "#FFFF00";
+	ep.initialSpeed = 2;
+	ep.upSpeedMulti = 0.6;
+	ep.toFloor = 0;
+	ep.fadeAtGround = 1;
+	ep.life = 2;
+	
+	createExplosion(ep);
+	*/
+	
+	return ep;
+}
+
+
+
 // {name: 'kill', q: 33, r: 44, level: 1, playerIndex: 1}
 function makeExplosionBySoundMessage(data){
 
@@ -11343,6 +11505,7 @@ function makeExplosionBySoundMessage(data){
 		life: 1.3,
 		decay: {min:0.01, max:0.03},
 		rotationSpeed: {min:-0.2, max:0.2},
+		level: level,
 	};
 
 	let doExplosion = 0;
@@ -11351,38 +11514,13 @@ function makeExplosionBySoundMessage(data){
 	//       is created in object_changed message.
 	if(data.name === 'kill'){
 		doExplosion = 0; // explosions are created here, dont call it again.
+		ep = doBloodSplash(ep);
 		
-		//////////////////
-		// create splat trails explosion:
-		ep.color = "#AA0000";
-		ep.shapeMode = 1; // circles
-		ep.initialSpeed = 6;
-		ep.toFloor = 1;
-		ep.fadeAtGround = 1;
-		ep.life = 4;
-
-		// different amount for different level units:
-		if(level == 1){
-			ep.amount = 60;
-		}else if(level == 2){
-			ep.amount = 70;
-		}else if(level == 3){
-			ep.amount = 80;
-		}else{
-			ep.amount = 80; // for any other higher level in case more were added later.
-		}
-		createExplosion(ep);
+	}else if(data.name === 'claimMine'){
+		doExplosion = 0; // explosions are created here, dont call it again.
 		
-		//////////////////
-		// create normal secondary explosion:
-		ep.color = "#CC0000";
-		ep.initialSpeed = 2;
-		ep.upSpeedMulti = 0.6;
-		ep.toFloor = 0;
-		ep.fadeAtGround = 1;
-		ep.life = 2;
-		
-		createExplosion(ep);
+		ep = doBloodSplash(ep);
+		ep = doMineExplosion(ep);
 		
 	}else if(data.name === 'kill2'){
 		doExplosion = 1;
@@ -11398,11 +11536,11 @@ function makeExplosionBySoundMessage(data){
 		//ep.decay = {min:0.005, max:0.015};
 
 		// different amount for different level units:
-		if(level == 1){
+		if(ep.level == 1){
 			ep.amount = 80;
-		}else if(level == 2){
+		}else if(ep.level == 2){
 			ep.amount = 90;
-		}else if(level == 3){
+		}else if(ep.level == 3){
 			ep.amount = 100;
 		}else{
 			ep.amount = 100; // for any other higher level in case more were added later.
@@ -11415,11 +11553,11 @@ function makeExplosionBySoundMessage(data){
 		ep.initialSpeed = 5;
 
 		// different amount for different level units:
-		if(level == 1){
+		if(ep.level == 1){
 			ep.amount = 40;
-		}else if(level == 2){
+		}else if(ep.level == 2){
 			ep.amount = 60;
-		}else if(level == 3){
+		}else if(ep.level == 3){
 			ep.amount = 80;
 		}else{
 			ep.amount = 80; // for any other higher level in case more were added later.
@@ -11467,13 +11605,13 @@ function makeExplosionBySoundMessage(data){
 		ep.initialSpeed = 5;
 
 		// different amount for different level units:
-		if(level == 1){
+		if(ep.level == 1){
 			ep.amount = 20;
-		}else if(level == 2){
+		}else if(ep.level == 2){
 			ep.amount = 50;
-		}else if(level == 3){
+		}else if(ep.level == 3){
 			ep.amount = 80;
-		}else if(level == 4){
+		}else if(ep.level == 4){
 			ep.amount = 110;
 		}else{
 			ep.amount = 110; // for any other higher level in case more were added later.
@@ -11481,18 +11619,18 @@ function makeExplosionBySoundMessage(data){
 	}else if(data.name === 'build1' || data.name === 'build2' || data.name === 'build3'){
 		doExplosion = 1;
 		
-		level = parseInt(data.name[5], 10);
+		ep.level = parseInt(data.name[5], 10);
 		
 		let newcolor = "#FFFFFF";
 		if(data.playerIndex !== -1){
 			let player = getPlayerByIndex(data.playerIndex);
 			let basecolor = darkenHexColor(blendHexColor(player.color, "#888888", 0.3), 0.3);
-			if(level == 1){
+			if(ep.level == 1){
 				// create darker and grayer hex color from player.color:
 				newcolor = basecolor;
-			}else if(level == 2){
+			}else if(ep.level == 2){
 				newcolor = blendHexColor(basecolor, "#FFFFFF", 0.2);
-			}else if(level >= 3){
+			}else if(ep.level >= 3){
 				newcolor = blendHexColor(basecolor, "#FFFFFF", 0.4);
 			}
 		}
@@ -13994,6 +14132,16 @@ function shuffle(array) {
 	return array;
 }
 
+function spawnMines(){
+	// spawn random mines:
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		let tile = gameState.map.tilesData[t];
+		// if land, no object yet, no owner:
+		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < 0.3 ){
+			tile.object = "mine1";
+		}
+	}
+}
 
 function spawnRocks(){
 	// spawn random rocks:
@@ -14592,6 +14740,8 @@ function startGame() {
 		spawnTrees();
 		spawnRocks();
 		
+		spawnMines();
+		
 
 		// add money per tile:
 		for(let i = 0; i < gameState.map.tilesData.length; i++){
@@ -14696,19 +14846,30 @@ function getUint(str) {
 }
 
 
+
+
 document.addEventListener('keydown', (event) => {
-	// dont handle enter if it came from chat input.
+	// dont handle key presses if it came from chat input.
 	if(event.target.id !== 'chat-input'){
 		const key = event.key;
+		const code = event.code;
 
 		if(gameState.settings.gameStarted){
-			if (key === 'Enter') {
+			if (key === 'Enter') { // event.key matches enter and numpad enter.
 				toggleUiTopLeft();
-			}else if(key === 'q') {
-				rotateAroundScreenCenter(-0.03);
-			}else if(key === 'e') {
-				rotateAroundScreenCenter(0.03);
-			}else if(key === 'w') {
+			}else if(code === 'KeyQ') {
+				if(!event.shiftKey){
+					rotateLeftSnapped();
+				}else{
+					rotateAroundScreenCenter(-0.03);
+				}
+			}else if(code === 'KeyE') {
+				if(!event.shiftKey){
+					rotateRightSnapped();
+				}else{
+					rotateAroundScreenCenter(0.03);
+				}
+			}else if(code === 'KeyW') {
 				rotateAroundScreenCenter(-viewport.rotation);
 			}
 		}
@@ -15063,6 +15224,19 @@ function rotateAroundScreenCenter(theta) {
 }
 
 
+function rotateLeftSnapped(){
+	// snap at 30 degree rotations even when current rotation was not 30 degree step:
+	let snappedDeg = Math.round(rad2deg(viewport.rotation-deg2rad(30)) / 30) * 30;
+	rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
+}
+function rotateRightSnapped(){
+	// snap at 30 degree rotations even when current rotation was not 30 degree step:
+	let snappedDeg = Math.round(rad2deg(viewport.rotation+deg2rad(30)) / 30) * 30;
+	rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
+}
+
+
+
 
 function pauseMusicClick(){
 	musicPauseBtn.style.display = "none";
@@ -15098,6 +15272,7 @@ function prevMusicClick(){
 // --- EVENT LISTENERS
 // =================================================================
 window.addEventListener('DOMContentLoaded', async () => {
+
 	initDB();
 
 	await loadImages();
@@ -15211,17 +15386,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 
 	rotateLeftBtn.onclick = () => {
-		// snap at 30 degree rotations even when current rotation was not 30 degree step:
-		let snappedDeg = Math.round(rad2deg(viewport.rotation-deg2rad(30)) / 30) * 30;
-		rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
+		rotateLeftSnapped();
 	};
 	rotateResetBtn.onclick = () => {
 		rotateAroundScreenCenter(-viewport.rotation);
 	};
 	rotateRightBtn.onclick = () => {
-		// snap at 30 degree rotations even when current rotation was not 30 degree step:
-		let snappedDeg = Math.round(rad2deg(viewport.rotation+deg2rad(30)) / 30) * 30;
-		rotateAroundScreenCenter(deg2rad(snappedDeg) - viewport.rotation);
+		rotateRightSnapped();
 	};
 	
 	
