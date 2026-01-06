@@ -1461,6 +1461,17 @@ input.disabled {
 						<input type="text" id="rock-percent-text" style="margin:0; padding-right: 0;" disabled>
 					</div>
 				</div>
+				<div class="settings-title-nopad">
+					Mines chance per tile:
+				</div>
+				<div class="input-group" style="align-items:center">
+					<div style="flex: 4;">
+						<input type="range" id="mine-percent" min="0" max="100" value="15" disabled>
+					</div>
+					<div style="flex: 1;">
+						<input type="text" id="mine-percent-text" style="margin:0; padding-right: 0;" disabled>
+					</div>
+				</div>
 			</div>
 
 		</div>
@@ -3560,6 +3571,10 @@ let db = null;
 let loadedGameState = null;
 let loadedGameStateInitial = null;
 
+// rule constants:
+const ENDRULE_NO_SOLDIERS_NO_MONEY = 0;
+const ENDRULE_NO_SOLDIERS = 1;
+
 // --- GAME STATE (synced by host) ---
 let gameState = {
 	settings: {
@@ -3573,7 +3588,8 @@ let gameState = {
 		startPlayerId: -1, // -1 = random starting player.
 		treePercent: 0.15,
 		rockPercent: 0.05,
-		gameEndRule: 0,
+		minePercent: 0.05,
+		gameEndRule: ENDRULE_NO_SOLDIERS_NO_MONEY,
 		startMoneyPerHex: 0,
 	},
 	players: [], // { id, name, color, isSpectator, isAI }
@@ -3648,15 +3664,20 @@ gameEndRuleList.addEventListener('change', e => {
 
 let treePercentSlider = document.getElementById('tree-percent');
 let rockPercentSlider = document.getElementById('rock-percent');
+let minePercentSlider = document.getElementById('mine-percent');
 
 let treePercentText = document.getElementById('tree-percent-text');
 let rockPercentText = document.getElementById('rock-percent-text');
+let minePercentText = document.getElementById('mine-percent-text');
 
 
 treePercentSlider.value = valueToSlider(gameState.settings.treePercent, treePercentSlider);
 rockPercentSlider.value = valueToSlider(gameState.settings.rockPercent, rockPercentSlider);
+minePercentSlider.value = valueToSlider(gameState.settings.minePercent, minePercentSlider);
+
 treePercentText.value = percent2Decimals(gameState.settings.treePercent)+"%";
 rockPercentText.value = percent2Decimals(gameState.settings.rockPercent)+"%";
+minePercentText.value = percent2Decimals(gameState.settings.minePercent)+"%";
 
 
 /*
@@ -3691,6 +3712,14 @@ rockPercentSlider.addEventListener('change', e => {
 	
 	broadcastLobbyState();
 });
+minePercentSlider.addEventListener('change', e => {
+	let adjustedValue = sliderToValue(e.target); // 0...1 value
+	minePercentText.value = percent2Decimals(adjustedValue)+"%";
+	
+	gameState.settings.minePercent = adjustedValue;
+	
+	broadcastLobbyState();
+});
 
 treePercentSlider.addEventListener('input', e => {
 	let adjustedValue = sliderToValue(e.target); // 0...1 value
@@ -3700,7 +3729,10 @@ rockPercentSlider.addEventListener('input', e => {
 	let adjustedValue = sliderToValue(e.target); // 0...1 value
 	rockPercentText.value = percent2Decimals(adjustedValue)+"%";
 });
-
+minePercentSlider.addEventListener('input', e => {
+	let adjustedValue = sliderToValue(e.target); // 0...1 value
+	minePercentText.value = percent2Decimals(adjustedValue)+"%";
+});
 
 
 
@@ -3806,7 +3838,9 @@ imageAssets = {
 	'water-anim': {path:'images/water-anim.png', scale:1, offsetX: 0, isPattern: true, isAnimated: true, animationData: waterAnimData},
 	'water-anim-big': {path:'images/water-anim.png', isPattern: true, isAnimated: true, animationData: waterAnimData, isBigAnim: true},
 	
+	
 	'land':     {path:'images/land2b2b.jpg', scale:1, offsetX: 0}, 
+	'land-dead':{path:'images/land2b2b-dead.jpg', scale:1, offsetX: 0}, 
 	'land-c1':  {path:'images/land-c1.jpg', scale:1, offsetX: 0}, 
 	'land-c2':  {path:'images/land-c2.jpg', scale:1, offsetX: 0}, 
 	'land-c3':  {path:'images/land-c3.jpg', scale:1, offsetX: 0}, 
@@ -6348,6 +6382,10 @@ function drawMapTiles(){
 						}
 						
 						let textureName = landTextures[textureType];
+						// change dead players textures to skull texture:
+						if(player.isDead){
+							textureName = "land-dead";
+						}
 						
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
@@ -10292,6 +10330,14 @@ function drawText(x, y, text, color = "#FFFFFF"){
 }
 
 
+function tileGivesIncome(tile){
+	if(tile.object && tile.object !== 'dead'){
+		// if object was set, and it is not dead (so it is tree or grass)
+		return false;
+	}else{
+		return true;
+	}
+}
 
 
 function findEconomyPools(playerIndex, log_enabled = false) {
@@ -10330,12 +10376,7 @@ function findEconomyPools(playerIndex, log_enabled = false) {
 			pool.totalSavings += currentTile.savings;
 			
 			// Add income if no grass/tree on it, cross (dead) gives income for now.
-			let addIncome = true;
-			if(currentTile.object && currentTile.object !== 'dead'){
-				// if object was set, and it is not dead (so it is tree or grass)
-				addIncome = false;
-			}
-			if (addIncome) {
+			if (tileGivesIncome(currentTile)) {
 				pool.totalIncome += gameRules.tileIncome;
 			}
 			
@@ -11362,6 +11403,54 @@ function executeEndTurn(playerIndex) {
 		}
 	});
 	
+	// check game end for players:
+	for(let p = 0; p < gameState.players.length; p++){
+		let player = gameState.players[p];
+		
+		if(!player.isDead){
+			let killPlayer = false;
+			
+			let totalUnits = 0;
+			for(let u = 0; u < gameState.units.length; u++){
+				let unit = gameState.units[u];
+				if(unit.ownerIndex === player.playerIndex){
+					if(unit.internalType === "soldier"){
+						totalUnits++;
+					}
+				}
+			}
+			
+			if(gameState.settings.gameEndRule === ENDRULE_NO_SOLDIERS){
+				if(totalUnits === 0){
+					killPlayer = true;
+				}
+			}else if(gameState.settings.gameEndRule === ENDRULE_NO_SOLDIERS_NO_MONEY){
+				if(totalUnits === 0){
+					// check if player has any hex with an income:
+					let foundIncomeTile = false;
+					for(let t = 0; t < gameState.map.tilesData.length; t++){
+						let tile = gameState.map.tilesData[t];
+						if(tile.ownerIndex === player.playerIndex){
+							if(tileGivesIncome(tile)){
+								foundIncomeTile = true;
+								break;
+							}
+						}
+					}
+					if(!foundIncomeTile){
+						killPlayer = true;
+					}
+				}
+			}
+			
+			if(killPlayer){
+				// kill player, turn his hexes gray?
+				player.isDead = true;
+				batchActions.push({ type: ACTION.player_killed, playerIndex: player.playerIndex });
+			}
+		}
+	}
+	
 
 	// --- 4. Grow Grass / Spawn Trees (random events) ---
 	// TODO: Add grass spreading and tree spawning logic
@@ -11829,8 +11918,11 @@ function handleHostData(data) {
 			
 			treePercentSlider.value = valueToSlider(gameState.settings.treePercent, treePercentSlider);
 			rockPercentSlider.value = valueToSlider(gameState.settings.rockPercent, rockPercentSlider);
+			minePercentSlider.value = valueToSlider(gameState.settings.minePercent, minePercentSlider);
+			
 			treePercentText.value = percent2Decimals(gameState.settings.treePercent)+"%";
 			rockPercentText.value = percent2Decimals(gameState.settings.rockPercent)+"%";
+			minePercentText.value = percent2Decimals(gameState.settings.minePercent)+"%";
 			
 			
 			gameEndRuleList.value = gameState.settings.gameEndRule;
@@ -12000,6 +12092,12 @@ function handleHostData(data) {
 			updateHighlights();
 						
 			//updateLocalPoolsInfo();
+		}
+		break;
+		case ACTION.player_killed: {
+			let player = getPlayerByIndex(data.playerIndex);
+			player.isDead = true;
+			addSystemChatMessage(`Player ${player.name} has died!`, "#FFFFFF");
 		}
 		break;
 		case ACTION.unit_move_reset: {
@@ -12565,9 +12663,12 @@ function hostGame() {
 			// enable settings inputs for host:
 			treePercentSlider.disabled = false;
 			rockPercentSlider.disabled = false;
+			minePercentSlider.disabled = false;
 
+			// not possible to type on the percent inputs yet...
 			treePercentText.disabled = true;
 			rockPercentText.disabled = true;
+			minePercentText.disabled = true;
 			
 			startMoneyPerHexInput.disabled = false;
 			gameEndRuleList.disabled = false;
@@ -14190,7 +14291,7 @@ function spawnMines(){
 	for(let t = 0; t < gameState.map.tilesData.length; t++){
 		let tile = gameState.map.tilesData[t];
 		// if land, no object yet, no owner:
-		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < 0.3 ){
+		if(tile.type === 'land' && !tile.object && tile.ownerIndex === -1 && randomFunc() < gameState.settings.minePercent ){
 			tile.object = "mine1";
 		}
 	}
