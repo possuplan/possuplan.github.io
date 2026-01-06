@@ -1001,8 +1001,8 @@ button.redbutton:hover {
 #music-volume2 {
 	width: 100%;
 }
-#music-volume-wrapper {
-	padding:5px 12px 5px 10px;
+.music-volume-wrapper {
+	padding:5px 12px 5px 0px;
 }
 
 #close-settings-btn {
@@ -1150,7 +1150,14 @@ input.disabled {
 .music-pause-btn {
 	background-image: url('images/ui/music-pause.png');
 }
-
+.music-unmute-btn {
+	background-image: url('images/ui/music-mute.png');
+	margin:0;
+}
+.music-mute-btn {
+	background-image: url('images/ui/music-unmute.png');
+	margin:0;
+}
 
 
 
@@ -1377,8 +1384,16 @@ input.disabled {
 					<button id="music-next-btn2" class="music-next-btn gamebutton"></button>
 				</div>
 			</div>
-			<div id="music-volume-wrapper">
-				<input type="range" id="music-volume2" min="0" max="200" value="1">
+			<div class="music-volume-wrapper">
+				<div class="input-group" style="align-items: center;">
+					<div style="flex: 1;">
+						<button id="music-mute-btn2" class="music-mute-btn gamebutton" title="Mute"></button>
+						<button id="music-unmute-btn2" class="music-unmute-btn gamebutton" title="Unmute" style="display:none"></button>
+					</div>
+					<div style="flex: 4;">
+						<input type="range" id="music-volume2" min="0" max="200" value="1">
+					</div>
+				</div>
 			</div>
 			
 			
@@ -1731,9 +1746,18 @@ input.disabled {
 					<button id="music-next-btn" class="music-next-btn gamebutton"></button>
 				</div>
 			</div>
-			<div id="music-volume-wrapper">
-				<input type="range" id="music-volume" min="0" max="200" value="1">
+			<div class="music-volume-wrapper">
+				<div class="input-group" style="align-items: center;">
+					<div style="flex: 1;">
+						<button id="music-mute-btn" class="music-mute-btn gamebutton" title="Mute"></button>
+						<button id="music-unmute-btn" class="music-unmute-btn gamebutton" title="Unmute" style="display:none"></button>
+					</div>
+					<div style="flex: 4;">
+						<input type="range" id="music-volume" min="0" max="200" value="1">
+					</div>
+				</div>
 			</div>
+			
 		</div>
 	</div>
 	
@@ -2083,6 +2107,7 @@ function giveRandomName(){
 
 // set random nick on first start:
 playerNameInput.value = getLocalStorageItem("playerName") || randomPlayerName();
+
 
 
 function isValidName(name){
@@ -2716,6 +2741,9 @@ const musicPlaylist = [
 	'music/tsr - Tusker - Jungle track (tsr remix).mp3',
 ];
 
+let musicMuted = getLocalStorageItem("musicMuted") === "true";
+
+
 let musicVolumeInput = document.getElementById('music-volume');
 let musicVolumeInput2 = document.getElementById('music-volume2');
 
@@ -2831,11 +2859,12 @@ function pauseMusic() {
 	}
 }
 
+
 function restartMusic() {
 	if (musicPlaylist.length === 0) return;
-	if (!audio) return;
-
 	currentTrackIndex = 0;
+	
+	if (!audio) return;
 	audio.src = musicPlaylist[0];
 	audio.load();
 	audio.play();
@@ -2844,9 +2873,9 @@ function restartMusic() {
 
 function randomTrack() {
 	if (musicPlaylist.length === 0) return;
-	if (!audio) return;
-
 	currentTrackIndex = random(0, musicPlaylist.length-1);
+	
+	if (!audio) return;
 	audio.src = musicPlaylist[currentTrackIndex];
 	audio.load();
 	audio.play();
@@ -4517,11 +4546,15 @@ const musicPauseBtn = document.getElementById('music-pause-btn');
 const musicPlayBtn = document.getElementById('music-play-btn');
 const musicNextBtn = document.getElementById('music-next-btn');
 const musicPreviousBtn = document.getElementById('music-previous-btn');
+const musicMuteBtn = document.getElementById('music-mute-btn');
+const musicUnmuteBtn = document.getElementById('music-unmute-btn');
 
 const musicPauseBtn2 = document.getElementById('music-pause-btn2');
 const musicPlayBtn2 = document.getElementById('music-play-btn2');
 const musicNextBtn2 = document.getElementById('music-next-btn2');
 const musicPreviousBtn2 = document.getElementById('music-previous-btn2');
+const musicMuteBtn2 = document.getElementById('music-mute-btn2');
+const musicUnmuteBtn2 = document.getElementById('music-unmute-btn2');
 
 
 
@@ -4822,8 +4855,9 @@ function centerAndSelectFirstUnit(selectUnit = true){
 function showPage(pageId) {
 	if(pageId === 'game'){
 		randomTrack();
-		
-		playMusic();
+		if(!musicMuted){
+			playMusic();
+		}
 	}
 	Object.values(pages).forEach(page => page.classList.remove('active'));
 	if (pages[pageId]) {
@@ -9416,47 +9450,21 @@ function executeAction(playerId, action) {
 				
 				if (toTile.object) {
 
-					if(!isAiPlayer(playerIndex)){
-						if(toTile.object === 'tree'){
-							sounds.push({name:'claimTree', q: toQ, r: toR, action: action.type});
-						}else if(toTile.object === 'grass'){
-							sounds.push({name:'claimGrass', q: toQ, r: toR, action: action.type});
-						}else if(toTile.object === 'rock2'){
-							sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
-						}else if(toTile.object === 'mine1'){
-							sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
-							
-							
-							killMovedUnit = true;
-
-							
-
-							/*
-							toTile.object = 'dead'; // Turn to dead (crosses)
-							toTile.actionTurnNumber = gameState.turn.turnNumber;
-							
-							// add animation info for host:
-							toTile.creationTime = msNowFloor(); 
-							toTile.animationFinished = 0; // ensure no animation will be visible.
-							toTile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
-							
-							updates.push({ 
-								type: ACTION.object_changed, 
-								q: toQ, 
-								r: toR, 
-								object: toTile.object,
-								animationStyle: toTile.animationStyle,
-							});
-							*/
-							
-							
-							
-						}else{
-							if(!actionForUndo.killedUnit){
-								sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
-							}
+	
+					if(toTile.object === 'tree'){
+						sounds.push({name:'claimTree', q: toQ, r: toR, action: action.type});
+					}else if(toTile.object === 'grass'){
+						sounds.push({name:'claimGrass', q: toQ, r: toR, action: action.type});
+					}else if(toTile.object === 'rock2'){
+						sounds.push({name:'claimRock', q: toQ, r: toR, action: action.type});
+					}else if(toTile.object === 'mine1'){
+						sounds.push({name:'claimMine', q: toQ, r: toR, action: action.type});
+					}else{
+						if(!actionForUndo.killedUnit){
+							sounds.push({name:'moveunit', q: toQ, r: toR, action: action.type});
 						}
 					}
+				
 					
 					
 					// add tree claiming money:
@@ -9466,6 +9474,30 @@ function executeAction(playerId, action) {
 					}else if(toTile.object === 'rock2'){
 						moneyAdded = 5;
 					}
+					
+					// handle mines:
+					if(toTile.object === 'mine1'){
+						killMovedUnit = true;
+
+						/*
+						toTile.object = 'dead'; // Turn to dead (crosses)
+						toTile.actionTurnNumber = gameState.turn.turnNumber;
+						
+						// add animation info for host:
+						toTile.creationTime = msNowFloor(); 
+						toTile.animationFinished = 0; // ensure no animation will be visible.
+						toTile.animationStyle = 1; // 1 = appear from bottom to up, 2 = appear from zero size to normal size
+						
+						updates.push({ 
+							type: ACTION.object_changed, 
+							q: toQ, 
+							r: toR, 
+							object: toTile.object,
+							animationStyle: toTile.animationStyle,
+						});
+						*/
+					}
+					
 					if(moneyAdded){
 						addCost(actionPool, moneyAdded, poolHex, action.type);
 					}
@@ -9622,31 +9654,24 @@ function executeAction(playerId, action) {
 					
 					if (tile.object) {
 						
-						if(!isAiPlayer(playerIndex)){
-							if(moveUnitType == 0){
-								if(tile.object === 'tree'){
-									sounds.push({name:'claimTree', q: q, r: r, action: action.type});
-								}else if(tile.object === 'grass'){
-									sounds.push({name:'claimGrass', q: q, r: r, action: action.type});
-								}else if(tile.object === 'rock2'){
-									sounds.push({name:'claimRock', q: q, r: r, action: action.type});
-								}else if(tile.object === 'mine1'){
-									sounds.push({name:'claimMine', q: q, r: r, action: action.type});
-
-									//actionForUndo.killedUnit = unitCopy; // Store copy
-									//updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
-									
-									killAddedUnit = true;
-									
-									
-								}else{
-									playMoveUnit = true;
-									//sounds.push({name:'moveunit', q: q, r: r, action: action.type});
-								}
+						
+						if(moveUnitType == 0){
+							if(tile.object === 'tree'){
+								sounds.push({name:'claimTree', q: q, r: r, action: action.type});
+							}else if(tile.object === 'grass'){
+								sounds.push({name:'claimGrass', q: q, r: r, action: action.type});
+							}else if(tile.object === 'rock2'){
+								sounds.push({name:'claimRock', q: q, r: r, action: action.type});
+							}else if(tile.object === 'mine1'){
+								sounds.push({name:'claimMine', q: q, r: r, action: action.type});
 							}else{
 								playMoveUnit = true;
+								//sounds.push({name:'moveunit', q: q, r: r, action: action.type});
 							}
+						}else{
+							playMoveUnit = true;
 						}
+					
 						
 
 						// add tree claiming money:
@@ -9655,6 +9680,14 @@ function executeAction(playerId, action) {
 							moneyAdded = 1;
 						}else if(tile.object === 'rock2'){
 							moneyAdded = 5;
+						}
+						
+						// handle mines:
+						if(tile.object === 'mine1'){
+							//actionForUndo.killedUnit = unitCopy; // Store copy
+							//updates.push({ type: ACTION.unit_removed, unitId: unitCopy.id });
+							
+							killAddedUnit = true;
 						}
 						if(moneyAdded){
 							addCost(actionPool, moneyAdded, poolHex, action.type);
@@ -12007,7 +12040,17 @@ function handleHostData(data) {
 		}
 		break;
 		case ACTION.sound: {
-			playSound(data.name);
+			let play = true;
+			// dont play sounds for AI players:
+			if(data.playerIndex && data.playerIndex !== -1){
+				let player = getPlayerByIndex(data.playerIndex);
+				if(player.isAI){
+					play = false;
+				}
+			}
+			if(play){
+				playSound(data.name);
+			}
 			
 			// create explosion based on which sound was received on which coordinate.
 			if(data.action !== ACTION.action_undo){
@@ -15236,13 +15279,15 @@ function rotateRightSnapped(){
 }
 
 
-
-
-function pauseMusicClick(){
+function pauseMusicButtonsHandle(){
 	musicPauseBtn.style.display = "none";
 	musicPlayBtn.style.display = "block";
 	musicPauseBtn2.style.display = "none";
 	musicPlayBtn2.style.display = "block";
+}
+
+function pauseMusicClick(){
+	pauseMusicButtonsHandle();
 	pauseMusic();
 }
 function playMusicClick(){
@@ -15251,6 +15296,10 @@ function playMusicClick(){
 	musicPauseBtn2.style.display = "block";
 	musicPlayBtn2.style.display = "none";
 	playMusic();
+	
+	unmuteMusicButtonsHandle();
+	musicMuted = false;
+	setLocalStorageItem("musicMuted", musicMuted);
 }
 function nextMusicClick(){
 	musicPauseBtn.style.display = "block";
@@ -15265,6 +15314,43 @@ function prevMusicClick(){
 	musicPauseBtn2.style.display = "block";
 	musicPlayBtn2.style.display = "none";
 	playPreviousTrack();
+}
+
+
+
+if(musicMuted){
+	muteMusicButtonsHandle();
+	pauseMusicButtonsHandle();
+}else{
+	unmuteMusicButtonsHandle();
+}
+
+
+function muteMusicClick(){
+	muteMusicButtonsHandle();
+	musicMuted = true;
+	pauseMusicClick();
+	setLocalStorageItem("musicMuted", musicMuted);
+}
+
+function unmuteMusicClick(){
+	unmuteMusicButtonsHandle();
+	musicMuted = false;
+	playMusicClick();
+	setLocalStorageItem("musicMuted", musicMuted);
+}
+
+function muteMusicButtonsHandle(){
+	musicMuteBtn.style.display = "none";
+	musicUnmuteBtn.style.display = "block";
+	musicMuteBtn2.style.display = "none";
+	musicUnmuteBtn2.style.display = "block";
+}
+function unmuteMusicButtonsHandle(){
+	musicMuteBtn.style.display = "block";
+	musicUnmuteBtn.style.display = "none";
+	musicMuteBtn2.style.display = "block";
+	musicUnmuteBtn2.style.display = "none";
 }
 
 
@@ -15421,6 +15507,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	musicPreviousBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	musicPreviousBtn.tabIndex = -1; //remove it from the tab order
 	
+	musicMuteBtn.onclick = () => {muteMusicClick();};
+	musicMuteBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicMuteBtn.tabIndex = -1; //remove it from the tab order
+	
+	musicUnmuteBtn.onclick = () => {unmuteMusicClick();};
+	musicUnmuteBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicUnmuteBtn.tabIndex = -1; //remove it from the tab order
+	
 
 	musicPauseBtn2.onclick = () => {pauseMusicClick();};
 	musicPauseBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
@@ -15437,6 +15531,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 	musicPreviousBtn2.onclick = () => {prevMusicClick();};
 	musicPreviousBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	musicPreviousBtn2.tabIndex = -1; //remove it from the tab order
+	
+	musicMuteBtn2.onclick = () => {muteMusicClick();};
+	musicMuteBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicMuteBtn2.tabIndex = -1; //remove it from the tab order
+	
+	musicUnmuteBtn2.onclick = () => {unmuteMusicClick();};
+	musicUnmuteBtn2.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	musicUnmuteBtn2.tabIndex = -1; //remove it from the tab order
 	
 	
 	
