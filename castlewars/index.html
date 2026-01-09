@@ -1562,7 +1562,7 @@ input.disabled {
 
 			</div>
 			<div style="flex:1">
-				<span class="label">Joined Players:</span>
+				<span class="label joined-players-text">Joined Players:</span>
 				<div id="host-player-list" class="player-list"></div>
 				
 				<div class="input-group">
@@ -1683,7 +1683,7 @@ input.disabled {
 				
 			</div>
 			<div style="flex:1">
-				<span class="label">Joined Players:</span>
+				<span class="label joined-players-text">Joined Players:</span>
 				<div id="lobby-player-list" class="lobby-player-list"></div>
 			</div>
 		</div>
@@ -2374,8 +2374,36 @@ function updateIndicator(){
 	lightnessSlider.value = lightness;
 }
 
+function getPoint(e) {
+	if (e.touches && e.touches.length) {
+		return {
+			x: e.touches[0].clientX,
+			y: e.touches[0].clientY
+		};
+	}
 
+	return {
+		x: e.clientX,
+		y: e.clientY
+	};
+}
 function handlePointer(e) {
+	const rect = picker.getBoundingClientRect();
+	const { x, y } = getPoint(e);
+
+	const px = Math.min(Math.max(x - rect.left, 0), rect.width);
+	const py = Math.min(Math.max(y - rect.top, 0), rect.height);
+
+	hue = (px / rect.width) * 360;
+	saturation = 100 - (py / rect.height) * 100;
+
+	indicator.style.left = `${px}px`;
+	indicator.style.top = `${py}px`;
+
+	updateColorPreview();
+}
+
+function handlePointer1(e) {
 	const rect = picker.getBoundingClientRect();
 	const x = Math.min(Math.max((e.clientX || e.touches[0].clientX) - rect.left, 0), rect.width);
 	const y = Math.min(Math.max((e.clientY || e.touches[0].clientY) - rect.top, 0), rect.height);
@@ -3355,11 +3383,14 @@ function compressAction(data){
 			}
 		}
 		break;
+		/*
+		// removed since its not consistent parameters amounts
 		case ACTION.unit_removed: {
 			let FText = data.FText ?? 0;
 			return [data.type, data._T, data.unitId, FText];
 		}
 		break;
+		*/
 	}
 	return data; // no handler made yet, just return uncompressed format.
 }
@@ -3446,6 +3477,7 @@ function deCompressAction(arr){
 			return base;
 		}
 		break;
+		/*
 		case ACTION.unit_removed: {
 			return {
 				type: arr[0], 
@@ -3455,6 +3487,7 @@ function deCompressAction(arr){
 			};
 		}
 		break;
+		*/
 	}
 	console.error("ERROR: no handler found in deCompressAction for action: ");
 	console.error(arr);
@@ -6315,16 +6348,75 @@ function drawMapTiles(){
 		}
 		
 
-
+		let img = null;
+		let imageName = "";
+		
 		//drawnTiles++;
 		
 		// --- Start Drawing Hex ---
 
 		// anything inside save/restore is clipped to the hex shape.
+
+		// draw dirt texture under the player tile texture while it animates.
+		// when animation has ended, this wont be necessary anymore.
+		// should set isDead and deadAnimationEnded to false after animation ends,
+		// so it matches the default values. or just remove those keys alltogether so they wont be saved.
+		let tileSizePad = hex_pad; // for debugging, hex_pad default zero.
+		let drawDyingAnim = false;
+		
+		if(tile.isDying){
+			let timeDiff = performance.now() - tile.deadStartTime;
+			let tileAnimationLen = 2000;
+			let maxTileSize = 40; // for hex_pad (tileSizePad)
+			
+			// TODO: use deadOwnerIndex for the animation color since ownerIndex is -1 instantly after dying.
+			
+			// draw dirt under the owned tile only if animation is still going on:
+			if(timeDiff < tileAnimationLen){
+				drawDyingAnim = true;
+
+				let percent = timeDiff/tileAnimationLen; // 0...1
+				tileSizePad = -percent*maxTileSize; // 0...-40
+				
+				ctx.save(); // needed for hex drawing.
+				// Define the hex path
+				drawHexagonPath(x, y);
+				
+				imageName = 'dirt';
+				img = getImage(imageName);
+			
+				// 4. If image is loaded, draw it clipped and scaled
+				if (img && img.complete && img.width > 0) {
+					ctx.clip(); // Apply clip to the hex path
+
+					// Calculate the "pointy-top" hex bounding box
+					const hexWidth = HEX_SIZE * SQRT3*GS;
+					const hexHeight = HEX_SIZE * 2;
+					
+					// Calculate "scale-to-fit" (contain) ratio
+					const ratio = Math.min(hexWidth / img.width, hexHeight / img.height);
+					const dWidth = img.width * ratio;
+					const dHeight = img.height * ratio;
+					
+					// Calculate centered destination (dx, dy)
+					const dx = x - dWidth / 2;
+					const dy = y - dHeight / 2;
+					
+					drawImageMipped(ctx, imageName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
+				}
+				
+				ctx.restore();
+			}else{
+				tile.isDying = false;
+			}
+		}
+		
+		
 		ctx.save(); // needed for hex drawing.
 		
 		// Define the hex path
-		drawHexagonPath(x, y, hex_pad);
+		drawHexagonPath(x, y, tileSizePad);
+		
 		
 		//ctx.fillStyle = fallbackColor;
 		//ctx.fill();
@@ -6333,9 +6425,15 @@ function drawMapTiles(){
 		if(useimages){
 			// 3. Get the background image for this tile type
 			// (We assume the image key is the same as tile.type)
-			let img = null;
-			let imageName = "";
-			if(tile.ownerIndex !== -1){
+			let ownerIndex = tile.ownerIndex;
+			if(drawDyingAnim){
+				ownerIndex = tile.deadOwnerIndex;
+			}
+			
+			
+			img = null;
+			imageName = "";
+			if(ownerIndex !== -1){
 				imageName = 'land'; // tile.type
 				img = getImage(imageName);
 			}else{
@@ -6352,6 +6450,8 @@ function drawMapTiles(){
 				imageName = 'dirt';
 				img = getImage(imageName);
 			}
+			
+
 
 			// 4. If image is loaded, draw it clipped and scaled
 			if (img && img.complete && img.width > 0) {
@@ -6370,9 +6470,9 @@ function drawMapTiles(){
 				const dx = x - dWidth / 2;
 				const dy = y - dHeight / 2;
 				
-				if(tile.ownerIndex !== -1 && !previewdraw){
+				if(ownerIndex !== -1 && !previewdraw){
 					// Draw the gray texture (owned land) with multiply operation:
-					const player = getPlayerByIndex(tile.ownerIndex);
+					const player = getPlayerByIndex(ownerIndex);
 					
 					if(drawtextures){
 						
@@ -6389,7 +6489,7 @@ function drawMapTiles(){
 						let textureName = landTextures[textureType];
 						// change dead players textures to skull texture:
 						if(player.isDead){
-							textureName = "land-dead";
+							textureName = 'land-dead';
 						}
 						
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
@@ -11452,6 +11552,9 @@ function executeEndTurn(playerIndex) {
 				// kill player, turn his hexes gray?
 				player.isDead = true;
 				batchActions.push({ type: ACTION.player_killed, playerIndex: player.playerIndex });
+				
+				// maybe should kill units with a delay? or not...
+				batchActions.push(...killPlayerUnits(player.playerIndex));
 			}
 		}
 	}
@@ -11495,6 +11598,24 @@ function executeEndTurn(playerIndex) {
 }
 
 
+// for testing:
+function killPlayer(playerIndex){
+	
+	let batchActions = [];
+	
+	batchActions.push({ type: ACTION.player_killed, playerIndex: playerIndex });
+				
+	// maybe should kill units with a delay? or not...
+	batchActions.push(...killPlayerUnits(playerIndex));
+	
+	if(batchActions.length > 0){
+		broadcast({ 
+			type: ACTION.multiple_actions, 
+			actions: batchActions,
+		});
+	}
+	
+}
 
 
 
@@ -11541,7 +11662,7 @@ function addUnit(unit){
 
 
 
-function doBloodSplash(ep){
+function doBloodSplash(ep, splat = true){
 
 	//////////////////
 	// create splat trails explosion:
@@ -11564,16 +11685,18 @@ function doBloodSplash(ep){
 	}
 	createExplosion(ep);
 	
-	//////////////////
-	// create normal secondary explosion:
-	ep.color = "#CC0000";
-	ep.initialSpeed = 2;
-	ep.upSpeedMulti = 0.6;
-	ep.toFloor = 0;
-	ep.fadeAtGround = 1;
-	ep.life = 2;
-	
-	createExplosion(ep);
+	if(splat){
+		//////////////////
+		// create normal secondary explosion:
+		ep.color = "#CC0000";
+		ep.initialSpeed = 2;
+		ep.upSpeedMulti = 0.6;
+		ep.toFloor = 0;
+		ep.fadeAtGround = 1;
+		ep.life = 2;
+		
+		createExplosion(ep);
+	}
 	
 	return ep;
 }
@@ -11652,6 +11775,24 @@ function makeExplosionBySoundMessage(data){
 	if(data.name === 'kill'){
 		doExplosion = 0; // explosions are created here, dont call it again.
 		ep = doBloodSplash(ep);
+		
+	}else if(data.name === 'killSimple'){
+		doExplosion = 0; // explosions are created here, dont call it again.
+		ep.color = "#AA0000";
+		ep.shapeMode = 1; // circles
+		ep.initialSpeed = 6;
+		ep.toFloor = 1;
+		ep.fadeAtGround = 1;
+		ep.life = 4;
+		ep.amount = 20;
+		
+	}else if(data.name === 'killCastleSimple'){
+		doExplosion = 1;
+		
+		ep.color = "#E3A7B6";
+		ep.shapeMode = 0; // triangles+squares
+		ep.initialSpeed = 5;
+		ep.amount = 20;
 		
 	}else if(data.name === 'claimMine'){
 		doExplosion = 0; // explosions are created here, dont call it again.
@@ -11786,6 +11927,48 @@ function makeExplosionBySoundMessage(data){
 	}
 }
 
+function killPlayerUnits(playerIndex){
+	let arr = [];
+	let soldiersKilled = 0;
+	let castlesKilled = 0;
+	for(let i = 0; i < gameState.units.length; i++){
+		let unit = gameState.units[i];
+		if(unit.ownerIndex === playerIndex){
+			let explosion = "";
+			if(unit.internalType === "castle"){
+				explosion = "killCastleSimple";
+				castlesKilled++;
+			}else if(unit.internalType === "soldier"){
+				explosion = "killSimple";
+				soldiersKilled++;
+			}
+			arr.push({ type: ACTION.unit_removed, unitId: unit.id, explosion: explosion });
+			//makeExplosionBySoundMessage
+		}
+	}
+	if(soldiersKilled > 0){
+		arr.push({ type: ACTION.sound, name: "diedByStarving", q:0, r:0, playerIndex: -1, action: ACTION.player_killed});
+	}
+	if(castlesKilled > 0){
+		arr.push({ type: ACTION.sound, name: "killCastle", q:0, r:0, playerIndex: -1, action: ACTION.player_killed});
+	}
+	return arr;
+}
+
+
+function killPlayerTiles(playerIndex){
+	for(let t = 0; t < gameState.map.tilesData.length; t++){
+		let tile = gameState.map.tilesData[t];
+		if(tile.ownerIndex === playerIndex){
+			tile.ownerIndex = -1; // remove ownership instantly, animate using deadOwnerIndex for color.
+			tile.savings = 0;
+			
+			tile.isDying = true;
+			tile.deadStartTime = performance.now();
+			tile.deadOwnerIndex = playerIndex; // for animation texture/color.
+		}
+	}
+}
 
 
 // =================================================================
@@ -12080,10 +12263,10 @@ function handleHostData(data) {
 		break;
 		case ACTION.unit_removed: {
 			
+			let unit = getUnitById(data.unitId);
+			
 			// spawn Floating Text:
 			if(data.FText !== undefined && data.FText > 0){ // only show non-zero values.
-				let unit = getUnitById(data.unitId);
-				
 				spawnFloatingText({
 					x: axialToPixelX(unit.q, unit.r),
 					y: axialToPixelY(unit.q, unit.r),
@@ -12092,17 +12275,32 @@ function handleHostData(data) {
 				});
 			}
 			
+			if(data.explosion !== undefined){
+				//sounds.push({name:'killCastle', q: targetUnit.q, r: targetUnit.r, action: action.type, level:targetUnit.level});
+				makeExplosionBySoundMessage({name:data.explosion, q:unit.q, r:unit.r, action: ACTION.unit_removed, level: getUnitLevel(unit.type)});
+			}
+			
+			// remove unit:
 			gameState.units = gameState.units.filter(u => u.id !== data.unitId);
+			
 			needsUIUpdate = true;
 			updateHighlights();
-						
+
 			//updateLocalPoolsInfo();
 		}
 		break;
 		case ACTION.player_killed: {
 			let player = getPlayerByIndex(data.playerIndex);
 			player.isDead = true;
-			addSystemChatMessage(`Player ${player.name} has died!`, "#FFFFFF");
+			
+			// unsynced animations:
+			killPlayerTiles(data.playerIndex);
+			// units will be killed with unit_removed messages by host, 
+			//   so explosions will also be triggered for clients,
+			//   and they will be removed properly for all players.
+			//killPlayerUnits(data.playerIndex);
+
+			addSystemChatMessage(`>>> Player ${player.name} has died!`, "#FFFFFF");
 		}
 		break;
 		case ACTION.unit_move_reset: {
@@ -12222,6 +12420,7 @@ function handleHostData(data) {
 			case ACTION.unit_added: 
 			case ACTION.unit_removed: 
 			case ACTION.unit_moved: 
+			case ACTION.player_killed: 
 			//case ACTION.turn_changed: 
 			case ACTION.sound: {
 				//console.warn("XXYY: handleHostData:");
@@ -12790,8 +12989,14 @@ function kickPlayer(peerId){
 // =================================================================
 // --- LOBBY UI & LOGIC
 // =================================================================
+function updateJoinedPlayersText(){
+	document.querySelectorAll('.joined-players-text').forEach(el => {
+		el.textContent = `Joined players (${gameState.players.length}):`;
+	});
+}
 
 function updateHostLobbyUI() {
+	updateJoinedPlayersText();
 	
 	updateHostPreviewTile(getMyPlayer().color);
 	
@@ -12898,6 +13103,7 @@ function updatePlayerColor(color, textColor){
 
 
 function updateLobbyUI() {
+	updateJoinedPlayersText();
 	
 	updateLobbyPreviewTile(getMyPlayer().color);
 
@@ -15051,29 +15257,67 @@ document.addEventListener('keyup', (event) => {
 	}
 });
 
-//if (canvas.contains(e.target)) return; // let the canvas handle it
-	
-	
+
+
+let mouseDownInsidePopup = false;
+
+// handlePointer bugged, if x or y is zero, causes error.
 function handleOutside(e) {
+
+	// If the click started inside, do nothing
+	if (mouseDownInsidePopup) {
+		mouseDownInsidePopup = false;
+		return;
+	}
+
+	// Picker popup
+	if (!pickerWrapper.contains(e.target)) {
+		pickerPopup.style.display = "none";
+	}
+
+	// Game settings
+	if (!gameSettingsUiWrapper2.contains(e.target)) {
+		gameSettingsUi.style.display = "none";
+	}
+
+	// Build popup
+	if (
+		!buildPopup.contains(e.target) &&
+		!buildSoldierBtn.contains(e.target) &&
+		!buildCastleBtn.contains(e.target)
+	) {
+		if (isBuildPopupOpen()) {
+			cancelBuildPopup();
+		}
+	}
+
+	/*
 	// Check if the click was outside the picker
 	if (!pickerWrapper.contains(e.target)) {
 		pickerPopup.style.display = "none";
-		//return true;
 	}
 	if (!gameSettingsUiWrapper2.contains(e.target)) {
 		gameSettingsUi.style.display = "none";
-		//return true;
 	}
 
 	if (!buildPopup.contains(e.target) && !buildSoldierBtn.contains(e.target) && !buildCastleBtn.contains(e.target)) {
 		if(isBuildPopupOpen()){
 			cancelBuildPopup();
-			//return true;
 		}
 	}
-	//return false;
+	*/
 }
 
+
+
+document.addEventListener('mousedown', (e) => {
+	mouseDownInsidePopup =
+		pickerWrapper.contains(e.target) ||
+		gameSettingsUiWrapper2.contains(e.target) ||
+		buildPopup.contains(e.target) ||
+		buildSoldierBtn.contains(e.target) ||
+		buildCastleBtn.contains(e.target);
+});
 
 document.addEventListener('click', handleOutside);
 //document.addEventListener('touchstart', handleOutside, { passive: true });
