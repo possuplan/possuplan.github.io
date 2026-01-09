@@ -3294,7 +3294,7 @@ let MAX_LOBBY_MESSAGE_LEN = 100;
 
 
 // list of messages sent to clients:
-// let action actions =
+// let action = let actions =
 const ACTION = {
 	// handleHostData:
 	'multiple_actions': 1,
@@ -3328,6 +3328,9 @@ const ACTION = {
 	
 	'lobby_chat': 27,
 	'system_message': 28,
+	'player_killed': 29,
+	'ping': 30,
+	'pong': 31,
 };
 
 // compress some actions into smaller format:
@@ -4990,13 +4993,15 @@ function sendToHost(data) {
 let isAiBatching = false;
 let aiBatchBuffer = [];
 
-function broadcast(data) {
+function broadcast(data, everyone = true) {
 	if (!localPlayer.isHost) return;
 
 	// 1. ALWAYS process locally immediately.
 	// This updates the Host's gameState, allowing the AI to 'see' the result 
 	// of its move before calculating the next one.
-	handleHostData(data);
+	if(everyone){ // if want to broadcast to everyone, this includes host here:
+		handleHostData(data);
+	}
 
 	// 2. Handle Network Sending
 	if (isAiBatching) {
@@ -5724,7 +5729,21 @@ function drawHexagonPath(px, py, padding = 0) {
 	ctx.closePath();
 }
 
-
+function drawHexagonPathRotated(px, py, padding = 0, rotationRad = 0) {
+	const r = HEX_SIZE + padding;
+	ctx.beginPath();
+	for (let i = 0; i < 6; i++) {
+		const angle = 2 * Math.PI / 6 * (i + 1);
+		let x = Math.cos(angle+rotationRad);
+		let y = Math.sin(angle+rotationRad);
+		if(i === 0){
+			ctx.moveTo(px + r * x, py + r * y);
+		}else{
+			ctx.lineTo(px + r * x, py + r * y);
+		}
+	}
+	ctx.closePath();
+}
 
 
 
@@ -6361,22 +6380,21 @@ function drawMapTiles(){
 		// when animation has ended, this wont be necessary anymore.
 		// should set isDead and deadAnimationEnded to false after animation ends,
 		// so it matches the default values. or just remove those keys alltogether so they wont be saved.
-		let tileSizePad = hex_pad; // for debugging, hex_pad default zero.
+		let tileSizePad = hex_pad; // hex_pad is for debugging, hex_pad default = zero.
 		let drawDyingAnim = false;
+		let tileDyingPercent = 0;
 		
 		if(tile.isDying){
 			let timeDiff = performance.now() - tile.deadStartTime;
-			let tileAnimationLen = 2000;
-			let maxTileSize = 40; // for hex_pad (tileSizePad)
-			
-			// TODO: use deadOwnerIndex for the animation color since ownerIndex is -1 instantly after dying.
+			let tileAnimationLen = 3000;
+			let maxTileSize = 80; // 80 makes it negative (backwards). for hex_pad (tileSizePad)
 			
 			// draw dirt under the owned tile only if animation is still going on:
 			if(timeDiff < tileAnimationLen){
 				drawDyingAnim = true;
 
-				let percent = timeDiff/tileAnimationLen; // 0...1
-				tileSizePad = -percent*maxTileSize; // 0...-40
+				tileDyingPercent = timeDiff/tileAnimationLen; // 0...1
+				tileSizePad = -tileDyingPercent*maxTileSize; // 0...-40
 				
 				ctx.save(); // needed for hex drawing.
 				// Define the hex path
@@ -6407,15 +6425,25 @@ function drawMapTiles(){
 				
 				ctx.restore();
 			}else{
-				tile.isDying = false;
+				//tile.isDying = false;
+				// remove keys so they wont be stored in tilesData anymore.
+				delete tile.isDying;
+				delete tile.deadStartTime;
+				delete tile.deadOwnerIndex;
 			}
 		}
 		
 		
 		ctx.save(); // needed for hex drawing.
-		
-		// Define the hex path
-		drawHexagonPath(x, y, tileSizePad);
+		if(tileDyingPercent){
+			// draw rotation-animated and fading hexagon for dying hex:
+			let per = tileDyingPercent*1.5; // 1.5x so it will be fully opaque when going down to zero size.
+			ctx.globalAlpha = 1.5-per;
+			drawHexagonPathRotated(x, y, tileSizePad, per*Math.PI*3);
+		}else{
+			// Define the hex path
+			drawHexagonPath(x, y, tileSizePad);
+		}
 		
 		
 		//ctx.fillStyle = fallbackColor;
@@ -6488,9 +6516,9 @@ function drawMapTiles(){
 						
 						let textureName = landTextures[textureType];
 						// change dead players textures to skull texture:
-						if(player.isDead){
-							textureName = 'land-dead';
-						}
+						//if(player.isDead){
+						//	textureName = 'land-dead';
+						//}
 						
 						drawImageMipped(ctx, textureName, dx, dy, dWidth, dHeight, tileZoomMipLevel);
 
@@ -11549,6 +11577,7 @@ function executeEndTurn(playerIndex) {
 			}
 			
 			if(killPlayer){
+				console.warn("KILLING PLAYER "+player.name);
 				// kill player, turn his hexes gray?
 				player.isDead = true;
 				batchActions.push({ type: ACTION.player_killed, playerIndex: player.playerIndex });
@@ -11983,6 +12012,12 @@ function handleHostData(data) {
 	//console.log("handleHostData: data.type = "+data.type);
 	
 	switch (data.type) {
+		case ACTION.ping: {
+			// respond to ping to host:
+			sendToHost({ type: ACTION.pong, time: Date.now(), playerIndex: getMyPlayer().playerIndex });
+			console.warn("received ping from host.");
+		}
+		break;
 		case ACTION.check_balance: {
 			// called at the very last after action_move/action_build messages have been processed.
 			if(localPlayer.isHost){
@@ -12080,6 +12115,7 @@ function handleHostData(data) {
 		}
 		break;
 		case ACTION.full_state: {
+			// for spectators, send full state:
 			gameState = data.state;
 			console.warn("handleHostData full_state");
 			
@@ -12291,9 +12327,13 @@ function handleHostData(data) {
 		break;
 		case ACTION.player_killed: {
 			let player = getPlayerByIndex(data.playerIndex);
+			
+			// cant check if(!player.isDead) here since it will be dead on host side immediately...
+			// and it is required for checkaiturn function to be dead...
+			//if(!player.isDead){
 			player.isDead = true;
 			
-			// unsynced animations:
+			// unsynced animations (clients wont get tile updates any other way):
 			killPlayerTiles(data.playerIndex);
 			// units will be killed with unit_removed messages by host, 
 			//   so explosions will also be triggered for clients,
@@ -12301,6 +12341,7 @@ function handleHostData(data) {
 			//killPlayerUnits(data.playerIndex);
 
 			addSystemChatMessage(`>>> Player ${player.name} has died!`, "#FFFFFF");
+			//}
 		}
 		break;
 		case ACTION.unit_move_reset: {
@@ -12411,16 +12452,16 @@ function handleHostData(data) {
 	if(!REPLAY_ENABLED){
 		// add only these messages to NETWORK_HISTORY:
 		switch (data.type) {
-			case ACTION.chat: 
+			case ACTION.chat:
 				data.message = data.message.slice(0, MAX_MESSAGE_LEN);
 				addNetworkHistory(data);
 			break;
-			case ACTION.tile_changed: 
-			case ACTION.object_changed: 
-			case ACTION.unit_added: 
-			case ACTION.unit_removed: 
-			case ACTION.unit_moved: 
-			case ACTION.player_killed: 
+			case ACTION.tile_changed:
+			case ACTION.object_changed:
+			case ACTION.unit_added:
+			case ACTION.unit_removed:
+			case ACTION.unit_moved:
+			case ACTION.player_killed:
 			//case ACTION.turn_changed: 
 			case ACTION.sound: {
 				//console.warn("XXYY: handleHostData:");
@@ -12479,6 +12520,14 @@ function handleClientData(peerId, data) {
 	//console.log("handleClientData 2");
 	
 	switch (data.type) {
+		case ACTION.pong: {
+			// received answer from ACTION.ping
+			let time = data.time;
+			let playerIndex = data.playerIndex;
+			let player = getPlayerByIndex(playerIndex);
+			console.warn("received pong from player "+player.name);
+		}
+		break;
 		case ACTION.join:
 			player.name = data.name;
 			
@@ -12757,6 +12806,30 @@ function restartGame(){
 
 
 
+
+let pingIntervalId = null;
+
+// host function to start pinging all connected clients.
+function startPinging(){
+	if (pingIntervalId !== null) return; // already running
+
+	pingIntervalId = setInterval(() => {
+		broadcast({
+			type: ACTION.ping,
+			time: Date.now()
+		}, false); // everyone = false = dont send to host too.
+	}, 5000);
+}
+
+// not used yet since you cant quit other way than refreshing page.
+function stopPinging(){
+	if (pingIntervalId === null) return;
+
+	clearInterval(pingIntervalId);
+	pingIntervalId = null;
+}
+
+
 // Helper function for joinGame
 function executeJoin(hostPeerId) {
 	console.log(`Attempting to connect to host: ${hostPeerId}`);
@@ -12824,6 +12897,7 @@ function joinGame(isSpectator) {
 	
 	executeJoin(hostPeerId);
 }
+
 
 function hostGame() {
 	const gameName = gameNameInput.value.trim();
@@ -12904,6 +12978,8 @@ function hostGame() {
 				  }),
 				});
 			}
+			
+			startPinging();
 
 			pushLobbySystemChatMessage("--- Beginning of the chat ---", "#FF0");
 			
