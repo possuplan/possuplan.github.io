@@ -1929,40 +1929,40 @@ input.disabled {
 					<div class="info-item" title="Savings">
 						<div class="input-group-icons">
 							<div style="flex: 1;">
-								<span class="poolinfo ui-savings"></span>
+								<span id="player-savings" class="ui-number">0</span>
 							</div>
 							<div style="flex: 1;">
-								<span id="player-savings" class="ui-number">0</span>
+								<span class="poolinfo ui-savings"></span>
 							</div>
 						</div>
 					</div>
 					<div class="info-item" title="Income">
 						<div class="input-group-icons">
 							<div style="flex: 1;">
-								<span class="poolinfo ui-income"></span>
+								<span id="player-income" class="ui-number">0</span>
 							</div>
 							<div style="flex: 1;">
-								<span id="player-income" class="ui-number">0</span>
+								<span class="poolinfo ui-income"></span>
 							</div>
 						</div>
 					</div>
 					<div class="info-item" title="Wages">
 						<div class="input-group-icons">
 							<div style="flex: 1;">
-								<span class="poolinfo ui-wages"></span>
+								<span id="player-wages" class="ui-number">0</span>
 							</div>
 							<div style="flex: 1;">
-								<span id="player-wages" class="ui-number">0</span>
+								<span class="poolinfo ui-wages"></span>
 							</div>
 						</div>
 					</div>
 					<div class="info-item" title="Balance (savings+income-wages)">
 						<div class="input-group-icons">
 							<div style="flex: 1;">
-								<span class="poolinfo ui-balance"></span>
+								<span id="player-balance" class="ui-number">0</span>
 							</div>
 							<div style="flex: 1;">
-								<span id="player-balance" class="ui-number">0</span>
+								<span class="poolinfo ui-balance"></span>
 							</div>
 						</div>
 					</div>
@@ -11860,7 +11860,7 @@ function executeEndTurn(playerIndex) {
 	for(let p = 0; p < gameState.players.length; p++){
 		let player = gameState.players[p];
 		
-		if(!player.isDead){
+		if(!player.isDead && !player.isSpectator){
 			let killPlayer = false;
 			
 			let totalUnits = 0;
@@ -13141,9 +13141,10 @@ function restartGame(){
 
 
 
-let TIMEOUT_TIME = 30000;
-let PING_INTERVAL = 5000;
 
+let PING_INTERVAL = 5000;
+let TIMEOUT_TIME = 30000;
+let TIMEOUT_MSG_TIME = PING_INTERVAL+1000;
 
 function checkPlayersTimeouts(){
 	let batchActions = [];
@@ -13153,8 +13154,18 @@ function checkPlayersTimeouts(){
 		let player = gameState.players[i];
 		if(player.lastPong && !player.isDead){
 			let timeDiff = Date.now()-player.lastPong;
+			if(timeDiff > TIMEOUT_MSG_TIME){
+				if(!player.timeoutMessaged){
+					player.timeoutMessaged = true;
+					broadcast({ type: ACTION.system_message, message: ">>> Player "+player.name+" has timed out, 30 seconds until disconnection." });
+				}
+			}else{
+				player.timeoutMessaged = false;
+			}
 			if(timeDiff > TIMEOUT_TIME){
-				console.warn("player "+player.name+" has timed out. setting player as dead.");
+				broadcast({ type: ACTION.system_message, message: ">>> Player "+player.name+" has been disconnected." });
+				
+				//console.warn("player "+player.name+" has timed out. setting player as dead.");
 				// kill player and set player.isDead = true :
 				// removed because it kinda sucks if the player units disappears... makes it too easy.
 				//batchActions.push(...killPlayer(player.playerIndex));
