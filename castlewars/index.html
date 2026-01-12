@@ -519,21 +519,22 @@ label {
 
 
 
+
 .ui-panel-controls > .info-left {
 	flex: 0 0 auto;     /* don't grow, don't shrink below content size */
 	width: auto;
 	min-width: 0;       /* allow shrinking in tight containers */
 	display: block;
-	padding-left:10px;
+	padding-left:5px;
 	height:100%;
-	padding-bottom:10px;
+	----padding-bottom:10px;
 }
 
 .ui-panel-controls > .info-right {
 	flex: 1 1 auto;     /* grow to fill remaining space */
 	min-width: 0;       /* allows flex children to shrink correctly */
 	display: block;
-	width:230px;
+	width:282px;
 }
 
 
@@ -544,7 +545,7 @@ label {
 #ui-right .button-row {
 	display: flex;
 	flex-direction: row;
-	gap: 10px;
+	gap: 5px;
 	width: 100%;
 	box-sizing: border-box;
 }
@@ -973,7 +974,7 @@ button.redbutton:hover {
 */
 
 
-
+/*
 #settings-ui {
 	display: none;
 	flex-direction: column;
@@ -983,8 +984,8 @@ button.redbutton:hover {
 	left: 0;
 	width: 200px;
 	font-size: 18px;
-	line-height: 20px;      /* your chosen line height */
-	----height: calc(3 * 20px);   /* 3 lines tall */
+	line-height: 20px;     
+	----height: calc(3 * 20px);  
 	pointer-events: none;
 	overflow-wrap: anywhere;
 	z-index: 9999;
@@ -993,7 +994,34 @@ button.redbutton:hover {
     min-height: 300px;
 	
 	border-radius:8px;
+}*/
+
+
+#settings-ui-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width:100%;
 }
+
+/* Popup container */
+#settings-ui {
+	position: fixed;
+	inset: 0;
+	display: none;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background: rgba(0, 0, 0, 0.7);
+	z-index: 9999;
+}
+
+/* Visible state */
+#settings-ui.active {
+	display: flex;
+}
+
+
 
 #music-volume {
 	width: 100%;
@@ -1084,7 +1112,38 @@ input.disabled {
 }
 
 
+.input-group-icons {
+	display: flex;
+	gap: 10px;
+	line-height: 26px;
+}
 
+.poolinfo {
+	padding:0px;
+
+	font-size: 15px;
+	width: 18px;
+	height: 26px;
+
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: contain;
+	
+	display:flex;
+}
+
+.ui-savings {
+	background-image: url('images/ui/savings.png');
+}
+.ui-income {
+	background-image: url('images/ui/income.png');
+}
+.ui-wages {
+	background-image: url('images/ui/wages.png');
+}
+.ui-balance {
+	background-image: url('images/ui/balance.png');
+}
 
 
 
@@ -1126,7 +1185,7 @@ input.disabled {
 
 
 #toggle-ui-btn {
-	background-image: url('images/ui/chat-settings.png');
+	background-image: url('images/ui/chat.png');
 }
 
 #settings-btn {
@@ -1172,6 +1231,21 @@ input.disabled {
 
 
 
+
+#quick-settings-btn {
+	background-image: url('images/ui/settings-icon.png');
+}
+
+
+#build-btn {
+	background-image: url('images/ui/build.png');
+}
+#build-btn.disabled {
+	filter: brightness(0.5);
+}
+#build-btn[disabled] {
+	filter: brightness(0.5);
+}
 
 
 #sell-unit-btn {
@@ -1365,7 +1439,49 @@ input.disabled {
 </div>
 
 
+<!-- ingame settings -->
+<div id="settings-ui">
+	<div id="settings-ui-wrapper">
+		<div id="settings-ui-wrapper2" class="ui-menu ui-panel settings-panel">
+			<div class="input-group">
+				<div style="flex: 5; padding: 10px 0 10px 0; font-size: 20px; font-weight:bold">
+					Settings
+				</div>
+				<div style="flex: 1;">
+					<button id="close-settings-btn" class="gamebutton largefont">×</button>
+				</div>
+			</div>
+			Music:
+			<div class="input-group">
+				<div style="flex: 1;">
+					<button id="music-previous-btn" class="music-previous-btn gamebutton"></button>
+				</div>
+				<div style="flex: 1;">
+					<button id="music-pause-btn" class="music-pause-btn gamebutton"></button>
+					<button id="music-play-btn" class="music-play-btn gamebutton" style="display:none"></button>
+				</div>
+				<div style="flex: 1;">
+					<button id="music-next-btn" class="music-next-btn gamebutton"></button>
+				</div>
+			</div>
+			<div class="music-volume-wrapper">
+				<div class="input-group" style="align-items: center;">
+					<div style="flex: 1;">
+						<button id="music-mute-btn" class="music-mute-btn gamebutton" title="Mute"></button>
+						<button id="music-unmute-btn" class="music-unmute-btn gamebutton" title="Unmute" style="display:none"></button>
+					</div>
+					<div style="flex: 4;">
+						<input type="range" id="music-volume" min="0" max="200" value="1">
+					</div>
+				</div>
+			</div>
+			
+		</div>
+	</div>
+</div>
 
+
+<!-- lobby settings -->
 <div id="game-settings-ui">
 	<div id="game-settings-ui-wrapper">
 		<div id="game-settings-ui-wrapper2" class="ui-menu ui-panel settings-panel">
@@ -1379,35 +1495,43 @@ input.disabled {
 			</div>
 			
 			
-			<div class="settings-title">
-				Music player:
+			<div class="for-confirmation">
+				Press accept settings for host to start game:
+				<button id="confirm-game-settings-btn" class="gamebutton">Accept Settings</button>
 			</div>
-			<div class="input-group">
-				<div style="flex: 1;">
-					<button id="music-previous-btn2" class="music-previous-btn gamebutton"></button>
+			
+			<div class="for-settings">
+				<div class="settings-title">
+					Music player:
 				</div>
-				<div style="flex: 1;">
-					<button id="music-pause-btn2" class="music-pause-btn gamebutton" style="display:none"></button>
-					<button id="music-play-btn2" class="music-play-btn gamebutton"></button>
-				</div>
-				<div style="flex: 1;">
-					<button id="music-next-btn2" class="music-next-btn gamebutton"></button>
-				</div>
-			</div>
-			<div class="music-volume-wrapper">
-				<div class="input-group" style="align-items: center;">
+				<div class="input-group">
 					<div style="flex: 1;">
-						<button id="music-mute-btn2" class="music-mute-btn gamebutton" title="Mute"></button>
-						<button id="music-unmute-btn2" class="music-unmute-btn gamebutton" title="Unmute" style="display:none"></button>
+						<button id="music-previous-btn2" class="music-previous-btn gamebutton"></button>
 					</div>
-					<div style="flex: 4;">
-						<input type="range" id="music-volume2" min="0" max="200" value="1">
+					<div style="flex: 1;">
+						<button id="music-pause-btn2" class="music-pause-btn gamebutton" style="display:none"></button>
+						<button id="music-play-btn2" class="music-play-btn gamebutton"></button>
+					</div>
+					<div style="flex: 1;">
+						<button id="music-next-btn2" class="music-next-btn gamebutton"></button>
 					</div>
 				</div>
+				<div class="music-volume-wrapper">
+					<div class="input-group" style="align-items: center;">
+						<div style="flex: 1;">
+							<button id="music-mute-btn2" class="music-mute-btn gamebutton" title="Mute"></button>
+							<button id="music-unmute-btn2" class="music-unmute-btn gamebutton" title="Unmute" style="display:none"></button>
+						</div>
+						<div style="flex: 4;">
+							<input type="range" id="music-volume2" min="0" max="200" value="1">
+						</div>
+					</div>
+				</div>
+				<br>
 			</div>
 			
 			
-			<br>
+			
 			<div>
 				<div class="settings-title">
 					Start money per hex:
@@ -1630,7 +1754,7 @@ input.disabled {
 			<button id="load-game-btn" style="display:block">Load Game</button>
 		</div>
 
-		
+		<button id="start-game-check-btn" style="display:none">Start Check</button>
 		<button id="start-game-btn" class="primary">Start Game</button>
 		<button id="start-replay-btn" class="primary" style="display:none">Start Replay</button>
 		
@@ -1737,6 +1861,8 @@ input.disabled {
 </div>
 
 
+
+
 <div id="game-page" class="page">
 	<canvas id="game-canvas"></canvas>
 	
@@ -1744,43 +1870,6 @@ input.disabled {
 		<div id="top-float-ui-messages"></div>
 	</div>
 	
-	<div id="settings-ui">
-		<div class="ui-menu ui-panel">
-			<div class="input-group">
-				<div style="flex: 1;">
-					
-				</div>
-				<div style="flex: 1;">
-					<button id="close-settings-btn" class="gamebutton largefont">×</button>
-				</div>
-			</div>
-			Music:
-			<div class="input-group">
-				<div style="flex: 1;">
-					<button id="music-previous-btn" class="music-previous-btn gamebutton"></button>
-				</div>
-				<div style="flex: 1;">
-					<button id="music-pause-btn" class="music-pause-btn gamebutton"></button>
-					<button id="music-play-btn" class="music-play-btn gamebutton" style="display:none"></button>
-				</div>
-				<div style="flex: 1;">
-					<button id="music-next-btn" class="music-next-btn gamebutton"></button>
-				</div>
-			</div>
-			<div class="music-volume-wrapper">
-				<div class="input-group" style="align-items: center;">
-					<div style="flex: 1;">
-						<button id="music-mute-btn" class="music-mute-btn gamebutton" title="Mute"></button>
-						<button id="music-unmute-btn" class="music-unmute-btn gamebutton" title="Unmute" style="display:none"></button>
-					</div>
-					<div style="flex: 4;">
-						<input type="range" id="music-volume" min="0" max="200" value="1">
-					</div>
-				</div>
-			</div>
-			
-		</div>
-	</div>
 	
 	
 	
@@ -1792,7 +1881,7 @@ input.disabled {
 					<div style="flex: 1;">
 						<button id="quit-game-btn" class="gamebutton redbutton">Quit game</button>
 					</div>
-					<div style="flex: 1;">
+					<div style="flex: 1; display:none">
 						<button id="settings-btn" class="gamebutton largefont" title="Settings"></button>
 					</div>
 				</div>
@@ -1831,14 +1920,64 @@ input.disabled {
 			<div class="ui-panel ui-panel-controls">
 				<div class="info-left" id="info-left" style="display:none">
 					<div class="top-row" id="ui-right-top-row-id">
+					
+					<div class="info-item" title="Savings">
+						<div class="input-group-icons">
+							<div style="flex: 1;">
+								<span class="poolinfo ui-savings"></span>
+							</div>
+							<div style="flex: 1;">
+								<span id="player-savings" class="ui-number">0</span>
+							</div>
+						</div>
+					</div>
+					<div class="info-item" title="Income">
+						<div class="input-group-icons">
+							<div style="flex: 1;">
+								<span class="poolinfo ui-income"></span>
+							</div>
+							<div style="flex: 1;">
+								<span id="player-income" class="ui-number">0</span>
+							</div>
+						</div>
+					</div>
+					<div class="info-item" title="Wages">
+						<div class="input-group-icons">
+							<div style="flex: 1;">
+								<span class="poolinfo ui-wages"></span>
+							</div>
+							<div style="flex: 1;">
+								<span id="player-wages" class="ui-number">0</span>
+							</div>
+						</div>
+					</div>
+					<div class="info-item" title="Balance (savings+income-wages)">
+						<div class="input-group-icons">
+							<div style="flex: 1;">
+								<span class="poolinfo ui-balance"></span>
+							</div>
+							<div style="flex: 1;">
+								<span id="player-balance" class="ui-number">0</span>
+							</div>
+						</div>
+					</div>
+					
+					<!--
+						<div class="info-item"><span class="poolinfo ui-savings"></span><span id="player-savings" class="ui-number">0</span></div>
+						<div class="info-item"><span class="poolinfo ui-income"></span><span id="player-income" class="ui-number">0</span></div>
+						<div class="info-item"><span class="poolinfo ui-wages"></span><span id="player-wages" class="ui-number">0</span></div>
+						<div class="info-item"><span class="poolinfo ui-balance"></span><span id="player-balance" class="ui-number">0</span></div>
+						<!--
 						<div class="info-item">Savings: <span id="player-savings" class="ui-number">0</span></div>
 						<div class="info-item">Income: <span id="player-income" class="ui-number">0</span></div>
 						<div class="info-item">Wages: <span id="player-wages" class="ui-number">0</span></div>
 						<div class="info-item">Balance: <span id="player-balance" class="ui-number">0</span></div>
+						-->
 					</div>
 				</div>
 				<div class="info-right" id="info-right">
 					<div class="button-row" id="ui-right-button-row1-id">
+						<button id="build-btn" class="gamebutton" title="Build item" disabled></button>
 						<button id="sell-unit-btn" class="gamebutton" title="Sell warrior"></button>
 						<button id="build-soldier-btn" class="gamebutton" title="Recruit warrior"></button>
 						<button id="build-castle-btn" class="gamebutton" title="Build castle"></button>
@@ -1848,6 +1987,7 @@ input.disabled {
 						<button id="end-turn-btn" class="gamebutton primary" title="End turn"></button>
 						<button id="previous-unit-btn" class="gamebutton" title="Previous unit"></button>
 						<button id="next-unit-btn" class="gamebutton" title="Next unit"></button>
+						<button id="quick-settings-btn" class="gamebutton" title="Settings"></button>
 						<button id="toggle-ui-btn" class="gamebutton" title="Open chat"></button>
 					</div>
 				</div>
@@ -3297,41 +3437,46 @@ let MAX_LOBBY_MESSAGE_LEN = 100;
 // let action = let actions =
 const ACTION = {
 	// handleHostData:
-	'multiple_actions': 1,
-	'game_start': 2,
-	'replay_start': 3,
-	'full_state': 4,
-	'lobby_update': 5,
-	'map_update': 6,
-	'chat': 7,
-	'undo_counter': 8,
-	'tile_changed': 9, // X
-	'object_changed': 10, // X
-	'unit_added': 11,
-	'unit_removed': 12, // X
-	'unit_move_reset': 13,
-	'unit_moved': 14, // X
-	'turn_changed': 15, // X
-	'sound': 16, // X
-	'savings_update': 17,
-	
+	'ping': 100, 				// ACTION.ping
+	'multiple_actions': 101, 	// ACTION.multiple_actions
+	'game_start': 102, 			// ACTION.game_start
+	'replay_start': 103, 		// ACTION.replay_start
+	'full_state': 104, 			// ACTION.full_state
+	'lobby_update': 105,		// ACTION.lobby_update
+	'map_update': 106, 			// ACTION.map_update
+	'system_message': 107, 		// ACTION.system_message
+	'undo_counter': 108, 		// ACTION.undo_counter
+	'tile_changed': 109, 		// ACTION.tile_changed
+	'object_changed': 110, 		// ACTION.object_changed
+	'unit_added': 111, 			// ACTION.unit_added
+	'unit_removed': 112, 		// ACTION.unit_removed
+	'player_killed': 113, 		// ACTION.player_killed
+	'unit_move_reset': 114, 	// ACTION.unit_move_reset
+	'unit_moved': 115, 			// ACTION.unit_moved
+	'turn_changed': 116, 		// ACTION.turn_changed
+	'sound': 117, 				// ACTION.sound
+	'savings_update': 118, 		// ACTION.savings_update
+	'start_game_check': 119,	// ACTION.start_game_check
+
 	// handleClientData:
-	'join': 18,
-	'player_update': 19,
-	'host_quit': 20,
-	'action_sell': 21,
-	'action_move': 22,
-	'action_build': 23,
-	'action_undo': 24,
-	'action_end_turn': 25,
-	'check_balance': 26,
-	
-	'lobby_chat': 27,
-	'system_message': 28,
-	'player_killed': 29,
-	'ping': 30,
-	'pong': 31,
+	'pong': 200, 				// ACTION.pong
+	'join': 201, 				// ACTION.join
+	'player_update': 202, 		// ACTION.player_update
+	'host_quit': 203, 			// ACTION.host_quit
+	'action_sell': 204, 		// ACTION.action_sell
+	'action_move': 205, 		// ACTION.action_move
+	'action_build': 206, 		// ACTION.action_build
+	'action_undo': 207, 		// ACTION.action_undo
+	'action_end_turn': 208, 	// ACTION.action_end_turn
+
+	// handleHostData & handleClientData:
+	'check_balance': 300, 		// ACTION.check_balance
+	'chat': 301, 				// ACTION.chat
+	'lobby_chat': 302, 			// ACTION.lobby_chat
 };
+
+
+
 
 // compress some actions into smaller format:
 // replay can read array or object format, so all actions doesnt have to be compressed.
@@ -3387,7 +3532,7 @@ function compressAction(data){
 		}
 		break;
 		/*
-		// removed since its not consistent parameters amounts
+		// removed since it doesnt have consistent parameters amounts
 		case ACTION.unit_removed: {
 			let FText = data.FText ?? 0;
 			return [data.type, data._T, data.unitId, FText];
@@ -3481,6 +3626,7 @@ function deCompressAction(arr){
 		}
 		break;
 		/*
+		// removed since it doesnt have consistent parameters amounts
 		case ACTION.unit_removed: {
 			return {
 				type: arr[0], 
@@ -3523,8 +3669,6 @@ const SOLDIER_DATA = {
 	"peasant": { visibleName: "Peasant", name: "peasant", type:"soldier", level: 1, cost: 10, wage: 3, sell: 5 },
 };
 
-
-
 // castles castle_units
 // cost values checked from original gameplay.
 const CASTLE_DATA = {
@@ -3533,6 +3677,12 @@ const CASTLE_DATA = {
 	"castle":   { visibleName: "Castle",  name: "castle",   type:"castle", level: 2, cost: 40 },
 	"hut":      { visibleName: "Hut",     name: "hut",      type:"castle", level: 1, cost: 10 },
 };
+
+const BOAT_DATA = {
+	// listed in this order.
+	"sailboat":{ visibleName: "Sailboat",name: "sailboat",type:"boat", level: 1, cost: 1, wage: 0, sell: 0 },
+};
+
 
 const EPSILON = 0.000001; // The margin of error for buying units etc.
 
@@ -3557,19 +3707,28 @@ let minSoldierCost = getCheapestCost(SOLDIER_DATA, "soldier");
 
 
 // todo: use this array instead of 2 separate arrays for soldiers and castles.
-const UNITS_DATA = {
+const UNITS = {
+	ALL: {
+		...SOLDIER_DATA,
+		...CASTLE_DATA,
+		...BOAT_DATA,
+	},
 	soldier: { // this should be unit type, which can be used directly as reference here.
 		...SOLDIER_DATA
 	},
 	castle: {
 		...CASTLE_DATA
 	},
+	boat: {
+		...BOAT_DATA
+	},
 	object: {
 		
 	},
 };
 
-console.log(UNITS_DATA);
+console.warn("UNITS");
+console.warn(UNITS);
 
 
 function getSoldierLevel(type){
@@ -3595,6 +3754,8 @@ let localPlayer = {
 	isSpectator: false,
 	isHost: false,
 	isDead: false,
+	disconnected: false, // true if player was timed out or quitted the game. if quitted is false, then its just timed out.
+	quitted: false, // true if player intentionally quitted the game.
 	isAI: false,
 	undoCounter: 0, // will be updated in undo_counter message and used to determine if there are any undoing left.
 };
@@ -3872,6 +4033,12 @@ imageAssets = {
 	'ui-rotate-left':    {path:'images/ui/rotate-left.png', isUi: true},
 	'ui-rotate-reset':   {path:'images/ui/rotate-reset.png', isUi: true},
 	'ui-rotate-right':   {path:'images/ui/rotate-right.png', isUi: true},
+	
+	'ui-savings':   {path:'images/ui/savings.png', isUi: true},
+	'ui-income':   {path:'images/ui/income.png', isUi: true},
+	'ui-wages':   {path:'images/ui/wages.png', isUi: true},
+	'ui-balance':   {path:'images/ui/balance.png', isUi: true},
+	'ui-build':   {path:'images/ui/build.png', isUi: true},
 
 
 	// ingame graphics:
@@ -3913,12 +4080,15 @@ imageAssets = {
 	'soldier2': {path:'images/'+pathPrefix+'/soldier2.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
 	'soldier3': {path:'images/'+pathPrefix+'/soldier3.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
 	'soldier4': {path:'images/'+pathPrefix+'/soldier4.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
+	'soldier5': {path:'images/'+pathPrefix+'/sailboat.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
 	
 	'soldier1-b': {path:'images/'+pathPrefix+'/soldier1-b.png', scale: unitScales[3], offsetX: unitOffsets[3].x, offsetY: unitOffsets[3].y},
 	'soldier2-b': {path:'images/'+pathPrefix+'/soldier2-b.png', scale: unitScales[4], offsetX: unitOffsets[4].x, offsetY: unitOffsets[4].y},
 	'soldier3-b': {path:'images/'+pathPrefix+'/soldier3-b.png', scale: unitScales[5], offsetX: unitOffsets[5].x, offsetY: unitOffsets[5].y},
 	'soldier4-b': {path:'images/'+pathPrefix+'/soldier4-b.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
-
+	'soldier5-b': {path:'images/'+pathPrefix+'/sailboat.png', scale: unitScales[6], offsetX: unitOffsets[6].x, offsetY: unitOffsets[6].y},
+	
+	
 	//'castle1':  {path:'images/orig-scaled/128x128/castle1.png', scale:1.8, offsetX: 0},
 	//'castle2':  {path:'images/orig-scaled/128x128/castle2.png', scale:1.8, offsetX: 0},
 	//'castle3':  {path:'images/orig-scaled/128x128/castle3.png', scale:1.8, offsetX: 0},
@@ -4473,6 +4643,10 @@ const loadedGameInfoContainer = document.getElementById('loaded-game-info-contai
 const loadGameDate = document.getElementById('load-game-date');
 const loadGamePlayersList = document.getElementById('load-game-players');
 const startGameBtn = document.getElementById('start-game-btn');
+
+
+
+
 const startReplayBtn = document.getElementById('start-replay-btn');
 const hostPlayerList = document.getElementById('host-player-list');
 
@@ -4596,6 +4770,8 @@ const quitGameBtn = document.getElementById('quit-game-btn');
 
 
 const settingsBtn = document.getElementById('settings-btn');
+const quickSettingsBtn = document.getElementById('quick-settings-btn');
+
 const closeSettingsBtn = document.getElementById('close-settings-btn');
 const settingsUi = document.getElementById('settings-ui');
 
@@ -4604,24 +4780,118 @@ const gameSettingsBtn = document.getElementById('game-settings-btn');
 const closeGameSettingsBtn = document.getElementById('close-game-settings-btn');
 const gameSettingsUi = document.getElementById('game-settings-ui');
 const gameSettingsUiWrapper2 = document.getElementById('game-settings-ui-wrapper2');
+const settingsUiWrapper2 = document.getElementById('settings-ui-wrapper2');
 
 
 const lobbyGameSettingsBtn = document.getElementById('lobby-game-settings-btn');
 
+
+const startGameCheckBtn = document.getElementById('start-game-check-btn');
+
+
+const forConfirmation = document.querySelectorAll('.for-confirmation');
+const forSettings = document.querySelectorAll('.for-settings');
+
+
+
+
+// for game settings check popup
+function openSettingsCheck(){
+	openGameSettings();
+	
+	showConfirmationView();
+}
+
+
+function switchConfirmationView(show){
+	// show confirmation views:
+	forConfirmation.forEach(el => {
+		el.style.display = show ? "block" : "none";
+	});
+	// hide non-confirmation views:
+	forSettings.forEach(el => {
+		el.style.display = show ? "none" : "block";
+	});
+}
+
+function showConfirmationView(){
+	switchConfirmationView(true);
+}
+function hideConfirmationView(){
+	switchConfirmationView(false);
+}
+
+startGameCheckBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
+	startGameCheck();
+});
+
+
 gameSettingsBtn.addEventListener("click", (e) => {
 	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
-	gameSettingsUi.style.display = "flex";
+	openGameSettings();
+	hideConfirmationView();
 });
 lobbyGameSettingsBtn.addEventListener("click", (e) => {
 	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
-	gameSettingsUi.style.display = "flex";
+	openGameSettings();
+	hideConfirmationView();
 });
 
+
+/*
+	settingsBtn.onclick = () => {
+		console.log("settingsBtn clicked");
+		toggleSettings();
+	};
+	settingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	settingsBtn.tabIndex = -1; //remove it from the tab order
+	
+	
+		
+	closeSettingsBtn.onclick = () => {
+		toggleSettings();
+	};
+	closeSettingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
+	closeSettingsBtn.tabIndex = -1; //remove it from the tab order
+	
+	
+*/
+
+function openGameSettings(){
+	gameSettingsUi.style.display = "flex";
+}
 function closeGameSettings(){
 	gameSettingsUi.style.display = "none";
 }
+
 closeGameSettingsBtn.addEventListener("click", () => {
 	closeGameSettings();
+});
+
+
+
+function openIngameSettings(){
+	settingsUi.style.display = "flex";
+}
+function closeIngameSettings(){
+	settingsUi.style.display = "none";
+}
+
+
+
+quickSettingsBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
+	toggleSettings();
+});
+
+settingsBtn.addEventListener("click", (e) => {
+	e.stopPropagation(); // needed or it will close the popup instantly due to check of handleOutside()
+	toggleSettings();
+});
+
+closeSettingsBtn.addEventListener("click", () => {
+	toggleSettings();
 });
 
 
@@ -6030,7 +6300,7 @@ function drawObject(ctx, x, y, objectName, tile = null){
 			}
 		}
 		ctx.save();
-		
+
 		//ctx.translate(x, y);
 		//ctx.rotate(-viewport.rotation);
 		
@@ -8399,6 +8669,15 @@ function showPoolInfo(){
 	infoLeft.style.display = "block";
 }
 
+function formatPoolDecimal(num) {
+	num += EPSILON; // add 0.000001 in case the value is 9.99999999 etc...
+	const fixed = parseFloat(num.toFixed(2)); // "12.30"
+	//if (fixed.endsWith("00")) return String(num|0); // integer case
+	//if (fixed.endsWith("0")) return fixed.slice(0, -1); // one trailing zero
+	return fixed; // both decimals meaningful
+}
+
+
 function updateSelectedPoolUi(){
 	// disable by default, enable later:
 	buildSoldierBtn.classList.add("disabled");
@@ -8409,10 +8688,10 @@ function updateSelectedPoolUi(){
 		console.warn(selectedPool);
 		
 		let totalBalance = (selectedPool.totalSavings + selectedPool.totalIncome) - selectedPool.totalWages;
-		playerSavings.textContent = formatDecimal(selectedPool.totalSavings);
-		playerIncome.textContent = formatDecimal(selectedPool.totalIncome);
-		playerWages.textContent = formatDecimal(selectedPool.totalWages);
-		playerBalance.textContent = formatDecimal(totalBalance);
+		playerSavings.textContent = formatPoolDecimal(selectedPool.totalSavings);
+		playerIncome.textContent = formatPoolDecimal(selectedPool.totalIncome);
+		playerWages.textContent = formatPoolDecimal(selectedPool.totalWages);
+		playerBalance.textContent = formatPoolDecimal(totalBalance);
 		
 		if(selectedPool.totalSavings >= minSoldierCost){
 			buildSoldierBtn.classList.remove("disabled");
@@ -10319,7 +10598,8 @@ function executeAction(playerId, action) {
 		case ACTION.action_end_turn: {
 			// end turn
 			
-			//console.log("executeAction action_end_turn");
+			
+			console.warn("executeAction action_end_turn");
 			
 			executeEndTurn(playerIndex);
 			
@@ -10425,7 +10705,14 @@ function executeAction(playerId, action) {
 // --- ECONOMY & TURN LOGIC (HOST-SIDE)
 // =================================================================
 function updatePlayerSavings(playerIndex) {
-	console.log("updatePlayerSavings");
+	let logallowed = true;
+	if(getPlayerByIndex(playerIndex).isAI){
+		logallowed = false;
+	}
+	
+	if(logallowed){
+		console.log("updatePlayerSavings");
+	}
 	
 	const newPools = findEconomyPools(playerIndex);
 	//let newTotalSavings = 0;
@@ -10445,8 +10732,10 @@ function updatePlayerSavings(playerIndex) {
 	
 	//newPools.forEach(pool => newTotalSavings += pool.totalSavings);
 	
-	console.log("poolsInfo:");
-	console.log(poolsInfo);
+	if(logallowed){
+		console.log("poolsInfo:");
+		console.log(poolsInfo);
+	}
 	
 	sendToPlayer(getPlayerId(playerIndex), { 
 		type: ACTION.savings_update, 
@@ -10644,6 +10933,32 @@ function addCost(pools, cost, preferredHex = null, actionType = "unknown") {
 }
 
 
+function getNextPlayerIndexAndProcessEndOfDay(currentIndex){
+	let nextIndex = currentIndex;
+	// get next player index:
+	let counter = 0;
+	let alreadyAdvanced = false;
+	do {
+		nextIndex = (nextIndex + 1) % gameState.players.length;
+		
+		// make sure to process end of day even if a player is dead.
+		if(!alreadyAdvanced && nextIndex === gameState.turn.startPlayerIndex){
+			gameState.turn.turnNumber++;
+			processEndOfDay();
+			alreadyAdvanced = true; // do this only once, in case everyone is dead/spectator.
+		}
+		
+		counter++;
+	} while ((gameState.players[nextIndex].isSpectator || gameState.players[nextIndex].isDead) && counter < 100);
+
+	if(counter >= 99){
+		return 0; // give first player turn if no valid players found.
+	}else{
+		return nextIndex;
+	}
+}
+
+
 function getNextPlayerIndex(currentIndex){
 	let nextIndex = currentIndex;
 	// get next player index:
@@ -10659,14 +10974,9 @@ function getNextPlayerIndex(currentIndex){
 
 // this is host function.
 function advanceToNextPlayer(){
-	// advance to next player:
-	gameState.turn.currentPlayerIndex = getNextPlayerIndex(gameState.turn.currentPlayerIndex);
-	//console.log("gameState.turn.currentPlayerIndex = "+gameState.turn.currentPlayerIndex);
-	// end of day check:
-	if (gameState.turn.currentPlayerIndex === gameState.turn.startPlayerIndex) {
-		gameState.turn.turnNumber++;
-		processEndOfDay();
-	}
+	console.warn("advanceToNextPlayer");
+	// advance to next player and process end of day:
+	gameState.turn.currentPlayerIndex = getNextPlayerIndexAndProcessEndOfDay(gameState.turn.currentPlayerIndex);
 
 	updateGameUI();
 }
@@ -11097,6 +11407,7 @@ function processEndOfDay(){
 			if(tile.object && tile.actionTurnNumber){
 
 				let turnDiff = gameState.turn.turnNumber - tile.actionTurnNumber;
+				console.log("turnDiff", turnDiff);
 				if(tile.object === 'dead'){
 					// turn crosses into grass after 4 turns:
 					if(turnDiff >= 4){
@@ -11290,7 +11601,7 @@ function clampMoney(money) {
 	if (Object.is(rounded, -0) || (rounded < 0 && rounded > -1e-5)){
 		rounded = 0;
 	}
-	console.warn(money, rounded);
+	//console.warn(money, rounded);
 
 	return rounded;
 }
@@ -11491,6 +11802,10 @@ income: 5
 wages: 0
 balance: 5
 */
+
+
+
+
 function executeEndTurn(playerIndex) {
 	// --- 1. Apply income and wages for current player ---
 	const player = getPlayerByIndex(playerIndex);
@@ -11577,13 +11892,16 @@ function executeEndTurn(playerIndex) {
 			}
 			
 			if(killPlayer){
-				console.warn("KILLING PLAYER "+player.name);
-				// kill player, turn his hexes gray?
+				console.warn("PLAYER HAS DIED: "+player.name);
+				batchActions.push(...killPlayer(player.playerIndex));
+				/*
 				player.isDead = true;
+				
 				batchActions.push({ type: ACTION.player_killed, playerIndex: player.playerIndex });
 				
 				// maybe should kill units with a delay? or not...
 				batchActions.push(...killPlayerUnits(player.playerIndex));
+				*/
 			}
 		}
 	}
@@ -11595,6 +11913,7 @@ function executeEndTurn(playerIndex) {
 	// --- 5. Advance Turn ---
 	// this will update dead soldiers into grass, so need to call this BEFORE updatePlayerSavings
 	advanceToNextPlayer();
+	console.warn("advanceToNextPlayer");
 	
 	//////////////////////////////////
 	// Distribute final savings
@@ -11627,15 +11946,24 @@ function executeEndTurn(playerIndex) {
 }
 
 
-// for testing:
+// kill and return actions array:
 function killPlayer(playerIndex){
-	
+	let player = getPlayerByIndex(playerIndex);
+	player.isDead = true;
+
 	let batchActions = [];
 	
 	batchActions.push({ type: ACTION.player_killed, playerIndex: playerIndex });
-				
+
 	// maybe should kill units with a delay? or not...
 	batchActions.push(...killPlayerUnits(playerIndex));
+
+	return batchActions;
+}
+
+// for testing: kill and broadcast:
+function killPlayerNow(playerIndex){
+	let batchActions = killPlayer(playerIndex);
 	
 	if(batchActions.length > 0){
 		broadcast({ 
@@ -11643,7 +11971,6 @@ function killPlayer(playerIndex){
 			actions: batchActions,
 		});
 	}
-	
 }
 
 
@@ -12013,7 +12340,7 @@ function handleHostData(data) {
 	
 	switch (data.type) {
 		case ACTION.ping: {
-			// respond to ping to host:
+			// respond to ping for the host:
 			sendToHost({ type: ACTION.pong, time: Date.now(), playerIndex: getMyPlayer().playerIndex });
 			console.warn("received ping from host.");
 		}
@@ -12440,7 +12767,11 @@ function handleHostData(data) {
 			console.log(localPlayerPools);
 			console.log("selectedPool:");
 			console.log(selectedPool);
-			
+		}
+		break;
+		case ACTION.start_game_check: {
+			console.log("start_game_check");
+			openSettingsCheck();
 		}
 		break;
 	}
@@ -12522,9 +12853,8 @@ function handleClientData(peerId, data) {
 	switch (data.type) {
 		case ACTION.pong: {
 			// received answer from ACTION.ping
-			let time = data.time;
-			let playerIndex = data.playerIndex;
-			let player = getPlayerByIndex(playerIndex);
+			let player = getPlayerByIndex(data.playerIndex);
+			player.lastPong = data.time;
 			console.warn("received pong from player "+player.name);
 		}
 		break;
@@ -12799,11 +13129,71 @@ function setupConnection(conn) {
 }
 
 
-// todo: make without reloading the page but instead clear the gameState.
+// todo: make without reloading the page but instead reset the gamestate to what it was at start of the game.
 function restartGame(){
 	location.reload();
 }
 
+
+
+let TIMEOUT_TIME = 30000;
+let PING_INTERVAL = 5000;
+
+
+function checkPlayersTimeouts(){
+	let batchActions = [];
+	let killedCurrentTurnPlayer = false;
+	
+	for(let i = 0; i < gameState.players.length; i++){
+		let player = gameState.players[i];
+		if(player.lastPong && !player.isDead){
+			let timeDiff = Date.now()-player.lastPong;
+			if(timeDiff > TIMEOUT_TIME){
+				console.warn("player "+player.name+" has timed out. setting player as dead.");
+				// kill player and set player.isDead = true :
+				// removed because it kinda sucks if the player units disappears... makes it too easy.
+				//batchActions.push(...killPlayer(player.playerIndex));
+				player.isDead = true;
+				player.disconnected = true;
+
+				// if player was in turn:
+				if(gameState.turn.currentPlayerIndex === player.playerIndex){
+					killedCurrentTurnPlayer = true;
+				}
+			}
+		}
+	}
+	
+	// if player was in turn:
+	if(killedCurrentTurnPlayer){
+		advanceToNextPlayer();
+		//////////////////////////////////
+		// Distribute final savings
+		//distributePoolSavings(pools);
+		//updatePlayerSavings(playerIndex); // Update savings *after* calcs
+		
+		batchActions.push({ 
+			type: ACTION.turn_changed, 
+			currentPlayerIndex: gameState.turn.currentPlayerIndex, 
+			turnNumber: gameState.turn.turnNumber 
+		});
+	}
+	
+	if(batchActions.length > 0){
+		broadcast({ 
+			type: ACTION.multiple_actions, 
+			actions: batchActions,
+		});
+	}
+	
+
+	// if player was in turn:
+	if(killedCurrentTurnPlayer){
+		// --- 6. Check for AI turn ---
+		// NEW: This will now start the AI's sequential turn
+		checkForAITurn(); // start AI turn if it is his turn.
+	}
+}
 
 
 
@@ -12814,11 +13204,12 @@ function startPinging(){
 	if (pingIntervalId !== null) return; // already running
 
 	pingIntervalId = setInterval(() => {
+		checkPlayersTimeouts();
 		broadcast({
-			type: ACTION.ping,
+			type: ACTION.ping, // clients sends ACTION.pong in response.
 			time: Date.now()
 		}, false); // everyone = false = dont send to host too.
-	}, 5000);
+	}, PING_INTERVAL);
 }
 
 // not used yet since you cant quit other way than refreshing page.
@@ -13521,9 +13912,14 @@ function prepareSavedGameState(state){
 		delete tile.neighbours;
 		delete tile.isProtected;
 		delete tile.outline;
+		// for object animations:
 		delete tile.animationFinished;
 		delete tile.animationStyle;
 		delete tile.creationTime;
+		// for hex dying animations:
+		delete tile.isDying;
+		delete tile.deadStartTime;
+		delete tile.deadOwnerIndex;
 	}
 	for(let i = 0; i < state.units.length; i++){
 		let unit = state.units[i];
@@ -15043,6 +15439,11 @@ function rebuildPlayerIndexes(){
 }
 
 
+function startGameCheck(){
+	// broadcast for everyone to ask for confirmation to start game with current settings:
+	broadcast({type: ACTION.start_game_check});
+}
+
 
 function startGame() {
 	
@@ -15355,7 +15756,10 @@ function handleOutside(e) {
 	if (!gameSettingsUiWrapper2.contains(e.target)) {
 		gameSettingsUi.style.display = "none";
 	}
-
+	if (!settingsUiWrapper2.contains(e.target)) {
+		settingsUi.style.display = "none";
+	}
+	
 	// Build popup
 	if (
 		!buildPopup.contains(e.target) &&
@@ -15390,6 +15794,7 @@ document.addEventListener('mousedown', (e) => {
 	mouseDownInsidePopup =
 		pickerWrapper.contains(e.target) ||
 		gameSettingsUiWrapper2.contains(e.target) ||
+		settingsUiWrapper2.contains(e.target) ||
 		buildPopup.contains(e.target) ||
 		buildSoldierBtn.contains(e.target) ||
 		buildCastleBtn.contains(e.target);
@@ -15862,8 +16267,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 		spectateHostBtn.classList.toggle('active', localPlayer.isSpectator);
 		broadcastLobbyState();
 	};
-	
-	
+
 	startGameBtn.onclick = startGame;
 	startReplayBtn.onclick = startReplay;
 	
@@ -15977,21 +16381,21 @@ window.addEventListener('DOMContentLoaded', async () => {
 	musicUnmuteBtn2.tabIndex = -1; //remove it from the tab order
 	
 	
-	
+	/*
 	closeSettingsBtn.onclick = () => {
 		toggleSettings();
 	};
 	closeSettingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	closeSettingsBtn.tabIndex = -1; //remove it from the tab order
 	
-	
-	
+
 	settingsBtn.onclick = () => {
+		console.log("settingsBtn clicked");
 		toggleSettings();
 	};
 	settingsBtn.addEventListener("mousedown", e => e.preventDefault()); // Prevent the button from ever receiving focus
 	settingsBtn.tabIndex = -1; //remove it from the tab order
-	
+	*/
 	
 	toggleUiBtn.onclick = () => {
 		toggleUiTopLeft();
