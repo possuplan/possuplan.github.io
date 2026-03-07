@@ -300,10 +300,15 @@ select {
 				<input type="text" id="new-plant-name" class="plant-name-input" placeholder="Uuden kasvin nimi...">
 				<select id="new-plant-watering-warning">
 					<option value="0">Varoita</option>
+					<option value="0.5">0.5 vk</option>
 					<option value="1">1 vk</option>
+					<option value="1.5">1.5 vk</option>
 					<option value="2">2 vk</option>
+					<option value="2.5">2.5 vk</option>
 					<option value="3">3 vk</option>
+					<option value="3.5">3.5 vk</option>
 					<option value="4">4 vk</option>
+					<option value="4.5">4.5 vk</option>
 				</select>
 			</div>
 			<button id="add-plant-btn">Lisää kasvi</button>
@@ -359,7 +364,7 @@ function updateHeader(){
 					found = true;
 					
 					let lastWateredDaysAgo = getDateDiffFromNow(date);
-					let warnAfterDays = plant.warnAfter * 7;
+					let warnAfterDays = Math.floor(plant.warnAfter * 7);
 					
 					if(headerElem){
 						if(lastWateredDaysAgo >= warnAfterDays){
@@ -440,10 +445,15 @@ document.addEventListener('DOMContentLoaded', () => {
 	// note: options hardcoded in html at one place.
 	const warnOptions = [
 		{ value: 0, label: 'Varoita' },
-		{ value: 1, label: '1 vk' },
-		{ value: 2, label: '2 vk' },
-		{ value: 3, label: '3 vk' },
-		{ value: 4, label: '4 vk' }
+		{ value: 0.5, label: '0.5 vk' },
+		{ value: 1,   label: '1 vk' },
+		{ value: 1.5, label: '1.5 vk' },
+		{ value: 2,   label: '2 vk' },
+		{ value: 2.5, label: '2.5 vk' },
+		{ value: 3,   label: '3 vk' },
+		{ value: 3.5, label: '3.5 vk' },
+		{ value: 4,   label: '4 vk' },
+		{ value: 4.5, label: '4.5 vk' },
 	];
 
 	const plantListEl = document.getElementById('plant-list');
@@ -658,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			
 			if(lastWateredInfo[plant.id] && plant.warnAfter){
 				let lastWateredDaysAgo = lastWateredInfo[plant.id].diff;
-				let warnAfterDays = plant.warnAfter * 7;
+				let warnAfterDays = Math.floor(plant.warnAfter * 7);
 				if(lastWateredDaysAgo >= warnAfterDays){
 					//th.style.backgroundColor = "#660000";
 				}else{
@@ -704,7 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const name = newPlantNameInput.value.trim();
 		if (!name) return;
 		
-		const warnAfter = parseInt(newPlantWarningInput.value.trim(), 10);
+		const warnAfter = parseFloat(newPlantWarningInput.value.trim());
 
 		const maxOrder = plants.length > 0 ? Math.max(...plants.map(p => p.order)) : -1;
 		const newPlant = { name: name, order: maxOrder + 1, warnAfter: warnAfter };
@@ -832,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 			if (e.target.classList.contains('plant-watering-warning')) {
 				const id = parseInt(e.target.dataset.id, 10);
-				const newWarning = parseInt(e.target.value.trim(), 10);
+				const newWarning = parseFloat(e.target.value.trim());
 				updatePlantWarning(id, newWarning);
 			}
 		});
