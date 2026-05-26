@@ -2839,7 +2839,8 @@ function connectToServer(serverUrl) {
 
   // 3. Listen for messages
   eventSource.onmessage = (event) => {
-    if (event.data === 'games_updated') {
+	let [msg, clientsCount] = event.data.split("/");
+	if (msg === 'games_updated') {
       console.log('Games updated — reloading list...');
       fetchOpenGames(selectedServerIndex); // or your own function
     }
